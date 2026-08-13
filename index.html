@@ -118,6 +118,32 @@ button{font:inherit;-webkit-tap-highlight-color:transparent}
 @keyframes sparkFly{to{transform:translate(calc(-50% + var(--x)),calc(-50% + var(--y))) rotate(calc(var(--r) + 320deg));opacity:0}}
 @media(max-height:650px){:root{--up-step:8px;--down-step:8px}.app{gap:5px}.controls button{min-height:40px}.category-row{margin-bottom:7px;padding-bottom:8px}.game{padding-top:7px}.draw-row{margin-bottom:8px;padding:5px 7px}.coach{top:92px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+/* ===== Meta progression / hub ===== */
+.brand{cursor:pointer;-webkit-tap-highlight-color:transparent}.brand:active{transform:scale(.985)}
+.progress-label{display:flex;gap:5px;align-items:center}.progress-stars{color:#ffd86a;font-weight:900;letter-spacing:0}
+.hub{position:fixed;inset:0;z-index:13000;display:none;background:linear-gradient(165deg,#161039f5,#0e153af7);backdrop-filter:blur(14px);overflow:hidden}.hub.show{display:block}
+.hub-shell{width:min(520px,100%);height:100%;margin:auto;display:grid;grid-template-rows:auto minmax(0,1fr);background:linear-gradient(160deg,#29205d,#151d4a);box-shadow:0 0 60px #0008}
+.hub-head{display:flex;align-items:center;gap:10px;padding:max(14px,env(safe-area-inset-top)) 14px 10px;border-bottom:1px solid #ffffff12}.hub-head h2{margin:0;flex:1;font-size:20px}.hub-close{width:38px;height:38px;border:0;border-radius:12px;background:#ffffff12;color:#fff;font-size:21px}.hub-scroll{overflow:auto;padding:12px 12px max(22px,env(safe-area-inset-bottom));display:grid;gap:11px;overscroll-behavior:contain}
+.hub-hero{padding:15px;border-radius:20px;background:linear-gradient(135deg,#8b61ff33,#4ed7ff1e);border:1px solid #ffffff18;box-shadow:inset 0 1px #ffffff13}.hub-hero-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.hub-level{font-size:12px;color:#c9c6ef}.hub-stars{font-size:25px;font-weight:900;color:#ffd968}.hub-progress{height:8px;margin-top:10px;border-radius:99px;background:#ffffff12;overflow:hidden}.hub-progress>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#4ed7ff,#8b62ff,#ff64aa);border-radius:inherit}
+.hub-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.hub-action{min-height:66px;border:1px solid #ffffff14;border-radius:17px;background:#ffffff0d;color:#fff;text-align:left;padding:11px 12px;font-weight:900;box-shadow:inset 0 1px #ffffff0d}.hub-action strong{display:block;font-size:13px}.hub-action span{display:block;margin-top:4px;font-size:9px;color:#bbb7df;font-weight:700}.hub-action.daily{background:linear-gradient(135deg,#ff8f5630,#ff5ea226)}.hub-action.primary{background:linear-gradient(135deg,#815fff,#4d7df5);box-shadow:0 8px 22px #5b45dd42}
+.hub-section{padding:13px;border-radius:19px;background:#ffffff08;border:1px solid #ffffff12}.hub-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.hub-section h3{margin:0;font-size:14px}.hub-section small{color:#aaa6cf;font-size:9px}
+.theme-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.theme-tile{position:relative;min-height:67px;border:1px solid #ffffff14;border-radius:14px;color:#fff;padding:8px;font-weight:900;text-align:left;overflow:hidden}.theme-tile::after{content:"";position:absolute;inset:auto -15px -28px auto;width:62px;height:62px;border-radius:50%;background:#fff2}.theme-tile.locked{filter:grayscale(.75);opacity:.48}.theme-tile.selected{outline:2px solid #fff;outline-offset:-3px}.theme-tile b{position:relative;z-index:1;font-size:10px}.theme-tile span{position:relative;z-index:1;display:block;margin-top:3px;font-size:8px;opacity:.78}.theme-violet{background:linear-gradient(145deg,#785aff,#3e53d9)}.theme-ocean{background:linear-gradient(145deg,#13b5c8,#225bd7)}.theme-sunset{background:linear-gradient(145deg,#ff8e52,#d94b9c)}.theme-paper{background:linear-gradient(145deg,#f7eee0,#a79c91);color:#312c31}.theme-aurora{background:linear-gradient(145deg,#25d2a2,#704cff)}.theme-neon{background:linear-gradient(145deg,#11162c,#e42cff)}
+.collection-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;max-height:190px;overflow:auto;padding-right:2px}.collection-item{min-height:49px;border-radius:12px;padding:7px 4px;display:grid;place-items:center;text-align:center;background:#ffffff0b;border:1px solid #ffffff10;font-size:8px;font-weight:850;line-height:1.05}.collection-item.locked{color:#747194}.collection-item.seen{background:linear-gradient(145deg,#6f55e42e,#43cae71d);color:#f5f3ff;border-color:#978aff2c}
+.achievement-list{display:grid;gap:6px;max-height:220px;overflow:auto}.achievement{display:grid;grid-template-columns:34px 1fr auto;gap:8px;align-items:center;padding:8px;border-radius:12px;background:#ffffff08}.achievement .ico{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:#ffffff0d}.achievement b{font-size:10px}.achievement p{margin:2px 0 0;color:#aaa6cb;font-size:8px}.achievement.locked{opacity:.43}.achievement .done{font-size:10px;color:#83e7ab}
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}.stat-box{padding:10px;border-radius:13px;background:#ffffff08}.stat-box b{display:block;font-size:17px}.stat-box span{font-size:8px;color:#aaa6cf;text-transform:uppercase;letter-spacing:.05em}
+.daily-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 7px;border-radius:99px;background:#ffb04b20;color:#ffd17d;font-size:8px;font-weight:900}
+/* Win progression */
+.win-stars{position:relative;display:flex;justify-content:center;gap:5px;margin:5px 0 11px;font-size:31px;line-height:1;color:#d8d4e6}.win-stars .earned{color:#ffbe36;text-shadow:0 3px 9px #ffab3d55}.win-metrics{position:relative;display:flex;justify-content:center;gap:7px;flex-wrap:wrap;margin-bottom:12px}.win-chip{padding:5px 8px;border-radius:99px;background:#e9e5f6;color:#625d75;font-size:9px;font-weight:800}.win-chip.good{background:#dcf6e6;color:#23754b}.win-star-total{position:relative;margin:8px 0 5px;font-size:12px;font-weight:900}.win-next-unlock{position:relative;color:#777287;font-size:9px;margin-bottom:13px}.modal-actions{display:grid;gap:7px}.modal-card .secondary{background:#ebe8f7;color:#4d4960;box-shadow:none}
+/* tutorial */
+.coach.tutorial{pointer-events:none;max-width:92%;font-size:10px;padding:11px 13px;background:#17152bf5}.coach .coach-step{display:block;margin-bottom:3px;color:#ffd86a;font-weight:900;font-size:8px;letter-spacing:.08em;text-transform:uppercase}
+/* themes */
+body[data-theme="ocean"]{background:linear-gradient(155deg,#061e2d,#062e48 60%,#071d3d)}body[data-theme="ocean"] .app,body[data-theme="ocean"] .hub-shell{background:linear-gradient(160deg,#0d5265,#123a68 48%,#102858)}body[data-theme="ocean"] .brand-mark,body[data-theme="ocean"] .controls .primary{background:linear-gradient(145deg,#28d2ca,#2785f3)}body[data-theme="ocean"] .card.face-down{background:linear-gradient(145deg,#17bec9,#246fed 60%,#164fb7)}
+body[data-theme="sunset"]{background:linear-gradient(155deg,#32101c,#4c193d 60%,#241339)}body[data-theme="sunset"] .app,body[data-theme="sunset"] .hub-shell{background:linear-gradient(160deg,#713151,#4a2557 46%,#24204d)}body[data-theme="sunset"] .brand-mark,body[data-theme="sunset"] .controls .primary{background:linear-gradient(145deg,#ffac4c,#ff548d)}body[data-theme="sunset"] .card.face-down{background:linear-gradient(145deg,#ff9b55,#f4519a 55%,#8051d9)}
+body[data-theme="paper"]{background:#cfc6b8}body[data-theme="paper"] .app,body[data-theme="paper"] .hub-shell{background:linear-gradient(160deg,#81796e,#5e625e 55%,#474e50)}body[data-theme="paper"] .card.face-down{background:linear-gradient(145deg,#8c8072,#625b54);border-color:#d8cfc4}body[data-theme="paper"] .brand-mark,body[data-theme="paper"] .controls .primary{background:linear-gradient(145deg,#b88c5d,#78654f)}
+body[data-theme="aurora"]{background:linear-gradient(155deg,#061c26,#102f3d 60%,#18183f)}body[data-theme="aurora"] .app,body[data-theme="aurora"] .hub-shell{background:radial-gradient(circle at 0 20%,#2bdab538,transparent 35%),radial-gradient(circle at 100% 5%,#7458ff48,transparent 35%),linear-gradient(160deg,#124c50,#222154 58%,#121b42)}body[data-theme="aurora"] .brand-mark,body[data-theme="aurora"] .controls .primary{background:linear-gradient(145deg,#35e1b0,#685cff)}body[data-theme="aurora"] .card.face-down{background:linear-gradient(145deg,#33d7ac,#4e74e7 55%,#7856e7)}
+body[data-theme="neon"]{background:#040510}body[data-theme="neon"] .app,body[data-theme="neon"] .hub-shell{background:radial-gradient(circle at 80% 0,#d92bff26,transparent 30%),linear-gradient(160deg,#0b0f23,#101638)}body[data-theme="neon"] .brand-mark,body[data-theme="neon"] .controls .primary{background:linear-gradient(145deg,#00eaff,#e22cff)}body[data-theme="neon"] .card.face-down{background:linear-gradient(145deg,#121b47,#b228dd);border-color:#43e9ff}
+
 </style>
 </head>
 <body>
@@ -127,7 +153,7 @@ button{font:inherit;-webkit-tap-highlight-color:transparent}
       <div class="brand"><span class="brand-mark">✦</span><span class="brand-copy"><b>Словасьянс</b><small>пасьянс ассоциаций</small></span></div>
       <div class="stats"><span class="pill">Ур. <b id="level">1</b></span><span class="pill progress-pill">✓ <b id="progressText">0/0</b></span><span class="pill"><b id="left">0</b> карт</span><span id="cols" hidden>4</span></div>
     </div>
-    <div class="progress-wrap"><div class="progress-track"><div class="progress-bar" id="progressBar"></div></div><span class="progress-label">прогресс</span></div>
+    <div class="progress-wrap"><div class="progress-track"><div class="progress-bar" id="progressBar"></div></div><span class="progress-label"><span class="progress-stars">★ <b id="starTotal">0</b></span><span>прогресс</span></span></div>
   </header>
   <main class="game-scroll"><div class="game">
     <section class="draw-row">
@@ -142,270 +168,133 @@ button{font:inherit;-webkit-tap-highlight-color:transparent}
     </section>
     <section class="tableau" id="tableau"></section>
   </div></main>
-  <footer class="controls"><button id="undo">↶ Отмена</button><button id="hint">✦ Подсказка</button><button class="primary" id="restart">Новый расклад</button></footer>
+  <footer class="controls"><button id="undo">↶ Отмена</button><button id="hint">✦ Подсказка</button><button class="primary" id="restart">Заново</button></footer>
 </div>
-<div class="coach" id="coach">Собирай связанные слова в стопки. Карточки категорий переноси в слоты сверху.</div>
+<div class="coach" id="coach"><span class="coach-step" id="coachStep"></span><span id="coachText">Собирай связанные слова в стопки. Карточки категорий переноси в слоты сверху.</span></div>
 <div class="toast" id="toast"></div>
 <div class="celebration" id="celebration"></div>
-<div class="modal" id="modal"><div class="modal-card"><div class="win-icon">★</div><h2>Уровень пройден!</h2><p id="winText">Все категории собраны.</p><button id="next">Следующий уровень →</button></div></div>
+<div class="modal" id="modal"><div class="modal-card"><div class="win-icon">★</div><h2 id="winTitle">Уровень пройден!</h2><div class="win-stars" id="winStars"></div><p id="winText">Все категории собраны.</p><div class="win-metrics" id="winMetrics"></div><div class="win-star-total" id="winStarTotal"></div><div class="win-next-unlock" id="winUnlock"></div><div class="modal-actions"><button id="next">Следующий уровень →</button><button class="secondary" id="replay">Ещё раз</button></div></div></div>
+<div class="hub" id="hub"><div class="hub-shell"><div class="hub-head"><span class="brand-mark">✦</span><h2>Словасьянс</h2><button class="hub-close" id="hubClose">×</button></div><div class="hub-scroll" id="hubContent"></div></div></div>
 <script src="data/categories.js"></script>
 <script>
 let BANK=[];
-const RECENT_KEY='assoc-recent-categories-v1';
-const MAX_CARD_WORD_LEN=10;
-const MAX_CARD_TITLE_LEN=10;
+const SAVE_KEY='worditaire-state-v10';
+const OLD_SAVE_KEY='assoc-klondike-v7';
+const PROFILE_KEY='worditaire-profile-v2';
+const ANALYTICS_KEY='worditaire-analytics-v1';
+const RECENT_KEY='assoc-recent-categories-v2';
+const MAX_CARD_WORD_LEN=10,MAX_CARD_TITLE_LEN=10;
+const THEME_DEFS=[
+ {id:'violet',name:'Violet',stars:0},{id:'ocean',name:'Ocean',stars:30},{id:'sunset',name:'Sunset',stars:75},
+ {id:'paper',name:'Paper',stars:100},{id:'aurora',name:'Aurora',stars:150},{id:'neon',name:'Neon',stars:225}
+];
+const ACHIEVEMENTS=[
+ {id:'first',icon:'✦',title:'Первый расклад',desc:'Пройти 1 уровень',test:p=>p.stats.levelsCompleted>=1},
+ {id:'ten',icon:'10',title:'Вошёл во вкус',desc:'Пройти 10 уровней',test:p=>p.stats.levelsCompleted>=10},
+ {id:'fifty',icon:'50',title:'Словасьянсер',desc:'Пройти 50 уровней',test:p=>p.stats.levelsCompleted>=50},
+ {id:'hundred',icon:'★',title:'Мастер ассоциаций',desc:'Пройти 100 уровней',test:p=>p.stats.levelsCompleted>=100},
+ {id:'clean',icon:'★★★',title:'Чистая работа',desc:'Получить 3 звезды',test:p=>p.stats.tripleStarWins>=1},
+ {id:'perfect10',icon:'♛',title:'Перфекционист',desc:'10 уровней на 3 звезды',test:p=>p.stats.tripleStarWins>=10},
+ {id:'nohint',icon:'?',title:'Самостоятельный',desc:'20 побед без подсказок',test:p=>p.stats.noHintWins>=20},
+ {id:'noundo',icon:'↶',title:'Без возврата',desc:'20 побед без отмен',test:p=>p.stats.noUndoWins>=20},
+ {id:'collector',icon:'▦',title:'Коллекционер',desc:'Открыть 100 категорий',test:p=>p.discovered.length>=100},
+ {id:'encyclopedia',icon:'∞',title:'Энциклопедия',desc:'Собрать 500 категорий',test:p=>p.stats.categoriesCompleted>=500},
+ {id:'daily',icon:'☀',title:'Доброе утро',desc:'Пройти Daily',test:p=>p.stats.dailyCompleted>=1},
+ {id:'streak7',icon:'🔥',title:'Привычка',desc:'Серия 7 дней',test:p=>p.daily.bestStreak>=7},
+ {id:'streak30',icon:'🔥',title:'Постоянство',desc:'Серия 30 дней',test:p=>p.daily.bestStreak>=30}
+];
+const DEFAULT_STATS={levelsCompleted:0,categoriesCompleted:0,tripleStarWins:0,noHintWins:0,noUndoWins:0,hints:0,undos:0,autoMoves:0,stockDraws:0,restarts:0,dailyCompleted:0};
+function defaultProfile(){return{currentLevel:1,starsByLevel:{},dailyStars:{},totalStars:0,discovered:[],achievements:[],theme:'violet',tutorialComplete:false,stats:{...DEFAULT_STATS},daily:{lastDate:null,currentStreak:0,bestStreak:0,completedDates:[],freezeWeek:null}}}
+function loadProfile(){try{const p=JSON.parse(localStorage.getItem(PROFILE_KEY));if(p){return{...defaultProfile(),...p,stats:{...DEFAULT_STATS,...p.stats},daily:{...defaultProfile().daily,...p.daily},discovered:Array.isArray(p.discovered)?p.discovered:[],achievements:Array.isArray(p.achievements)?p.achievements:[]}}}catch{}return defaultProfile()}
+let profile=loadProfile();
+function recomputeStars(){profile.totalStars=Object.values(profile.starsByLevel||{}).reduce((a,b)=>a+(+b||0),0)+Object.values(profile.dailyStars||{}).reduce((a,b)=>a+(+b||0),0)}
+function saveProfile(){recomputeStars();localStorage.setItem(PROFILE_KEY,JSON.stringify(profile));applyTheme(profile.theme)}
+function track(name,data={}){try{const a=JSON.parse(localStorage.getItem(ANALYTICS_KEY))||{counts:{},events:[]};a.counts[name]=(a.counts[name]||0)+1;a.events.push({name,t:Date.now(),...data});if(a.events.length>200)a.events=a.events.slice(-200);localStorage.setItem(ANALYTICS_KEY,JSON.stringify(a))}catch{}}
+function applyTheme(id){const def=THEME_DEFS.find(t=>t.id===id),allowed=def&&profile.totalStars>=def.stars;const theme=allowed?id:'violet';profile.theme=theme;document.body.dataset.theme=theme}
+recomputeStars();applyTheme(profile.theme);
+
 const fitsCardText=(s,maxLen)=>{s=String(s||'').trim();return !!s&&!/[\s\-‑]/.test(s)&&s.length<=maxLen};
-const sanitizeCategoryBank=list=>(Array.isArray(list)?list:[]).map(cat=>({
-  ...cat,
-  title:String(cat.title||'').trim(),
-  words:[...new Set((Array.isArray(cat.words)?cat.words:[]).map(w=>String(w).trim()).filter(w=>fitsCardText(w,MAX_CARD_WORD_LEN)).map(w=>w.toLowerCase()))].map(lw=>((Array.isArray(cat.words)?cat.words:[]).map(w=>String(w).trim()).find(w=>w.toLowerCase()===lw)))
-})).filter(cat=>fitsCardText(cat.title,MAX_CARD_TITLE_LEN)&&cat.words.length>=3);
+const sanitizeCategoryBank=list=>(Array.isArray(list)?list:[]).map(cat=>({...cat,title:String(cat.title||'').trim(),words:[...new Set((Array.isArray(cat.words)?cat.words:[]).map(w=>String(w).trim()).filter(w=>fitsCardText(w,MAX_CARD_WORD_LEN)).map(w=>w.toLowerCase()))].map(lw=>(cat.words||[]).map(w=>String(w).trim()).find(w=>w.toLowerCase()===lw))})).filter(cat=>fitsCardText(cat.title,MAX_CARD_TITLE_LEN)&&cat.words.length>=3);
 const normWord=s=>String(s).toLowerCase().replace(/ё/g,'е').replace(/[^a-zа-я0-9]+/gi,' ').trim();
+function categoriesConflict(a,b){if(!a||!b)return false;if(a.conflictGroup&&a.conflictGroup===b.conflictGroup)return true;if(a.conflicts?.includes(b.id)||b.conflicts?.includes(a.id))return true;const aw=new Set(a.words.map(normWord));return b.words.some(w=>aw.has(normWord(w)))}
 function getRecentCategories(){try{return JSON.parse(localStorage.getItem(RECENT_KEY))||[]}catch{return[]}}
 function rememberCategories(ids){const recent=getRecentCategories().filter(id=>!ids.includes(id));localStorage.setItem(RECENT_KEY,JSON.stringify([...ids,...recent].slice(0,40)))}
-function categoriesConflict(a,b){
- if(!a||!b)return false;
- if(a.conflictGroup&&a.conflictGroup===b.conflictGroup)return true;
- if(a.conflicts?.includes(b.id)||b.conflicts?.includes(a.id))return true;
- const aw=new Set(a.words.map(normWord));
- return b.words.some(w=>aw.has(normWord(w)));
-}
-function chooseCompatibleCategories(count){
- const recent=new Set(getRecentCategories());
- const attempt=(avoidRecent)=>{
-   for(let pass=0;pass<250;pass++){
-     const pool=shuffle(BANK).filter(c=>!avoidRecent||!recent.has(c.id)),chosen=[];
-     for(const cat of pool){
-       if(chosen.every(existing=>!categoriesConflict(cat,existing)))chosen.push(cat);
-       if(chosen.length===count)return chosen;
-     }
-   }
-   return null;
- };
- return attempt(true)||attempt(false)||[];
-}
-async function loadCategoryBank(){
- try{
-   const r=await fetch('./data/categories.json',{cache:'no-store'});
-   if(!r.ok)throw new Error('categories.json '+r.status);
-   const data=await r.json();
-   if(!Array.isArray(data.categories)||data.categories.length<100)throw new Error('invalid category bank');
-   BANK=data.categories;
- }catch(err){
-   console.warn('Не удалось загрузить categories.json, использую локальный резерв.',err);
-   BANK=Array.isArray(window.CATEGORY_BANK)?window.CATEGORY_BANK:[];
- }
- if(!BANK.length)throw new Error('База категорий не загружена');
-}
+async function loadCategoryBank(){try{const r=await fetch('./data/categories.json',{cache:'no-store'});if(!r.ok)throw new Error('categories.json '+r.status);const data=await r.json();BANK=sanitizeCategoryBank(data.categories)}catch(err){console.warn('categories.json недоступен, использую fallback',err);BANK=sanitizeCategoryBank(window.CATEGORY_BANK||[])}if(BANK.length<50)throw new Error('База категорий не загружена')}
 
-const $=s=>document.querySelector(s),tableau=$('#tableau'),slotsAnchor=$('#slotsAnchor'),stockEl=$('#stock'),wasteEl=$('#waste'),toast=$('#toast'),modal=$('#modal'),celebration=$('#celebration'),coach=$('#coach');
-let state,history=[],drag=null;
+const $=s=>document.querySelector(s),tableau=$('#tableau'),slotsAnchor=$('#slotsAnchor'),stockEl=$('#stock'),wasteEl=$('#waste'),toast=$('#toast'),modal=$('#modal'),celebration=$('#celebration'),coach=$('#coach'),hub=$('#hub'),hubContent=$('#hubContent');
+let state,history=[],drag=null,autoMoveBusy=false,lastTap={key:null,time:0};
 const uid=()=>crypto.randomUUID?.()||Math.random().toString(36).slice(2)+Date.now();
-const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
-const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+function hashSeed(str){let h=2166136261;for(const ch of String(str)){h^=ch.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
+function makeRng(seed){let a=hashSeed(seed)||1;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const rnd=(a,b,rng=Math.random)=>Math.floor(rng()*(b-a+1))+a;
+const shuffle=(arr,rng=Math.random)=>{arr=[...arr];for(let i=arr.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}return arr};
 function catHue(id){let h=0;for(const ch of String(id))h=(h*31+ch.charCodeAt(0))%360;return 205+(h%135)}
 function haptic(pattern=10){try{navigator.vibrate?.(pattern)}catch{}}
-function hideCoach(){if(!coach?.classList.contains('show'))return;coach.classList.remove('show');localStorage.setItem('assoc-onboard-v1','1')}
-function maybeShowCoach(){if(localStorage.getItem('assoc-onboard-v1'))return;setTimeout(()=>coach?.classList.add('show'),450);setTimeout(hideCoach,5200)}
-function burst(strong=false){if(!celebration)return;const n=strong?42:16;for(let i=0;i<n;i++){const el=document.createElement('i');el.className='spark';const a=(Math.PI*2*i/n)+(Math.random()-.5)*.35,d=(strong?rnd(100,245):rnd(55,125));el.style.setProperty('--x',Math.cos(a)*d+'px');el.style.setProperty('--y',Math.sin(a)*d+'px');el.style.setProperty('--r',rnd(-80,80)+'deg');el.style.setProperty('--spark-h',rnd(25,330));el.style.animationDelay=(Math.random()*.08)+'s';celebration.appendChild(el);setTimeout(()=>el.remove(),1100)}}
+function burst(strong=false){if(!celebration)return;const n=strong?42:16;for(let i=0;i<n;i++){const el=document.createElement('i');el.className='spark';const a=(Math.PI*2*i/n)+(Math.random()-.5)*.35,d=strong?rnd(100,245):rnd(55,125);el.style.setProperty('--x',Math.cos(a)*d+'px');el.style.setProperty('--y',Math.sin(a)*d+'px');el.style.setProperty('--r',rnd(-80,80)+'deg');el.style.setProperty('--spark-h',rnd(25,330));celebration.appendChild(el);setTimeout(()=>el.remove(),1100)}}
+function showToast(text){toast.textContent=text;toast.classList.add('show');clearTimeout(showToast.t);showToast.t=setTimeout(()=>toast.classList.remove('show'),1400)}
+function todayKey(d=new Date()){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function daysBetween(a,b){const x=new Date(a+'T12:00:00'),y=new Date(b+'T12:00:00');return Math.round((y-x)/86400000)}
+function weekKey(dateStr){const d=new Date(dateStr+'T12:00:00');const onejan=new Date(d.getFullYear(),0,1);return`${d.getFullYear()}-${Math.ceil((((d-onejan)/86400000)+onejan.getDay()+1)/7)}`}
+function categoryDifficulty(cat){const avg=cat.words.reduce((n,w)=>n+w.length,0)/cat.words.length;return avg<=5.7?1:avg<=7.3?2:3}
+function regularConfig(level,rng){let colRange;if(level<=10)colRange=[3,3];else if(level<=25)colRange=[3,4];else if(level<=50)colRange=[4,5];else if(level<=100)colRange=[4,6];else colRange=[3,6];let cols=rnd(colRange[0],colRange[1],rng);const recovery=level>5&&level%6===0;if(recovery)cols=Math.max(3,cols-1);const ranges={3:[3,4],4:[4,6],5:[6,8],6:[8,12]},cr=ranges[cols];const cats=rnd(cr[0],cr[1],rng);let difficulty=level<=12?1:level<=50?2:3;if(recovery)difficulty=Math.max(1,difficulty-1);const words=difficulty===1?[3,5]:difficulty===2?[4,7]:[5,9];return{cols,cats,difficulty,words}}
+function chooseCompatibleCategories(count,difficulty,rng){const close=shuffle(BANK,rng).sort((a,b)=>Math.abs(categoryDifficulty(a)-difficulty)-Math.abs(categoryDifficulty(b)-difficulty));const chosen=[];for(const cat of close){if(chosen.every(c=>!categoriesConflict(cat,c))){chosen.push(cat);if(chosen.length===count)return chosen}}return[]}
+function randomColumnCounts(total,cols,rng){const counts=Array(cols).fill(1);let rest=total-cols;while(rest>0){counts[rnd(0,cols-1,rng)]++;rest--}for(let i=0;i<cols*5;i++){const a=rnd(0,cols-1,rng),b=rnd(0,cols-1,rng);if(a!==b&&counts[a]>1&&rng()<.75){counts[a]--;counts[b]++}}if(new Set(counts).size===1&&total>cols){counts[0]--;counts[cols-1]++}return shuffle(counts,rng)}
+function allCards(s){return[...s.stock,...s.waste,...s.columns.flatMap(c=>c.flatMap(g=>g.cards)),...s.slots.flatMap(g=>g?g.cards:[])]}
+function isLikelySolvable(s){const cards=allCards(s),totals={};for(const c of cards)if(c.type==='word')totals[c.cat]=(totals[c.cat]||0)+1;const reserve=cards.filter(c=>s.stock.some(x=>x.uid===c.uid));const cols=s.columns.map(col=>col.map(g=>({cat:g.cards[0].cat,type:g.cards[0].type,count:g.cards.filter(c=>c.type==='word').length})));const active=new Map();let completed=0,guard=0;const target=s.totalCategories;while(guard++<800&&completed<target){let progress=false;while(active.size<s.cols){const i=reserve.findIndex(c=>c.type==='category'&&!active.has(c.cat));if(i<0)break;const c=reserve.splice(i,1)[0];active.set(c.cat,0);progress=true}for(let i=reserve.length-1;i>=0;i--){const c=reserve[i];if(c.type==='word'&&active.has(c.cat)){active.set(c.cat,active.get(c.cat)+1);reserve.splice(i,1);progress=true}}for(const col of cols){if(!col.length)continue;const top=col[col.length-1];if(top.type==='category'&&active.size<s.cols&&!active.has(top.cat)){col.pop();active.set(top.cat,0);progress=true}else if(top.type==='word'&&active.has(top.cat)){col.pop();active.set(top.cat,active.get(top.cat)+top.count);progress=true}}for(const [cat,n] of [...active])if(n>=totals[cat]){active.delete(cat);completed++;progress=true}if(completed>=target)return true;if(progress)continue;let merged=false;for(let a=0;a<cols.length&&!merged;a++){if(!cols[a].length)continue;const ta=cols[a][cols[a].length-1];if(ta.type!=='word')continue;for(let b=0;b<cols.length;b++){if(a===b||!cols[b].length)continue;const tb=cols[b][cols[b].length-1];if(tb.type==='word'&&ta.cat===tb.cat){tb.count+=ta.count;cols[a].pop();merged=progress=true;break}}}if(merged)continue;const empty=cols.findIndex(c=>!c.length);if(empty>=0){const source=cols.findIndex(c=>c.length>1&&c[c.length-1].type==='word');if(source>=0){cols[empty].push(cols[source].pop());progress=true}}if(!progress)break}return completed===target}
+function buildGeneratedLevel(level,{mode='regular',seed=null}={}){const baseSeed=seed||(mode==='daily'?`daily:${todayKey()}`:`level:${level}`);for(let attempt=0;attempt<45;attempt++){const rng=makeRng(baseSeed+':'+attempt);const cfg=mode==='daily'?{cols:5,cats:7,difficulty:2,words:[4,7]}:regularConfig(level,rng);const chosen=chooseCompatibleCategories(cfg.cats,cfg.difficulty,rng);if(chosen.length<cfg.cats)continue;const cards=[];for(const cat of chosen){const maxN=Math.min(cfg.words[1],9,cat.words.length),minN=Math.min(cfg.words[0],maxN),n=rnd(minN,maxN,rng),words=shuffle(cat.words,rng).slice(0,n);cards.push({uid:uid(),cat:cat.id,label:cat.title,type:'category',total:n});for(const w of words)cards.push({uid:uid(),cat:cat.id,label:w,type:'word',total:n})}const deck=shuffle(cards,rng),layoutCount=Math.floor(deck.length/2),layoutCards=deck.splice(0,layoutCount),counts=randomColumnCounts(layoutCount,cfg.cols,rng),columns=[];let cursor=0;for(const count of counts){const chunk=layoutCards.slice(cursor,cursor+count);cursor+=count;columns.push(chunk.map((card,i)=>({cards:[card],faceUp:i===count-1})))}const candidate={level,mode,seed:baseSeed,cols:cfg.cols,columns,stock:deck,waste:[],slots:Array(cfg.cols).fill(null),completed:0,totalCategories:cfg.cats,categoryIds:chosen.map(c=>c.id),run:{hints:0,undos:0,autoMoves:0,moves:0,startedAt:Date.now()},rewarded:false,generationAttempt:attempt};if(isLikelySolvable(structuredClone(candidate)))return candidate}console.warn('Solver fallback: используем последний корректно сформированный расклад');const rng=makeRng(baseSeed+':fallback'),cfg=mode==='daily'?{cols:5,cats:7,difficulty:2,words:[4,6]}:regularConfig(level,rng),chosen=chooseCompatibleCategories(cfg.cats,cfg.difficulty,rng),cards=[];for(const cat of chosen){const n=Math.min(4,cat.words.length),words=shuffle(cat.words,rng).slice(0,n);cards.push({uid:uid(),cat:cat.id,label:cat.title,type:'category',total:n});for(const w of words)cards.push({uid:uid(),cat:cat.id,label:w,type:'word',total:n})}const cats=cards.filter(c=>c.type==='category'),words=cards.filter(c=>c.type==='word'),stock=shuffle([...cats,...words.slice(Math.floor(words.length/2))],rng),layout=shuffle(words.slice(0,Math.floor(words.length/2)),rng),counts=randomColumnCounts(layout.length,cfg.cols,rng);let k=0;return{level,mode,seed:baseSeed,cols:cfg.cols,columns:counts.map(n=>layout.slice(k,k+=n).map((card,i,a)=>({cards:[card],faceUp:i===a.length-1}))),stock,waste:[],slots:Array(cfg.cols).fill(null),completed:0,totalCategories:chosen.length,categoryIds:chosen.map(c=>c.id),run:{hints:0,undos:0,autoMoves:0,moves:0,startedAt:Date.now()},rewarded:false,generationAttempt:'fallback'}}
+function findCat(title){return BANK.find(c=>c.title===title)||BANK[0]}
+function makeTutorial(step=1){const titles=['Фрукты','Море','Небо'],cat=findCat(titles[step-1]),words=cat.words.slice(0,3),cards=words.map(w=>({uid:uid(),cat:cat.id,label:w,type:'word',total:3})),cc={uid:uid(),cat:cat.id,label:cat.title,type:'category',total:3};let columns,stock,slots=Array(3).fill(null);if(step===1){columns=[[{cards:[cc],faceUp:true}],[{cards:[cards[0]],faceUp:true}],[{cards:[cards[1]],faceUp:true}]];stock=[cards[2]]}else if(step===2){slots[1]={cards:[cc],faceUp:true};columns=[[{cards:[cards[0]],faceUp:true}],[{cards:[cards[1]],faceUp:true}],[{cards:[cards[2]],faceUp:true}]];stock=[]}else{slots[1]={cards:[cc],faceUp:true};columns=[[],[],[]];stock=[...cards].reverse()}return{level:step,mode:'tutorial',tutorialStep:step,seed:`tutorial:${step}`,cols:3,columns,stock,waste:[],slots,completed:0,totalCategories:1,categoryIds:[cat.id],run:{hints:0,undos:0,autoMoves:0,moves:0,startedAt:Date.now()},rewarded:false}}
+function normalizeState(s){s.run={hints:0,undos:0,autoMoves:0,moves:0,startedAt:Date.now(),...(s.run||{})};s.mode=s.mode||'regular';s.seed=s.seed||`legacy:${s.level||1}`;s.rewarded=!!s.rewarded;return s}
+function makeLevel(level=1,opts={}){state=opts.mode==='tutorial'?makeTutorial(opts.step||1):buildGeneratedLevel(level,opts);history=[];if(state.mode==='regular')rememberCategories(state.categoryIds);track('level_started',{level:state.level,mode:state.mode,seed:state.seed});render();updateCoach()}
+function snapshot(){return structuredClone(state)}function pushHistory(){history.push(snapshot());if(history.length>80)history.shift()}
+function save(){if(state)localStorage.setItem(SAVE_KEY,JSON.stringify(state));saveProfile()}
+function load(){let old=false;try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));if(s?.columns){state=normalizeState(s);render();updateCoach();return}}catch{}try{const s=JSON.parse(localStorage.getItem(OLD_SAVE_KEY));if(s?.columns){old=true;profile.tutorialComplete=true;state=normalizeState(s);saveProfile();render();updateCoach();return}}catch{}if(!profile.tutorialComplete)makeLevel(1,{mode:'tutorial',step:1});else makeLevel(profile.currentLevel||1)}
 
-function config(level){const cols=rnd(3,6),ranges={3:[3,4],4:[4,6],5:[6,8],6:[8,12]};return{cols,cats:rnd(...ranges[cols])}}
-function makeLevel(level=1){
- const cfg=config(level),chosen=chooseCompatibleCategories(cfg.cats),cards=[];
- if(chosen.length<cfg.cats){showToast('Не удалось собрать совместимый набор категорий');return}
- chosen.forEach(cat=>{const n=rnd(3,Math.min(9,cat.words.length)),words=shuffle(cat.words).slice(0,n);cards.push({uid:uid(),cat:cat.id,label:cat.title,type:'category',total:n});words.forEach(w=>cards.push({uid:uid(),cat:cat.id,label:w,type:'word',total:n}))});
- const deck=shuffle(cards),layoutCount=Math.max(cfg.cols,Math.floor(deck.length/2)),layoutCards=deck.splice(0,layoutCount),counts=randomColumnCounts(layoutCount,cfg.cols),columns=[];
- let cursor=0;
- counts.forEach(count=>{const chunk=layoutCards.slice(cursor,cursor+count);cursor+=count;columns.push(chunk.map((card,i)=>({cards:[card],faceUp:i===count-1}))) });
- state={level,cols:cfg.cols,columns,stock:deck,waste:[],slots:Array(cfg.cols).fill(null),completed:0,totalCategories:cfg.cats,categoryIds:chosen.map(c=>c.id)};rememberCategories(state.categoryIds);history=[];render();
-}
-function randomColumnCounts(total,cols){
- const counts=Array(cols).fill(1);let rest=total-cols;
- while(rest>0){counts[rnd(0,cols-1)]++;rest--}
- for(let i=0;i<cols*4;i++){const a=rnd(0,cols-1),b=rnd(0,cols-1);if(a!==b&&counts[a]>1&&Math.random()<.72){counts[a]--;counts[b]++}}
- if(new Set(counts).size===1&&total>cols){counts[0]--;counts[cols-1]++}
- return shuffle(counts);
-}
-function snapshot(){return structuredClone(state)}
-function pushHistory(){history.push(snapshot());if(history.length>80)history.shift()}
-function save(){localStorage.setItem('assoc-klondike-v7',JSON.stringify(state))}
-function load(){try{const s=JSON.parse(localStorage.getItem('assoc-klondike-v7'));if(s?.columns&&Array.isArray(s.slots)){state=s;render();return}}catch{}makeLevel(1)}
-function catOfGroup(g){return g.cards[0].cat}function categoryCard(g){return g.cards.find(c=>c.type==='category')}function wordCount(g){return g.cards.filter(c=>c.type==='word').length}
-function groupLabel(g){const cc=categoryCard(g);return cc?`${cc.label} ${wordCount(g)}/${cc.total}`:g.cards[0].label}
-function canMerge(a,b){return a&&b&&catOfGroup(a)===catOfGroup(b)}
-function firstOpenIndex(col){const i=col.findIndex(g=>g.faceUp);return i<0?col.length:i}
-function hasOpenStack(col){return firstOpenIndex(col)<col.length}
-function revealLast(col){if(col.length&&!col[col.length-1].faceUp)col[col.length-1].faceUp=true}
+function catOfGroup(g){return g.cards[0].cat}function categoryCard(g){return g.cards.find(c=>c.type==='category')}function wordCount(g){return g.cards.filter(c=>c.type==='word').length}function groupLabel(g){const cc=categoryCard(g);return cc?`${cc.label} ${wordCount(g)}/${cc.total}`:g.cards[0].label}function canMerge(a,b){return a&&b&&catOfGroup(a)===catOfGroup(b)}
+function firstOpenIndex(col){const i=col.findIndex(g=>g.faceUp);return i<0?col.length:i}function revealLast(col){if(col.length&&!col[col.length-1].faceUp)col[col.length-1].faceUp=true}
 function cardNode(g,extra=''){const card=document.createElement('div'),cc=categoryCard(g);card.className=`card ${extra}${cc?' category':''}`.trim();if(cc){card.style.setProperty('--cat-hue',catHue(cc.cat));card.innerHTML=`<span class="name ${String(cc.label).length<=6?'short-title':'long-title'}">${cc.label}</span><span class="count">${wordCount(g)}/${cc.total}</span>`}else card.textContent=g.cards[0].label;card.title=g.cards.map(c=>c.label).join(', ');return card}
-
-function fitText(el,min=6,max=10){
- if(!el)return;
- let size=max;
- el.style.fontSize=size+'px';
- while(size>min&&(el.scrollHeight>el.clientHeight||el.scrollWidth>el.clientWidth)){
-   size-=0.5;
-   el.style.fontSize=size+'px';
- }
-}
-function fitAllCardText(root=document){
- root.querySelectorAll('.card:not(.face-down):not(.category), .drag-main:not(.category)').forEach(el=>fitText(el,9,13));
- root.querySelectorAll('.card.category .name.short-title').forEach(el=>fitText(el,9,12));
- root.querySelectorAll('.card.category .name.long-title, .drag-main.category span:first-child').forEach(el=>fitText(el,7.5,11));
-}
+function fitText(el,min=6,max=10){if(!el)return;let size=max;el.style.fontSize=size+'px';while(size>min&&(el.scrollHeight>el.clientHeight||el.scrollWidth>el.clientWidth)){size-=.5;el.style.fontSize=size+'px'}}
+function fitAllCardText(root=document){root.querySelectorAll('.card:not(.face-down):not(.category), .drag-main:not(.category)').forEach(el=>fitText(el,9,13));root.querySelectorAll('.card.category .name.short-title').forEach(el=>fitText(el,9,12));root.querySelectorAll('.card.category .name.long-title, .drag-main.category span:first-child').forEach(el=>fitText(el,7.5,11))}
 function colY(col,index){const cs=getComputedStyle(document.documentElement),down=parseInt(cs.getPropertyValue('--down-step')),up=parseInt(cs.getPropertyValue('--up-step'));let y=0;for(let i=0;i<index;i++)y+=col[i].faceUp?Math.max(1,col[i].cards.length)*up:down;return y}
-function render(){
- document.documentElement.style.setProperty('--cols',state.cols);tableau.innerHTML='';slotsAnchor.innerHTML='';
- state.slots.forEach((g,i)=>{const slot=document.createElement('div');slot.className='slot '+(g?'':'empty');slot.dataset.zone='slot';slot.dataset.index=i;if(g){const card=cardNode(g,'movable');card.dataset.source='slot';card.dataset.index=i;slot.appendChild(card)}slotsAnchor.appendChild(slot)});
- stockEl.innerHTML='';stockEl.className='stock '+(state.stock.length?'':'empty');if(state.stock.length){const back=document.createElement('div');back.className='card face-down';stockEl.appendChild(back);const n=document.createElement('span');n.className='stock-count';n.textContent=state.stock.length;stockEl.appendChild(n)}
- wasteEl.innerHTML='';wasteEl.className='waste '+(state.waste.length?'':'empty');if(state.waste.length){const visibleWaste=state.waste.slice(-3);visibleWaste.forEach((cardData,i)=>{const g={cards:[cardData],faceUp:true},card=cardNode(g,i===visibleWaste.length-1?'movable':'');card.dataset.source='waste';card.style.setProperty('--waste-x',(i*6)+'px');card.style.zIndex=String(2+i);if(i!==visibleWaste.length-1)card.setAttribute('aria-hidden','true');wasteEl.appendChild(card)});const n=document.createElement('span');n.className='pile-count';n.textContent=state.waste.length;wasteEl.appendChild(n)}
- state.columns.forEach((col,ci)=>{const el=document.createElement('div');el.className='column '+(col.length?'':'empty');el.dataset.zone='column';el.dataset.index=ci;col.forEach((g,gi)=>{const baseY=colY(col,gi);if(!g.faceUp){const card=document.createElement('div');card.className='card face-down';card.style.setProperty('--y',baseY+'px');el.appendChild(card)}else{const stackSize=g.cards.length;g.cards.forEach((single,si)=>{const visual={cards:[single],faceUp:true},card=cardNode(visual,'movable');card.dataset.source='column';card.dataset.col=ci;card.dataset.index=gi;card.dataset.cardIndex=si;card.style.setProperty('--y',(baseY+si*parseInt(getComputedStyle(document.documentElement).getPropertyValue('--up-step')))+'px');card.style.zIndex=String(10+gi*10+si);if(stackSize>1&&si<stackSize-1)card.classList.add('stack-under');el.appendChild(card)})}});tableau.appendChild(el)});
- const left=state.stock.length+state.waste.length+state.columns.reduce((n,c)=>n+c.reduce((m,g)=>m+g.cards.length,0),0)+state.slots.reduce((n,g)=>n+(g?g.cards.length:0),0);
- fitAllCardText();$('#level').textContent=state.level;$('#cols').textContent=state.cols;$('#left').textContent=left;$('#progressText').textContent=`${state.completed}/${state.totalCategories}`;$('#progressBar').style.width=((state.completed/state.totalCategories)*100)+'%';$('#undo').disabled=!history.length;save();if(state.completed===state.totalCategories){if(!modal.classList.contains('show')){burst(true);haptic([20,35,45]);$('#winText').textContent=`${state.totalCategories} категорий собраны. Отличная партия!`}modal.classList.add('show')}
-}
-function drawStock(){hideCoach();pushHistory();if(state.stock.length){state.waste.push(state.stock.pop())}else if(state.waste.length){state.stock=state.waste.reverse();state.waste=[]}else{history.pop();return}haptic(7);render()}
-stockEl.addEventListener('click',e=>{if(drag)return;drawStock()});
-function getDragPayload(card){const source=card.dataset.source;if(source==='column'){const ci=+card.dataset.col,col=state.columns[ci],start=firstOpenIndex(col);if(start>=col.length)return null;return{source,ci,start,groups:col.slice(start)}}if(source==='waste'){const c=state.waste[state.waste.length-1];return{source,groups:[{cards:[c],faceUp:true}]}}if(source==='slot'){const si=+card.dataset.index;return{source,si,groups:[state.slots[si]]}}return null}
-function targetFromPoint(x,y){const e=document.elementFromPoint(x,y);return e?.closest('[data-zone]')||e?.closest('.waste')||null}
-function payloadGroup(p){const cards=[];p.groups.forEach(g=>cards.push(...g.cards));return{cards,faceUp:true}}
-function canDrop(p,target){if(!target)return false;const zone=target.dataset.zone,idx=+target.dataset.index,moving=payloadGroup(p),cc=categoryCard(moving);
- if(zone==='slot'){
-   const dest=state.slots[idx];
-   if(!dest)return !!cc;
-   return canMerge(dest,moving)&&!!categoryCard(dest);
- }
- if(zone==='column'){
-   if(cc)return false;
-   const col=state.columns[idx];if(p.source==='column'&&p.ci===idx)return false;
-   if(!col.length)return !cc;
-   const last=col[col.length-1];return last.faceUp&&canMerge(last,moving);
- }
- return false
-}
-function detachPayload(p){if(p.source==='column'){const col=state.columns[p.ci],start=firstOpenIndex(col),groups=col.slice(start);col.splice(start);revealLast(col);return groups}if(p.source==='waste'){return[{cards:[state.waste.pop()],faceUp:true}]}if(p.source==='slot'){const g=state.slots[p.si];state.slots[p.si]=null;return[g]}return[]}
-function completeSlot(i){const g=state.slots[i],cc=g&&categoryCard(g);if(cc&&wordCount(g)===cc.total){state.slots[i]=null;state.completed++;burst(false);haptic([12,22,28]);showToast(`✓ ${cc.label}: собрано!`)}}
-function performDrop(p,target){if(!canDrop(p,target))return false;hideCoach();pushHistory();const groups=detachPayload(p),moving={cards:groups.flatMap(g=>g.cards),faceUp:true},zone=target.dataset.zone,idx=+target.dataset.index;
- if(zone==='slot'){if(state.slots[idx])state.slots[idx].cards.push(...moving.cards);else state.slots[idx]=moving;completeSlot(idx)}else{const col=state.columns[idx];if(col.length)col[col.length-1].cards.push(...moving.cards);else col.push(moving)}haptic(9);render();return true}
-let lastTap={key:null,time:0};
-function sourceNodesForPayload(payload,card){
- if(payload.source==='column')return [...document.querySelectorAll(`.card[data-source="column"][data-col="${payload.ci}"]`)];
- return [card];
-}
-function payloadTapKey(payload){
- if(payload.source==='column')return `column:${payload.ci}:${payload.start}`;
- if(payload.source==='waste')return `waste:${state.waste[state.waste.length-1]?.uid||''}`;
- if(payload.source==='slot')return `slot:${payload.si}`;
- return '';
-}
-function autoTargetForPayload(payload){
- const moving=payloadGroup(payload),cc=categoryCard(moving);
- if(cc){
-   if(payload.source==='slot')return null;
-   const i=state.slots.findIndex(g=>!g);
-   return i>=0?document.querySelector(`.slot[data-index="${i}"]`):null;
- }
- const cat=catOfGroup(moving),i=state.slots.findIndex(g=>g&&categoryCard(g)&&catOfGroup(g)===cat);
- return i>=0?document.querySelector(`.slot[data-index="${i}"]`):null;
-}
-let autoMoveBusy=false;
-const nextPaint=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-async function animateAutoMove(card,payload,target){
- if(autoMoveBusy)return;
- autoMoveBusy=true;
- const targetCard=target.querySelector('.card'),targetRect=(targetCard||target).getBoundingClientRect();
- const sources=sourceNodesForPayload(payload,card).filter(n=>n?.isConnected);
- if(!sources.length){autoMoveBusy=false;return}
- const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
- const duration=reduced?90:230;
- const flies=sources.map((source,i)=>{
-   const r=source.getBoundingClientRect(),fly=source.cloneNode(true);
-   fly.classList.remove('movable','drag-source','hint','auto-source');
-   fly.classList.add('auto-fly');
-   fly.style.left=r.left+'px';fly.style.top=r.top+'px';fly.style.width=r.width+'px';fly.style.height=r.height+'px';
-   fly.style.zIndex=String(10020+i);
-   // Сохраняем вид всей стопки, но не тащим служебные data-атрибуты в интерактивный слой.
-   fly.removeAttribute('data-source');fly.removeAttribute('data-col');fly.removeAttribute('data-index');fly.removeAttribute('data-card-index');
-   document.body.appendChild(fly);fitAllCardText(fly);
-   return {source,fly,rect:r};
- });
- // Сначала даём браузеру нарисовать точные копии поверх исходных карт,
- // и только потом прячем оригиналы — исчезающего кадра не возникает.
- await nextPaint();
- sources.forEach(n=>n.classList.add('auto-source'));
- const targetCX=targetRect.left+targetRect.width/2,targetCY=targetRect.top+targetRect.height/2;
- try{
-   await Promise.all(flies.map(({fly,rect},i)=>{
-     const dx=targetCX-(rect.left+rect.width/2),dy=targetCY-(rect.top+rect.height/2);
-     // Чем глубже карта в стопке, тем чуть сильнее она сходится к центру цели.
-     return fly.animate([
-       {transform:'translate3d(0,0,0) scale(1) rotate(0deg)',opacity:1,offset:0},
-       {transform:`translate3d(${dx*.48}px,${dy*.48}px,0) scale(1.035) rotate(${i%2?-.7:.7}deg)`,opacity:1,offset:.46},
-       {transform:`translate3d(${dx}px,${dy}px,0) scale(.96) rotate(0deg)`,opacity:1,offset:1}
-     ],{duration:duration+Math.min(i,4)*8,easing:'cubic-bezier(.22,.78,.18,1)',fill:'forwards'}).finished.catch(()=>{});
-   }));
- }catch{}
- const moved=performDrop(payload,target);
- if(!moved){
-   sources.forEach(n=>n.classList.remove('auto-source'));
-   flies.forEach(({fly})=>fly.remove());
-   autoMoveBusy=false;
-   return;
- }
- // Новое состояние уже отрисовано под клонами. Убираем клоны только после paint.
- await nextPaint();
- try{
-   await Promise.all(flies.map(({fly})=>fly.animate(
-     [{opacity:1,filter:'brightness(1)'},{opacity:0,filter:'brightness(1.08)'}],
-     {duration:reduced?35:85,easing:'ease-out',fill:'forwards'}
-   ).finished.catch(()=>{})));
- }catch{}
- flies.forEach(({fly})=>fly.remove());
- autoMoveBusy=false;
-}
-function handleCardTap(card,payload){
- const now=performance.now(),key=payloadTapKey(payload);
- if(lastTap.key===key&&now-lastTap.time<340){
-   lastTap={key:null,time:0};
-   const target=autoTargetForPayload(payload),moving=payloadGroup(payload),cc=categoryCard(moving);
-   if(!target||!canDrop(payload,target)){
-     if(cc&&payload.source!=='slot')showToast('Нет свободного поля категории');
-     else if(!cc)showToast('Сначала открой категорию');
-     return;
-   }
-   animateAutoMove(card,payload,target);
- }else lastTap={key,time:now};
-}
-function startDrag(e){
- if(autoMoveBusy)return;
- const card=e.target.closest('.card.movable');if(!card)return;e.preventDefault();const payload=getDragPayload(card);if(!payload)return;
- const sourceNodes=sourceNodesForPayload(payload,card),ghost=document.createElement('div');ghost.className='drag-stack';ghost.style.opacity='0';
- const totalCards=payload.groups.reduce((n,g)=>n+g.cards.length,0),shadowCount=Math.min(3,Math.max(0,totalCards-1));
- for(let i=0;i<shadowCount;i++){const sh=document.createElement('div');sh.className='shadow-card';sh.style.setProperty('--i',i);ghost.appendChild(sh)}
- const topGroup=payload.groups[0],main=document.createElement('div'),cc=categoryCard(topGroup);main.className='drag-main'+(cc?' category':'');
- if(cc){main.style.setProperty('--cat-hue',catHue(cc.cat));main.innerHTML=`<span>${cc.label}</span><span>${wordCount(topGroup)}/${cc.total}</span>`}else main.textContent=topGroup.cards[0].label;
- ghost.appendChild(main);if(totalCards>1){const count=document.createElement('div');count.className='drag-count';count.textContent=`${totalCards} карт`;ghost.appendChild(count)}
- document.body.appendChild(ghost);fitAllCardText(ghost);drag={payload,card,ghost,sourceNodes,startX:e.clientX,startY:e.clientY,moved:false};moveDrag(e)
-}
-function moveDrag(e){
- if(!drag)return;e.preventDefault();const d=Math.hypot(e.clientX-drag.startX,e.clientY-drag.startY);
- if(!drag.moved&&d>7){drag.moved=true;drag.sourceNodes.forEach(node=>node.classList.add('drag-source'));drag.ghost.style.opacity='1'}
- drag.ghost.style.left=e.clientX+'px';drag.ghost.style.top=e.clientY+'px'
-}
-function endDrag(e){
- if(!drag)return;const d=drag;drag=null;d.ghost.remove();
- if(!d.moved){handleCardTap(d.card,d.payload);return}
- const t=targetFromPoint(e.clientX,e.clientY);d.sourceNodes?.forEach(node=>node.classList.remove('drag-source'));
- if(!performDrop(d.payload,t)){haptic(22);showToast('Сюда положить нельзя');render()}
-}
+function render(){document.documentElement.style.setProperty('--cols',state.cols);tableau.innerHTML='';slotsAnchor.innerHTML='';state.slots.forEach((g,i)=>{const slot=document.createElement('div');slot.className='slot '+(g?'':'empty');slot.dataset.zone='slot';slot.dataset.index=i;if(g){const card=cardNode(g,'movable');card.dataset.source='slot';card.dataset.index=i;slot.appendChild(card)}slotsAnchor.appendChild(slot)});stockEl.innerHTML='';stockEl.className='stock '+(state.stock.length?'':'empty');if(state.stock.length){const back=document.createElement('div');back.className='card face-down';stockEl.appendChild(back);const n=document.createElement('span');n.className='stock-count';n.textContent=state.stock.length;stockEl.appendChild(n)}wasteEl.innerHTML='';wasteEl.className='waste '+(state.waste.length?'':'empty');if(state.waste.length){const visible=state.waste.slice(-3);visible.forEach((data,i)=>{const card=cardNode({cards:[data],faceUp:true},i===visible.length-1?'movable':'');card.dataset.source='waste';card.style.setProperty('--waste-x',(i*6)+'px');card.style.zIndex=String(2+i);wasteEl.appendChild(card)});const n=document.createElement('span');n.className='pile-count';n.textContent=state.waste.length;wasteEl.appendChild(n)}state.columns.forEach((col,ci)=>{const el=document.createElement('div');el.className='column '+(col.length?'':'empty');el.dataset.zone='column';el.dataset.index=ci;col.forEach((g,gi)=>{const baseY=colY(col,gi);if(!g.faceUp){const card=document.createElement('div');card.className='card face-down';card.style.setProperty('--y',baseY+'px');el.appendChild(card)}else{const stackSize=g.cards.length;g.cards.forEach((single,si)=>{const card=cardNode({cards:[single],faceUp:true},'movable');card.dataset.source='column';card.dataset.col=ci;card.dataset.index=gi;card.dataset.cardIndex=si;card.style.setProperty('--y',(baseY+si*parseInt(getComputedStyle(document.documentElement).getPropertyValue('--up-step')))+'px');card.style.zIndex=String(10+gi*10+si);if(stackSize>1&&si<stackSize-1)card.classList.add('stack-under');el.appendChild(card)})}});tableau.appendChild(el)});const left=state.stock.length+state.waste.length+state.columns.reduce((n,c)=>n+c.reduce((m,g)=>m+g.cards.length,0),0)+state.slots.reduce((n,g)=>n+(g?g.cards.length:0),0);fitAllCardText();$('#level').textContent=state.mode==='daily'?'D':state.mode==='tutorial'?`T${state.tutorialStep}`:state.level;$('#left').textContent=left;$('#progressText').textContent=`${state.completed}/${state.totalCategories}`;$('#progressBar').style.width=((state.completed/state.totalCategories)*100)+'%';$('#starTotal').textContent=profile.totalStars;$('#undo').disabled=!history.length;save();if(state.completed===state.totalCategories&&!state.rewarded)finishLevel()}
+function drawStock(){if(autoMoveBusy)return;pushHistory();if(state.stock.length)state.waste.push(state.stock.pop());else if(state.waste.length){state.stock=state.waste.reverse();state.waste=[]}else{history.pop();return}state.run.moves++;profile.stats.stockDraws++;track('stock_draw',{mode:state.mode});haptic(7);render()}
+stockEl.addEventListener('click',()=>{if(!drag)drawStock()});
+function getDragPayload(card){const source=card.dataset.source;if(source==='column'){const ci=+card.dataset.col,col=state.columns[ci],start=firstOpenIndex(col);if(start>=col.length)return null;return{source,ci,start,groups:col.slice(start)}}if(source==='waste'){const c=state.waste[state.waste.length-1];return c?{source,groups:[{cards:[c],faceUp:true}]}:null}if(source==='slot'){const si=+card.dataset.index;return{source,si,groups:[state.slots[si]]}}return null}
+function targetFromPoint(x,y){const e=document.elementFromPoint(x,y);return e?.closest('[data-zone]')||null}function payloadGroup(p){return{cards:p.groups.flatMap(g=>g.cards),faceUp:true}}
+function canDrop(p,target){if(!target)return false;const zone=target.dataset.zone,idx=+target.dataset.index,moving=payloadGroup(p),cc=categoryCard(moving);if(zone==='slot'){const dest=state.slots[idx];if(!dest)return !!cc;return canMerge(dest,moving)&&!!categoryCard(dest)}if(zone==='column'){if(cc)return false;const col=state.columns[idx];if(p.source==='column'&&p.ci===idx)return false;if(!col.length)return true;const last=col[col.length-1];return last.faceUp&&canMerge(last,moving)}return false}
+function detachPayload(p){if(p.source==='column'){const col=state.columns[p.ci],start=firstOpenIndex(col),groups=col.slice(start);col.splice(start);revealLast(col);return groups}if(p.source==='waste')return[{cards:[state.waste.pop()],faceUp:true}];if(p.source==='slot'){const g=state.slots[p.si];state.slots[p.si]=null;return[g]}return[]}
+function completeSlot(i){const g=state.slots[i],cc=g&&categoryCard(g);if(cc&&wordCount(g)===cc.total){state.slots[i]=null;state.completed++;if(state.mode!=='tutorial'){profile.stats.categoriesCompleted++;if(!profile.discovered.includes(cc.cat))profile.discovered.push(cc.cat);track('category_completed',{category:cc.cat,mode:state.mode});checkAchievements()}burst(false);haptic([12,22,28]);showToast(`✓ ${cc.label}: собрано!`)}}
+function performDrop(p,target){if(!canDrop(p,target))return false;pushHistory();const groups=detachPayload(p),moving={cards:groups.flatMap(g=>g.cards),faceUp:true},zone=target.dataset.zone,idx=+target.dataset.index;if(zone==='slot'){if(state.slots[idx])state.slots[idx].cards.push(...moving.cards);else state.slots[idx]=moving;completeSlot(idx)}else{const col=state.columns[idx];if(col.length)col[col.length-1].cards.push(...moving.cards);else col.push(moving)}state.run.moves++;haptic(9);render();return true}
+function sourceNodesForPayload(payload,card){if(payload.source==='column')return[...document.querySelectorAll(`.card[data-source="column"][data-col="${payload.ci}"]`)];return[card]}
+function payloadTapKey(p){if(p.source==='column')return`column:${p.ci}:${p.start}`;if(p.source==='waste')return`waste:${state.waste.at(-1)?.uid||''}`;if(p.source==='slot')return`slot:${p.si}`;return''}
+function autoTargetForPayload(p){const moving=payloadGroup(p),cc=categoryCard(moving);if(cc){if(p.source==='slot')return null;const i=state.slots.findIndex(g=>!g);return i>=0?document.querySelector(`.slot[data-index="${i}"]`):null}const cat=catOfGroup(moving),i=state.slots.findIndex(g=>g&&categoryCard(g)&&catOfGroup(g)===cat);return i>=0?document.querySelector(`.slot[data-index="${i}"]`):null}
+const nextPaint=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+async function animateAutoMove(card,payload,target){if(autoMoveBusy)return;autoMoveBusy=true;const targetCard=target.querySelector('.card'),targetRect=(targetCard||target).getBoundingClientRect(),sources=sourceNodesForPayload(payload,card).filter(n=>n?.isConnected);if(!sources.length){autoMoveBusy=false;return}const reduced=matchMedia?.('(prefers-reduced-motion: reduce)').matches,duration=reduced?80:215,flies=sources.map((source,i)=>{const r=source.getBoundingClientRect(),fly=source.cloneNode(true);fly.classList.remove('movable','drag-source','hint','auto-source');fly.classList.add('auto-fly');Object.assign(fly.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px',zIndex:String(10020+i)});fly.removeAttribute('data-source');document.body.appendChild(fly);fitAllCardText(fly);return{source,fly,rect:r}});await nextPaint();sources.forEach(n=>n.classList.add('auto-source'));const cx=targetRect.left+targetRect.width/2,cy=targetRect.top+targetRect.height/2;await Promise.all(flies.map(({fly,rect},i)=>{const dx=cx-(rect.left+rect.width/2),dy=cy-(rect.top+rect.height/2);return fly.animate([{transform:'translate3d(0,0,0) scale(1)',opacity:1},{transform:`translate3d(${dx*.45}px,${dy*.45}px,0) scale(1.035)`,opacity:1,offset:.42},{transform:`translate3d(${dx}px,${dy}px,0) scale(.96)`,opacity:1}],{duration:duration+Math.min(i,4)*7,easing:'cubic-bezier(.22,.78,.18,1)',fill:'forwards'}).finished.catch(()=>{})}));state.run.autoMoves++;profile.stats.autoMoves++;track('auto_move',{mode:state.mode});const moved=performDrop(payload,target);if(!moved){sources.forEach(n=>n.classList.remove('auto-source'));flies.forEach(x=>x.fly.remove());autoMoveBusy=false;return}await nextPaint();await Promise.all(flies.map(({fly})=>fly.animate([{opacity:1},{opacity:0}],{duration:reduced?25:70,fill:'forwards'}).finished.catch(()=>{})));flies.forEach(x=>x.fly.remove());autoMoveBusy=false}
+function handleCardTap(card,payload){const now=performance.now(),key=payloadTapKey(payload);if(lastTap.key===key&&now-lastTap.time<340){lastTap={key:null,time:0};const target=autoTargetForPayload(payload),moving=payloadGroup(payload),cc=categoryCard(moving);if(!target||!canDrop(payload,target)){showToast(cc?'Нет свободного поля категории':'Сначала открой категорию');return}animateAutoMove(card,payload,target)}else lastTap={key,time:now}}
+function startDrag(e){if(autoMoveBusy||hub.classList.contains('show')||modal.classList.contains('show'))return;const card=e.target.closest('.card.movable');if(!card)return;e.preventDefault();const payload=getDragPayload(card);if(!payload)return;const sourceNodes=sourceNodesForPayload(payload,card),ghost=document.createElement('div');ghost.className='drag-stack';ghost.style.opacity='0';const total=payload.groups.reduce((n,g)=>n+g.cards.length,0),shadows=Math.min(3,Math.max(0,total-1));for(let i=0;i<shadows;i++){const sh=document.createElement('div');sh.className='shadow-card';sh.style.setProperty('--i',i);ghost.appendChild(sh)}const top=payload.groups[0],main=document.createElement('div'),cc=categoryCard(top);main.className='drag-main'+(cc?' category':'');if(cc){main.style.setProperty('--cat-hue',catHue(cc.cat));main.innerHTML=`<span>${cc.label}</span><span>${wordCount(top)}/${cc.total}</span>`}else main.textContent=top.cards[0].label;ghost.appendChild(main);if(total>1){const c=document.createElement('div');c.className='drag-count';c.textContent=`${total} карт`;ghost.appendChild(c)}document.body.appendChild(ghost);fitAllCardText(ghost);drag={payload,card,ghost,sourceNodes,startX:e.clientX,startY:e.clientY,moved:false};moveDrag(e)}
+function moveDrag(e){if(!drag)return;e.preventDefault();const d=Math.hypot(e.clientX-drag.startX,e.clientY-drag.startY);if(!drag.moved&&d>7){drag.moved=true;drag.sourceNodes.forEach(n=>n.classList.add('drag-source'));drag.ghost.style.opacity='1'}drag.ghost.style.left=e.clientX+'px';drag.ghost.style.top=e.clientY+'px'}
+function endDrag(e){if(!drag)return;const d=drag;drag=null;d.ghost.remove();if(!d.moved){handleCardTap(d.card,d.payload);return}const t=targetFromPoint(e.clientX,e.clientY);d.sourceNodes.forEach(n=>n.classList.remove('drag-source'));if(!performDrop(d.payload,t)){haptic(22);showToast('Сюда положить нельзя');render()}}
 document.addEventListener('pointerdown',startDrag);window.addEventListener('pointermove',moveDrag,{passive:false});window.addEventListener('pointerup',endDrag);
-function showToast(text){toast.textContent=text;toast.classList.add('show');clearTimeout(showToast.t);showToast.t=setTimeout(()=>toast.classList.remove('show'),1350)}
-$('#undo').onclick=()=>{if(history.length){state=history.pop();render()}};
-$('#restart').onclick=()=>makeLevel(state?.level||1);
-$('#next').onclick=()=>{modal.classList.remove('show');makeLevel((state?.level||1)+1)};
-$('#hint').onclick=()=>{
- const payloads=[];state.columns.forEach((col,ci)=>{const start=firstOpenIndex(col);if(start<col.length)payloads.push({source:'column',ci,start,groups:col.slice(start)})});if(state.waste.length)payloads.push({source:'waste',groups:[{cards:[state.waste[state.waste.length-1]],faceUp:true}]});state.slots.forEach((g,si)=>{if(g)payloads.push({source:'slot',si,groups:[g]})});
- const targets=[...document.querySelectorAll('[data-zone]')];for(const p of payloads)for(const t of targets)if(canDrop(p,t)){let q;if(p.source==='column')q=`.card[data-source="column"][data-col="${p.ci}"][data-index="${p.start}"]`;else if(p.source==='waste')q='.waste .card';else q=`.slot[data-index="${p.si}"] .card`;const n=document.querySelector(q);n?.classList.add('hint');setTimeout(()=>n?.classList.remove('hint'),1600);showToast(`Ход: ${groupLabel(p.groups[0])}`);return}if(state.stock.length||state.waste.length)showToast('Открой следующую карту колоды');else showToast('Доступных ходов не найдено')
-};
-loadCategoryBank().then(()=>{load();maybeShowCoach()}).catch(err=>{console.error(err);showToast('Ошибка загрузки базы категорий')});
+
+function calculateStars(){return Math.min(3,1+(state.run.hints===0?1:0)+(state.run.undos===0?1:0))}
+function updateDailyStreak(date){const d=profile.daily;if(d.completedDates.includes(date))return;const diff=d.lastDate?daysBetween(d.lastDate,date):null;if(diff===1)d.currentStreak++;else if(diff===2&&d.freezeWeek!==weekKey(date)){d.currentStreak=Math.max(1,d.currentStreak+1);d.freezeWeek=weekKey(date)}else if(diff===0){}else d.currentStreak=1;d.lastDate=date;d.bestStreak=Math.max(d.bestStreak,d.currentStreak);d.completedDates.push(date);if(d.completedDates.length>120)d.completedDates=d.completedDates.slice(-120)}
+function checkAchievements(){const fresh=[];for(const a of ACHIEVEMENTS)if(!profile.achievements.includes(a.id)&&a.test(profile)){profile.achievements.push(a.id);fresh.push(a)}if(fresh.length){saveProfile();setTimeout(()=>showToast(`🏆 ${fresh[0].title}`),450)}return fresh}
+function nextTheme(){return THEME_DEFS.find(t=>t.stars>profile.totalStars)||null}
+function finishLevel(){state.rewarded=true;const stars=calculateStars();let newAchievements=[];if(state.mode==='regular'){const old=profile.starsByLevel[state.level]||0;profile.starsByLevel[state.level]=Math.max(old,stars);profile.currentLevel=Math.max(profile.currentLevel,state.level+1);profile.stats.levelsCompleted++;if(stars===3)profile.stats.tripleStarWins++;if(state.run.hints===0)profile.stats.noHintWins++;if(state.run.undos===0)profile.stats.noUndoWins++;track('level_completed',{level:state.level,stars})}else if(state.mode==='daily'){const date=todayKey();profile.dailyStars[date]=Math.max(profile.dailyStars[date]||0,stars);if(!profile.daily.completedDates.includes(date))profile.stats.dailyCompleted++;updateDailyStreak(date);track('daily_completed',{date,stars})}else if(state.mode==='tutorial'){track('tutorial_completed',{step:state.tutorialStep});if(state.tutorialStep===3)profile.tutorialComplete=true}recomputeStars();newAchievements=checkAchievements();save();showWin(stars,newAchievements);burst(true);haptic([20,35,45])}
+function showWin(stars,newAchievements=[]){$('#winTitle').textContent=state.mode==='daily'?'Daily пройден!':state.mode==='tutorial'?`Обучение ${state.tutorialStep}/3`:`Уровень ${state.level} пройден`;$('#winStars').innerHTML=[1,2,3].map(i=>`<span class="${i<=stars?'earned':''}">★</span>`).join('');$('#winText').textContent=state.mode==='daily'?`Серия: ${profile.daily.currentStreak} дн.`:state.mode==='tutorial'?(state.tutorialStep<3?'Отлично. Переходим к следующей механике.':'Обучение закончено. Теперь начинается настоящая игра.'):`${state.totalCategories} категорий собрано.`;$('#winMetrics').innerHTML=`<span class="win-chip ${state.run.hints===0?'good':''}">${state.run.hints?'Подсказки: '+state.run.hints:'Без подсказок'}</span><span class="win-chip ${state.run.undos===0?'good':''}">${state.run.undos?'Отмены: '+state.run.undos:'Без отмен'}</span>`;$('#winStarTotal').textContent=`★ ${profile.totalStars} всего`;const nt=nextTheme();$('#winUnlock').textContent=newAchievements.length?`🏆 ${newAchievements[0].title}`:nt?`До темы ${nt.name}: ${nt.stars-profile.totalStars} ★`:'Все темы открыты';$('#next').textContent=state.mode==='tutorial'?(state.tutorialStep<3?'Дальше →':'Начать игру →'):state.mode==='daily'?'Вернуться в игру →':'Следующий уровень →';$('#replay').style.display=state.mode==='tutorial'?'none':'block';modal.classList.add('show')}
+function updateCoach(){if(state.mode!=='tutorial'){coach.classList.remove('show','tutorial');return}coach.classList.add('show','tutorial');const texts={1:['Шаг 1 из 3','Дважды нажми на карточку категории — она сама отправится в свободный слот сверху.'],2:['Шаг 2 из 3','Связанные слова можно складывать друг на друга или дважды нажимать, чтобы отправить их в открытую категорию.'],3:['Шаг 3 из 3','Нажми на колоду, чтобы открыть карту. Двойной тап по сбросу отправит подходящее слово в категорию.']};$('#coachStep').textContent=texts[state.tutorialStep][0];$('#coachText').textContent=texts[state.tutorialStep][1]}
+
+function renderHub(){recomputeStars();const nt=nextTheme(),dailyDone=profile.daily.completedDates.includes(todayKey()),discovered=new Set(profile.discovered),unlockedThemes=THEME_DEFS.filter(t=>profile.totalStars>=t.stars);const collection=BANK.map(c=>`<div class="collection-item ${discovered.has(c.id)?'seen':'locked'}">${discovered.has(c.id)?c.title:'???'}</div>`).join('');const ach=ACHIEVEMENTS.map(a=>{const done=profile.achievements.includes(a.id);return`<div class="achievement ${done?'':'locked'}"><div class="ico">${a.icon}</div><div><b>${a.title}</b><p>${a.desc}</p></div><span class="done">${done?'✓':''}</span></div>`}).join('');const themes=THEME_DEFS.map(t=>{const unlocked=profile.totalStars>=t.stars;return`<button class="theme-tile theme-${t.id} ${unlocked?'':'locked'} ${profile.theme===t.id?'selected':''}" data-theme-id="${t.id}" ${unlocked?'':'disabled'}><b>${t.name}</b><span>${unlocked?'Открыто':t.stars+' ★'}</span></button>`}).join('');const nextLevel=profile.currentLevel||1;const levelStars=profile.starsByLevel[nextLevel]||0;hubContent.innerHTML=`<section class="hub-hero"><div class="hub-hero-top"><div><div class="hub-level">Следующий уровень: ${nextLevel}</div><div class="hub-stars">★ ${profile.totalStars}</div></div><span class="daily-badge">🔥 ${profile.daily.currentStreak} дн.</span></div><div class="hub-progress"><i style="width:${nt?Math.min(100,profile.totalStars/nt.stars*100):100}%"></i></div><div class="hub-level" style="margin-top:6px">${nt?`Следующая тема ${nt.name} — ещё ${nt.stars-profile.totalStars} ★`:'Все темы открыты'}</div></section><div class="hub-actions"><button class="hub-action primary" id="hubContinue"><strong>▶ Продолжить</strong><span>Уровень ${state?.mode==='regular'?state.level:nextLevel}</span></button><button class="hub-action daily" id="hubDaily"><strong>☀ Daily</strong><span>${dailyDone?'Сегодня пройдено ✓':'Один расклад для всех'}</span></button><button class="hub-action" id="hubTutorial"><strong>◇ Обучение</strong><span>3 коротких шага</span></button><button class="hub-action" id="hubNew"><strong>↻ Текущий уровень</strong><span>${levelStars?'Лучший результат: '+levelStars+' ★':'Ещё не пройден'}</span></button></div><section class="hub-section"><div class="hub-section-head"><h3>Темы</h3><small>${unlockedThemes.length}/${THEME_DEFS.length}</small></div><div class="theme-grid">${themes}</div></section><section class="hub-section"><div class="hub-section-head"><h3>Коллекция категорий</h3><small>${discovered.size}/${BANK.length}</small></div><div class="collection-grid">${collection}</div></section><section class="hub-section"><div class="hub-section-head"><h3>Достижения</h3><small>${profile.achievements.length}/${ACHIEVEMENTS.length}</small></div><div class="achievement-list">${ach}</div></section><section class="hub-section"><div class="hub-section-head"><h3>Статистика</h3><small>локально на устройстве</small></div><div class="stats-grid"><div class="stat-box"><b>${profile.stats.levelsCompleted}</b><span>уровней</span></div><div class="stat-box"><b>${profile.stats.categoriesCompleted}</b><span>категорий</span></div><div class="stat-box"><b>${profile.stats.tripleStarWins}</b><span>★★★ уровней</span></div><div class="stat-box"><b>${profile.daily.bestStreak}</b><span>рекорд серии</span></div><div class="stat-box"><b>${profile.stats.hints}</b><span>подсказок</span></div><div class="stat-box"><b>${profile.stats.undos}</b><span>отмен</span></div></div></section>`;$('#hubContinue').onclick=()=>closeHub();$('#hubDaily').onclick=()=>{closeHub();makeLevel(0,{mode:'daily',seed:`daily:${todayKey()}`})};$('#hubTutorial').onclick=()=>{closeHub();makeLevel(1,{mode:'tutorial',step:1})};$('#hubNew').onclick=()=>{closeHub();makeLevel(profile.currentLevel||1)};hubContent.querySelectorAll('[data-theme-id]').forEach(btn=>btn.onclick=()=>{profile.theme=btn.dataset.themeId;saveProfile();renderHub();showToast(`Тема: ${THEME_DEFS.find(t=>t.id===profile.theme).name}`)})}
+function openHub(){renderHub();hub.classList.add('show');track('hub_opened')}function closeHub(){hub.classList.remove('show')}
+$('.brand').addEventListener('click',openHub);$('#hubClose').onclick=closeHub;
+
+$('#undo').onclick=()=>{if(history.length&&!autoMoveBusy){const previous=history.pop();const undoCount=(state.run?.undos||0)+1;state=normalizeState(previous);state.run.undos=undoCount;profile.stats.undos++;track('undo',{mode:state.mode});render()}};
+$('#restart').onclick=()=>{if(autoMoveBusy)return;profile.stats.restarts++;track('level_restarted',{level:state.level,mode:state.mode});if(state.mode==='tutorial')makeLevel(state.tutorialStep,{mode:'tutorial',step:state.tutorialStep});else makeLevel(state.level,{mode:state.mode,seed:state.seed})};
+$('#hint').onclick=()=>{if(autoMoveBusy)return;state.run.hints++;profile.stats.hints++;track('hint_used',{mode:state.mode});const payloads=[];state.columns.forEach((col,ci)=>{const start=firstOpenIndex(col);if(start<col.length)payloads.push({source:'column',ci,start,groups:col.slice(start)})});if(state.waste.length)payloads.push({source:'waste',groups:[{cards:[state.waste.at(-1)],faceUp:true}]});state.slots.forEach((g,si)=>{if(g)payloads.push({source:'slot',si,groups:[g]})});const targets=[...document.querySelectorAll('[data-zone]')];for(const p of payloads)for(const t of targets)if(canDrop(p,t)){let q;if(p.source==='column')q=`.card[data-source="column"][data-col="${p.ci}"]`;else if(p.source==='waste')q='.waste .card.movable';else q=`.slot[data-index="${p.si}"] .card`;const n=document.querySelector(q);n?.classList.add('hint');setTimeout(()=>n?.classList.remove('hint'),1400);showToast(`Ход: ${groupLabel(p.groups[0])}`);save();return}showToast(state.stock.length||state.waste.length?'Открой следующую карту колоды':'Доступных ходов не найдено');save()};
+$('#next').onclick=()=>{modal.classList.remove('show');if(state.mode==='tutorial'){if(state.tutorialStep<3)makeLevel(state.tutorialStep+1,{mode:'tutorial',step:state.tutorialStep+1});else makeLevel(profile.currentLevel||1)}else if(state.mode==='daily')makeLevel(profile.currentLevel||1);else makeLevel(state.level+1)};
+$('#replay').onclick=()=>{modal.classList.remove('show');if(state.mode==='daily')makeLevel(0,{mode:'daily',seed:state.seed});else makeLevel(state.level,{mode:'regular',seed:state.seed})};
+
+loadCategoryBank().then(()=>{load();checkAchievements();saveProfile()}).catch(err=>{console.error(err);showToast('Ошибка загрузки базы категорий')});
 </script>
 </body>
 </html>
