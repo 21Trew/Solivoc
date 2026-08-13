@@ -1,0 +1,741 @@
+/* ===== Responsive mobile-game pass ===== */
+:root {
+     /* Five columns always fit; on normal phones cards grow from the old 54px to ~60–64px. */
+     --cw: clamp(54px, 17vw, 64px);
+     --ch: calc(var(--cw) * 1.55);
+     --gap: clamp(4px, 1.2vw, 6px);
+     --radius: clamp(14px, 3.8vw, 16px);
+   }
+   .app {
+     width: 100%;
+     max-width: 460px;
+     height: 100vh;
+     height: 100dvh;
+     padding: max(10px, env(safe-area-inset-top)) max(7px, env(safe-area-inset-right))
+       max(9px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+     gap: clamp(7px, 1.45dvh, 11px);
+   }
+   .game-scroll {
+     border-radius: clamp(20px, 5.5vw, 25px);
+   }
+   .game {
+     padding: clamp(8px, 2.4vw, 11px) clamp(6px, 2.15vw, 10px) clamp(7px, 2vw, 9px);
+   }
+   .draw-row {
+     gap: clamp(8px, 2.4vw, 11px);
+     padding: clamp(7px, 2vw, 9px) clamp(7px, 2vw, 9px);
+     margin-bottom: clamp(11px, 1.8dvh, 15px);
+     border-radius: clamp(17px, 4.7vw, 20px);
+   }
+   .draw-label {
+     font-size: clamp(8px, 2.25vw, 9px);
+   }
+   .category-row {
+     padding-bottom: clamp(11px, 1.7dvh, 14px);
+     margin-bottom: clamp(10px, 1.6dvh, 13px);
+   }
+   .card {
+     font-size: clamp(13px, 3.55vw, 14px);
+     padding: clamp(7px, 2.2vw, 9px) clamp(5px, 1.5vw, 6px);
+   }
+   .card.category {
+     gap: clamp(6px, 1.7vw, 8px);
+   }
+   .card.category .name {
+     min-height: clamp(18px, 5vw, 21px);
+     font-size: clamp(11px, 3.1vw, 13px);
+     padding: 3px 2px;
+   }
+   .card.category .count {
+     font-size: clamp(10.5px, 2.8vw, 11.5px);
+     line-height: clamp(19px, 5.2vw, 21px);
+     height: clamp(19px, 5.2vw, 21px);
+     min-width: clamp(35px, 9.8vw, 39px);
+   }
+   .card.face-down::before {
+     inset: clamp(6px, 1.8vw, 8px);
+   }
+   .card.face-down::after {
+     width: clamp(29px, 8vw, 34px);
+     height: clamp(29px, 8vw, 34px);
+     font-size: clamp(14px, 3.8vw, 16px);
+   }
+   .pile-count,
+   .stock-count {
+     right: 4px;
+     bottom: 4px;
+     min-width: clamp(21px, 6vw, 24px);
+     height: clamp(21px, 6vw, 24px);
+     font-size: clamp(9px, 2.6vw, 10px);
+   }
+   .controls {
+     grid-template-columns: repeat(4, minmax(0, 1fr));
+     gap: clamp(5px, 1.4vw, 7px);
+     padding: clamp(4px, 1.2vw, 6px);
+     border-radius: clamp(17px, 4.7vw, 20px);
+   }
+   .controls button {
+     min-height: clamp(48px, 6.3dvh, 56px);
+     border-radius: clamp(13px, 3.8vw, 16px);
+     font-size: clamp(10px, 2.85vw, 11.5px);
+     padding: 0 clamp(3px, 1vw, 6px);
+     line-height: 1.05;
+   }
+   .top {
+     min-height: clamp(42px, 6.2dvh, 48px);
+   }
+   .brand {
+     min-height: 42px;
+   }
+   .brand-mark {
+     width: clamp(34px, 9.6vw, 40px);
+     height: clamp(34px, 9.6vw, 40px);
+     border-radius: clamp(11px, 3vw, 13px);
+     font-size: clamp(18px, 5vw, 21px);
+   }
+   .brand b {
+     font-size: clamp(17px, 4.65vw, 19px);
+   }
+   .brand small {
+     font-size: clamp(8px, 2.15vw, 8.5px);
+   }
+   .pill {
+     height: clamp(30px, 8vw, 33px);
+     padding: 0 clamp(7px, 2vw, 9px);
+     font-size: clamp(9px, 2.45vw, 10px);
+   }
+   .pill b {
+     font-size: clamp(10px, 2.7vw, 11px);
+   }
+   .progress-track {
+     height: clamp(6px, 1.8vw, 7px);
+   }
+   .progress-label {
+     font-size: clamp(8px, 2.1vw, 9px);
+   }
+   .toast {
+     bottom: max(82px, calc(env(safe-area-inset-bottom) + 72px));
+     font-size: clamp(10px, 2.8vw, 11px);
+   }
+   .hub-shell {
+     width: min(460px, 100%);
+   }
+   .hub-head {
+     padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 10px
+       max(14px, env(safe-area-inset-left));
+   }
+   .hub-scroll {
+     padding: 12px max(12px, env(safe-area-inset-right)) max(22px, env(safe-area-inset-bottom))
+       max(12px, env(safe-area-inset-left));
+   }
+
+   /* Compact phones: preserve five playable columns instead of shrinking the whole UI indiscriminately. */
+   @media (max-width: 350px) {
+     :root {
+       --cw: 54px;
+       --gap: 4px;
+       --radius: 14px;
+     }
+     .app {
+       padding-left: max(5px, env(safe-area-inset-left));
+       padding-right: max(5px, env(safe-area-inset-right));
+     }
+     .game {
+       padding-left: 5px;
+       padding-right: 5px;
+     }
+     .brand {
+       gap: 6px;
+     }
+     .brand-mark {
+       width: 32px;
+       height: 32px;
+       font-size: 17px;
+     }
+     .brand b {
+       font-size: 15px;
+     }
+     .brand small {
+       display: none;
+     }
+     .stats {
+       gap: 3px;
+     }
+     .pill {
+       height: 28px;
+       padding: 0 6px;
+       font-size: 8px;
+     }
+     .pill b {
+       font-size: 9px;
+     }
+     .controls {
+       gap: 4px;
+     }
+     .controls button {
+       font-size: 9.5px;
+       padding: 0 2px;
+     }
+     .draw-label {
+       font-size: 7.5px;
+       letter-spacing: 0.09em;
+     }
+   }
+
+   /* Emergency fit for unusually narrow webviews/legacy small phones. */
+   @media (max-width: 309px) {
+     :root {
+       --cw: calc((100vw - 34px) / 5);
+       --gap: 3px;
+       --radius: 12px;
+     }
+     .app {
+       padding-left: max(4px, env(safe-area-inset-left));
+       padding-right: max(4px, env(safe-area-inset-right));
+     }
+     .game {
+       padding-left: 5px;
+       padding-right: 5px;
+     }
+     .stats {
+       gap: 2px;
+     }
+     .pill {
+       padding: 0 4px;
+     }
+     .controls button {
+       font-size: 8.5px;
+     }
+   }
+
+   /* Short screens: cards stay large; only cascade depth and vertical chrome compress. */
+   @media (max-height: 740px) {
+     .app {
+       gap: 6px;
+     }
+     .game {
+       padding-top: 7px;
+     }
+     .draw-row {
+       margin-bottom: 8px;
+       padding-top: 6px;
+       padding-bottom: 6px;
+     }
+     .category-row {
+       margin-bottom: 7px;
+       padding-bottom: 8px;
+     }
+     .controls button {
+       min-height: 44px;
+     }
+     .hud {
+       gap: 6px;
+     }
+     .top {
+       min-height: 38px;
+     }
+     .progress-wrap {
+       gap: 6px;
+     }
+     .coach {
+       top: 92px;
+     }
+   }
+   @media (max-height: 620px) {
+     .app {
+       gap: 4px;
+     }
+     .game {
+       padding-top: 5px;
+       padding-bottom: 5px;
+     }
+     .draw-row {
+       margin-bottom: 6px;
+       padding: 5px 6px;
+     }
+     .category-row {
+       margin-bottom: 5px;
+       padding-bottom: 6px;
+     }
+     .controls {
+       padding: 3px;
+     }
+     .controls button {
+       min-height: 40px;
+       font-size: 9.5px;
+     }
+     .brand small {
+       display: none;
+     }
+     .progress-label > span:last-child {
+       display: none;
+     }
+   }
+
+   /* Landscape phones use available width while keeping the same card geometry. */
+   @media (orientation: landscape) and (max-height: 520px) {
+     .app {
+       max-width: 600px;
+       padding-top: max(5px, env(safe-area-inset-top));
+       padding-bottom: max(5px, env(safe-area-inset-bottom));
+     }
+     .hub-shell {
+       width: min(600px, 100%);
+     }
+     .hud {
+       gap: 3px;
+     }
+     .top {
+       min-height: 32px;
+     }
+     .progress-wrap {
+       display: none;
+     }
+     .brand-mark {
+       width: 30px;
+       height: 30px;
+       font-size: 16px;
+     }
+     .brand b {
+       font-size: 15px;
+     }
+     .brand small {
+       display: none;
+     }
+     .pill {
+       height: 27px;
+     }
+     .controls button {
+       min-height: 38px;
+     }
+     .draw-row {
+       margin-bottom: 5px;
+     }
+     .category-row {
+       margin-bottom: 4px;
+       padding-bottom: 5px;
+     }
+   }
+
+   /* Tablet/desktop: keep a deliberate phone-game canvas instead of stretching into a dashboard. */
+   @media (min-width: 700px) {
+     .app {
+       border-left: 1px solid #ffffff10;
+       border-right: 1px solid #ffffff10;
+     }
+   }
+
+   /* ===== Mobile game scale pass v2 =====
+Scale the physical pieces from the ACTUAL number of tableau columns.
+Three-column rounds should feel like a card game, not a five-column web grid. */
+   :root {
+     --cw: 64px;
+     --ch: calc(var(--cw) * 1.54);
+     --gap: 7px;
+   }
+   html[data-cols="3"] {
+     --cw: clamp(82px, 23.2vw, 98px);
+     --gap: clamp(9px, 2.5vw, 12px);
+     --radius: clamp(17px, 4.5vw, 20px);
+   }
+   html[data-cols="4"] {
+     --cw: clamp(68px, 18.8vw, 80px);
+     --gap: clamp(7px, 2vw, 9px);
+     --radius: clamp(15px, 4vw, 18px);
+   }
+   html[data-cols="5"] {
+     --cw: clamp(54px, 15.7vw, 66px);
+     --gap: clamp(4px, 1.25vw, 6px);
+     --radius: clamp(14px, 3.6vw, 16px);
+   }
+
+   /* More legible, game-like top HUD. */
+   .hud {
+     gap: clamp(9px, 1.35dvh, 13px);
+   }
+   .top {
+     min-height: clamp(52px, 6.8dvh, 61px);
+     gap: clamp(9px, 2.2vw, 12px);
+   }
+   .brand {
+     gap: clamp(9px, 2.4vw, 12px);
+   }
+   .brand-mark {
+     width: clamp(42px, 10.8vw, 48px);
+     height: clamp(42px, 10.8vw, 48px);
+     border-radius: clamp(13px, 3.5vw, 16px);
+     font-size: clamp(21px, 5.5vw, 25px);
+     box-shadow:
+       0 8px 20px #5c42ff66,
+       inset 0 1px #fff9;
+   }
+   .brand b {
+     font-size: clamp(20px, 5.1vw, 23px);
+     line-height: 1;
+     letter-spacing: -0.035em;
+   }
+   .brand small {
+     margin-top: 4px;
+     font-size: clamp(9px, 2.3vw, 10px);
+     letter-spacing: 0.115em;
+   }
+   .stats {
+     gap: clamp(5px, 1.35vw, 7px);
+   }
+   .pill {
+     height: clamp(35px, 8.9vw, 40px);
+     padding: 0 clamp(9px, 2.35vw, 12px);
+     font-size: clamp(10.5px, 2.7vw, 12px);
+     border-width: 1px;
+   }
+   .pill b {
+     font-size: clamp(11.5px, 2.95vw, 13px);
+   }
+   .progress-track {
+     height: clamp(7px, 1.9vw, 9px);
+   }
+   .progress-label {
+     font-size: clamp(9px, 2.25vw, 10px);
+     font-weight: 800;
+   }
+   .progress-stars {
+     font-size: 1.12em;
+   }
+
+   /* Let the play pieces dominate the screen. */
+   .game {
+     padding: clamp(11px, 2.8vw, 14px) clamp(8px, 2.2vw, 11px) clamp(9px, 2.2vw, 11px);
+   }
+   .draw-row {
+     gap: clamp(9px, 2.4vw, 12px);
+     padding: clamp(9px, 2.25vw, 11px);
+     margin-bottom: clamp(15px, 2dvh, 19px);
+     border-radius: clamp(20px, 5vw, 24px);
+   }
+   .draw-label {
+     font-size: clamp(9.5px, 2.45vw, 11px);
+     letter-spacing: 0.11em;
+   }
+   .category-row {
+     padding-bottom: clamp(15px, 1.9dvh, 18px);
+     margin-bottom: clamp(14px, 1.8dvh, 17px);
+   }
+   .card {
+     font-size: clamp(14px, 3.6vw, 16px);
+     padding: clamp(8px, 2vw, 11px) clamp(5px, 1.45vw, 7px);
+     box-shadow:
+       0 5px 0 #09092325,
+       0 10px 22px #0406174d,
+       inset 0 1px #fff,
+       inset 0 -12px 20px rgba(127, 111, 189, 0.07);
+   }
+   .card.category {
+     gap: clamp(7px, 1.7vw, 10px);
+   }
+   .card.category .name {
+     min-height: clamp(21px, 5.4vw, 27px);
+     font-size: clamp(12px, 3vw, 15px);
+     padding: 4px 3px;
+     border-radius: 9px;
+   }
+   .card.category .count {
+     font-size: clamp(11px, 2.8vw, 13px);
+     line-height: clamp(22px, 5.5vw, 26px);
+     height: clamp(22px, 5.5vw, 26px);
+     min-width: clamp(39px, 10vw, 46px);
+     padding: 0 8px;
+   }
+   .slot.empty::after,
+.slot.drag-vacated::after {
+     font-size: clamp(25px, 6.5vw, 32px);
+   }
+   .waste.empty::after,
+.waste.drag-vacated::after {
+     font-size: clamp(8.5px, 2.25vw, 10px);
+   }
+   .stock.empty::after {
+     font-size: clamp(27px, 6.8vw, 34px);
+   }
+   .pile-count,
+   .stock-count {
+     min-width: clamp(24px, 6.2vw, 29px);
+     height: clamp(24px, 6.2vw, 29px);
+     font-size: clamp(10px, 2.55vw, 12px);
+     border-width: 2px;
+   }
+
+   /* Bottom bar: tactile controls with icon + readable label. */
+   .controls {
+     gap: clamp(7px, 1.7vw, 9px);
+     padding: clamp(6px, 1.45vw, 8px);
+     border-radius: clamp(21px, 5vw, 25px);
+     background: #09091f49;
+   }
+   .controls button {
+     min-height: clamp(60px, 7.6dvh, 68px);
+     border-radius: clamp(16px, 4vw, 19px);
+     font-size: clamp(12px, 3.05vw, 14px);
+     padding: 0 clamp(4px, 1vw, 7px);
+     display: flex;
+     flex-direction: column;
+     align-items: center;
+     justify-content: center;
+     gap: 3px;
+     line-height: 1;
+     font-weight: 900;
+     box-shadow:
+       inset 0 1px #ffffff16,
+       0 4px 10px #05051822;
+   }
+   .controls .ctrl-icon {
+     font-size: clamp(17px, 4.3vw, 20px);
+     line-height: 1;
+     flex: 0 0 auto;
+   }
+   .controls #menuButton {
+     box-shadow:
+       inset 0 1px #ffffff1e,
+       0 5px 13px #05051835;
+   }
+   .controls #hint {
+     box-shadow:
+       0 7px 17px #06051c3d,
+       inset 0 1px #fff;
+   }
+   .controls .primary {
+     box-shadow:
+       0 8px 20px #593cff52,
+       inset 0 1px #ffffff66;
+   }
+   .toast {
+     bottom: max(94px, calc(env(safe-area-inset-bottom) + 84px));
+     font-size: clamp(11px, 2.85vw, 12.5px);
+     padding: 11px 16px;
+   }
+
+   /* Three-column rounds get extra typographic presence. */
+   html[data-cols="3"] .card.category .name {
+     font-size: clamp(14px, 3.7vw, 17px);
+   }
+   html[data-cols="3"] .card.category .count {
+     font-size: clamp(12px, 3.1vw, 14px);
+   }
+   html[data-cols="3"] .draw-label {
+     font-size: clamp(10px, 2.6vw, 12px);
+   }
+   html[data-cols="3"] .card.face-down::after {
+     width: clamp(36px, 9vw, 42px);
+     height: clamp(36px, 9vw, 42px);
+     font-size: clamp(17px, 4.2vw, 20px);
+     border-radius: 12px;
+   }
+
+   /* Small widths: keep hierarchy, only compress what is necessary. */
+   @media (max-width: 370px) {
+     html[data-cols="3"] {
+       --cw: clamp(78px, 23vw, 86px);
+       --gap: 8px;
+     }
+     html[data-cols="4"] {
+       --cw: clamp(65px, 18.4vw, 70px);
+       --gap: 6px;
+     }
+     html[data-cols="5"] {
+       --cw: clamp(53px, 15.2vw, 57px);
+       --gap: 4px;
+     }
+     .brand-mark {
+       width: 38px;
+       height: 38px;
+       font-size: 20px;
+     }
+     .brand b {
+       font-size: 18px;
+     }
+     .brand small {
+       font-size: 8.5px;
+     }
+     .pill {
+       height: 33px;
+       padding: 0 7px;
+       font-size: 9.5px;
+     }
+     .pill b {
+       font-size: 10.5px;
+     }
+     .controls {
+       gap: 5px;
+       padding: 5px;
+     }
+     .controls button {
+       min-height: 58px;
+       font-size: 11.5px;
+       gap: 2px;
+     }
+     .controls .ctrl-icon {
+       font-size: 16px;
+     }
+   }
+   @media (max-width: 335px) {
+     .brand small {
+       display: none;
+     }
+     .brand b {
+       font-size: 17px;
+     }
+     .brand-mark {
+       width: 36px;
+       height: 36px;
+     }
+     .stats {
+       gap: 3px;
+     }
+     .pill {
+       padding: 0 5px;
+       font-size: 8.8px;
+     }
+     .pill b {
+       font-size: 9.5px;
+     }
+     .controls button {
+       font-size: 10px;
+     }
+     .controls .ctrl-icon {
+       font-size: 13px;
+     }
+   }
+
+   /* Low-height devices compress spacing/cascade, not the game pieces. */
+   @media (max-height: 740px) {
+     .hud {
+       gap: 6px;
+     }
+     .top {
+       min-height: 44px;
+     }
+     .draw-row {
+       margin-bottom: 9px;
+       padding-top: 7px;
+       padding-bottom: 7px;
+     }
+     .category-row {
+       margin-bottom: 8px;
+       padding-bottom: 9px;
+     }
+     .controls button {
+       min-height: 52px;
+     }
+   }
+   @media (max-height: 620px) {
+     .top {
+       min-height: 38px;
+     }
+     .brand-mark {
+       width: 34px;
+       height: 34px;
+     }
+     .brand b {
+       font-size: 17px;
+     }
+     .brand small {
+       display: none;
+     }
+     .pill {
+       height: 29px;
+     }
+     .controls button {
+       min-height: 45px;
+       font-size: 10px;
+     }
+     .controls .ctrl-icon {
+       font-size: 13px;
+     }
+   }
+
+   /* ===== Physical card interaction pass =====
+Every lower card exposes one title-height strip. Open and closed cards use
+the same global --stack-step value. */
+   /* Every card below the front card exposes only one title-height strip. */
+   .card.open-under {
+     padding-bottom: 0;
+     overflow: hidden;
+   }
+   .card.open-under:not(.category) {
+     align-items: flex-start;
+     justify-content: center;
+     padding: 5px 3px 0;
+     line-height: 1;
+     white-space: nowrap;
+   }
+   .card.category.open-under {
+     align-items: stretch;
+     justify-content: flex-start;
+     gap: 0;
+     padding: 4px 3px 0;
+   }
+   .card.category.open-under .name {
+     flex: 0 0 auto;
+     min-height: 0;
+     height: auto;
+     padding: 2px 2px;
+     line-height: 1;
+     white-space: nowrap;
+   }
+   .card.category.open-under .count {
+     display: none;
+   }
+
+   /* Drag preview is a real visual clone of the picked stack. Its grip point is
+maintained in JS, so the card never jumps under the finger. */
+   .drag-stack {
+     position: fixed;
+     z-index: 9999;
+     pointer-events: none;
+     transform: none !important;
+     filter: drop-shadow(0 18px 20px #0008);
+     will-change: left, top;
+     overflow: visible;
+   }
+   .drag-stack > .card {
+     position: absolute !important;
+     margin: 0 !important;
+     transition: none !important;
+     transform: none !important;
+     pointer-events: none !important;
+   }
+   .drag-stack .drag-count {
+     display: none;
+   }
+
+   /* Deal/reveal micro-interactions. */
+   .card.deal-card {
+     will-change: transform, opacity, filter;
+   }
+   .card.reveal-card {
+     transform-origin: center center;
+     backface-visibility: hidden;
+     will-change: transform, opacity;
+   }
+   .stock.deal-pulse .card {
+     animation: deckPulse 0.42s cubic-bezier(0.2, 0.8, 0.2, 1);
+   }
+   @keyframes deckPulse {
+     0%,
+     100% {
+       transform: translateY(0) scale(1);
+     }
+     45% {
+       transform: translateY(-4px) scale(1.035);
+     }
+   }
+
+   
+   
+   @media (max-height: 620px) {
+     .card.open-under:not(.category) {
+       padding-top: 4px;
+     }
+     .card.category.open-under {
+       padding-top: 3px;
+     }
+   }
