@@ -288,13 +288,77 @@ function qualityAuditMarkup() {
 function onboardingAvatarButtons(selected) {
   return AVATAR_EMOJIS.map((emoji)=>`<button type="button" class="onboarding-avatar ${selected===emoji?"selected":""}" data-onboarding-avatar="${emoji}" aria-label="Выбрать аватар ${emoji}">${emoji}</button>`).join("");
 }
+function bindOnboardingAvatarScroller(root) {
+  const grid = root?.querySelector?.(".onboarding-avatar-grid"),
+    prev = root?.querySelector?.("[data-avatar-scroll=prev]"),
+    next = root?.querySelector?.("[data-avatar-scroll=next]");
+  if (!grid) return;
+
+  const updateButtons = () => {
+    const max = Math.max(0, grid.scrollWidth - grid.clientWidth);
+    if (prev) prev.disabled = grid.scrollLeft <= 2;
+    if (next) next.disabled = grid.scrollLeft >= max - 2;
+  };
+  const move = (dir) => grid.scrollBy({ left: dir * Math.max(180, grid.clientWidth * 0.72), behavior: "smooth" });
+  if (prev) prev.onclick = () => move(-1);
+  if (next) next.onclick = () => move(1);
+
+  // A normal desktop mouse wheel has no horizontal axis. Convert its
+  // vertical wheel movement into horizontal movement while the pointer is
+  // over the avatar rail. Trackpads keep their native horizontal delta.
+  grid.addEventListener("wheel", (event) => {
+    if (grid.scrollWidth <= grid.clientWidth + 2) return;
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+    if (!delta) return;
+    const before = grid.scrollLeft;
+    grid.scrollLeft += delta;
+    if (grid.scrollLeft !== before) event.preventDefault();
+    updateButtons();
+  }, { passive: false });
+
+  // Also support dragging the rail with a mouse, similar to a touch swipe.
+  let dragging = false, startX = 0, startLeft = 0, moved = false, pointerId = null;
+  grid.addEventListener("pointerdown", (event) => {
+    if (event.pointerType !== "mouse" || event.button !== 0) return;
+    dragging = true; moved = false; pointerId = event.pointerId;
+    startX = event.clientX; startLeft = grid.scrollLeft;
+    grid.classList.add("mouse-dragging");
+  });
+  grid.addEventListener("pointermove", (event) => {
+    if (!dragging || event.pointerId !== pointerId) return;
+    const dx = event.clientX - startX;
+    if (Math.abs(dx) > 4) moved = true;
+    if (!moved) return;
+    grid.scrollLeft = startLeft - dx;
+    event.preventDefault();
+    updateButtons();
+  });
+  const finish = (event) => {
+    if (!dragging || (event && event.pointerId !== pointerId)) return;
+    dragging = false;
+    grid.classList.remove("mouse-dragging");
+    pointerId = null;
+    updateButtons();
+  };
+  grid.addEventListener("pointerup", finish);
+  grid.addEventListener("pointercancel", finish);
+  grid.addEventListener("pointerleave", finish);
+  grid.addEventListener("click", (event) => {
+    if (!moved) return;
+    event.preventDefault();
+    event.stopPropagation();
+    moved = false;
+  }, true);
+  grid.addEventListener("scroll", updateButtons, { passive: true });
+  requestAnimationFrame(updateButtons);
+}
 function runFirstRunOnboarding() {
   if (profile.onboardingComplete) return Promise.resolve(false);
   const modal=$("#onboardingModal"), content=$("#onboardingContent"); if(!modal||!content)return Promise.resolve(false);
   return new Promise((resolve)=>{
     let step=0, avatar=profile.avatarEmoji||"🙂", name=profile.playerName==="Игрок"?"":profile.playerName;
     const pages=[
-      ()=>`<div class="onboarding-step"><small>ДОБРО ПОЖАЛОВАТЬ</small><h2>Давай знакомиться!</h2><p>Имя и аватар будут видны друзьям в вызовах.</p><label><span>Твоё имя</span><input id="onboardingName" maxlength="20" value="${escapeHtml(name)}" placeholder="Например, Альберт Эйнштейн" autocomplete="off"></label><div class="onboarding-avatar-grid">${onboardingAvatarButtons(avatar)}</div></div>`,
+      ()=>`<div class="onboarding-step"><small>ДОБРО ПОЖАЛОВАТЬ</small><h2>Давай знакомиться!</h2><p>Имя и аватар будут видны друзьям в вызовах.</p><label><span>Твоё имя</span><input id="onboardingName" maxlength="20" value="${escapeHtml(name)}" placeholder="Например, Альберт Эйнштейн" autocomplete="off"></label><div class="onboarding-avatar-picker"><button type="button" class="onboarding-avatar-scroll prev" data-avatar-scroll="prev" aria-label="Предыдущие аватары">‹</button><div class="onboarding-avatar-grid">${onboardingAvatarButtons(avatar)}</div><button type="button" class="onboarding-avatar-scroll next" data-avatar-scroll="next" aria-label="Следующие аватары">›</button></div></div>`,
       ()=>`<div class="onboarding-step"><small>КАК ИГРАТЬ · 1/2</small><h2>Ищи смысловые связи</h2><p>Открытые карты одной категории складываются вместе. Можно тащить всю открытую стопку.</p><div class="onboarding-demo"><span>МОРЕ</span><b>ВОЛНА</b><b>ПРИБОЙ</b><b>ОКЕАН</b></div></div>`,
       ()=>`<div class="onboarding-step"><small>КАК ИГРАТЬ · 2/2</small><h2>Собирай категории сверху</h2><p>Карточку категории отправь в свободный слот, затем собирай туда все связанные слова или картинки.</p><div class="onboarding-demo picture"><span>КИНО</span><b>🎬</b><b>🍿</b><b>🎟️</b><b>📽️</b></div></div>`,
       ()=>`<div class="onboarding-step"><small>ГОТОВО</small><h2>Начнём с короткого обучения</h2><p>Три простых расклада покажут перенос категории, сбор стопок и работу колоды. Потом откроется весь Словасьянс.</p><div class="onboarding-ready"><i>✦</i><span>Слова</span><i>🖼️</i><span>Картинки</span><i>⚔</i><span>Вызовы</span></div></div>`,
@@ -303,6 +367,7 @@ function runFirstRunOnboarding() {
       content.innerHTML=`${pages[step]()}<div class="onboarding-dots">${pages.map((_,i)=>`<i class="${i===step?"active":""}"></i>`).join("")}</div><div class="onboarding-actions">${step?`<button class="secondary" id="onboardingBack">Назад</button>`:""}<button class="primary" id="onboardingNext">${step===pages.length-1?"Начать обучение →":"Дальше →"}</button></div>`;
       const input=$("#onboardingName"); if(input) input.oninput=()=>{name=input.value;};
       content.querySelectorAll("[data-onboarding-avatar]").forEach((btn)=>btn.onclick=()=>{avatar=btn.dataset.onboardingAvatar;content.querySelectorAll("[data-onboarding-avatar]").forEach((x)=>x.classList.toggle("selected",x===btn));});
+      bindOnboardingAvatarScroller(content);
       const back=$("#onboardingBack"); if(back)back.onclick=()=>{step=Math.max(0,step-1);render();};
       $("#onboardingNext").onclick=()=>{
         if(step===0){name=(input?.value||name||"").trim().replace(/\s+/g," ");if(!name){input?.focus();input?.classList.add("error");return;}profile.playerName=name.slice(0,20);profile.avatarEmoji=avatar;saveProfile();}
