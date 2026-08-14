@@ -2,9 +2,9 @@
 let BANK = [];
 const SAVE_KEY = "worditaire-state-v10";
 const OLD_SAVE_KEY = "assoc-klondike-v7";
-const PROFILE_KEY = "worditaire-profile-v4";
-const PREV_PROFILE_KEY = "worditaire-profile-v3";
-const LEGACY_PROFILE_KEYS = ["worditaire-profile-v2"];
+const PROFILE_KEY = "worditaire-profile-v5";
+const PREV_PROFILE_KEY = "worditaire-profile-v4";
+const LEGACY_PROFILE_KEYS = ["worditaire-profile-v3", "worditaire-profile-v2"];
 const ANALYTICS_KEY = "worditaire-analytics-v1";
 const RECENT_KEY = "assoc-recent-categories-v2";
 const MAX_CARD_WORD_LEN = 10,
@@ -35,6 +35,16 @@ function perfectChapterCount(p) {
   let count = 0;
   for (let n = 1; n <= maxChapter; n++) if (chapterStarsForProfile(p, n).every((x) => x === 3)) count++;
   return count;
+}
+function discoveredCategoryCount(p) {
+  if (!BANK.length) return new Set(p.discovered || []).size;
+  const available = new Set(BANK.map((c) => c.id));
+  return new Set((p.discovered || []).filter((id) => available.has(id))).size;
+}
+function hasDiscoveredAllCategories(p) {
+  if (!BANK.length) return false;
+  const discovered = new Set(p.discovered || []);
+  return BANK.every((c) => discovered.has(c.id));
 }
 
 const SPECIAL_LEVELS = [
@@ -132,19 +142,22 @@ const ACHIEVEMENTS = [
     desc: "20 побед без отмен",
     test: (p) => p.stats.noUndoWins >= 20,
   },
+  { id: "discover25", icon: "▦25", title: "Первые открытия", desc: "Открыть 25 разных категорий", test: (p) => discoveredCategoryCount(p) >= 25 },
+  { id: "discover50", icon: "▦50", title: "Исследователь", desc: "Открыть 50 разных категорий", test: (p) => discoveredCategoryCount(p) >= 50 },
+  { id: "discover75", icon: "▦75", title: "Знаток ассоциаций", desc: "Открыть 75 разных категорий", test: (p) => discoveredCategoryCount(p) >= 75 },
   {
     id: "collector",
-    icon: "▦",
+    icon: "▦100",
     title: "Коллекционер",
-    desc: "Открыть 100 категорий",
-    test: (p) => p.discovered.length >= 100,
+    desc: "Открыть 100 разных категорий",
+    test: (p) => discoveredCategoryCount(p) >= 100,
   },
   {
     id: "encyclopedia",
-    icon: "∞",
+    icon: "▦125",
     title: "Энциклопедия",
-    desc: "Собрать 500 категорий",
-    test: (p) => p.stats.categoriesCompleted >= 500,
+    desc: "Открыть 125 разных категорий",
+    test: (p) => discoveredCategoryCount(p) >= 125,
   },
   {
     id: "daily",
@@ -179,10 +192,8 @@ const ACHIEVEMENTS = [
   { id: "nohint100", icon: "?100", title: "Без подсказок", desc: "100 побед без подсказок", rare: true, test: (p) => p.stats.noHintWins >= 100 },
   { id: "noundo50", icon: "↶50", title: "Без оглядки", desc: "50 побед без отмен", test: (p) => p.stats.noUndoWins >= 50 },
   { id: "noundo100", icon: "↶100", title: "Только вперёд", desc: "100 побед без отмен", rare: true, test: (p) => p.stats.noUndoWins >= 100 },
-  { id: "collectorAll", icon: "▦✓", title: "Полная коллекция", desc: "Открыть все категории", rare: true, test: (p) => BANK.length > 0 && p.discovered.length >= BANK.length },
-  { id: "categories100", icon: "100", title: "Собиратель", desc: "Собрать 100 категорий", test: (p) => p.stats.categoriesCompleted >= 100 },
-  { id: "categories1000", icon: "1K", title: "Архивариус", desc: "Собрать 1000 категорий", test: (p) => p.stats.categoriesCompleted >= 1000 },
-  { id: "categories2500", icon: "2.5K", title: "Живая энциклопедия", desc: "Собрать 2500 категорий", rare: true, test: (p) => p.stats.categoriesCompleted >= 2500 },
+  { id: "collectorAll", icon: "▦✓", title: "Полная коллекция", desc: "Открыть все категории", rare: true, test: (p) => hasDiscoveredAllCategories(p) },
+  { id: "games100", icon: "100", title: "Сотня партий", desc: "Сыграть 100 партий", test: (p) => (p.stats.gamesPlayed || 0) >= 100 },
   { id: "daily7", icon: "☀7", title: "Неделя Daily", desc: "Пройти 7 Daily", test: (p) => p.stats.dailyCompleted >= 7 },
   { id: "daily30", icon: "☀30", title: "Месяц Daily", desc: "Пройти 30 Daily", test: (p) => p.stats.dailyCompleted >= 30 },
   { id: "daily100", icon: "☀100", title: "Ритуал", desc: "Пройти 100 Daily", rare: true, test: (p) => p.stats.dailyCompleted >= 100 },
@@ -193,6 +204,7 @@ const ACHIEVEMENTS = [
 ];
 const DEFAULT_STATS = {
   levelsCompleted: 0,
+  gamesPlayed: 0,
   categoriesCompleted: 0,
   tripleStarWins: 0,
   noHintWins: 0,

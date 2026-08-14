@@ -92,6 +92,7 @@ function finishLevel() {
   state.rewarded = true;
   const stars = calculateStars();
   let newAchievements = [];
+  if (state.mode === "regular" || state.mode === "daily") profile.stats.gamesPlayed = (profile.stats.gamesPlayed || 0) + 1;
   if (state.mode === "regular") {
     const old = profile.starsByLevel[state.level] || 0,
       firstClear = old === 0;

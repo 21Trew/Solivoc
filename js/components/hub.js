@@ -35,6 +35,7 @@ function renderHub() {
   const nt = nextTheme(),
     dailyDone = profile.daily.completedDates.includes(todayKey()),
     discovered = new Set(profile.discovered),
+    discoveredCount = discoveredCategoryCount(profile),
     unlockedThemes = THEME_DEFS.filter((t) => profile.totalStars >= t.stars),
     unlockedBacks = CARD_BACK_DEFS.filter((b) => cardBackUnlocked(b)),
     currentChapter = chapterInfo(profile.currentLevel || 1),
@@ -83,11 +84,12 @@ function renderHub() {
     </div></section>
     <section class="hub-section"><div class="hub-section-head"><h3>Темы</h3><small>${unlockedThemes.length}/${THEME_DEFS.length} · за звёзды</small></div><div class="theme-grid">${themes}</div></section>
     <section class="hub-section"><div class="hub-section-head"><h3>Рубашки карт</h3><small>${unlockedBacks.length}/${CARD_BACK_DEFS.length} · за достижения</small></div><div class="cardback-grid">${cardBackMarkup()}</div></section>
-    <section class="hub-section"><div class="hub-section-head"><h3>Коллекция категорий</h3><small>${discovered.size}/${BANK.length}</small></div><div class="collection-grid">${collection}</div></section>
+    <section class="hub-section"><div class="hub-section-head"><h3>Коллекция категорий</h3><small>${discoveredCount}/${BANK.length}</small></div><div class="collection-grid">${collection}</div></section>
     <section class="hub-section"><div class="hub-section-head"><h3>Достижения</h3><small>${profile.achievements.length}/${ACHIEVEMENTS.length}</small></div><div class="achievement-list">${achievements}</div></section>
     <section class="hub-section"><div class="hub-section-head"><h3>Статистика</h3><small>локально на устройстве</small></div><div class="stats-grid">
       <div class="stat-box"><b>${profile.stats.levelsCompleted}</b><span>уровней</span></div>
-      <div class="stat-box"><b>${profile.stats.categoriesCompleted}</b><span>категорий</span></div>
+      <div class="stat-box"><b>${profile.stats.gamesPlayed || 0}</b><span>сыграно партий</span></div>
+      <div class="stat-box"><b>${discoveredCount}</b><span>открыто категорий</span></div>
       <div class="stat-box"><b>${profile.stats.tripleStarWins}</b><span>★★★ уровней</span></div>
       <div class="stat-box"><b>×${profile.stats.maxDragCombo || 0}</b><span>ручное комбо</span></div>
       <div class="stat-box"><b>${chaptersDone}</b><span>глав пройдено</span></div>

@@ -12,6 +12,7 @@ function defaultProfile() {
     cardBackUnlocksSeen: ["classic"],
     tutorialComplete: false,
     legacyStarsMigrated: false,
+    categoryAchievementModelMigrated: false,
     settings: { sound: true, music: true, haptics: true },
     stats: { ...DEFAULT_STATS },
     daily: { lastDate: null, currentStreak: 0, bestStreak: 0, completedDates: [], freezeWeek: null },
@@ -64,6 +65,38 @@ function migrateLegacyStars() {
   profile.legacyStarsMigrated = true;
 }
 migrateLegacyStars();
+
+function analyticsCount(name) {
+  try {
+    const data = JSON.parse(localStorage.getItem(ANALYTICS_KEY));
+    return +(data?.counts?.[name] || 0);
+  } catch {
+    return 0;
+  }
+}
+function migrateAchievementCounters() {
+  if (!profile.categoryAchievementModelMigrated) {
+    // Re-check every category achievement against UNIQUE discovered categories.
+    // This also removes false positives awarded by the old cumulative counter.
+    const categoryAchievementIds = new Set([
+      "categories100",
+      "categories1000",
+      "categories2500",
+      "collector",
+      "encyclopedia",
+      "collectorAll",
+    ]);
+    profile.achievements = (profile.achievements || []).filter((id) => !categoryAchievementIds.has(id));
+    profile.categoryAchievementModelMigrated = true;
+  }
+
+  // A played game is a successfully completed regular or Daily round.
+  // Rebuild as much historical progress as possible from persistent analytics.
+  const analyticsGames = analyticsCount("level_completed") + analyticsCount("daily_completed");
+  const minimumKnownGames = (+profile.stats.levelsCompleted || 0) + (+profile.stats.dailyCompleted || 0);
+  profile.stats.gamesPlayed = Math.max(+profile.stats.gamesPlayed || 0, analyticsGames, minimumKnownGames);
+}
+migrateAchievementCounters();
 function recomputeStars() {
   profile.totalStars =
     Object.values(profile.starsByLevel || {}).reduce((a, b) => a + (+b || 0), 0) +
