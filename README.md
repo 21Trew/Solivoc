@@ -66,3 +66,9 @@
 ```
 
 `fitTableauGeometry()` дополнительно уменьшает карту и/или шаг каскада, если реальная колонка не помещается по высоте. Скролла игрового поля нет.
+
+## UI cleanup
+- Removed the redundant appearance preview block above Themes.
+- Restored the pre-hub card sizing for 3-column layouts and the previous 46px minimum adaptive card width.
+- Replaced purple UI glow shadows with neutral depth shadows.
+- Added explicit profile editing in the “Ещё” tab: player name + any title unlocked by earned achievements.

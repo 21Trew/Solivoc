@@ -111,7 +111,7 @@ function fitTableauGeometry() {
     step = Math.max(14, (available - cw * ratio) / (units - 1));
   }
 
-  root.style.setProperty("--cw", `${Math.max(42, cw).toFixed(2)}px`);
+  root.style.setProperty("--cw", `${Math.max(46, cw).toFixed(2)}px`);
   root.style.setProperty("--stack-step", `${Math.max(12, step).toFixed(2)}px`);
   root.dataset.stackFit = step < 19 ? "tight" : "compact";
 }

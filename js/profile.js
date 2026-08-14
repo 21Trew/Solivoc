@@ -123,7 +123,7 @@ function migrateMetaProfile() {
   profile.challengeRecords = profile.challengeRecords || {};
   profile.weekly = { ...defaultProfile().weekly, ...(profile.weekly || {}) };
   profile.effectUnlocksSeen = Array.isArray(profile.effectUnlocksSeen) ? profile.effectUnlocksSeen : ["spark"];
-  if (!TITLE_DEFS.some((x) => x.id === profile.titleId)) profile.titleId = "player";
+  if (!titleDefById(profile.titleId) || !titleUnlocked(titleDefById(profile.titleId), profile)) profile.titleId = "player";
   if (!profile.playerName) profile.playerName = "Игрок";
 }
 migrateMetaProfile();
@@ -173,7 +173,7 @@ function applyEffect(id) {
   document.body.dataset.effect = profile.effect;
 }
 function applyTitle(id) {
-  const def = TITLE_DEFS.find((x) => x.id === id);
+  const def = titleDefById(id);
   profile.titleId = def && titleUnlocked(def) ? id : "player";
 }
 function saveProfile() {

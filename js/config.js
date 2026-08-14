@@ -258,6 +258,27 @@ const TITLE_DEFS = [
   { id: "legend", name: "Легенда", icon: "✦", achievement: "chapterPerfect5" },
 ];
 
+function achievementTitleDef(a) {
+  return a ? { id: `achievement:${a.id}`, name: a.title, icon: a.icon || "★", achievement: a.id } : null;
+}
+function titleDefById(id) {
+  const fixed = TITLE_DEFS.find((x) => x.id === id);
+  if (fixed) return fixed;
+  if (String(id || "").startsWith("achievement:")) {
+    const achievement = ACHIEVEMENTS.find((a) => a.id === String(id).slice(12));
+    return achievementTitleDef(achievement);
+  }
+  return null;
+}
+function availableTitleDefs(p) {
+  const result = [], seen = new Set();
+  const add = (def) => { if (def && !seen.has(def.name)) { seen.add(def.name); result.push(def); } };
+  add(TITLE_DEFS[0]);
+  TITLE_DEFS.slice(1).forEach((def) => { if (!def.achievement || p?.achievements?.includes(def.achievement)) add(def); });
+  (p?.achievements || []).forEach((id) => add(achievementTitleDef(ACHIEVEMENTS.find((a) => a.id === id))));
+  return result;
+}
+
 ACHIEVEMENTS.push(
   { id: "weekly1", icon: "W1", title: "Новая традиция", desc: "Выполнить недельное испытание", test: (p) => (p.stats.weeklyCompleted || 0) >= 1 },
   { id: "weekly10", icon: "W10", title: "Десять недель", desc: "Выполнить 10 недельных испытаний", rare: true, test: (p) => (p.stats.weeklyCompleted || 0) >= 10 },

@@ -2,8 +2,7 @@
 let hubChapterNumber = null,
   hubTab = "play",
   hubCategoryId = null,
-  achievementFilter = "all",
-  hubPreview = { type: "theme", id: null };
+  achievementFilter = "all";
 
 function isStandalonePwa() {
   return window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true;
@@ -11,8 +10,11 @@ function isStandalonePwa() {
 function levelStarsMarkup(stars) {
   return stars ? `${"★".repeat(stars)}${"☆".repeat(3 - stars)}` : "···";
 }
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
+}
 function titleCurrent() {
-  return TITLE_DEFS.find((x) => x.id === profile.titleId) || TITLE_DEFS[0];
+  return titleDefById(profile.titleId) || TITLE_DEFS[0];
 }
 function themeUnlocked(def) {
   return profile.totalStars >= def.stars;
@@ -104,12 +106,7 @@ function progressTabMarkup() {
     if (achievementFilter === "rare") return !!a.rare;
     return true;
   });
-  const titles = TITLE_DEFS.map((t) => {
-    const unlocked = titleUnlocked(t), selected = profile.titleId === t.id;
-    return `<button class="title-chip ${selected ? "selected" : ""} ${unlocked ? "" : "locked"}" data-title-id="${t.id}" ${unlocked ? "" : "disabled"}>${t.icon} ${unlocked ? t.name : "???"}</button>`;
-  }).join("");
   return `${profileHeroMarkup()}
-    <section class="hub-section profile-editor"><div class="hub-section-head"><h3>Профиль</h3><button class="text-button" id="editName">Изменить имя</button></div><div class="title-grid">${titles}</div></section>
     <section class="hub-section"><div class="hub-section-head"><h3>Статистика</h3><small>твоя история</small></div><div class="stats-grid expanded">
       <div class="stat-box"><b>${profile.stats.levelsCompleted}</b><span>уровней</span></div><div class="stat-box"><b>${profile.stats.gamesPlayed || 0}</b><span>партий</span></div>
       <div class="stat-box"><b>${discoveredCount}</b><span>категорий</span></div><div class="stat-box"><b>${profile.stats.tripleStarWins}</b><span>★★★</span></div>
@@ -144,30 +141,22 @@ function cardBackMarkup() {
     return `<button class="cardback-tile ${unlocked ? "" : "locked"} ${selected ? "selected" : ""} ${back.rare ? "rare" : ""}" data-card-back-id="${back.id}"><span class="cardback-preview back-${back.id}"><i>${back.rare ? "✦" : ""}</i></span><b>${back.name}</b><span>${unlocked ? (selected ? "Выбрано" : "Открыто") : cardBackUnlockLabel(back)}</span></button>`;
   }).join("");
 }
-function appearancePreviewMarkup() {
-  const type = hubPreview.type, id = hubPreview.id || (type === "back" ? profile.cardBack : type === "effect" ? profile.effect : profile.theme);
-  if (type === "back") {
-    const def = CARD_BACK_DEFS.find((x)=>x.id===id) || CARD_BACK_DEFS[0], unlocked = cardBackUnlocked(def);
-    return `<div class="cosmetic-stage"><span class="big-back cardback-preview back-${def.id}"><i>${def.rare?"✦":""}</i></span><div><b>${def.name}</b><span>${unlocked?"Можно выбрать":cardBackUnlockLabel(def)}</span></div></div>`;
-  }
-  if (type === "effect") {
-    const def = EFFECT_DEFS.find((x)=>x.id===id) || EFFECT_DEFS[0], unlocked = effectUnlocked(def);
-    return `<div class="cosmetic-stage">${effectPreviewMarkup(def)}<div><b>${def.name}</b><span>${unlocked?"Можно выбрать":effectUnlockLabel(def)}</span></div></div>`;
-  }
-  const def = THEME_DEFS.find((x)=>x.id===id) || THEME_DEFS[0], unlocked = themeUnlocked(def);
-  return `<div class="cosmetic-stage theme-stage theme-${def.id}"><div class="mini-board"><i></i><i></i><i></i></div><div><b>${def.name}</b><span>${unlocked?"Можно выбрать":themeUnlockLabel(def)}</span></div></div>`;
-}
 function appearanceTabMarkup() {
   const themes = THEME_DEFS.map((t)=>{ const unlocked=themeUnlocked(t); return `<button class="theme-tile theme-${t.id} ${unlocked?"":"locked"} ${profile.theme===t.id?"selected":""}" data-theme-id="${t.id}"><b>${t.name}</b><span>${unlocked?"Открыто":themeUnlockLabel(t)}</span></button>`; }).join("");
   const effects = EFFECT_DEFS.map((e)=>{ const unlocked=effectUnlocked(e); return `<button class="effect-tile ${unlocked?"":"locked"} ${profile.effect===e.id?"selected":""}" data-effect-id="${e.id}">${effectPreviewMarkup(e)}<b>${e.name}</b><span>${unlocked?"Открыто":effectUnlockLabel(e)}</span></button>`; }).join("");
-  return `${profileHeroMarkup()}${appearancePreviewMarkup()}
-    <section class="hub-section"><div class="hub-section-head"><h3>Темы</h3><small>нажми для предпросмотра</small></div><div class="theme-grid">${themes}</div></section>
+  return `${profileHeroMarkup()}
+    <section class="hub-section"><div class="hub-section-head"><h3>Темы</h3><small>выбери оформление</small></div><div class="theme-grid">${themes}</div></section>
     <section class="hub-section"><div class="hub-section-head"><h3>Рубашки</h3><small>${CARD_BACK_DEFS.filter((b) => cardBackUnlocked(b)).length}/${CARD_BACK_DEFS.length}</small></div><div class="cardback-grid">${cardBackMarkup()}</div></section>
     <section class="hub-section"><div class="hub-section-head"><h3>Эффекты победы</h3><small>косметические награды</small></div><div class="effect-grid">${effects}</div></section>`;
 }
 function settingsTabMarkup() {
   const standalone=isStandalonePwa(), installLabel=standalone?"✓ Игра установлена":deferredInstallPrompt?"＋ Установить игру":"＋ На главный экран", report=CATEGORY_BANK_REPORT || {};
   return `${profileHeroMarkup()}
+    <section class="hub-section profile-settings"><div class="hub-section-head"><h3>Профиль</h3><small>имя и титул</small></div>
+      <label class="profile-field"><span>Имя игрока</span><input id="playerNameInput" maxlength="20" value="${escapeHtml(profile.playerName || "Игрок")}" autocomplete="off" spellcheck="false"></label>
+      <label class="profile-field"><span>Титул</span><select id="playerTitleSelect">${availableTitleDefs(profile).map((t)=>`<option value="${t.id}" ${profile.titleId===t.id?"selected":""}>${t.icon} ${t.name}</option>`).join("")}</select></label>
+      <button class="profile-save" id="saveProfileSettings">Сохранить профиль</button>
+    </section>
     <section class="hub-section"><div class="hub-section-head"><h3>Настройки</h3><small>звук и ощущения</small></div><div class="settings-grid">
       <button class="setting-toggle ${profile.settings.sound?"on":""}" id="soundToggle"><b>♪ Эффекты</b><span>${profile.settings.sound?"Включены":"Выключены"}</span></button>
       <button class="setting-toggle ${profile.settings.music?"on":""}" id="musicToggle"><b>♫ Музыка</b><span>${profile.settings.music?"Включена":"Выключена"}</span></button>
@@ -199,13 +188,20 @@ function bindHubHandlers() {
   on("#chapterPrev",()=>{hubChapterNumber=Math.max(1,(hubChapterNumber||1)-1);renderHub();});
   on("#chapterNext",()=>{hubChapterNumber=Math.min(chapterInfo(profile.currentLevel||1).number,(hubChapterNumber||1)+1);renderHub();});
   hubContent.querySelectorAll("[data-chapter-level]").forEach((btn)=>btn.onclick=()=>{closeHub();makeLevel(+btn.dataset.chapterLevel,{mode:"regular"});});
-  on("#editName",()=>{const name=window.prompt("Имя игрока",profile.playerName||"Игрок")?.trim(); if(name){profile.playerName=name.slice(0,20);saveProfile();renderHub();}});
-  hubContent.querySelectorAll("[data-title-id]").forEach((btn)=>btn.onclick=()=>{const def=TITLE_DEFS.find((x)=>x.id===btn.dataset.titleId);if(def&&titleUnlocked(def)){profile.titleId=def.id;saveProfile();renderHub();}});
+  on("#saveProfileSettings",()=>{
+    const input=$("#playerNameInput"), select=$("#playerTitleSelect"), name=(input?.value||"").trim().replace(/\s+/g," ");
+    const title=titleDefById(select?.value);
+    profile.playerName=(name||"Игрок").slice(0,20);
+    if(title&&titleUnlocked(title)) profile.titleId=title.id;
+    saveProfile();
+    showToast("Профиль сохранён");
+    renderHub();
+  });
   hubContent.querySelectorAll("[data-ach-filter]").forEach((btn)=>btn.onclick=()=>{achievementFilter=btn.dataset.achFilter;renderHub();});
   hubContent.querySelectorAll("[data-category-id]").forEach((btn)=>btn.onclick=()=>{hubCategoryId=btn.dataset.categoryId;renderHub();});
-  hubContent.querySelectorAll("[data-theme-id]").forEach((btn)=>btn.onclick=()=>{const def=THEME_DEFS.find((x)=>x.id===btn.dataset.themeId);hubPreview={type:"theme",id:def.id};if(themeUnlocked(def)){profile.theme=def.id;saveProfile();}renderHub();if(!themeUnlocked(def))showToast(`Откроется за ${themeUnlockLabel(def)}`);});
-  hubContent.querySelectorAll("[data-card-back-id]").forEach((btn)=>btn.onclick=()=>{const def=CARD_BACK_DEFS.find((x)=>x.id===btn.dataset.cardBackId);hubPreview={type:"back",id:def.id};if(cardBackUnlocked(def)){profile.cardBack=def.id;saveProfile();}renderHub();if(!cardBackUnlocked(def))showToast(cardBackUnlockLabel(def));});
-  hubContent.querySelectorAll("[data-effect-id]").forEach((btn)=>btn.onclick=()=>{const def=EFFECT_DEFS.find((x)=>x.id===btn.dataset.effectId);hubPreview={type:"effect",id:def.id};if(effectUnlocked(def)){profile.effect=def.id;saveProfile();burst(false);}renderHub();if(!effectUnlocked(def))showToast(effectUnlockLabel(def));});
+  hubContent.querySelectorAll("[data-theme-id]").forEach((btn)=>btn.onclick=()=>{const def=THEME_DEFS.find((x)=>x.id===btn.dataset.themeId);if(themeUnlocked(def)){profile.theme=def.id;saveProfile();}renderHub();if(!themeUnlocked(def))showToast(`Откроется за ${themeUnlockLabel(def)}`);});
+  hubContent.querySelectorAll("[data-card-back-id]").forEach((btn)=>btn.onclick=()=>{const def=CARD_BACK_DEFS.find((x)=>x.id===btn.dataset.cardBackId);if(cardBackUnlocked(def)){profile.cardBack=def.id;saveProfile();}renderHub();if(!cardBackUnlocked(def))showToast(cardBackUnlockLabel(def));});
+  hubContent.querySelectorAll("[data-effect-id]").forEach((btn)=>btn.onclick=()=>{const def=EFFECT_DEFS.find((x)=>x.id===btn.dataset.effectId);if(effectUnlocked(def)){profile.effect=def.id;saveProfile();burst(false);}renderHub();if(!effectUnlocked(def))showToast(effectUnlockLabel(def));});
   on("#soundToggle",()=>{profile.settings.sound=!profile.settings.sound;saveProfile();if(profile.settings.sound)playSfx("combo",.65);renderHub();});
   on("#musicToggle",()=>{profile.settings.music=!profile.settings.music;saveProfile();if(profile.settings.music)setBackgroundMusic("menu");else stopBackgroundMusic();renderHub();});
   on("#hapticsToggle",()=>{profile.settings.haptics=!profile.settings.haptics;saveProfile();if(profile.settings.haptics)haptic([8,20,8]);renderHub();});

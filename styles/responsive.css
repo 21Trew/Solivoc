@@ -338,7 +338,7 @@ Three-column rounds should feel like a card game, not a five-column web grid. */
      --gap: 7px;
    }
    html[data-cols="3"] {
-     --cw: clamp(70px, 20vw, 82px);
+     --cw: clamp(74px, 21vw, 88px);
      --gap: clamp(8px, 2.2vw, 10px);
      --radius: clamp(17px, 4.5vw, 20px);
    }
@@ -370,7 +370,7 @@ Three-column rounds should feel like a card game, not a five-column web grid. */
      border-radius: clamp(13px, 3.5vw, 16px);
      font-size: clamp(21px, 5.5vw, 25px);
      box-shadow:
-       0 8px 20px #5c42ff66,
+       0 8px 20px #00000038,
        inset 0 1px #fff9;
    }
    .brand b {
@@ -431,7 +431,7 @@ Three-column rounds should feel like a card game, not a five-column web grid. */
        0 5px 0 #09092325,
        0 10px 22px #0406174d,
        inset 0 1px #fff,
-       inset 0 -12px 20px rgba(127, 111, 189, 0.07);
+       inset 0 -12px 20px rgba(34, 38, 58, 0.05);
    }
    .card.category {
      gap: clamp(7px, 1.7vw, 10px);
@@ -508,7 +508,7 @@ Three-column rounds should feel like a card game, not a five-column web grid. */
    }
    .controls .primary {
      box-shadow:
-       0 8px 20px #593cff52,
+       0 8px 20px #00000038,
        inset 0 1px #ffffff66;
    }
    .toast {
@@ -537,7 +537,7 @@ Three-column rounds should feel like a card game, not a five-column web grid. */
    /* Small widths: keep hierarchy, only compress what is necessary. */
    @media (max-width: 370px) {
      html[data-cols="3"] {
-       --cw: clamp(66px, 20vw, 76px);
+       --cw: clamp(70px, 21vw, 80px);
        --gap: 7px;
      }
      html[data-cols="4"] {

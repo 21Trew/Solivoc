@@ -123,7 +123,7 @@
      font-weight: 950;
      background: linear-gradient(145deg, #9c6cff, #6d58ff 52%, #3c80ff);
      box-shadow:
-       0 7px 18px #5c42ff55,
+       0 7px 18px #00000038,
        inset 0 1px #fff8;
      border: 1px solid #ffffff35;
    }
@@ -198,7 +198,7 @@
      width: 0;
      border-radius: inherit;
      background: linear-gradient(90deg, #4ed7ff, #8c65ff 48%, #ff67ad);
-     box-shadow: 0 0 14px #7f66ff88;
+     box-shadow: none;
      transition: width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
    }
    .progress-label {
@@ -357,7 +357,7 @@
        0 4px 0 #09092325,
        0 8px 17px #04061745,
        inset 0 1px #fff,
-       inset 0 -10px 18px rgba(127, 111, 189, 0.07);
+       inset 0 -10px 18px rgba(34, 38, 58, 0.05);
      background:
        radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.95) 0 7%, transparent 8%),
        radial-gradient(circle at 82% 86%, rgba(184, 176, 228, 0.14) 0 8%, transparent 9%),
@@ -417,8 +417,8 @@
        linear-gradient(145deg, #8b62ff 0%, #684dff 48%, #3c69e8 100%);
      border: 2px solid #b8a9ff;
      box-shadow:
-       0 4px 0 #32258a,
-       0 8px 16px #06072266,
+       0 4px 0 #19182f,
+       0 8px 16px #05061166,
        inset 0 1px #ffffff88;
      color: transparent;
    }
@@ -442,7 +442,7 @@
      color: #fff;
      font-size: 14px;
      transform: rotate(45deg);
-     text-shadow: 0 1px 3px #2b1a80;
+     text-shadow: 0 1px 3px #111326;
    }
    .card.category {
      --h: var(--cat-hue, 258);
@@ -450,8 +450,8 @@
      color: #fff;
      border-color: #ffffff85;
      box-shadow:
-       0 4px 0 hsl(var(--h) 62% 24% / 0.55),
-       0 10px 20px #06051d57,
+       0 4px 0 #17162d99,
+       0 10px 20px #05051257,
        inset 0 1px #ffffff73;
      flex-direction: column;
      gap: 6px;
@@ -733,7 +733,7 @@
      color: #fff;
      border-color: #ffffff24;
      box-shadow:
-       0 6px 16px #593cff42,
+       0 6px 16px #00000032,
        inset 0 1px #ffffff55;
    }
    .controls button:disabled {
@@ -864,7 +864,7 @@
      color: #fff;
      padding: 13px 18px;
      font-weight: 900;
-     box-shadow: 0 8px 18px #6656e63d;
+     box-shadow: 0 8px 18px #0000002f;
    }
    .celebration {
      position: fixed;
