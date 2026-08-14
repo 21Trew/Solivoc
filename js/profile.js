@@ -1,4 +1,4 @@
-/* Persistent player profile, stars, analytics and theme state. */
+/* Persistent player profile, stars, analytics, settings and theme state. */
 function defaultProfile() {
   return {
     currentLevel: 1,
@@ -10,24 +10,28 @@ function defaultProfile() {
     theme: "violet",
     tutorialComplete: false,
     legacyStarsMigrated: false,
+    settings: { sound: true, haptics: true },
     stats: { ...DEFAULT_STATS },
     daily: { lastDate: null, currentStreak: 0, bestStreak: 0, completedDates: [], freezeWeek: null },
   };
 }
 function loadProfile() {
-  try {
-    const p = JSON.parse(localStorage.getItem(PROFILE_KEY));
-    if (p) {
+  const keys = [PROFILE_KEY, PREV_PROFILE_KEY];
+  for (const key of keys) {
+    try {
+      const p = JSON.parse(localStorage.getItem(key));
+      if (!p) continue;
       return {
         ...defaultProfile(),
         ...p,
-        stats: { ...DEFAULT_STATS, ...p.stats },
-        daily: { ...defaultProfile().daily, ...p.daily },
+        stats: { ...DEFAULT_STATS, ...(p.stats || {}) },
+        daily: { ...defaultProfile().daily, ...(p.daily || {}) },
+        settings: { ...defaultProfile().settings, ...(p.settings || {}) },
         discovered: Array.isArray(p.discovered) ? p.discovered : [],
         achievements: Array.isArray(p.achievements) ? p.achievements : [],
       };
-    }
-  } catch {}
+    } catch {}
+  }
   return defaultProfile();
 }
 let profile = loadProfile();
@@ -72,7 +76,7 @@ function track(name, data = {}) {
     const a = JSON.parse(localStorage.getItem(ANALYTICS_KEY)) || { counts: {}, events: [] };
     a.counts[name] = (a.counts[name] || 0) + 1;
     a.events.push({ name, t: Date.now(), ...data });
-    if (a.events.length > 200) a.events = a.events.slice(-200);
+    if (a.events.length > 250) a.events = a.events.slice(-250);
     localStorage.setItem(ANALYTICS_KEY, JSON.stringify(a));
   } catch {}
 }

@@ -1,4 +1,4 @@
-/* Move payloads, drop validation and state mutations. */
+/* Move payloads, validation, state mutations, hint search and deadlock analysis. */
 function getDragPayload(card) {
   const source = card.dataset.source;
   if (source === "column") {
@@ -25,11 +25,8 @@ function targetFromPoint(x, y) {
 function payloadGroup(p) {
   return { cards: p.groups.flatMap((g) => g.cards), faceUp: true };
 }
-function canDrop(p, target) {
-  if (!target) return false;
-  const zone = target.dataset.zone,
-    idx = +target.dataset.index,
-    moving = payloadGroup(p),
+function canDropTo(p, zone, idx) {
+  const moving = payloadGroup(p),
     cc = categoryCard(moving);
   if (zone === "slot") {
     const dest = state.slots[idx];
@@ -45,6 +42,17 @@ function canDrop(p, target) {
     return last.faceUp && canMerge(last, moving);
   }
   return false;
+}
+function canDrop(p, target) {
+  return !!target && canDropTo(p, target.dataset.zone, +target.dataset.index);
+}
+function isProductiveDrop(p, zone, idx) {
+  if (zone === "slot") return true;
+  if (zone !== "column") return false;
+  const dest = state.columns[idx];
+  if (dest.length) return canMerge(dest[dest.length - 1], payloadGroup(p));
+  if (p.source !== "column") return false;
+  return p.start > 0; // moving to empty column matters only when it exposes a hidden card.
 }
 function detachPayload(p) {
   if (p.source === "column") {
@@ -63,41 +71,120 @@ function detachPayload(p) {
   }
   return [];
 }
-function completeSlot(i) {
+function slotIsComplete(i) {
   const g = state.slots[i],
     cc = g && categoryCard(g);
-  if (cc && wordCount(g) === cc.total) {
-    state.slots[i] = null;
-    state.completed++;
-    if (state.mode !== "tutorial") {
-      profile.stats.categoriesCompleted++;
-      if (!profile.discovered.includes(cc.cat)) profile.discovered.push(cc.cat);
-      track("category_completed", { category: cc.cat, mode: state.mode });
-      checkAchievements();
-    }
-    burst(false);
-    haptic([12, 22, 28]);
-    showToast(`✓ ${cc.label}: собрано!`);
+  return !!(cc && wordCount(g) === cc.total);
+}
+async function finalizeCompletedSlot(i) {
+  const before = state.slots[i],
+    cc = before && categoryCard(before);
+  if (!cc || !slotIsComplete(i)) {
+    categoryAnimating = false;
+    return;
   }
+  await animateCategoryCompletion(i, cc.label);
+  const current = state.slots[i],
+    currentCc = current && categoryCard(current);
+  if (!currentCc || currentCc.cat !== cc.cat || !slotIsComplete(i)) {
+    categoryAnimating = false;
+    return;
+  }
+  state.slots[i] = null;
+  state.completed++;
+  if (state.mode !== "tutorial") {
+    profile.stats.categoriesCompleted++;
+    if (!profile.discovered.includes(cc.cat)) profile.discovered.push(cc.cat);
+    track("category_completed", { category: cc.cat, mode: state.mode });
+    checkAchievements();
+  }
+  showToast(`✓ ${cc.label}: собрано!`);
+  categoryAnimating = false;
+  render();
+  markStateChanged();
 }
 function performDrop(p, target) {
-  if (!canDrop(p, target)) return false;
+  if (!canDrop(p, target) || categoryAnimating) return false;
+  const zone = target.dataset.zone,
+    idx = +target.dataset.index,
+    productive = isProductiveDrop(p, zone, idx);
   pushHistory();
   const groups = detachPayload(p),
-    moving = { cards: groups.flatMap((g) => g.cards), faceUp: true },
-    zone = target.dataset.zone,
-    idx = +target.dataset.index;
+    moving = { cards: groups.flatMap((g) => g.cards), faceUp: true };
   if (zone === "slot") {
     if (state.slots[idx]) state.slots[idx].cards.push(...moving.cards);
     else state.slots[idx] = moving;
-    completeSlot(idx);
   } else {
     const col = state.columns[idx];
     if (col.length) col[col.length - 1].cards.push(...moving.cards);
     else col.push(moving);
   }
   state.run.moves++;
+  registerCombo(productive);
+  playSfx("drop");
   haptic(9);
   render();
+  if (zone === "slot" && slotIsComplete(idx)) {
+    categoryAnimating = true;
+    setTimeout(() => finalizeCompletedSlot(idx), 35);
+  } else markStateChanged();
   return true;
+}
+
+function maxStockRecycles() {
+  const limit = state?.special?.maxRecycles;
+  return Number.isFinite(limit) ? limit : Infinity;
+}
+function canRecycleStock() {
+  return !!state?.waste?.length && (state.run?.recycles || 0) < maxStockRecycles();
+}
+function currentMovePayloads() {
+  const payloads = [];
+  state.columns.forEach((col, ci) => {
+    const start = firstOpenIndex(col);
+    if (start < col.length) payloads.push({ source: "column", ci, start, groups: col.slice(start) });
+  });
+  if (state.waste.length)
+    payloads.push({ source: "waste", groups: [{ cards: [state.waste.at(-1)], faceUp: true }] });
+  return payloads;
+}
+function findUsefulBoardMove() {
+  const payloads = currentMovePayloads();
+  const zones = [
+    ...state.slots.map((_, index) => ({ zone: "slot", index })),
+    ...state.columns.map((_, index) => ({ zone: "column", index })),
+  ];
+  for (const p of payloads) {
+    // Category slots and same-category merges are more useful than temporary empty-column moves.
+    const ranked = zones.slice().sort((a, b) => (a.zone === "slot" ? -1 : 1) - (b.zone === "slot" ? -1 : 1));
+    for (const t of ranked)
+      if (canDropTo(p, t.zone, t.index) && isProductiveDrop(p, t.zone, t.index)) return { payload: p, ...t };
+  }
+  return null;
+}
+function accessibleReserveCards() {
+  const out = [...state.stock];
+  if (canRecycleStock()) out.push(...state.waste);
+  else if (state.waste.length) out.push(state.waste.at(-1));
+  return out;
+}
+function reserveHasFutureMove() {
+  const reserve = accessibleReserveCards();
+  if (!reserve.length) return false;
+  const freeSlot = state.slots.some((g) => !g),
+    activeCats = new Set(state.slots.filter(Boolean).map(catOfGroup));
+  return reserve.some((c) => (c.type === "category" ? freeSlot : activeCats.has(c.cat)));
+}
+function isDeadlockedState() {
+  if (!state || state.rewarded || state.completed >= state.totalCategories) return false;
+  if (findUsefulBoardMove()) return false;
+  if (reserveHasFutureMove()) return false;
+  return true;
+}
+function findHintMove() {
+  const board = findUsefulBoardMove();
+  if (board) return board;
+  if (state.stock.length) return { action: "draw" };
+  if (canRecycleStock()) return { action: "recycle" };
+  return null;
 }

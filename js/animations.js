@@ -20,6 +20,7 @@ function animateInitialDeal() {
     .map((el, i) => ({ el, i, r: el.getBoundingClientRect() }))
     .sort((a, b) => (Math.abs(a.r.top - b.r.top) > 8 ? a.r.top - b.r.top : a.r.left - b.r.left));
   stockEl.classList.add("deal-pulse");
+  playSfx("pickup", 0.55);
   let maxEnd = 0;
   ordered.forEach(({ el, r }, i) => {
     const cx = r.left + r.width / 2,
@@ -53,6 +54,7 @@ function animateInitialDeal() {
     if (token === dealAnimationToken) {
       dealAnimating = false;
       stockEl.classList.remove("deal-pulse");
+      scheduleDeadlockCheck(420);
     }
   }, maxEnd + 40);
 }
@@ -64,6 +66,7 @@ function animatePendingReveal() {
   const el = document.querySelector(`.card[data-uid="${CSS.escape(uidToReveal)}"]`);
   if (!el) return;
   el.classList.add("reveal-card");
+  playSfx("flip", 0.7);
   el.animate(
     [
       { transform: "perspective(500px) rotateY(78deg) scale(.94)", opacity: 0.45 },
@@ -102,6 +105,7 @@ function animateRecycle() {
   pendingRecycle = false;
   if (motionReduced()) return;
   stockEl.classList.add("deal-pulse");
+  playSfx("flip", 0.65);
   setTimeout(() => stockEl.classList.remove("deal-pulse"), 430);
 }
 function queuePostRenderCardAnimations() {

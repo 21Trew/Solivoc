@@ -72,11 +72,13 @@ function finishLevel() {
   const stars = calculateStars();
   let newAchievements = [];
   if (state.mode === "regular") {
-    const old = profile.starsByLevel[state.level] || 0;
+    const old = profile.starsByLevel[state.level] || 0,
+      firstClear = old === 0;
     profile.starsByLevel[state.level] = Math.max(old, stars);
     profile.currentLevel = Math.max(profile.currentLevel, state.level + 1);
-    profile.stats.levelsCompleted++;
-    if (stars === 3) profile.stats.tripleStarWins++;
+    if (firstClear) profile.stats.levelsCompleted++;
+    if (stars === 3 && old < 3) profile.stats.tripleStarWins++;
+    if (firstClear && state.special) profile.stats.specialCompleted = (profile.stats.specialCompleted || 0) + 1;
     if (state.run.hints === 0) profile.stats.noHintWins++;
     if (state.run.undos === 0) profile.stats.noUndoWins++;
     track("level_completed", { level: state.level, stars });
@@ -94,6 +96,8 @@ function finishLevel() {
   newAchievements = checkAchievements();
   save();
   showWin(stars, newAchievements);
+  resetCombo();
+  playSfx("win");
   burst(true);
   haptic([20, 35, 45]);
 }
@@ -114,7 +118,7 @@ function showWin(stars, newAchievements = []) {
         ? state.tutorialStep < 3
           ? "Отлично. Переходим к следующей механике."
           : "Обучение закончено. Теперь начинается настоящая игра."
-        : `${state.totalCategories} категорий собрано.`;
+        : `${state.totalCategories} категорий собрано${state.special ? ` · ${state.special.title}` : ""}.`;
   $("#winMetrics").innerHTML =
     `<span class="win-chip ${state.run.hints === 0 ? "good" : ""}">${state.run.hints ? "Подсказки: " + state.run.hints : "Без подсказок"}</span><span class="win-chip ${state.run.undos === 0 ? "good" : ""}">${state.run.undos ? "Отмены: " + state.run.undos : "Без отмен"}</span>`;
   $("#winStarTotal").textContent = `★ ${profile.totalStars} всего`;

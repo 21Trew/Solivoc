@@ -1,4 +1,4 @@
-/* UI event binding and application bootstrap. */
+/* UI event binding, hint/undo orchestration, PWA registration and application bootstrap. */
 function bindAppEvents() {
   let lastTouchEndAt = 0;
   document.addEventListener(
@@ -27,60 +27,71 @@ function bindAppEvents() {
   $("#hubClose").onclick = closeHub;
 
   $("#undo").onclick = () => {
-    if (history.length && !autoMoveBusy) {
-      const previous = history.pop();
-      const undoCount = (state.run?.undos || 0) + 1;
-      state = normalizeState(previous);
-      state.run.undos = undoCount;
-      profile.stats.undos++;
-      track("undo", { mode: state.mode });
-      render();
+    if (autoMoveBusy || categoryAnimating || !history.length) return;
+    const limit = state.special?.maxUndos;
+    if (Number.isFinite(limit) && state.run.undos >= limit) {
+      feedbackWrongMove([$("#undo")], $("#undo"), `В этом уровне доступно только ${limit} отмена`);
+      return;
     }
+    const previous = history.pop(),
+      undoCount = (state.run?.undos || 0) + 1;
+    state = normalizeState(previous);
+    state.run.undos = undoCount;
+    profile.stats.undos++;
+    track("undo", { mode: state.mode });
+    resetCombo();
+    playSfx("drop", 0.65);
+    render();
+    markStateChanged();
   };
+
   $("#restart").onclick = () => {
-    if (autoMoveBusy) return;
+    if (autoMoveBusy || categoryAnimating) return;
     profile.stats.restarts++;
     track("level_restarted", { level: state.level, mode: state.mode });
+    resetCombo();
     if (state.mode === "tutorial") makeLevel(state.tutorialStep, { mode: "tutorial", step: state.tutorialStep });
     else makeLevel(state.level, { mode: state.mode, seed: state.seed });
   };
+
   $("#hint").onclick = () => {
-    if (autoMoveBusy) return;
+    if (autoMoveBusy || categoryAnimating) return;
+    if (state.special?.noHints) {
+      feedbackWrongMove([$("#hint")], $("#hint"), "На этом уровне подсказки отключены");
+      return;
+    }
     state.run.hints++;
     profile.stats.hints++;
     track("hint_used", { mode: state.mode });
-    const payloads = [];
-    state.columns.forEach((col, ci) => {
-      const start = firstOpenIndex(col);
-      if (start < col.length) payloads.push({ source: "column", ci, start, groups: col.slice(start) });
-    });
-    if (state.waste.length)
-      payloads.push({ source: "waste", groups: [{ cards: [state.waste.at(-1)], faceUp: true }] });
-    state.slots.forEach((g, si) => {
-      if (g) payloads.push({ source: "slot", si, groups: [g] });
-    });
-    const targets = [...document.querySelectorAll("[data-zone]")];
-    for (const p of payloads)
-      for (const t of targets)
-        if (canDrop(p, t)) {
-          let q;
-          if (p.source === "column") q = `.card[data-source="column"][data-col="${p.ci}"]`;
-          else if (p.source === "waste") q = ".waste .card.movable";
-          else q = `.slot[data-index="${p.si}"] .card`;
-          const n = document.querySelector(q);
-          n?.classList.add("hint");
-          setTimeout(() => n?.classList.remove("hint"), 1400);
-          showToast(`Ход: ${groupLabel(p.groups[0])}`);
-          save();
-          return;
-        }
-    showToast(
-      state.stock.length || state.waste.length ? "Открой следующую карту колоды" : "Доступных ходов не найдено",
-    );
+    resetCombo();
+    const hint = findHintMove();
+    if (hint?.payload) {
+      const p = hint.payload;
+      let q;
+      if (p.source === "column") q = `.card[data-source="column"][data-col="${p.ci}"]`;
+      else if (p.source === "waste") q = ".waste .card.movable";
+      const n = q ? document.querySelector(q) : null;
+      n?.classList.add("hint");
+      setTimeout(() => n?.classList.remove("hint"), 1400);
+      const actionText = hint.zone === "slot" ? "в категорию" : "на связанную стопку";
+      showToast(`Ход: ${groupLabel(p.groups[0])} → ${actionText}`);
+    } else if (hint?.action === "draw") {
+      stockEl.classList.add("hint-stock");
+      setTimeout(() => stockEl.classList.remove("hint-stock"), 1100);
+      showToast("Открой следующую карту колоды");
+    } else if (hint?.action === "recycle") {
+      stockEl.classList.add("hint-stock");
+      setTimeout(() => stockEl.classList.remove("hint-stock"), 1100);
+      showToast("Верни сброс в колоду");
+    } else {
+      showDeadlock();
+    }
     save();
   };
+
   $("#next").onclick = () => {
     modal.classList.remove("show");
+    resetCombo();
     if (state.mode === "tutorial") {
       if (state.tutorialStep < 3)
         makeLevel(state.tutorialStep + 1, { mode: "tutorial", step: state.tutorialStep + 1 });
@@ -90,6 +101,7 @@ function bindAppEvents() {
   };
   $("#replay").onclick = () => {
     modal.classList.remove("show");
+    resetCombo();
     if (state.mode === "daily") makeLevel(0, { mode: "daily", seed: state.seed });
     else makeLevel(state.level, { mode: "regular", seed: state.seed });
   };
@@ -100,20 +112,30 @@ function bindAppEvents() {
     () => {
       clearTimeout(viewportResizeTimer);
       viewportResizeTimer = setTimeout(() => {
-        if (state && !drag && !autoMoveBusy) render();
+        if (state && !drag && !autoMoveBusy && !categoryAnimating) render();
       }, 120);
     },
     { passive: true },
   );
 }
 
+function registerPwa() {
+  if (!("serviceWorker" in navigator) || !/^https?:$/.test(location.protocol)) return;
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch((err) => console.warn("Service worker:", err));
+  });
+}
+
 function boot() {
+  bindFeedbackEvents();
   bindAppEvents();
+  registerPwa();
   loadCategoryBank()
     .then(() => {
       load();
       checkAchievements();
       saveProfile();
+      setTimeout(() => scheduleDeadlockCheck(1000), 300);
     })
     .catch((err) => {
       console.error(err);

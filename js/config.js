@@ -2,11 +2,29 @@
 let BANK = [];
 const SAVE_KEY = "worditaire-state-v10";
 const OLD_SAVE_KEY = "assoc-klondike-v7";
-const PROFILE_KEY = "worditaire-profile-v2";
+const PROFILE_KEY = "worditaire-profile-v3";
+const PREV_PROFILE_KEY = "worditaire-profile-v2";
 const ANALYTICS_KEY = "worditaire-analytics-v1";
 const RECENT_KEY = "assoc-recent-categories-v2";
 const MAX_CARD_WORD_LEN = 10,
   MAX_CARD_TITLE_LEN = 10;
+
+const CHAPTER_SIZE = 10;
+const CHAPTER_NAMES = [
+  "Первые связи",
+  "Знакомые миры",
+  "Переплетения",
+  "Тонкие намёки",
+  "Большой словарь",
+  "Мастер ассоциаций",
+];
+const SPECIAL_LEVELS = [
+  { id: "no-hints", icon: "◈", title: "Без подсказок", desc: "Подсказки отключены", offset: 5, noHints: true },
+  { id: "precise", icon: "◇", title: "Точный расклад", desc: "Доступна только 1 отмена", offset: 10, maxUndos: 1 },
+  { id: "one-recycle", icon: "↻", title: "Одна прокрутка", desc: "Колоду можно вернуть только один раз", offset: 15, maxRecycles: 1 },
+  { id: "big-mix", icon: "✦", title: "Большая коллекция", desc: "Больше категорий и слов", offset: 20, bigMix: true },
+];
+
 const THEME_DEFS = [
   { id: "violet", name: "Violet", stars: 0 },
   { id: "ocean", name: "Ocean", stars: 30 },
@@ -93,6 +111,8 @@ const ACHIEVEMENTS = [
     desc: "Пройти Daily",
     test: (p) => p.stats.dailyCompleted >= 1,
   },
+  { id: "combo5", icon: "×5", title: "На волне", desc: "Сделать комбо ×5", test: (p) => (p.stats.maxCombo || 0) >= 5 },
+  { id: "special5", icon: "◆", title: "Особый случай", desc: "Пройти 5 особых уровней", test: (p) => (p.stats.specialCompleted || 0) >= 5 },
   { id: "streak7", icon: "🔥", title: "Привычка", desc: "Серия 7 дней", test: (p) => p.daily.bestStreak >= 7 },
   {
     id: "streak30",
@@ -114,4 +134,7 @@ const DEFAULT_STATS = {
   stockDraws: 0,
   restarts: 0,
   dailyCompleted: 0,
+  maxCombo: 0,
+  deadlocks: 0,
+  specialCompleted: 0,
 };

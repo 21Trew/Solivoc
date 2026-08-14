@@ -1,9 +1,21 @@
-/* Seeded level generation, solver guard and tutorials. */
+/* Seeded level generation, solver guard, chapters, special levels and tutorials. */
+function chapterInfo(level = 1) {
+  const number = Math.max(1, Math.floor((Math.max(1, level) - 1) / CHAPTER_SIZE) + 1),
+    start = (number - 1) * CHAPTER_SIZE + 1,
+    end = start + CHAPTER_SIZE - 1;
+  return { number, start, end, title: CHAPTER_NAMES[number - 1] || `Глава ${number}` };
+}
+function specialForLevel(level) {
+  if (!level || level < 5) return null;
+  const offset = ((level - 1) % 20) + 1;
+  const def = SPECIAL_LEVELS.find((x) => x.offset === offset);
+  return def ? { ...def } : null;
+}
 function categoryDifficulty(cat) {
   const avg = cat.words.reduce((n, w) => n + w.length, 0) / cat.words.length;
   return avg <= 5.7 ? 1 : avg <= 7.3 ? 2 : 3;
 }
-function regularConfig(level, rng) {
+function regularConfig(level, rng, special = null) {
   let colRange;
   if (level <= 10) colRange = [3, 3];
   else if (level <= 25) colRange = [3, 4];
@@ -18,7 +30,14 @@ function regularConfig(level, rng) {
   const cats = rnd(cr[0], cr[1], rng);
   let difficulty = level <= 12 ? 1 : level <= 50 ? 2 : 3;
   if (recovery) difficulty = Math.max(1, difficulty - 1);
-  const words = difficulty === 1 ? [3, 5] : difficulty === 2 ? [4, 7] : [5, 9];
+  let words = difficulty === 1 ? [3, 5] : difficulty === 2 ? [4, 7] : [5, 9];
+  if (special?.bigMix) {
+    cols = 5;
+    const mixRange = ranges[5];
+    const boostedCats = Math.min(10, Math.max(cats + 1, mixRange[0] + 1));
+    words = [Math.min(8, words[0] + 1), Math.min(9, words[1] + 1)];
+    return { cols, cats: boostedCats, difficulty: Math.max(2, difficulty), words };
+  }
   return { cols, cats, difficulty, words };
 }
 function chooseCompatibleCategories(count, difficulty, rng) {
@@ -150,7 +169,8 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null } = {}) {
   const baseSeed = seed || (mode === "daily" ? `daily:${todayKey()}` : `level:${level}`);
   for (let attempt = 0; attempt < 45; attempt++) {
     const rng = makeRng(baseSeed + ":" + attempt);
-    const cfg = mode === "daily" ? { cols: 5, cats: 7, difficulty: 2, words: [4, 7] } : regularConfig(level, rng);
+    const special = mode === "regular" ? specialForLevel(level) : null,
+      cfg = mode === "daily" ? { cols: 5, cats: 7, difficulty: 2, words: [4, 7] } : regularConfig(level, rng, special);
     const chosen = chooseCompatibleCategories(cfg.cats, cfg.difficulty, rng);
     if (chosen.length < cfg.cats) continue;
     const cards = [];
@@ -185,7 +205,8 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null } = {}) {
       completed: 0,
       totalCategories: cfg.cats,
       categoryIds: chosen.map((c) => c.id),
-      run: { hints: 0, undos: 0, autoMoves: 0, moves: 0, startedAt: Date.now() },
+      run: { hints: 0, undos: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },
+      special,
       rewarded: false,
       generationAttempt: attempt,
     };
@@ -193,7 +214,8 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null } = {}) {
   }
   console.warn("Solver fallback: используем последний корректно сформированный расклад");
   const rng = makeRng(baseSeed + ":fallback"),
-    cfg = mode === "daily" ? { cols: 5, cats: 7, difficulty: 2, words: [4, 6] } : regularConfig(level, rng),
+    special = mode === "regular" ? specialForLevel(level) : null,
+    cfg = mode === "daily" ? { cols: 5, cats: 7, difficulty: 2, words: [4, 6] } : regularConfig(level, rng, special),
     chosen = chooseCompatibleCategories(cfg.cats, cfg.difficulty, rng),
     cards = [];
   for (const cat of chosen) {
@@ -222,7 +244,8 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null } = {}) {
     completed: 0,
     totalCategories: chosen.length,
     categoryIds: chosen.map((c) => c.id),
-    run: { hints: 0, undos: 0, autoMoves: 0, moves: 0, startedAt: Date.now() },
+    run: { hints: 0, undos: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },
+    special,
     rewarded: false,
     generationAttempt: "fallback",
   };
@@ -272,12 +295,13 @@ function makeTutorial(step = 1) {
     completed: 0,
     totalCategories: 1,
     categoryIds: [cat.id],
-    run: { hints: 0, undos: 0, autoMoves: 0, moves: 0, startedAt: Date.now() },
+    run: { hints: 0, undos: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },
+    special: null,
     rewarded: false,
   };
 }
 function normalizeState(s) {
-  s.run = { hints: 0, undos: 0, autoMoves: 0, moves: 0, startedAt: Date.now(), ...(s.run || {}) };
+  s.run = { hints: 0, undos: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now(), ...(s.run || {}) };
   s.mode = s.mode || "regular";
   s.seed = s.seed || `legacy:${s.level || 1}`;
   s.rewarded = !!s.rewarded;

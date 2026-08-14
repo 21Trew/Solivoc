@@ -1,6 +1,9 @@
 /* Game state lifecycle, history and persistence. */
 function makeLevel(level = 1, opts = {}) {
   dealAnimationToken++;
+  resetCombo();
+  hideDeadlock();
+  lastDeadlockSignature = "";
   dealAnimating = false;
   stockEl?.classList.remove("deal-pulse");
   state = opts.mode === "tutorial" ? makeTutorial(opts.step || 1) : buildGeneratedLevel(level, opts);
@@ -10,6 +13,12 @@ function makeLevel(level = 1, opts = {}) {
   track("level_started", { level: state.level, mode: state.mode, seed: state.seed });
   render();
   updateCoach();
+  if (state.mode === "regular" && state.special)
+    setTimeout(() => {
+      showToast(`${state.special.icon} ${state.special.title}: ${state.special.desc}`);
+      playSfx("combo", 0.65);
+    }, 850);
+  setTimeout(() => scheduleDeadlockCheck(900), 250);
 }
 function snapshot() {
   return structuredClone(state);

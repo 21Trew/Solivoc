@@ -1,0 +1,20 @@
+{
+  "name": "Словасьянс — пасьянс ассоциаций",
+  "short_name": "Словасьянс",
+  "description": "Мобильный пасьянс с ассоциациями слов.",
+  "lang": "ru",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#17133f",
+  "theme_color": "#29205d",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -43,7 +43,7 @@ function autoTargetForPayload(p) {
 }
 const nextPaint = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 async function animateAutoMove(card, payload, target) {
-  if (autoMoveBusy) return;
+  if (autoMoveBusy || categoryAnimating) return;
   autoMoveBusy = true;
   const targetCard = target.querySelector(".card"),
     targetRect = (targetCard || target).getBoundingClientRect(),
@@ -53,7 +53,7 @@ async function animateAutoMove(card, payload, target) {
     autoMoveBusy = false;
     return;
   }
-  const reduced = matchMedia?.("(prefers-reduced-motion: reduce)").matches,
+  const reduced = motionReduced(),
     duration = reduced ? 80 : 215,
     flies = sources.map((source, i) => {
       const r = source.getBoundingClientRect(),
@@ -75,6 +75,7 @@ async function animateAutoMove(card, payload, target) {
   await nextPaint();
   setSourceVacancy(vacancyNodes, true);
   sources.forEach((n) => n.classList.add("auto-source"));
+  playSfx("pickup", 0.8);
   const cx = targetRect.left + targetRect.width / 2,
     cy = targetRect.top + targetRect.height / 2;
   await Promise.all(
@@ -102,6 +103,7 @@ async function animateAutoMove(card, payload, target) {
     setSourceVacancy(vacancyNodes, false);
     flies.forEach((x) => x.fly.remove());
     autoMoveBusy = false;
+    feedbackWrongMove(sources, target);
     return;
   }
   setSourceVacancy(vacancyNodes, false);
@@ -125,14 +127,22 @@ function handleCardTap(card, payload) {
       moving = payloadGroup(payload),
       cc = categoryCard(moving);
     if (!target || !canDrop(payload, target)) {
-      showToast(cc ? "Нет свободного поля категории" : "Сначала открой категорию");
+      feedbackWrongMove([card], target, cc ? "Нет свободного поля категории" : "Сначала открой категорию");
       return;
     }
     animateAutoMove(card, payload, target);
   } else lastTap = { key, time: now };
 }
 function startDrag(e) {
-  if (autoMoveBusy || dealAnimating || hub.classList.contains("show") || modal.classList.contains("show")) return;
+  if (
+    autoMoveBusy ||
+    categoryAnimating ||
+    dealAnimating ||
+    hub.classList.contains("show") ||
+    modal.classList.contains("show") ||
+    $("#deadlockModal")?.classList.contains("show")
+  )
+    return;
   const card = e.target.closest(".card.movable");
   if (!card) return;
   e.preventDefault();
@@ -174,6 +184,8 @@ function startDrag(e) {
     startY: e.clientY,
     gripX: e.clientX - left,
     gripY: e.clientY - top,
+    originLeft: left,
+    originTop: top,
     moved: false,
   };
   moveDrag(e);
@@ -187,26 +199,50 @@ function moveDrag(e) {
     setSourceVacancy(drag.vacancyNodes, true);
     drag.sourceNodes.forEach((n) => n.classList.add("drag-source"));
     drag.ghost.style.opacity = "1";
+    playSfx("pickup");
     haptic(4);
   }
   drag.ghost.style.left = e.clientX - drag.gripX + "px";
   drag.ghost.style.top = e.clientY - drag.gripY + "px";
 }
-function endDrag(e) {
+async function returnDragGhost(d) {
+  if (motionReduced()) return;
+  const currentLeft = parseFloat(d.ghost.style.left) || d.originLeft,
+    currentTop = parseFloat(d.ghost.style.top) || d.originTop,
+    dx = d.originLeft - currentLeft,
+    dy = d.originTop - currentTop;
+  await d.ghost
+    .animate(
+      [
+        { transform: "translate3d(0,0,0) scale(1)", opacity: 1 },
+        { transform: `translate3d(${dx}px,${dy}px,0) scale(.985)`, opacity: 0.98 },
+      ],
+      { duration: 155, easing: "cubic-bezier(.2,.8,.2,1)", fill: "forwards" },
+    )
+    .finished.catch(() => {});
+}
+async function endDrag(e) {
   if (!drag) return;
   const d = drag;
   drag = null;
-  d.ghost.remove();
   if (!d.moved) {
+    d.ghost.remove();
     handleCardTap(d.card, d.payload);
     return;
   }
-  const t = targetFromPoint(e.clientX, e.clientY);
+  const target = targetFromPoint(e.clientX, e.clientY),
+    valid = canDrop(d.payload, target);
+  if (!valid) {
+    await returnDragGhost(d);
+    d.sourceNodes.forEach((n) => n.classList.remove("drag-source"));
+    setSourceVacancy(d.vacancyNodes, false);
+    d.ghost.remove();
+    feedbackWrongMove(d.sourceNodes, target);
+    scheduleDeadlockCheck(260);
+    return;
+  }
+  d.ghost.remove();
   d.sourceNodes.forEach((n) => n.classList.remove("drag-source"));
   setSourceVacancy(d.vacancyNodes, false);
-  if (!performDrop(d.payload, t)) {
-    haptic(22);
-    showToast("Сюда положить нельзя");
-    render();
-  }
+  if (!performDrop(d.payload, target)) feedbackWrongMove(d.sourceNodes, target);
 }

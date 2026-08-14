@@ -7,6 +7,11 @@
       content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"
     />
     <meta name="theme-color" content="#29205d" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
     <title>Словасьянс — пасьянс ассоциаций</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -48,11 +53,12 @@
         <div class="progress-wrap">
           <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
           <span class="progress-label">
+            <span class="special-badge" id="specialBadge" hidden></span>
             <span class="progress-stars">
               ★
               <b id="starTotal">0</b>
             </span>
-            <span>прогресс</span>
+            <span id="chapterLabel">прогресс</span>
           </span>
         </div>
       </header>
@@ -94,6 +100,7 @@
       <span class="coach-step" id="coachStep"></span>
       <span id="coachText">Собирай связанные слова в стопки. Карточки категорий переноси в слоты сверху.</span>
     </div>
+    <div class="combo-pop" id="comboPop" aria-live="polite"></div>
     <div class="toast" id="toast"></div>
     <div class="celebration" id="celebration"></div>
     <div class="achievement-notice" id="achievementNotice">
@@ -103,6 +110,18 @@
           <span class="achievement-notice-kicker">Новое достижение</span>
           <strong class="achievement-notice-title" id="achievementNoticeTitle"></strong>
           <span class="achievement-notice-desc" id="achievementNoticeDesc"></span>
+        </div>
+      </div>
+    </div>
+    <div class="deadlock-modal" id="deadlockModal" aria-hidden="true">
+      <div class="deadlock-card">
+        <div class="deadlock-icon">◇</div>
+        <h2>Ходов не осталось</h2>
+        <p>В текущем положении нет полезного продолжения.</p>
+        <div class="deadlock-actions">
+          <button id="deadlockUndo">↶ Отменить ход</button>
+          <button class="primary" id="deadlockRestart">↻ Заново</button>
+          <button class="secondary" id="deadlockClose">Остаться</button>
         </div>
       </div>
     </div>
@@ -138,6 +157,7 @@
     <script src="./js/runtime.js"></script>
     <script src="./js/generator.js"></script>
     <script src="./js/animations.js"></script>
+    <script src="./js/game/feedback.js"></script>
     <script src="./js/game/state.js"></script>
     <script src="./js/components/cards.js"></script>
     <script src="./js/components/board.js"></script>

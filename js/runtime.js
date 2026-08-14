@@ -50,6 +50,7 @@ function catHue(id) {
   return 205 + (h % 135);
 }
 function haptic(pattern = 10) {
+  if (profile?.settings?.haptics === false) return;
   try {
     navigator.vibrate?.(pattern);
   } catch {}
