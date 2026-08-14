@@ -4,6 +4,7 @@ let hubChapterNumber = null,
   hubCategoryId = null,
   hubVisualCategoryId = null,
   hubEncyclopediaType = "words",
+  hubDuelTab = "active",
   encyclopediaFilter = "all",
   encyclopediaQuery = "",
   encyclopediaSort = "progress",
@@ -101,9 +102,7 @@ function playTabMarkup() {
       <button class="mode-card calm" id="hubCalm"><i>☁</i><b>Спокойно</b><span>Лёгкие бесконечные расклады</span></button>
       <button class="mode-card challenge" id="hubShareChallenge"><i>⇄</i><b>Вызов другу</b><span>Матч + серия до 2 побед</span></button>
     </div>
-    ${ownedChallengesMarkup()}
-    ${receivedChallengesMarkup()}
-    ${typeof duelHistoryMarkup === "function" ? duelHistoryMarkup() : ""}
+    ${typeof duelsHubMarkup === "function" ? duelsHubMarkup(hubDuelTab) : `${ownedChallengesMarkup()}${receivedChallengesMarkup()}`}
     ${weeklyMarkup()}
     ${typeof nearGoalsMarkup === "function" ? nearGoalsMarkup(2) : ""}
     <section class="hub-section challenge-enter"><div class="hub-section-head"><h3>Код испытания</h3><small>6 символов</small></div><div class="challenge-input-row"><input id="challengeInput" inputmode="text" autocomplete="off" autocapitalize="characters" maxlength="6" placeholder="ABC123"><button id="challengeStart">Играть</button></div></section>
@@ -366,6 +365,7 @@ function bindHubHandlers() {
   hubContent.querySelectorAll("[data-owned-challenge-play]").forEach((btn)=>btn.onclick=()=>playOwnedChallenge(btn.dataset.ownedChallengePlay));
   hubContent.querySelectorAll("[data-owned-challenge-share]").forEach((btn)=>btn.onclick=()=>shareChallengeEntry(ownedChallengeByCode(btn.dataset.ownedChallengeShare)));
   hubContent.querySelectorAll("[data-owned-challenge-rematch]").forEach((btn)=>btn.onclick=()=>createChallengeRematch?.(ownedChallengeByCode(btn.dataset.ownedChallengeRematch),"creator"));
+  hubContent.querySelectorAll("[data-received-challenge-play]").forEach((btn)=>btn.onclick=()=>playReceivedChallenge?.(btn.dataset.receivedChallengePlay));
   hubContent.querySelectorAll("[data-received-challenge-rematch]").forEach((btn)=>btn.onclick=()=>createChallengeRematch?.(receivedChallengeByCode(btn.dataset.receivedChallengeRematch),"guest"));
   on("#hubTutorial",()=>{closeHub(); makeLevel(1,{mode:"tutorial",step:1});});
   on("#chapterPrev",()=>{hubChapterNumber=Math.max(1,(hubChapterNumber||1)-1);renderHub();});
@@ -383,6 +383,7 @@ function bindHubHandlers() {
   hubContent.querySelectorAll("[data-ency-filter]").forEach((btn)=>btn.onclick=()=>{encyclopediaFilter=btn.dataset.encyFilter;renderHub();});
   hubContent.querySelectorAll("[data-ency-sort]").forEach((btn)=>btn.onclick=()=>{encyclopediaSort=btn.dataset.encySort;renderHub();});
   const encyclopediaSearch=$("#encyclopediaSearch"); if(encyclopediaSearch){let searchTimer;encyclopediaSearch.oninput=()=>{encyclopediaQuery=encyclopediaSearch.value;clearTimeout(searchTimer);searchTimer=setTimeout(()=>{renderHub();const next=$("#encyclopediaSearch");next?.focus();next?.setSelectionRange(next.value.length,next.value.length);},180);};}
+  hubContent.querySelectorAll("[data-duel-tab]").forEach((btn)=>btn.onclick=()=>{hubDuelTab=btn.dataset.duelTab==="history"?"history":"active";renderHub();});
   hubContent.querySelectorAll("[data-duel-history-rematch]").forEach((btn)=>btn.onclick=()=>{const found=findDuelHistoryEntry?.(btn.dataset.duelHistoryRematch);if(found)createChallengeRematch?.(found.entry,found.perspective);});
   hubContent.querySelectorAll("[data-card-source-mode]").forEach((btn)=>btn.onclick=()=>{profile.settings.cardSourceMode=normalizeCardSourceMode(btn.dataset.cardSourceMode);saveProfile();showToast(`Расклады: ${btn.textContent.trim()}`);renderHub();});
   hubContent.querySelectorAll("[data-association-collection]").forEach((btn)=>btn.onclick=()=>{const id=btn.dataset.associationCollection;closeHub();makeLevel(1,{mode:"collection",collectionId:id,seed:`collection:${id}:${Date.now()}`});});

@@ -1,4 +1,4 @@
-const CACHE = "worditaire-v17";
+const CACHE = "worditaire-v18";
 const CORE = [
   "./",
   "./index.html",
@@ -30,33 +30,75 @@ const CORE = [
   "./js/components/hub.js",
   "./js/app.js"
 ];
+
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(CORE)));
 });
+
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
 });
+
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)))).then(() => self.clients.claim()),
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      .then(() => self.clients.claim()),
   );
 });
+
+function shouldCache(request, url, response) {
+  if (!response?.ok || request.method !== "GET") return false;
+  if (url.origin !== self.location.origin) return false;
+  if (url.pathname.startsWith("/api/")) return false;
+  return true;
+}
+
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
+
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        if (response.ok) caches.open(CACHE).then((cache) => cache.put(event.request, response.clone()));
+    (async () => {
+      try {
+        const response = await fetch(event.request);
+        if (shouldCache(event.request, url, response)) {
+          // Some browsers can return a Response whose stream has already been
+          // locked/consumed. Caching must never break the actual page request.
+          let copy = null;
+          try {
+            if (!response.bodyUsed) copy = response.clone();
+          } catch {}
+          if (copy) {
+            await caches
+              .open(CACHE)
+              .then((cache) => cache.put(event.request, copy))
+              .catch(() => undefined);
+          }
+        }
         return response;
-      })
-      .catch(async () => (await caches.match(event.request)) || (event.request.mode === "navigate" ? caches.match("./index.html") : Response.error())),
+      } catch {
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+        if (event.request.mode === "navigate") {
+          const shell = await caches.match("./index.html");
+          if (shell) return shell;
+        }
+        return Response.error();
+      }
+    })(),
   );
 });
+
 self.addEventListener("push", (event) => {
   let data = {};
-  try { data = event.data?.json() || {}; } catch { data = { body: event.data?.text() || "" }; }
+  try {
+    data = event.data?.json() || {};
+  } catch {
+    data = { body: event.data?.text() || "" };
+  }
   const title = data.title || "Словасьянс";
   event.waitUntil(
     self.registration.showNotification(title, {
@@ -69,6 +111,7 @@ self.addEventListener("push", (event) => {
     }),
   );
 });
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const target = new URL(event.notification.data?.url || "/", self.location.origin).href;

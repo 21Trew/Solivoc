@@ -277,29 +277,59 @@ function rememberReceivedChallenge(data) {
   saveProfile();
   return entry;
 }
+function ownedChallengeCardMarkup(entry, { compact = false } = {}) {
+  if (!entry) return "";
+  const friend = entry.guestResult, me = entry.creatorResult,
+    status = friend
+      ? (me ? `Матч завершён · ${friend.playerName || "Друг"}` : `${friend.playerName || "Друг"} сыграл · твой ход`)
+      : entry.status === "expired"
+        ? "Код истёк или уже использован"
+        : "Ждём, когда друг сыграет",
+    compare = challengeComparison(entry),
+    series = typeof seriesLabel === "function" ? seriesLabel(entry, "creator") : "";
+  return `<article class="owned-challenge ${friend && me ? "completed" : "pending"} ${compact ? "duel-card" : ""}">
+    <div class="owned-challenge-code"><b>${entry.code}</b><span>${status}</span></div>
+    <div class="duel-direction">Отправлен</div>
+    ${series ? `<div class="challenge-series-line">⚔ ${series}</div>` : ""}
+    <div class="owned-challenge-results">${challengeResultMarkup("Ты", me)}${challengeResultMarkup(friend?.playerName || "Друг", friend)}${compare && me && friend ? `<strong>${compare}</strong>` : ""}</div>
+    <div class="owned-challenge-actions">
+      ${!me || !friend ? `<button data-owned-challenge-play="${entry.code}">▶ ${me ? "Переиграть" : "Сыграть"}</button>` : ""}
+      ${!friend && entry.status !== "expired" ? `<button data-owned-challenge-share="${entry.code}">⇄ Отправить</button>` : ""}
+      ${friend && me ? `<button data-owned-challenge-rematch="${entry.code}">⚔ Реванш</button>` : ""}
+    </div>
+  </article>`;
+}
+function receivedChallengeCardMarkup(entry, { compact = false } = {}) {
+  if (!entry) return "";
+  const result = entry.guestResult, creatorResult = entry.creatorResult,
+    status = result
+      ? (creatorResult ? `Матч завершён · ${entry.creatorName || "Друг"}` : `Ты сыграл · ждём ${entry.creatorName || "друга"}`)
+      : `От ${entry.creatorName || "друга"} · твой ход`,
+    series = typeof seriesLabel === "function" ? seriesLabel(entry, "guest") : "";
+  return `<article class="owned-challenge ${result && creatorResult ? "completed" : "pending"} ${compact ? "duel-card" : ""}">
+    <div class="owned-challenge-code"><b>${entry.code}</b><span>${status}</span></div>
+    <div class="duel-direction">Получен</div>
+    ${series ? `<div class="challenge-series-line">⚔ ${series}</div>` : ""}
+    <div class="owned-challenge-results">${challengeResultMarkup("Ты", result)}${challengeResultMarkup(entry.creatorName || "Друг", creatorResult)}</div>
+    <div class="owned-challenge-actions">
+      ${!result ? `<button data-received-challenge-play="${entry.code}">▶ Сыграть</button>` : ""}
+      ${result && creatorResult ? `<button data-received-challenge-rematch="${entry.code}">⚔ Реванш</button>` : ""}
+    </div>
+  </article>`;
+}
 function ownedChallengesMarkup() {
   pruneSentChallenges();
   const items = (profile.sentChallenges || []).slice(0, 6);
   if (!items.length) return "";
-  return `<section class="hub-section owned-challenges"><div class="hub-section-head"><h3>Мои вызовы</h3><small>${items.length}</small></div><div class="owned-challenge-list">${items.map((entry) => {
-    const friend = entry.guestResult, me = entry.creatorResult,
-      status = friend ? `Завершён · ${friend.playerName}` : entry.status === "expired" ? "Код истёк или уже использован" : "Ждём, когда друг сыграет",
-      compare = challengeComparison(entry);
-    const series = typeof seriesLabel === "function" ? seriesLabel(entry, "creator") : "";
-    return `<article class="owned-challenge ${friend ? "completed" : "pending"}"><div class="owned-challenge-code"><b>${entry.code}</b><span>${status}</span></div>${series ? `<div class="challenge-series-line">⚔ ${series}</div>` : ""}<div class="owned-challenge-results">${challengeResultMarkup("Ты", me)}${challengeResultMarkup(friend?.playerName || "Друг", friend)}${compare ? `<strong>${compare}</strong>` : ""}</div><div class="owned-challenge-actions"><button data-owned-challenge-play="${entry.code}">▶ ${me ? "Переиграть" : "Сыграть"}</button>${!friend && entry.status !== "expired" ? `<button data-owned-challenge-share="${entry.code}">⇄ Отправить</button>` : ""}${friend && me ? `<button data-owned-challenge-rematch="${entry.code}">⚔ Реванш</button>` : ""}</div></article>`;
-  }).join("")}</div></section>`;
+  return `<section class="hub-section owned-challenges"><div class="hub-section-head"><h3>Мои вызовы</h3><small>${items.length}</small></div><div class="owned-challenge-list">${items.map((entry)=>ownedChallengeCardMarkup(entry)).join("")}</div></section>`;
 }
 function receivedChallengesMarkup() {
   pruneReceivedChallenges();
   const items = (profile.receivedChallenges || []).slice(0, 6);
   if (!items.length) return "";
-  return `<section class="hub-section owned-challenges received-challenges"><div class="hub-section-head"><h3>Полученные вызовы</h3><small>${items.length}</small></div><div class="owned-challenge-list">${items.map((entry) => {
-    const result = entry.guestResult, creatorResult = entry.creatorResult,
-      status = result ? `Пройден · от ${entry.creatorName || "друга"}` : `От ${entry.creatorName || "друга"} · не завершён`,
-      series = typeof seriesLabel === "function" ? seriesLabel(entry, "guest") : "";
-    return `<article class="owned-challenge ${result ? "completed" : "pending"}"><div class="owned-challenge-code"><b>${entry.code}</b><span>${status}</span></div>${series ? `<div class="challenge-series-line">⚔ ${series}</div>` : ""}<div class="owned-challenge-results">${challengeResultMarkup("Ты", result)}${creatorResult ? challengeResultMarkup(entry.creatorName || "Друг", creatorResult) : ""}</div>${result && creatorResult ? `<div class="owned-challenge-actions"><button data-received-challenge-rematch="${entry.code}">⚔ Реванш</button></div>` : ""}</article>`;
-  }).join("")}</div></section>`;
+  return `<section class="hub-section owned-challenges received-challenges"><div class="hub-section-head"><h3>Полученные вызовы</h3><small>${items.length}</small></div><div class="owned-challenge-list">${items.map((entry)=>receivedChallengeCardMarkup(entry)).join("")}</div></section>`;
 }
+
 async function createRemoteChallenge(meta = {}) {
   const level = Math.max(12, profile.currentLevel || 1),
     sourceMode = normalizeCardSourceMode(profile.settings.cardSourceMode),
@@ -477,6 +507,27 @@ function playOwnedChallenge(code) {
   });
   return true;
 }
+function playReceivedChallenge(code) {
+  const entry = receivedChallengeByCode(code);
+  if (!entry || entry.guestResult) return false;
+  closeHub?.();
+  makeLevel(entry.level, {
+    mode: "challenge",
+    seed: entry.seed,
+    challengeCode: entry.code,
+    challengeRole: "guest",
+    challengeCreatorName: entry.creatorName || "Друг",
+    challengeCreatorAvatar: entry.creatorAvatar || "🙂",
+    challengeCreatorResult: entry.creatorResult || null,
+    challengeGuestToken: entry.guestToken || null,
+    seriesId: entry.seriesId,
+    seriesRound: entry.seriesRound,
+    seriesScoreCreator: entry.seriesScoreCreator,
+    seriesScoreGuest: entry.seriesScoreGuest,
+    cardSourceMode: normalizeCardSourceMode(entry.sourceMode),
+  });
+  return true;
+}
 async function startChallengeCode(value) {
   const raw = challengeCodeFromValue(value),
     compact = raw.toUpperCase().replace(/[^A-Z0-9]/g, ""),
@@ -644,7 +695,10 @@ async function refreshReceivedChallenges() {
       }
     } catch(err) { if(err?.status===404||err?.status===410) entry.synced=true; }
   }
-  if(changed) saveProfile();
+  if(changed) {
+    saveProfile();
+    if (hub?.classList.contains("show") && typeof renderHub === "function" && typeof hubTab !== "undefined" && hubTab === "play") renderHub();
+  }
   return changed;
 }
 

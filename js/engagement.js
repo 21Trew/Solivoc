@@ -219,10 +219,42 @@ function duelHistoryGroups() {
   }
   return [...groups.values()].sort((a,b)=>(b.last?.completedAt||0)-(a.last?.completedAt||0));
 }
-function duelHistoryMarkup() {
-  const groups=duelHistoryGroups();
-  return `<section class="hub-section duel-history"><div class="hub-section-head"><h3>История дуэлей</h3><small>${completedDuelEntries().length} матчей</small></div>${groups.length?`<div class="duel-history-list">${groups.map(g=>`<article><span class="duel-history-avatar">${g.avatar}</span><div><b>${escapeHtml(g.name)}</b><small>${g.matches} игр · ${g.wins}:${g.losses}${g.draws?` · ничьи ${g.draws}`:""}</small><em>Ø ${Math.round(g.moves/Math.max(1,g.matches))} ход. · Ø ${(g.errors/Math.max(1,g.matches)).toFixed(1)} ошибок</em></div><button data-duel-history-rematch="${g.last.entry.code}" data-duel-perspective="${g.last.perspective}">Вызов</button></article>`).join("")}</div>`:`<div class="empty-state">Завершённые матчи появятся здесь</div>`}</section>`;
+function activeDuelEntries() {
+  const out=[];
+  for(const entry of profile.sentChallenges || []) {
+    if(!entry?.code || !entry?.seed || entry.status === "expired" || (entry.creatorResult && entry.guestResult)) continue;
+    out.push({entry,perspective:"creator",at:+entry.createdAt||+entry.completedAt||0});
+  }
+  for(const entry of profile.receivedChallenges || []) {
+    if(!entry?.code || !entry?.seed || (entry.creatorResult && entry.guestResult)) continue;
+    out.push({entry,perspective:"guest",at:+entry.completedAt||+entry.startedAt||0});
+  }
+  return out.sort((a,b)=>b.at-a.at);
 }
+function duelHistoryContentMarkup() {
+  const groups=duelHistoryGroups();
+  return groups.length
+    ? `<div class="duel-history-list">${groups.map(g=>`<article><span class="duel-history-avatar">${g.avatar}</span><div><b>${escapeHtml(g.name)}</b><small>${g.matches} игр · ${g.wins}:${g.losses}${g.draws?` · ничьи ${g.draws}`:""}</small><em>Ø ${Math.round(g.moves/Math.max(1,g.matches))} ход. · Ø ${(g.errors/Math.max(1,g.matches)).toFixed(1)} ошибок</em></div><button data-duel-history-rematch="${g.last.entry.code}" data-duel-perspective="${g.last.perspective}">Вызов</button></article>`).join("")}</div>`
+    : `<div class="empty-state">Полностью завершённые матчи появятся здесь</div>`;
+}
+function duelsHubMarkup(view="active") {
+  const active=activeDuelEntries(), completed=completedDuelEntries(), current=view==="history"?"history":"active";
+  const activeMarkup=active.length
+    ? `<div class="owned-challenge-list duel-active-list">${active.map(x=>x.perspective==="guest"?receivedChallengeCardMarkup(x.entry,{compact:true}):ownedChallengeCardMarkup(x.entry,{compact:true})).join("")}</div>`
+    : `<div class="empty-state">Активных вызовов сейчас нет</div>`;
+  return `<section class="hub-section duels-hub">
+    <div class="hub-section-head"><h3>Дуэли</h3><small>${active.length} активных · ${completed.length} матчей</small></div>
+    <div class="duel-tabs">
+      <button class="${current==="active"?"active":""}" data-duel-tab="active">Активные <span>${active.length}</span></button>
+      <button class="${current==="history"?"active":""}" data-duel-tab="history">История <span>${completed.length}</span></button>
+    </div>
+    <div class="duel-tab-content">${current==="active"?activeMarkup:duelHistoryContentMarkup()}</div>
+  </section>`;
+}
+function duelHistoryMarkup() {
+  return `<section class="hub-section duel-history"><div class="hub-section-head"><h3>История дуэлей</h3><small>${completedDuelEntries().length} матчей</small></div>${duelHistoryContentMarkup()}</section>`;
+}
+
 function findDuelHistoryEntry(code) {
   const normalized=normalizeChallengeCode(code); return completedDuelEntries().find((x)=>x.entry.code===normalized)||null;
 }

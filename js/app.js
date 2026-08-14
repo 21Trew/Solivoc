@@ -187,51 +187,75 @@ function startChallengeSyncLoop() {
   });
 }
 
-function boot() {
-  bindFeedbackEvents();
-  bindAppEvents();
-  bindRetentionUi?.();
-  bindEngagementUi?.();
-  registerPwa();
-  retentionSessionStart?.();
-  prepareWeeklyDigest?.();
-  setSplashProgress?.(18,"Загружаю словарь…");
-  loadCategoryBank()
-    .then(async () => {
-      setSplashProgress?.(55,"Собираю прогресс…");
-      migrateCategoryMasteryProgress?.();
-      ensureWeeklyChallenge();
-      runQualityAudit?.();
-      setSplashProgress?.(64,"Настраиваю игру…");
-      await runFirstRunOnboarding?.();
-      const challenge = challengeCodeFromUrl();
-      let startedChallenge = false;
-      if (challenge) {
-        setSplashProgress?.(72,"Открываю вызов…");
-        startedChallenge = await startChallengeCode(challenge);
-      }
-      if (!startedChallenge) load();
-      setSplashProgress?.(82,"Проверяю награды…");
-      checkAchievements();
-      saveProfile();
-      flushPendingChallengeSubmissions?.();
-      const gotResult = await refreshOwnedChallenges?.({ notify: true });
-      const gotReceivedResult = await refreshReceivedChallenges?.();
-      syncPushState?.();
-      startChallengeSyncLoop();
-      setBackgroundMusic("game");
+async function boot() {
+  try {
+    bindFeedbackEvents();
+    bindAppEvents();
+    bindRetentionUi?.();
+    bindEngagementUi?.();
+    registerPwa();
+    retentionSessionStart?.();
+    prepareWeeklyDigest?.();
+
+    setSplashProgress?.(18,"Загружаю словарь…");
+    await loadCategoryBank();
+    setSplashProgress?.(55,"Собираю прогресс…");
+    migrateCategoryMasteryProgress?.();
+    ensureWeeklyChallenge();
+    runQualityAudit?.();
+
+    // First-run onboarding is interactive. The splash must be fully removed
+    // before we wait for the player, otherwise it sits above the modal and
+    // the bootstrap promise can never resolve.
+    let onboardingRan = false;
+    if (!profile.onboardingComplete) {
+      setSplashProgress?.(68,"Первый запуск…");
+      await hideSplash?.();
+      onboardingRan = !!(await runFirstRunOnboarding?.());
+    }
+
+    const challenge = challengeCodeFromUrl();
+    let startedChallenge = false;
+    if (challenge) {
+      setSplashProgress?.(72,"Открываю вызов…");
+      startedChallenge = await startChallengeCode(challenge);
+    }
+
+    if (!startedChallenge) {
+      if (onboardingRan) makeLevel(1,{mode:"tutorial",step:1});
+      else load();
+    }
+
+    setSplashProgress?.(82,"Проверяю награды…");
+    checkAchievements();
+    saveProfile();
+    startChallengeSyncLoop();
+    setBackgroundMusic("game");
+
+    if (!onboardingRan) {
       setSplashProgress?.(94,"Почти готово…");
-      hideSplash?.();
-      if (!startedChallenge && (gotResult || gotReceivedResult || unseenDuelEntry?.())) setTimeout(()=>showPendingDuelReveal?.(),900);
-      else setTimeout(()=>showPendingWeeklyDigest?.(),1100);
-      flushRemoteAnalytics?.();
-      setTimeout(() => scheduleDeadlockCheck(1000), 300);
-    })
-    .catch((err) => {
-      console.error(err);
-      showSplashError?.("Не удалось загрузить базу категорий");
-      showToast("Ошибка загрузки базы категорий");
+      await hideSplash?.();
+    }
+
+    // Network synchronization must never keep the loading screen open.
+    // Redis/Push/analytics can finish after the local game is already ready.
+    Promise.allSettled([
+      Promise.resolve(flushPendingChallengeSubmissions?.()),
+      Promise.resolve(refreshOwnedChallenges?.({ notify: true })),
+      Promise.resolve(refreshReceivedChallenges?.()),
+      Promise.resolve(syncPushState?.()),
+    ]).then(()=>{
+      if (!startedChallenge && unseenDuelEntry?.()) setTimeout(()=>showPendingDuelReveal?.(),350);
+      else setTimeout(()=>showPendingWeeklyDigest?.(),550);
     });
+
+    flushRemoteAnalytics?.();
+    setTimeout(() => scheduleDeadlockCheck(1000), 300);
+  } catch (err) {
+    console.error(err);
+    if ($("#splash")) showSplashError?.("Не удалось загрузить игру");
+    else showToast("Ошибка запуска игры");
+  }
 }
 
 boot();

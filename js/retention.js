@@ -487,10 +487,17 @@ function setSplashProgress(percent, text = "") {
   if(label&&text) label.textContent=text;
 }
 function hideSplash() {
-  const splash=$("#splash"); if(!splash) return;
+  const splash=$("#splash");
+  if(!splash) return Promise.resolve();
   setSplashProgress(100,"Готово");
   const delay=Math.max(0,650-(performance.now()-SPLASH_STARTED_AT));
-  setTimeout(()=>{splash.classList.add("hide");setTimeout(()=>splash.remove(),520);},delay);
+  return new Promise((resolve)=>{
+    setTimeout(()=>{
+      splash.classList.add("hide");
+      splash.style.pointerEvents="none";
+      setTimeout(()=>{splash.remove();resolve();},520);
+    },delay);
+  });
 }
 function showSplashError(message="Не удалось загрузить игру") {
   const splash=$("#splash"); if(!splash) return;

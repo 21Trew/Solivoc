@@ -2050,3 +2050,61 @@ button.profile-copy {
 .analytics-health b { font-size:11px; }
 .analytics-health span { margin-top:3px; font-size:9px; color:#c5c2df; }
 .analytics-health small { margin-top:3px; color:#8885a7; font-size:8px; line-height:1.35; }
+
+/* ===== Unified duel center ===== */
+.duels-hub { overflow:hidden; }
+.duel-tabs {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+  padding:4px;
+  margin-bottom:10px;
+  border:1px solid #ffffff10;
+  border-radius:13px;
+  background:#080b1b2e;
+}
+.duel-tabs button {
+  min-height:38px;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:#aaa7c9;
+  font-size:10px;
+  font-weight:900;
+}
+.duel-tabs button span {
+  display:inline-grid;
+  min-width:18px;
+  height:18px;
+  margin-left:4px;
+  padding:0 5px;
+  place-items:center;
+  border-radius:99px;
+  background:#ffffff0b;
+  color:#c8c5df;
+  font-size:8px;
+}
+.duel-tabs button.active {
+  background:#ffffff12;
+  color:#fff;
+  box-shadow:inset 0 1px #ffffff10;
+}
+.duel-tabs button.active span { background:#ffffff16; color:#fff; }
+.duel-tab-content { min-height:70px; }
+.duel-active-list { gap:9px; }
+.duel-card { position:relative; }
+.duel-direction {
+  display:inline-flex;
+  align-items:center;
+  min-height:20px;
+  margin-top:7px;
+  padding:0 7px;
+  border:1px solid #ffffff10;
+  border-radius:999px;
+  background:#ffffff07;
+  color:#9f9bbb;
+  font-size:7.5px;
+  font-weight:850;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
