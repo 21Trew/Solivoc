@@ -72,3 +72,23 @@
 - Restored the pre-hub card sizing for 3-column layouts and the previous 46px minimum adaptive card width.
 - Replaced purple UI glow shadows with neutral depth shadows.
 - Added explicit profile editing in the “Ещё” tab: player name + any title unlocked by earned achievements.
+
+## Сетевые вызовы другу
+
+Новая система вызовов использует короткие одноразовые коды из 6 символов и Vercel Function `api/challenges.mjs`.
+
+Для production на Vercel нужно один раз подключить Redis-хранилище (рекомендуется Upstash Redis через Vercel Marketplace). API автоматически читает любую из пар переменных:
+
+- `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`
+- `KV_REST_API_URL` + `KV_REST_API_TOKEN`
+
+Логика хранения:
+
+1. Автор создаёт вызов — сервер сохраняет seed/уровень и выдаёт короткий код + приватный owner token.
+2. Автор сразу видит созданный расклад в блоке «Мои вызовы» и может сыграть его сам.
+3. Друг вводит код и получает тот же seed.
+4. После первого завершения другом активный код удаляется и больше не принимается повторно.
+5. Результат друга временно хранится отдельно, пока устройство автора его не получит.
+6. После получения результата автором серверная запись результата удаляется. Локально у автора остаётся карточка матча и оба результата.
+
+При отправке вызова приложение генерирует PNG-карточку через Canvas и передаёт её через Web Share API вместе с короткой подписью. URL отдельно в share payload не передаётся.

@@ -121,7 +121,9 @@ function finishLevel() {
     track("daily_completed", { date, stars, moves: state.run.moves });
   } else if (state.mode === "challenge") {
     profile.stats.challengesCompleted = (profile.stats.challengesCompleted || 0) + 1;
-    track("challenge_completed", { seed: state.seed, stars, moves: state.run.moves });
+    if (state.challengeRole === "creator") recordCreatorChallengeResult(state, stars);
+    else if (state.challengeRole === "guest") enqueueGuestChallengeSubmission(state, stars);
+    track("challenge_completed", { seed: state.seed, stars, moves: state.run.moves, role: state.challengeRole || "legacy" });
   } else if (state.mode === "calm") {
     profile.stats.calmCompleted = (profile.stats.calmCompleted || 0) + 1;
     track("calm_completed", { stars, moves: state.run.moves });
@@ -215,7 +217,7 @@ function showWin(stars, newAchievements = [], record = null) {
       : state.mode === "marathon"
         ? `Лучший марафон: ${profile.stats.bestMarathon || 0}`
         : state.mode === "challenge"
-          ? "Результат сохранён для этого кода"
+          ? state.challengeRole === "guest" ? "Результат отправляется автору вызова" : state.challengeRole === "creator" ? "Твой результат сохранён. Ждём друга." : "Результат сохранён для этого кода"
           : nt
             ? `До темы ${nt.name}: ${nt.stars - profile.totalStars} ★`
             : "Все темы за звёзды открыты";
@@ -229,7 +231,7 @@ function showWin(stars, newAchievements = [], record = null) {
         : state.mode === "calm"
           ? "Ещё расклад →"
           : state.mode === "challenge"
-            ? "Новый вызов →"
+            ? "К вызовам →"
             : state.mode === "marathon"
               ? state.marathonSuccess ? "Продолжить марафон →" : "Новый марафон →"
               : "Следующий уровень →";

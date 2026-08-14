@@ -87,10 +87,11 @@ function playTabMarkup() {
       <button class="mode-card daily" id="hubDaily"><i>☀</i><b>Daily</b><span>${dailyDone ? "Сегодня пройдено ✓" : "Один расклад для всех"}</span></button>
       <button class="mode-card marathon" id="hubMarathon"><i>∞</i><b>Марафон</b><span>Рекорд: ${profile.stats.bestMarathon || 0}</span></button>
       <button class="mode-card calm" id="hubCalm"><i>☁</i><b>Спокойно</b><span>Лёгкие бесконечные расклады</span></button>
-      <button class="mode-card challenge" id="hubShareChallenge"><i>⇄</i><b>Вызов другу</b><span>Одинаковый seed</span></button>
+      <button class="mode-card challenge" id="hubShareChallenge"><i>⇄</i><b>Вызов другу</b><span>Короткий код + картинка</span></button>
     </div>
+    ${ownedChallengesMarkup()}
     ${weeklyMarkup()}
-    <section class="hub-section challenge-enter"><div class="hub-section-head"><h3>Код испытания</h3><small>получи от друга</small></div><div class="challenge-input-row"><input id="challengeInput" inputmode="text" placeholder="Вставь код"><button id="challengeStart">Играть</button></div></section>
+    <section class="hub-section challenge-enter"><div class="hub-section-head"><h3>Код испытания</h3><small>6 символов</small></div><div class="challenge-input-row"><input id="challengeInput" inputmode="text" autocomplete="off" autocapitalize="characters" maxlength="6" placeholder="ABC123"><button id="challengeStart">Играть</button></div></section>
     ${chapterMarkup(hubChapterNumber)}`;
 }
 function achievementCardMarkup(a) {
@@ -184,6 +185,9 @@ function bindHubHandlers() {
   on("#hubCalm",()=>{closeHub(); makeLevel(1,{mode:"calm",seed:`calm:${Date.now()}:${Math.random()}`});});
   on("#hubShareChallenge",()=>shareNewChallenge());
   on("#challengeStart",()=>startChallengeCode($("#challengeInput")?.value));
+  const challengeInput=$("#challengeInput"); if(challengeInput) challengeInput.oninput=()=>{challengeInput.value=normalizeChallengeCode(challengeInput.value);};
+  hubContent.querySelectorAll("[data-owned-challenge-play]").forEach((btn)=>btn.onclick=()=>playOwnedChallenge(btn.dataset.ownedChallengePlay));
+  hubContent.querySelectorAll("[data-owned-challenge-share]").forEach((btn)=>btn.onclick=()=>shareChallengeEntry(ownedChallengeByCode(btn.dataset.ownedChallengeShare)));
   on("#hubTutorial",()=>{closeHub(); makeLevel(1,{mode:"tutorial",step:1});});
   on("#chapterPrev",()=>{hubChapterNumber=Math.max(1,(hubChapterNumber||1)-1);renderHub();});
   on("#chapterNext",()=>{hubChapterNumber=Math.min(chapterInfo(profile.currentLevel||1).number,(hubChapterNumber||1)+1);renderHub();});
@@ -215,6 +219,7 @@ function openHub(tab = null) {
   hub.classList.add("show");
   setBackgroundMusic("menu");
   track("hub_opened", { tab: hubTab });
+  if (hubTab === "play") refreshOwnedChallenges({ notify: true });
 }
 function closeHub() {
   hub.classList.remove("show");

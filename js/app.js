@@ -96,7 +96,7 @@ function bindAppEvents() {
         makeLevel(state.tutorialStep + 1, { mode: "tutorial", step: state.tutorialStep + 1 });
       else makeLevel(profile.currentLevel || 1);
     } else if (state.mode === "daily") makeLevel(profile.currentLevel || 1);
-    else if (state.mode === "challenge") startChallengeCode(createChallengeCode());
+    else if (state.mode === "challenge") openHub("play");
     else if (state.mode === "calm") makeLevel(1, { mode: "calm", seed: `calm:${Date.now()}:${Math.random()}` });
     else if (state.mode === "marathon") {
       const nextRound = state.marathonSuccess ? (state.marathonRound || 1) + 1 : 1;
@@ -114,7 +114,13 @@ function bindAppEvents() {
     resetCombo();
     openHub();
   };
-  $("#winShare").onclick = shareCurrentResult;
+  $("#winShare").onclick = () => {
+    if (state?.mode === "challenge" && state.challengeRole === "creator") {
+      const entry = ownedChallengeByCode(state.challengeCode);
+      if (entry) return shareChallengeEntry(entry);
+    }
+    return shareCurrentResult();
+  };
 
   let viewportResizeTimer;
   window.addEventListener(
@@ -160,18 +166,37 @@ function registerPwa() {
   });
 }
 
+let challengeSyncTimer = null;
+function startChallengeSyncLoop() {
+  clearInterval(challengeSyncTimer);
+  challengeSyncTimer = setInterval(() => {
+    if (document.visibilityState !== "visible") return;
+    flushPendingChallengeSubmissions?.();
+    refreshOwnedChallenges?.({ notify: true });
+  }, 20000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    flushPendingChallengeSubmissions?.();
+    refreshOwnedChallenges?.({ notify: true });
+  });
+}
+
 function boot() {
   bindFeedbackEvents();
   bindAppEvents();
   registerPwa();
   loadCategoryBank()
-    .then(() => {
+    .then(async () => {
       ensureWeeklyChallenge();
       const challenge = challengeCodeFromUrl();
-      if (challenge && decodeChallengeCode(challenge)) startChallengeCode(challenge);
-      else load();
+      let startedChallenge = false;
+      if (challenge) startedChallenge = await startChallengeCode(challenge);
+      if (!startedChallenge) load();
       checkAchievements();
       saveProfile();
+      flushPendingChallengeSubmissions?.();
+      refreshOwnedChallenges?.({ notify: false });
+      startChallengeSyncLoop();
       setBackgroundMusic("game");
       setTimeout(() => scheduleDeadlockCheck(1000), 300);
     })

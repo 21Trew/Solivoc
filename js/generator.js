@@ -211,7 +211,7 @@ function isLikelySolvable(s) {
   }
   return completed === target;
 }
-function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCode = null, marathonRound = 1, marathonId = null } = {}) {
+function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCode = null, challengeRole = null, challengeCreatorName = null, marathonRound = 1, marathonId = null } = {}) {
   const baseSeed = seed || (mode === "daily" ? `daily:${todayKey()}` : `level:${level}`);
   for (let attempt = 0; attempt < 45; attempt++) {
     const rng = makeRng(baseSeed + ":" + attempt);
@@ -254,6 +254,8 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
       run: { hints: 0, undos: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },
       special,
       challengeCode,
+      challengeRole,
+      challengeCreatorName,
       marathonRound: mode === "marathon" ? marathonRound : null,
       marathonId: mode === "marathon" ? marathonId || seed : null,
       rewarded: false,
@@ -296,6 +298,8 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
     run: { hints: 0, undos: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },
     special,
     challengeCode,
+    challengeRole,
+    challengeCreatorName,
     marathonRound: mode === "marathon" ? marathonRound : null,
     marathonId: mode === "marathon" ? marathonId || seed : null,
     rewarded: false,

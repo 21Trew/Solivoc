@@ -18,6 +18,8 @@ function defaultProfile() {
     levelRecords: {},
     dailyRecords: {},
     challengeRecords: {},
+    sentChallenges: [],
+    pendingChallengeSubmissions: [],
     weekly: { key: null, id: null, baseline: {}, completed: false, completedCount: 0 },
     tutorialComplete: false,
     legacyStarsMigrated: false,
@@ -47,6 +49,8 @@ function loadProfile() {
         levelRecords: p.levelRecords && typeof p.levelRecords === "object" ? p.levelRecords : {},
         dailyRecords: p.dailyRecords && typeof p.dailyRecords === "object" ? p.dailyRecords : {},
         challengeRecords: p.challengeRecords && typeof p.challengeRecords === "object" ? p.challengeRecords : {},
+        sentChallenges: Array.isArray(p.sentChallenges) ? p.sentChallenges : [],
+        pendingChallengeSubmissions: Array.isArray(p.pendingChallengeSubmissions) ? p.pendingChallengeSubmissions : [],
         weekly: { ...defaultProfile().weekly, ...(p.weekly || {}) },
       };
     } catch {}
@@ -121,6 +125,8 @@ function migrateMetaProfile() {
   profile.levelRecords = profile.levelRecords || {};
   profile.dailyRecords = profile.dailyRecords || {};
   profile.challengeRecords = profile.challengeRecords || {};
+  profile.sentChallenges = Array.isArray(profile.sentChallenges) ? profile.sentChallenges : [];
+  profile.pendingChallengeSubmissions = Array.isArray(profile.pendingChallengeSubmissions) ? profile.pendingChallengeSubmissions : [];
   profile.weekly = { ...defaultProfile().weekly, ...(profile.weekly || {}) };
   profile.effectUnlocksSeen = Array.isArray(profile.effectUnlocksSeen) ? profile.effectUnlocksSeen : ["spark"];
   if (!titleDefById(profile.titleId) || !titleUnlocked(titleDefById(profile.titleId), profile)) profile.titleId = "player";

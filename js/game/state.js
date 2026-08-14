@@ -24,7 +24,7 @@ function makeLevel(level = 1, opts = {}) {
 function restartCurrentLevel() {
   if (!state) return;
   if (state.mode === "tutorial") return makeLevel(state.tutorialStep, { mode: "tutorial", step: state.tutorialStep });
-  if (state.mode === "challenge") return makeLevel(state.level, { mode: "challenge", seed: state.seed, challengeCode: state.challengeCode });
+  if (state.mode === "challenge") return makeLevel(state.level, { mode: "challenge", seed: state.seed, challengeCode: state.challengeCode, challengeRole: state.challengeRole, challengeCreatorName: state.challengeCreatorName });
   if (state.mode === "marathon") return makeLevel(state.level, { mode: "marathon", seed: state.seed, marathonRound: state.marathonRound, marathonId: state.marathonId });
   if (state.mode === "calm") return makeLevel(state.level || 1, { mode: "calm", seed: state.seed });
   return makeLevel(state.level, { mode: state.mode, seed: state.seed });

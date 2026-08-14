@@ -1172,3 +1172,16 @@ body[data-card-back="phoenix"] .card.face-down::after { content: "♨"; transfor
 
 /* Colored UI glows are intentionally disabled; shadows stay neutral. */
 .hub-tabs button.active, .profile-avatar, .hero-play, .brand-mark, .controls .primary { filter:none; }
+
+/* ===== Network friend challenges ===== */
+.owned-challenge-list { display:grid; gap:8px; }
+.owned-challenge { padding:11px; border:1px solid #ffffff12; border-radius:14px; background:#ffffff08; }
+.owned-challenge.completed { border-color:#85e6a737; background:linear-gradient(135deg,#85e6a70f,#4ed7ff0c); }
+.owned-challenge-code { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+.owned-challenge-code b { font:900 18px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.08em; color:#fff; }
+.owned-challenge-code span { max-width:62%; text-align:right; color:#aaa6cf; font-size:8px; line-height:1.25; font-weight:750; }
+.owned-challenge-results { display:grid; gap:3px; margin-top:8px; color:#c9c6e8; font-size:8px; }
+.owned-challenge-results strong { color:#ffd86a; font-size:8px; }
+.owned-challenge-actions { display:flex; gap:7px; margin-top:9px; }
+.owned-challenge-actions button { min-height:36px; border:1px solid #ffffff16; border-radius:10px; background:#ffffff0d; color:#fff; padding:0 11px; font-weight:850; font-size:9px; }
+.challenge-input-row input { text-transform:uppercase; letter-spacing:.12em; font-weight:900; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
