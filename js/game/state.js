@@ -9,7 +9,7 @@ function makeLevel(level = 1, opts = {}) {
   state = opts.mode === "tutorial" ? makeTutorial(opts.step || 1) : buildGeneratedLevel(level, opts);
   if (typeof assignBonusObjective === "function") assignBonusObjective(state);
   history = [];
-  if (typeof recordLevelKnowledge === "function") recordLevelKnowledge(state);
+  if (typeof recordLevelKnowledge === "function" && state.mode !== "collection") recordLevelKnowledge(state);
   initialDealPending = true;
   if (state.mode === "regular") rememberCategories(state.categoryIds);
   track("level_started", { level: state.level, mode: state.mode, seed: state.seed });
@@ -28,6 +28,7 @@ function restartCurrentLevel() {
   if (state.mode === "challenge") return makeLevel(state.level, { mode: "challenge", seed: state.seed, challengeCode: state.challengeCode, challengeRole: state.challengeRole, challengeCreatorName: state.challengeCreatorName, challengeCreatorResult: state.challengeCreatorResult, challengeGuestToken: state.challengeGuestToken, seriesId: state.seriesId, seriesRound: state.seriesRound, seriesScoreCreator: state.seriesScoreCreator, seriesScoreGuest: state.seriesScoreGuest });
   if (state.mode === "marathon") return makeLevel(state.level, { mode: "marathon", seed: state.seed, marathonRound: state.marathonRound, marathonId: state.marathonId });
   if (state.mode === "calm") return makeLevel(state.level || 1, { mode: "calm", seed: state.seed });
+  if (state.mode === "collection") return makeLevel(state.level || 1, { mode: "collection", seed: state.seed, collectionId: state.collectionId });
   return makeLevel(state.level, { mode: state.mode, seed: state.seed });
 }
 function snapshot() {

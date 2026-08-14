@@ -1441,51 +1441,35 @@ body[data-card-back="phoenix"] .card.face-down::after { content: "♨"; transfor
   outline: 2px solid #ffffffc7;
   outline-offset: -3px;
 }
-.card-art-pack-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
+.association-collection-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
 }
-.card-art-pack {
-  min-width: 0;
-  min-height: 104px;
-  border: 1px solid #ffffff14;
-  border-radius: 14px;
-  background: #ffffff08;
-  color: #fff;
-  padding: 8px;
-  text-align: left;
-  box-shadow: inset 0 1px #ffffff0c;
+.association-collection-card {
+  min-width:0;
+  border:1px solid #ffffff14;
+  border-radius:15px;
+  background:#ffffff08;
+  color:#fff;
+  padding:10px;
+  text-align:left;
+  box-shadow:inset 0 1px #ffffff0c;
 }
-.card-art-pack.selected {
-  border-color: #ffffff66;
-  outline: 2px solid #ffffffb8;
-  outline-offset: -3px;
-  background: #ffffff11;
+.association-collection-card:active { transform:scale(.985); }
+.association-collection-preview { display:flex; align-items:center; height:48px; margin-bottom:7px; }
+.association-collection-preview i {
+  width:38px; height:46px; display:grid; place-items:center; border-radius:9px;
+  border:1px solid #ffffffd8; background:linear-gradient(165deg,#fff,#f4f4f8);
+  font-size:20px; font-style:normal; box-shadow:0 3px 8px #00000028;
 }
-.card-art-pack > b { display:block; margin-top:7px; font-size:10px; }
-.card-art-pack > span:last-child { display:block; margin-top:3px; color:#aaa6cf; font-size:7.5px; line-height:1.25; }
-.card-art-preview {
-  height: 48px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.card-art-preview i {
-  width: 34px;
-  height: 45px;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  border: 1px solid #ffffffd8;
-  background: linear-gradient(165deg,#fff,#f4f4f8);
-  color: #23263e;
-  font-size: 18px;
-  font-style: normal;
-  box-shadow: 0 3px 8px #00000028;
-}
-.card-art-preview i + i { margin-left: -10px; }
-.card-art-preview.text-only i { margin-left:0; font-size:12px; font-weight:900; }
+.association-collection-preview i+i { margin-left:-10px; }
+.association-collection-copy { display:block; }
+.association-collection-copy b { display:block; font-size:10px; }
+.association-collection-copy small { display:block; min-height:22px; margin-top:3px; color:#aaa6cf; font-size:7.5px; line-height:1.3; }
+.association-collection-progress { display:block; height:5px; margin-top:8px; border-radius:99px; overflow:hidden; background:#ffffff0d; }
+.association-collection-progress i { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#45d6c5,#ffd665); }
+.association-collection-meta { display:block; margin-top:5px; color:#d8d4eb; font-size:7.5px; font-weight:800; }
 .notification-state {
   display: flex;
   align-items: center;

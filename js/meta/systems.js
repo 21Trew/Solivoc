@@ -13,7 +13,7 @@ function levelRefLabel(s = state) {
   return null;
 }
 function recordLevelKnowledge(s = state) {
-  if (!s || s.mode === "tutorial") return;
+  if (!s || s.mode === "tutorial" || s.mode === "collection") return;
   const ref = levelRefLabel(s);
   for (const id of new Set(s.categoryIds || [])) {
     const stat = categoryStat(id);
@@ -22,7 +22,7 @@ function recordLevelKnowledge(s = state) {
   }
 }
 function recordVisibleKnowledge(s = state) {
-  if (!s || s.mode === "tutorial") return;
+  if (!s || s.mode === "tutorial" || s.mode === "collection") return;
   const visible = [];
   s.columns?.forEach((col) => col.forEach((g) => { if (g.faceUp) visible.push(...g.cards); }));
   s.slots?.forEach((g) => { if (g) visible.push(...g.cards); });
@@ -43,7 +43,7 @@ function recordVisibleKnowledge(s = state) {
   }
 }
 function recordCategoryCompletion(catId) {
-  if (!catId) return;
+  if (!catId || String(catId).startsWith("visual:")) return;
   const stat = categoryStat(catId);
   stat.completions = (stat.completions || 0) + 1;
 }

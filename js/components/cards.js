@@ -11,17 +11,19 @@ function cardNode(g, extra = "") {
     card.classList.toggle("mystery-category", mystery);
     card.innerHTML = `<span class="name ${String(label).length <= 6 ? "short-title" : "long-title"}">${label}</span><span class="count">${wordCount(g)}/${cc.total}</span>`;
   } else {
-    const single = g.cards[0], emoji = cardArtEmojiForCard(single);
+    const single = g.cards[0];
     card.classList.add("word-card");
-    if (emoji) {
-      card.classList.add("with-art");
-      const art = document.createElement("span"), label = document.createElement("span");
-      art.className = "card-art-emoji"; art.textContent = emoji; art.setAttribute("aria-hidden", "true");
-      label.className = "word-label"; label.textContent = single.label;
-      card.append(art, label);
+    if (single.visual) {
+      card.classList.add("visual-association-card");
+      const art = document.createElement("span");
+      art.className = "visual-association-emoji";
+      art.textContent = single.label;
+      art.setAttribute("role", "img");
+      art.setAttribute("aria-label", single.visualAlt || "Картинка-ассоциация");
+      card.append(art);
     } else card.textContent = single.label;
   }
-  card.title = g.cards.map((c) => c.label).join(", ");
+  card.title = g.cards.map((c) => c.visualAlt || c.label).join(", ");
   return card;
 }
 function fitText(el, min = 6, max = 10) {

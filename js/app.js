@@ -97,6 +97,7 @@ function bindAppEvents() {
       else makeLevel(profile.currentLevel || 1);
     } else if (state.mode === "daily") makeLevel(profile.currentLevel || 1);
     else if (state.mode === "challenge") openHub("play");
+    else if (state.mode === "collection") makeLevel(1, { mode: "collection", collectionId: state.collectionId, seed: `collection:${state.collectionId}:${Date.now()}` });
     else if (state.mode === "calm") makeLevel(1, { mode: "calm", seed: `calm:${Date.now()}:${Math.random()}` });
     else if (state.mode === "marathon") {
       const nextRound = state.marathonSuccess ? (state.marathonRound || 1) + 1 : 1;

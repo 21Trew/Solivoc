@@ -140,12 +140,27 @@ function categoryDetailMarkup(cat) {
     <div class="encyclopedia-meta"><span>Встречалась <b>${stat.encounters || 0}</b> раз</span><span>Собрана <b>${stat.completions || 0}</b> раз</span><span>Впервые: <b>${stat.firstLevel || "—"}</b></span></div>
     <div class="word-collection">${cat.words.map((w)=>`<span class="${known.has(w)?"known":"unknown"}">${known.has(w)?w:"???"}</span>`).join("")}</div></article>`;
 }
+function associationCollectionsMarkup() {
+  return `<section class="hub-section association-collections-section">
+    <div class="hub-section-head"><h3>Игровые коллекции</h3><small>картинки тоже надо объединять по смыслу</small></div>
+    <div class="association-collection-grid">${ASSOCIATION_COLLECTION_DEFS.map((collection) => {
+      const progress = associationCollectionProgress(collection.id), samples = collection.categories.slice(0, 3);
+      return `<button class="association-collection-card" data-association-collection="${collection.id}">
+        <span class="association-collection-preview">${samples.map((cat) => `<i title="${escapeHtml(cat.title)}">${cat.cards[0][0]}</i>`).join("")}</span>
+        <span class="association-collection-copy"><b>${collection.icon} ${collection.name}</b><small>${escapeHtml(collection.desc)}</small></span>
+        <span class="association-collection-progress"><i style="width:${progress.total ? (progress.completed / progress.total) * 100 : 0}%"></i></span>
+        <span class="association-collection-meta">${progress.completed}/${progress.total} ассоциаций${progress.completed === progress.total ? " · освоено ✓" : " · играть →"}</span>
+      </button>`;
+    }).join("")}</div>
+  </section>`;
+}
 function collectionTabMarkup() {
   const discovered = new Set(profile.discovered), count = discoveredCategoryCount(profile);
   if (!hubCategoryId || !discovered.has(hubCategoryId)) hubCategoryId = BANK.find((c)=>discovered.has(c.id))?.id || null;
   const cat = BANK.find((c)=>c.id===hubCategoryId);
   return `${profileHeroMarkup()}
-    <section class="hub-section"><div class="hub-section-head"><h3>Энциклопедия</h3><small>${count}/${BANK.length} категорий</small></div>${categoryDetailMarkup(cat)}
+    ${associationCollectionsMarkup()}
+    <section class="hub-section"><div class="hub-section-head"><h3>Энциклопедия слов</h3><small>${count}/${BANK.length} категорий</small></div>${categoryDetailMarkup(cat)}
       <div class="collection-grid encyclopedia-grid">${BANK.map((c)=>{const m=discovered.has(c.id)&&typeof categoryMasteryData==="function"&&categoryMasteryData(c.id).mastered;return `<button class="collection-item ${discovered.has(c.id)?"seen":"locked"} ${m?"mastered":""} ${hubCategoryId===c.id?"selected":""}" data-category-id="${c.id}" ${discovered.has(c.id)?"":"disabled"}>${discovered.has(c.id)?`${m?"★ ":""}${c.title}`:"???"}</button>`;}).join("")}</div>
     </section>`;
 }
@@ -209,12 +224,6 @@ function openProfileEditorModal() {
     renderHub();
   };
 }
-function cardArtPackMarkup() {
-  return CARD_ART_PACK_DEFS.map((pack)=>{
-    const selected=profile.cardArtPack===pack.id, preview=pack.emojis.slice(0,3);
-    return `<button class="card-art-pack ${selected?"selected":""}" data-card-art-pack="${pack.id}"><span class="card-art-preview ${pack.id==="none"?"text-only":""}">${pack.id==="none"?`<i>Aa</i>`:preview.map((emoji)=>`<i>${emoji}</i>`).join("")}</span><b>${pack.icon} ${pack.name}</b><span>${pack.desc}</span></button>`;
-  }).join("");
-}
 function notificationPermissionLabel() {
   if (!("Notification" in window)) return { cls:"blocked", text:"Не поддерживаются браузером" };
   if (Notification.permission === "granted") return { cls:"ok", text:"Разрешение браузера получено" };
@@ -227,7 +236,6 @@ function appearanceTabMarkup() {
   return `${profileHeroMarkup()}
     <section class="hub-section"><div class="hub-section-head"><h3>Темы</h3><small>выбери оформление</small></div><div class="theme-grid">${themes}</div></section>
     <section class="hub-section"><div class="hub-section-head"><h3>Рубашки</h3><small>${CARD_BACK_DEFS.filter((b) => cardBackUnlocked(b)).length}/${CARD_BACK_DEFS.length}</small></div><div class="cardback-grid">${cardBackMarkup()}</div></section>
-    <section class="hub-section"><div class="hub-section-head"><h3>Картинки на картах</h3><small>эмодзи-наборы</small></div><div class="card-art-pack-grid">${cardArtPackMarkup()}</div></section>
     <section class="hub-section"><div class="hub-section-head"><h3>Рамки профиля</h3><small>за финалы глав</small></div><div class="frame-grid">${typeof frameTilesMarkup === "function" ? frameTilesMarkup() : ""}</div></section>
     <section class="hub-section"><div class="hub-section-head"><h3>Эффекты победы</h3><small>косметические награды</small></div><div class="effect-grid">${effects}</div></section>`;
 }
@@ -295,9 +303,9 @@ function bindHubHandlers() {
   }));
   hubContent.querySelectorAll("[data-ach-filter]").forEach((btn)=>btn.onclick=()=>{achievementFilter=btn.dataset.achFilter;renderHub();});
   hubContent.querySelectorAll("[data-category-id]").forEach((btn)=>btn.onclick=()=>{hubCategoryId=btn.dataset.categoryId;renderHub();});
+  hubContent.querySelectorAll("[data-association-collection]").forEach((btn)=>btn.onclick=()=>{const id=btn.dataset.associationCollection;closeHub();makeLevel(1,{mode:"collection",collectionId:id,seed:`collection:${id}:${Date.now()}`});});
   hubContent.querySelectorAll("[data-theme-id]").forEach((btn)=>btn.onclick=()=>{const def=THEME_DEFS.find((x)=>x.id===btn.dataset.themeId);if(themeUnlocked(def)){profile.theme=def.id;saveProfile();}renderHub();if(!themeUnlocked(def))showToast(`Откроется за ${themeUnlockLabel(def)}`);});
   hubContent.querySelectorAll("[data-card-back-id]").forEach((btn)=>btn.onclick=()=>{const def=CARD_BACK_DEFS.find((x)=>x.id===btn.dataset.cardBackId);if(cardBackUnlocked(def)){profile.cardBack=def.id;saveProfile();}renderHub();if(!cardBackUnlocked(def))showToast(cardBackUnlockLabel(def));});
-  hubContent.querySelectorAll("[data-card-art-pack]").forEach((btn)=>btn.onclick=()=>{const def=cardArtPackById(btn.dataset.cardArtPack);profile.cardArtPack=def.id;saveProfile();renderHub();showToast(`Карты: ${def.name}`);});
   hubContent.querySelectorAll("[data-frame-id]").forEach((btn)=>btn.onclick=()=>{const def=FRAME_DEFS.find((x)=>x.id===btn.dataset.frameId);if(frameUnlocked(def)){profile.frame=def.id;saveProfile();}renderHub();if(!frameUnlocked(def))showToast(`Откроется после главы ${def.chapter}`);});
   hubContent.querySelectorAll("[data-effect-id]").forEach((btn)=>btn.onclick=()=>{const def=EFFECT_DEFS.find((x)=>x.id===btn.dataset.effectId);if(effectUnlocked(def)){profile.effect=def.id;saveProfile();burst(false);}renderHub();if(!effectUnlocked(def))showToast(effectUnlockLabel(def));});
   on("#soundToggle",()=>{profile.settings.sound=!profile.settings.sound;saveProfile();if(profile.settings.sound)playSfx("combo",.65);renderHub();});

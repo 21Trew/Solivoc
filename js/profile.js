@@ -9,7 +9,6 @@ function defaultProfile() {
     achievements: [],
     theme: "violet",
     cardBack: "classic",
-    cardArtPack: "none",
     cardBackUnlocksSeen: ["classic"],
     effect: "spark",
     effectUnlocksSeen: ["spark"],
@@ -23,6 +22,7 @@ function defaultProfile() {
     pushClientId: "",
     retention: { lastOpenDate: null, openDays: [], lastSessionAt: 0 },
     categoryStats: {},
+    associationCollections: {},
     levelRecords: {},
     dailyRecords: {},
     challengeRecords: {},
@@ -56,6 +56,7 @@ function loadProfile() {
         cardBackUnlocksSeen: Array.isArray(p.cardBackUnlocksSeen) ? p.cardBackUnlocksSeen : ["classic"],
         effectUnlocksSeen: Array.isArray(p.effectUnlocksSeen) ? p.effectUnlocksSeen : ["spark"],
         categoryStats: p.categoryStats && typeof p.categoryStats === "object" ? p.categoryStats : {},
+        associationCollections: p.associationCollections && typeof p.associationCollections === "object" ? p.associationCollections : {},
         levelRecords: p.levelRecords && typeof p.levelRecords === "object" ? p.levelRecords : {},
         dailyRecords: p.dailyRecords && typeof p.dailyRecords === "object" ? p.dailyRecords : {},
         challengeRecords: p.challengeRecords && typeof p.challengeRecords === "object" ? p.challengeRecords : {},
@@ -146,7 +147,7 @@ function migrateMetaProfile() {
   profile.retention.openDays = Array.isArray(profile.retention.openDays) ? profile.retention.openDays : [];
   profile.frame = FRAME_DEFS.some((f) => f.id === profile.frame) ? profile.frame : "none";
   profile.avatarEmoji = AVATAR_EMOJIS.includes(profile.avatarEmoji) ? profile.avatarEmoji : "🙂";
-  profile.cardArtPack = cardArtPackById(profile.cardArtPack).id;
+  profile.associationCollections = profile.associationCollections && typeof profile.associationCollections === "object" ? profile.associationCollections : {};
   profile.pushClientId = String(profile.pushClientId || "");
   if (!profile.xpMigrated) {
     profile.xp = Math.max(+profile.xp || 0,
@@ -184,11 +185,6 @@ function applyCardBack(id) {
   const back = def && cardBackUnlocked(def) ? id : "classic";
   profile.cardBack = back;
   document.body.dataset.cardBack = back;
-}
-function applyCardArtPack(id) {
-  const pack = cardArtPackById(id);
-  profile.cardArtPack = pack.id;
-  document.body.dataset.cardArt = pack.id;
 }
 function effectUnlocked(def, p = profile) {
   if (!def) return false;
@@ -229,7 +225,6 @@ function saveProfile() {
   localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
   applyTheme(profile.theme);
   applyCardBack(profile.cardBack);
-  applyCardArtPack(profile.cardArtPack);
   applyEffect(profile.effect);
   applyTitle(profile.titleId);
   applyFrame(profile.frame);
@@ -253,7 +248,6 @@ function applyTheme(id) {
 recomputeStars();
 applyTheme(profile.theme);
 applyCardBack(profile.cardBack);
-applyCardArtPack(profile.cardArtPack);
 applyEffect(profile.effect);
 applyTitle(profile.titleId);
 applyFrame(profile.frame);

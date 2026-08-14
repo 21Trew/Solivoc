@@ -130,6 +130,16 @@ function finishLevel() {
     else if (state.challengeRole === "guest") enqueueGuestChallengeSubmission(state, stars);
     track("challenge_completed", { seed: state.seed, stars, moves: state.run.moves, role: state.challengeRole || "legacy" });
     if (typeof awardXp === "function") awardXp(55 + stars * 10, "Вызов", { notifyRank: false });
+  } else if (state.mode === "collection") {
+    const collection = associationCollectionById(state.collectionId);
+    profile.associationCollections ||= {};
+    const progress = profile.associationCollections[collection.id] ||= { plays: 0, wins: 0, completedCategories: [] };
+    progress.plays = (+progress.plays || 0) + 1;
+    progress.wins = (+progress.wins || 0) + 1;
+    progress.completedCategories = [...new Set([...(progress.completedCategories || []), ...(state.categoryIds || [])])];
+    profile.stats.collectionGamesCompleted = (profile.stats.collectionGamesCompleted || 0) + 1;
+    track("collection_completed", { collectionId: collection.id, categories: state.categoryIds?.length || 0, stars, moves: state.run.moves });
+    if (typeof awardXp === "function") awardXp(40 + stars * 8, `Коллекция: ${collection.name}`, { notifyRank: false });
   } else if (state.mode === "calm") {
     profile.stats.calmCompleted = (profile.stats.calmCompleted || 0) + 1;
     track("calm_completed", { stars, moves: state.run.moves });
@@ -168,6 +178,7 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
   const titles = {
     daily: "Daily пройден!",
     challenge: "Вызов пройден!",
+    collection: `${associationCollectionById(state.collectionId).name}: собрано!`,
     calm: "Спокойный расклад завершён",
     marathon: state.marathonSuccess ? `Марафон · раунд ${state.marathonRound}` : "Марафон окончен",
   };
@@ -179,6 +190,8 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
       ? `Серия: ${profile.daily.currentStreak} дн.`
       : state.mode === "challenge"
         ? perfect ? "Идеальный ответ на вызов!" : "Расклад решён. Можно улучшить результат."
+        : state.mode === "collection"
+          ? (() => { const p = associationCollectionProgress(state.collectionId); return `Освоено ${p.completed}/${p.total} ассоциаций в коллекции`; })()
         : state.mode === "calm"
           ? "Без спешки. Просто хороший расклад."
           : state.mode === "marathon"

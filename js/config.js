@@ -17,26 +17,87 @@ const AVATAR_EMOJIS = [
   "🎯", "🎮", "🧩", "🏆", "🚀", "💎", "🎧", "🍕"
 ];
 
-const CARD_ART_PACK_DEFS = [
-  { id: "none", name: "Без картинок", icon: "Aa", desc: "Классические текстовые карты", emojis: [] },
-  { id: "mix", name: "Микс", icon: "🎨", desc: "Яркий набор эмодзи", emojis: ["🎯","🌙","🍓","🚲","🎈","🎧","🧩","🏆","🚀","💎","🎮","⚡"] },
-  { id: "animals", name: "Животные", icon: "🦊", desc: "Звери и птицы", emojis: ["🦊","🐼","🐸","🦉","🐙","🦋","🐬","🐯","🐧","🦄","🐢","🦜"] },
-  { id: "nature", name: "Природа", icon: "🌿", desc: "Погода и растения", emojis: ["🌵","🌸","🌊","🍁","🌙","☀️","🔥","❄️","🌈","🍀","🌻","⛰️"] },
-  { id: "food", name: "Еда", icon: "🍕", desc: "Вкусный набор", emojis: ["🍕","🍓","🍣","🍪","🥑","🍉","☕","🍜","🍩","🥐","🍒","🧁"] },
-  { id: "space", name: "Космос", icon: "🚀", desc: "Звёзды и планеты", emojis: ["🌙","⭐","🪐","🚀","☄️","👽","🛰️","🌌","🌍","🔭","🌠","🛸"] },
-  { id: "faces", name: "Эмоции", icon: "😎", desc: "Набор смайлов", emojis: ["🙂","😎","🤩","🥳","🤓","😍","😈","🤠","🫠","😴","😂","🤯"] },
+const ASSOCIATION_COLLECTION_DEFS = [
+  {
+    id: "animals", name: "Животные", icon: "🦊", desc: "Собирай животных по среде и типу",
+    categories: [
+      { id: "farm", title: "Ферма", cards: [["🐄","Корова"],["🐖","Свинья"],["🐔","Курица"],["🐑","Овца"],["🐐","Коза"],["🐎","Лошадь"]] },
+      { id: "africa", title: "Африка", cards: [["🦁","Лев"],["🐘","Слон"],["🦒","Жираф"],["🦓","Зебра"],["🦏","Носорог"],["🐆","Леопард"]] },
+      { id: "forest", title: "Лес", cards: [["🦊","Лиса"],["🐻","Медведь"],["🐺","Волк"],["🦌","Олень"],["🐿️","Белка"],["🦉","Сова"]] },
+      { id: "ocean", title: "Океан", cards: [["🐬","Дельфин"],["🐳","Кит"],["🦈","Акула"],["🐙","Осьминог"],["🦀","Краб"],["🐠","Рыба"]] },
+      { id: "birds", title: "Птицы", cards: [["🦅","Орёл"],["🦆","Утка"],["🦜","Попугай"],["🦢","Лебедь"],["🦩","Фламинго"],["🐧","Пингвин"]] },
+      { id: "insects", title: "Насекомые", cards: [["🐝","Пчела"],["🦋","Бабочка"],["🐞","Божья коровка"],["🦗","Кузнечик"],["🪲","Жук"],["🐜","Муравей"]] },
+    ],
+  },
+  {
+    id: "nature", name: "Природа", icon: "🌿", desc: "Погода, растения и природные явления",
+    categories: [
+      { id: "weather", title: "Погода", cards: [["☀️","Солнце"],["🌧️","Дождь"],["⛈️","Гроза"],["🌨️","Снег"],["🌪️","Торнадо"],["🌈","Радуга"]] },
+      { id: "flowers", title: "Цветы", cards: [["🌹","Роза"],["🌷","Тюльпан"],["🌻","Подсолнух"],["🌸","Сакура"],["🪻","Гиацинт"],["🌺","Гибискус"]] },
+      { id: "plants", title: "Растения", cards: [["🌵","Кактус"],["🌴","Пальма"],["🌲","Ель"],["🌳","Дерево"],["🎋","Бамбук"],["🍀","Клевер"]] },
+      { id: "mountains", title: "Горы", cards: [["⛰️","Гора"],["🏔️","Снежная вершина"],["🌋","Вулкан"],["🪨","Скала"],["🧗","Скалолаз"],["🏞️","Нацпарк"]] },
+      { id: "water", title: "Вода", cards: [["🌊","Волна"],["💧","Капля"],["🧊","Лёд"],["🏝️","Остров"],["⛲","Фонтан"],["🚣","Лодка"]] },
+      { id: "night", title: "Ночь", cards: [["🌙","Луна"],["⭐","Звезда"],["🌌","Млечный путь"],["☄️","Комета"],["🌠","Падающая звезда"],["🌑","Новолуние"]] },
+    ],
+  },
+  {
+    id: "food", name: "Еда", icon: "🍕", desc: "Продукты и блюда по понятным ассоциациям",
+    categories: [
+      { id: "breakfast", title: "Завтрак", cards: [["🍳","Яичница"],["🥞","Блины"],["🥐","Круассан"],["☕","Кофе"],["🥣","Каша"],["🍞","Хлеб"]] },
+      { id: "fruit", title: "Фрукты", cards: [["🍎","Яблоко"],["🍌","Банан"],["🍓","Клубника"],["🍇","Виноград"],["🍉","Арбуз"],["🍍","Ананас"]] },
+      { id: "vegetables", title: "Овощи", cards: [["🥕","Морковь"],["🥦","Брокколи"],["🌽","Кукуруза"],["🍅","Помидор"],["🥒","Огурец"],["🫑","Перец"]] },
+      { id: "fastfood", title: "Фастфуд", cards: [["🍔","Бургер"],["🍟","Картофель фри"],["🍕","Пицца"],["🌭","Хот-дог"],["🌮","Тако"],["🥤","Газировка"]] },
+      { id: "sweets", title: "Сладкое", cards: [["🍰","Торт"],["🧁","Кекс"],["🍩","Пончик"],["🍪","Печенье"],["🍫","Шоколад"],["🍬","Конфета"]] },
+      { id: "asia", title: "Азия", cards: [["🍣","Суши"],["🍜","Лапша"],["🍚","Рис"],["🥟","Пельмени"],["🍱","Бенто"],["🥢","Палочки"]] },
+    ],
+  },
+  {
+    id: "space", name: "Космос", icon: "🚀", desc: "Объекты, техника и явления космоса",
+    categories: [
+      { id: "flight", title: "Полёт", cards: [["🚀","Ракета"],["🛰️","Спутник"],["🛸","НЛО"],["👨‍🚀","Астронавт"],["🌌","Космос"],["🔭","Телескоп"]] },
+      { id: "earth", title: "Земля", cards: [["🌍","Планета"],["🌎","Америка"],["🌏","Азия"],["🌊","Океан"],["☁️","Облака"],["🌐","Глобус"]] },
+      { id: "moon", title: "Луна", cards: [["🌕","Полнолуние"],["🌖","Убывающая"],["🌗","Половина"],["🌘","Серп"],["🌑","Новолуние"],["🌒","Растущая"]] },
+      { id: "stars", title: "Звёзды", cards: [["⭐","Звезда"],["🌟","Яркая звезда"],["✨","Сияние"],["🌠","Падающая звезда"],["☄️","Комета"],["💫","Орбита"]] },
+      { id: "science", title: "Наука", cards: [["🧪","Пробирка"],["🔬","Микроскоп"],["🧬","ДНК"],["⚛️","Атом"],["📡","Антенна"],["🖥️","Компьютер"]] },
+      { id: "future", title: "Будущее", cards: [["🤖","Робот"],["👽","Инопланетянин"],["🦾","Протез"],["🔋","Батарея"],["💡","Идея"],["🕶️","Технологии"]] },
+    ],
+  },
+  {
+    id: "emotions", name: "Эмоции", icon: "😎", desc: "Определи эмоцию по выражению лица",
+    categories: [
+      { id: "joy", title: "Радость", cards: [["😀","Улыбка"],["😄","Смех"],["😁","Радость"],["🤩","Восторг"],["🥳","Праздник"],["😂","Хохот"]] },
+      { id: "sad", title: "Грусть", cards: [["😢","Слеза"],["😭","Плач"],["😞","Печаль"],["😔","Грусть"],["🥺","Просьба"],["😿","Грустный кот"]] },
+      { id: "anger", title: "Злость", cards: [["😠","Сердитость"],["😡","Ярость"],["🤬","Ругательство"],["👿","Злой"],["😤","Фырканье"],["💢","Гнев"]] },
+      { id: "fear", title: "Страх", cards: [["😨","Испуг"],["😱","Ужас"],["😰","Тревога"],["😳","Шок"],["🫣","Прячется"],["👻","Призрак"]] },
+      { id: "love", title: "Любовь", cards: [["😍","Влюблённость"],["🥰","Нежность"],["😘","Поцелуй"],["💘","Стрела любви"],["💖","Сердце"],["❤️","Любовь"]] },
+      { id: "tired", title: "Усталость", cards: [["😴","Сон"],["🥱","Зевок"],["😪","Дремота"],["🫠","Растаял"],["😵‍💫","Головокружение"],["💤","Спит"]] },
+    ],
+  },
 ];
 
-function cardArtPackById(id) {
-  return CARD_ART_PACK_DEFS.find((x) => x.id === id) || CARD_ART_PACK_DEFS[0];
+function associationCollectionById(id) {
+  return ASSOCIATION_COLLECTION_DEFS.find((x) => x.id === id) || ASSOCIATION_COLLECTION_DEFS[0];
 }
-function cardArtEmojiForCard(card, packId = null) {
-  const id = packId || (typeof profile !== "undefined" ? profile.cardArtPack : "none"), pack = cardArtPackById(id);
-  if (!pack.emojis.length) return "";
-  const key = `${card?.cat || ""}|${card?.label || ""}`;
-  let hash = 2166136261;
-  for (const ch of key) { hash ^= ch.charCodeAt(0); hash = Math.imul(hash, 16777619); }
-  return pack.emojis[(hash >>> 0) % pack.emojis.length];
+function associationCollectionCategories(id) {
+  const collection = associationCollectionById(id);
+  return collection.categories.map((cat) => ({
+    id: `visual:${collection.id}:${cat.id}`,
+    title: cat.title,
+    visual: true,
+    words: cat.cards.map(([emoji]) => emoji),
+    visualLabels: Object.fromEntries(cat.cards),
+  }));
+}
+function associationCollectionProgress(id, p = typeof profile !== "undefined" ? profile : null) {
+  const collection = associationCollectionById(id), raw = p?.associationCollections?.[collection.id] || {};
+  const completed = Array.isArray(raw.completedCategories) ? raw.completedCategories : [];
+  return {
+    plays: +raw.plays || 0,
+    wins: +raw.wins || 0,
+    completedCategories: completed,
+    completed: completed.filter((catId) => collection.categories.some((c) => `visual:${collection.id}:${c.id}` === catId)).length,
+    total: collection.categories.length,
+  };
 }
 
 const CHAPTER_SIZE = 10;
@@ -257,6 +318,7 @@ const DEFAULT_STATS = {
   weeklyCompleted: 0,
   challengesCompleted: 0,
   calmCompleted: 0,
+  collectionGamesCompleted: 0,
   bestMarathon: 0,
   totalMoves: 0,
   personalRecords: 0,

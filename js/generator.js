@@ -81,6 +81,7 @@ function regularConfig(level, rng, special = null) {
 }
 function configForMode(level, mode, rng, special = null, opts = {}) {
   if (mode === "daily") return { cols: 5, cats: 7, difficulty: 3, words: [4, 7] };
+  if (mode === "collection") return { cols: 4, cats: 4, difficulty: 1, words: [5, 6] };
   if (mode === "challenge") {
     const cfg = regularConfig(Math.max(12, level || 25), rng, null);
     return { ...cfg, difficulty: Math.max(2, Math.min(5, cfg.difficulty)) };
@@ -224,22 +225,22 @@ function isLikelySolvable(s) {
   }
   return completed === target;
 }
-function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCode = null, challengeRole = null, challengeCreatorName = null, challengeCreatorResult = null, challengeGuestToken = null, seriesId = null, seriesRound = 1, seriesScoreCreator = 0, seriesScoreGuest = 0, marathonRound = 1, marathonId = null } = {}) {
-  const baseSeed = seed || (mode === "daily" ? `daily:${todayKey()}` : `level:${level}`);
+function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCode = null, challengeRole = null, challengeCreatorName = null, challengeCreatorResult = null, challengeGuestToken = null, seriesId = null, seriesRound = 1, seriesScoreCreator = 0, seriesScoreGuest = 0, marathonRound = 1, marathonId = null, collectionId = null } = {}) {
+  const baseSeed = seed || (mode === "daily" ? `daily:${todayKey()}` : mode === "collection" ? `collection:${collectionId || "animals"}:${Date.now()}` : `level:${level}`);
   for (let attempt = 0; attempt < 45; attempt++) {
     const rng = makeRng(baseSeed + ":" + attempt);
     const special = mode === "regular" ? specialForLevel(level) : null,
       cfg = configForMode(level, mode, rng, special, { marathonRound });
-    const chosen = chooseCompatibleCategories(cfg.cats, cfg.difficulty, rng);
+    const chosen = mode === "collection" ? shuffle(associationCollectionCategories(collectionId), rng).slice(0, cfg.cats) : chooseCompatibleCategories(cfg.cats, cfg.difficulty, rng);
     if (chosen.length < cfg.cats) continue;
     const cards = [];
     for (const cat of chosen) {
       const maxN = Math.min(cfg.words[1], 9, cat.words.length),
         minN = Math.min(cfg.words[0], maxN),
         n = rnd(minN, maxN, rng),
-        words = chooseWordsForDifficulty(cat, n, cfg.difficulty, rng);
-      cards.push({ uid: uid(), cat: cat.id, label: cat.title, type: "category", total: n });
-      for (const w of words) cards.push({ uid: uid(), cat: cat.id, label: w, type: "word", total: n });
+        words = cat.visual ? shuffle(cat.words, rng).slice(0, n) : chooseWordsForDifficulty(cat, n, cfg.difficulty, rng);
+      cards.push({ uid: uid(), cat: cat.id, label: cat.title, type: "category", total: n, visualCollection: cat.visual ? collectionId : null });
+      for (const w of words) cards.push({ uid: uid(), cat: cat.id, label: w, type: "word", total: n, visual: !!cat.visual, visualAlt: cat.visualLabels?.[w] || "" });
     }
     const deck = shuffle(cards, rng),
       layoutCount = Math.floor(deck.length / 2),
@@ -264,6 +265,7 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
       completed: 0,
       totalCategories: cfg.cats,
       categoryIds: chosen.map((c) => c.id),
+      collectionId: mode === "collection" ? associationCollectionById(collectionId).id : null,
       run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },
       special,
       challengeCode,
@@ -286,13 +288,13 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
   const rng = makeRng(baseSeed + ":fallback"),
     special = mode === "regular" ? specialForLevel(level) : null,
     cfg = configForMode(level, mode, rng, special, { marathonRound }),
-    chosen = chooseCompatibleCategories(cfg.cats, cfg.difficulty, rng),
+    chosen = mode === "collection" ? shuffle(associationCollectionCategories(collectionId), rng).slice(0, cfg.cats) : chooseCompatibleCategories(cfg.cats, cfg.difficulty, rng),
     cards = [];
   for (const cat of chosen) {
-    const n = Math.min(4, cat.words.length),
-      words = chooseWordsForDifficulty(cat, n, cfg.difficulty, rng);
-    cards.push({ uid: uid(), cat: cat.id, label: cat.title, type: "category", total: n });
-    for (const w of words) cards.push({ uid: uid(), cat: cat.id, label: w, type: "word", total: n });
+    const n = Math.min(mode === "collection" ? 5 : 4, cat.words.length),
+      words = cat.visual ? shuffle(cat.words, rng).slice(0, n) : chooseWordsForDifficulty(cat, n, cfg.difficulty, rng);
+    cards.push({ uid: uid(), cat: cat.id, label: cat.title, type: "category", total: n, visualCollection: cat.visual ? collectionId : null });
+    for (const w of words) cards.push({ uid: uid(), cat: cat.id, label: w, type: "word", total: n, visual: !!cat.visual, visualAlt: cat.visualLabels?.[w] || "" });
   }
   const cats = cards.filter((c) => c.type === "category"),
     words = cards.filter((c) => c.type === "word"),
@@ -314,6 +316,7 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
     completed: 0,
     totalCategories: chosen.length,
     categoryIds: chosen.map((c) => c.id),
+    collectionId: mode === "collection" ? associationCollectionById(collectionId).id : null,
     run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },
     special,
     challengeCode,
@@ -391,7 +394,7 @@ function normalizeState(s) {
 function normalizeLoadedLayout(s) {
   const normalized = normalizeState(s);
   if ((normalized.cols || normalized.columns?.length || 0) <= 5) return { state: normalized, migrated: false };
-  const mode = normalized.mode === "daily" ? "daily" : "regular";
-  const rebuilt = buildGeneratedLevel(normalized.level || 1, { mode, seed: normalized.seed });
+  const mode = ["daily", "collection"].includes(normalized.mode) ? normalized.mode : "regular";
+  const rebuilt = buildGeneratedLevel(normalized.level || 1, { mode, seed: normalized.seed, collectionId: normalized.collectionId });
   return { state: rebuilt, migrated: true };
 }

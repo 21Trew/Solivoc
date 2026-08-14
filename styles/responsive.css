@@ -799,27 +799,21 @@ html[data-stack-fit="tight"] .card.category.open-under .name { padding-top: 1px;
   .splash::before,.splash-mark,.splash-mini-card,.duel-result-icon { animation:none !important; }
 }
 
-/* Illustrated fronts keep the word visible in cascades. */
-.card.word-card.with-art.open-under {
-  gap: 0;
-  flex-direction: column;
+/* Picture association cards stay readable in the exposed cascade strip. */
+.card.visual-association-card.open-under {
+  padding:2px 4px;
+  align-items:flex-start;
+  justify-content:center;
 }
-.card.word-card.with-art.open-under .card-art-emoji {
-  display: none;
+.card.visual-association-card.open-under .visual-association-emoji {
+  width:100%;
+  height:var(--stack-step);
+  font-size:clamp(16px,calc(var(--stack-step) * .72),21px);
+  line-height:var(--stack-step);
 }
-.card.word-card.with-art.open-under .word-label {
-  display: block;
-  width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1;
-}
-@media (max-width: 370px) {
-  .avatar-emoji-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); gap:5px; }
-  .avatar-emoji { border-radius:9px; font-size:18px; }
-  .card-art-pack { min-height:96px; padding:7px; }
-  .card-art-preview i { width:30px; height:41px; font-size:16px; }
+@media (max-width:370px) {
+  .association-collection-card { padding:8px; }
+  .association-collection-preview i { width:33px; height:42px; font-size:18px; }
 }
 
 /* Profile editor / accordion refinements. */

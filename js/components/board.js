@@ -102,6 +102,8 @@ function render() {
           ? "C"
           : state.mode === "marathon"
             ? `M${state.marathonRound || 1}`
+            : state.mode === "collection"
+              ? "▦"
             : state.mode === "calm"
               ? "☁"
               : state.level;
@@ -124,6 +126,8 @@ function render() {
         ? "вызов"
         : state.mode === "marathon"
           ? `марафон ${state.marathonRound || 1}`
+          : state.mode === "collection"
+            ? associationCollectionById(state.collectionId).name.toLowerCase()
           : state.mode === "calm"
             ? "спокойно"
             : "прогресс";
@@ -140,6 +144,11 @@ function render() {
     specialBadge.hidden = false;
     specialBadge.textContent = `∞ Раунд ${state.marathonRound || 1}`;
     specialBadge.title = "Марафон продолжается только при ★★★";
+  } else if (state.mode === "collection") {
+    const collection = associationCollectionById(state.collectionId);
+    specialBadge.hidden = false;
+    specialBadge.textContent = `${collection.icon} ${collection.name}`;
+    specialBadge.title = "Игровая коллекция: собирай картинки по ассоциациям";
   } else if (state.mode === "calm") {
     specialBadge.hidden = false;
     specialBadge.textContent = "☁ Спокойный режим";
