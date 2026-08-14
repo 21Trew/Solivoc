@@ -16,7 +16,7 @@ function parse(value){if(!value)return null;if(typeof value==="object")return va
 function cleanCode(value){const code=String(value||"").trim().toUpperCase();return CODE_RE.test(code)?code:"";}
 function shortCode(){const bytes=randomBytes(6);let code="";for(let i=0;i<6;i++)code+=CODE_ALPHABET[bytes[i]%CODE_ALPHABET.length];return code;}
 function token(){return randomBytes(24).toString("base64url");}
-function cleanResult(value){return{stars:Math.max(1,Math.min(3,Number(value?.stars)||1)),moves:Math.max(0,Math.min(100000,Number(value?.moves)||0)),hints:Math.max(0,Math.min(10000,Number(value?.hints)||0)),errors:Math.max(0,Math.min(10000,Number(value?.errors)||0)),undos:Math.max(0,Math.min(10000,Number(value?.undos)||0)),playerName:String(value?.playerName||"Игрок").trim().slice(0,20)||"Игрок",completedAt:Date.now()};}
+function cleanResult(value){return{stars:Math.max(1,Math.min(3,Number(value?.stars)||1)),moves:Math.max(0,Math.min(100000,Number(value?.moves)||0)),hints:Math.max(0,Math.min(10000,Number(value?.hints)||0)),errors:Math.max(0,Math.min(10000,Number(value?.errors)||0)),undos:Math.max(0,Math.min(10000,Number(value?.undos)||0)),playerName:String(value?.playerName||"Игрок").trim().slice(0,20)||"Игрок",avatarEmoji:String(value?.avatarEmoji||"🙂").slice(0,8)||"🙂",completedAt:Date.now()};}
 async function setWithExistingTtl(key,record,fallback=RESULT_TTL){let ttl=Number(await redis(["TTL",key]));if(!Number.isFinite(ttl)||ttl<60)ttl=fallback;await redis(["SET",key,JSON.stringify(record),"EX",ttl]);}
 function seriesFields(x={}){return{seriesId:String(x.seriesId||"").slice(0,96)||null,seriesRound:Math.max(1,Math.min(99,Number(x.seriesRound)||1)),seriesScoreCreator:Math.max(0,Math.min(9,Number(x.seriesScoreCreator)||0)),seriesScoreGuest:Math.max(0,Math.min(9,Number(x.seriesScoreGuest)||0))};}
 
@@ -31,7 +31,7 @@ export async function GET(request){
       if(result){
         if(ownerToken&&result.ownerToken!==ownerToken)return json({error:"forbidden"},403);
         if(guestToken&&result.guestToken!==guestToken)return json({error:"forbidden"},403);
-        return json({status:"completed",code,guestResult:result.guestResult,creatorResult:result.creatorResult||null,creatorName:result.creatorName,level:result.level,seed:result.seed,...seriesFields(result)});
+        return json({status:"completed",code,guestResult:result.guestResult,creatorResult:result.creatorResult||null,creatorName:result.creatorName,creatorAvatar:result.creatorAvatar||"🙂",level:result.level,seed:result.seed,...seriesFields(result)});
       }
       if(guestToken)return json({error:"not_found"},404);
       const active=parse(await redis(["GET",activeKey(code)]));
@@ -41,7 +41,7 @@ export async function GET(request){
     }
     const active=parse(await redis(["GET",activeKey(code)]));
     if(!active)return json({error:"used_or_expired",message:"Код уже сыгран или истёк"},410);
-    return json({status:"active",code,seed:active.seed,level:active.level,creatorName:active.creatorName||"Игрок",creatorResult:active.creatorResult||null,expiresAt:active.expiresAt,...seriesFields(active)});
+    return json({status:"active",code,seed:active.seed,level:active.level,creatorName:active.creatorName||"Игрок",creatorAvatar:active.creatorAvatar||"🙂",creatorResult:active.creatorResult||null,expiresAt:active.expiresAt,...seriesFields(active)});
   }catch(error){if(error?.code==="REDIS_NOT_CONFIGURED")return json({error:"redis_not_configured",message:"Redis не подключён"},503);console.error("challenge GET",error);return json({error:"server_error"},500);}
 }
 
@@ -49,11 +49,11 @@ export async function POST(request){
   try{
     const body=await request.json().catch(()=>({}));
     if(body.action==="create"){
-      const seed=String(body.seed||"").slice(0,160),level=Math.max(1,Math.min(999,Number(body.level)||25)),creatorName=String(body.creatorName||"Игрок").trim().slice(0,20)||"Игрок",pushClientId=String(body.pushClientId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),series=seriesFields(body);
+      const seed=String(body.seed||"").slice(0,160),level=Math.max(1,Math.min(999,Number(body.level)||25)),creatorName=String(body.creatorName||"Игрок").trim().slice(0,20)||"Игрок",creatorAvatar=String(body.creatorAvatar||"🙂").slice(0,8)||"🙂",pushClientId=String(body.pushClientId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),series=seriesFields(body);
       if(!seed)return json({error:"invalid_seed"},400);
       const ownerToken=token(),createdAt=Date.now(),expiresAt=createdAt+ACTIVE_TTL*1000;
       for(let attempt=0;attempt<14;attempt++){
-        const code=shortCode(),record={v:3,code,seed,level,creatorName,ownerToken,createdAt,expiresAt,pushClientId,creatorResult:null,...series};
+        const code=shortCode(),record={v:4,code,seed,level,creatorName,creatorAvatar,ownerToken,createdAt,expiresAt,pushClientId,creatorResult:null,...series};
         const stored=await redis(["SET",activeKey(code),JSON.stringify(record),"EX",ACTIVE_TTL,"NX"]);
         if(stored==="OK")return json({ok:true,code,ownerToken,expiresAt,...series});
       }
@@ -65,6 +65,12 @@ export async function POST(request){
       const ownerToken=String(body.ownerToken||""),pushClientId=String(body.pushClientId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),active=parse(await redis(["GET",activeKey(code)]));
       if(!active)return json({error:"not_found"},404);if(active.ownerToken!==ownerToken)return json({error:"forbidden"},403);
       active.pushClientId=pushClientId;await setWithExistingTtl(activeKey(code),active,ACTIVE_TTL);return json({ok:true});
+    }
+
+    if(body.action==="guestPush"){
+      const guestToken=String(body.guestToken||""),pushClientId=String(body.pushClientId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),result=parse(await redis(["GET",resultKey(code)]));
+      if(!result)return json({error:"not_found"},404);if(result.guestToken!==guestToken)return json({error:"forbidden"},403);
+      result.guestPushClientId=pushClientId;await setWithExistingTtl(resultKey(code),result);return json({ok:true});
     }
 
     if(body.action==="ownerResult"){
@@ -88,7 +94,7 @@ export async function POST(request){
       const existing=parse(await redis(["GET",resultKey(code)]));
       if(existing){if(existing.submissionId===submissionId)return json({ok:true,duplicate:true,guestToken:existing.guestToken,creatorResult:existing.creatorResult||null,...seriesFields(existing)});return json({error:"used_or_expired",message:"Этот вызов уже сыгран"},410);}
       const raw=await redis(["GETDEL",activeKey(code)]),active=parse(raw);if(!active)return json({error:"used_or_expired",message:"Этот вызов уже сыгран или истёк"},410);
-      const guestResult=cleanResult(body.result),guestToken=token(),guestPushClientId=String(body.pushClientId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),completedAt=Date.now(),record={v:3,code,seed:active.seed,level:active.level,creatorName:active.creatorName,ownerToken:active.ownerToken,guestToken,guestPushClientId,submissionId,guestResult,creatorResult:active.creatorResult||null,ownerAck:false,guestAck:false,completedAt,...seriesFields(active)};
+      const guestResult=cleanResult(body.result),guestToken=token(),guestPushClientId=String(body.pushClientId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),completedAt=Date.now(),record={v:4,code,seed:active.seed,level:active.level,creatorName:active.creatorName,creatorAvatar:active.creatorAvatar||"🙂",ownerToken:active.ownerToken,guestToken,guestPushClientId,submissionId,guestResult,creatorResult:active.creatorResult||null,ownerAck:false,guestAck:false,completedAt,...seriesFields(active)};
       await redis(["SET",resultKey(code),JSON.stringify(record),"EX",RESULT_TTL]);
       if(active.pushClientId) sendPushToClient(active.pushClientId,{title:"Друг завершил вызов",body:`${guestResult.playerName}: ${"★".repeat(guestResult.stars)} · ${guestResult.moves} ходов`,tag:`challenge-${code}`,url:"/"}).catch(()=>{});
       return json({ok:true,completedAt,guestToken,creatorResult:record.creatorResult,...seriesFields(record)});

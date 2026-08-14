@@ -991,3 +991,28 @@
      line-height: 1.2;
      font-weight: 700;
    }
+
+/* ===== Illustrated word-card fronts ===== */
+.card.word-card.with-art {
+  flex-direction: column;
+  gap: clamp(5px, 1.4vw, 8px);
+  padding-top: clamp(7px, 1.8vw, 10px);
+  padding-bottom: clamp(7px, 1.8vw, 10px);
+}
+.card.word-card.with-art .card-art-emoji {
+  position: relative;
+  z-index: 1;
+  display: block;
+  flex: 0 0 auto;
+  font-size: clamp(24px, calc(var(--cw) * .38), 36px);
+  line-height: 1;
+  filter: drop-shadow(0 2px 2px rgba(17, 20, 38, .12));
+}
+.card.word-card.with-art .word-label {
+  position: relative;
+  z-index: 1;
+  display: block;
+  max-width: 100%;
+  line-height: 1;
+  text-align: center;
+}

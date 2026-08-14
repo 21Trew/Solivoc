@@ -10,6 +10,35 @@ const RECENT_KEY = "assoc-recent-categories-v2";
 const MAX_CARD_WORD_LEN = 10,
   MAX_CARD_TITLE_LEN = 10;
 
+const AVATAR_EMOJIS = [
+  "🙂", "😎", "🤩", "🥳", "🤓", "🤠", "🫠", "😈",
+  "🦊", "🐼", "🐸", "🦉", "🐙", "🦄", "🐯", "🐧",
+  "🌙", "⭐", "🔥", "❄️", "🌸", "🍀", "⚡", "🌈",
+  "🎯", "🎮", "🧩", "🏆", "🚀", "💎", "🎧", "🍕"
+];
+
+const CARD_ART_PACK_DEFS = [
+  { id: "none", name: "Без картинок", icon: "Aa", desc: "Классические текстовые карты", emojis: [] },
+  { id: "mix", name: "Микс", icon: "🎨", desc: "Яркий набор эмодзи", emojis: ["🎯","🌙","🍓","🚲","🎈","🎧","🧩","🏆","🚀","💎","🎮","⚡"] },
+  { id: "animals", name: "Животные", icon: "🦊", desc: "Звери и птицы", emojis: ["🦊","🐼","🐸","🦉","🐙","🦋","🐬","🐯","🐧","🦄","🐢","🦜"] },
+  { id: "nature", name: "Природа", icon: "🌿", desc: "Погода и растения", emojis: ["🌵","🌸","🌊","🍁","🌙","☀️","🔥","❄️","🌈","🍀","🌻","⛰️"] },
+  { id: "food", name: "Еда", icon: "🍕", desc: "Вкусный набор", emojis: ["🍕","🍓","🍣","🍪","🥑","🍉","☕","🍜","🍩","🥐","🍒","🧁"] },
+  { id: "space", name: "Космос", icon: "🚀", desc: "Звёзды и планеты", emojis: ["🌙","⭐","🪐","🚀","☄️","👽","🛰️","🌌","🌍","🔭","🌠","🛸"] },
+  { id: "faces", name: "Эмоции", icon: "😎", desc: "Набор смайлов", emojis: ["🙂","😎","🤩","🥳","🤓","😍","😈","🤠","🫠","😴","😂","🤯"] },
+];
+
+function cardArtPackById(id) {
+  return CARD_ART_PACK_DEFS.find((x) => x.id === id) || CARD_ART_PACK_DEFS[0];
+}
+function cardArtEmojiForCard(card, packId = null) {
+  const id = packId || (typeof profile !== "undefined" ? profile.cardArtPack : "none"), pack = cardArtPackById(id);
+  if (!pack.emojis.length) return "";
+  const key = `${card?.cat || ""}|${card?.label || ""}`;
+  let hash = 2166136261;
+  for (const ch of key) { hash ^= ch.charCodeAt(0); hash = Math.imul(hash, 16777619); }
+  return pack.emojis[(hash >>> 0) % pack.emojis.length];
+}
+
 const CHAPTER_SIZE = 10;
 const CHAPTER_NAMES = [
   "Первые связи",

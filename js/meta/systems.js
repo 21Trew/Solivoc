@@ -163,6 +163,7 @@ function cleanChallengeResult(result = {}) {
     errors: Math.max(0, +result.errors || 0),
     undos: Math.max(0, +result.undos || 0),
     playerName: String(result.playerName || "Игрок").trim().slice(0, 20) || "Игрок",
+    avatarEmoji: AVATAR_EMOJIS.includes(result.avatarEmoji) ? result.avatarEmoji : "🙂",
     completedAt: result.completedAt || Date.now(),
   };
 }
@@ -174,6 +175,7 @@ function resultForCurrentChallenge(s = state, stars = null) {
     errors: s?.run?.errors || 0,
     undos: s?.run?.undos || 0,
     playerName: profile.playerName || "Игрок",
+    avatarEmoji: profile.avatarEmoji || "🙂",
     completedAt: Date.now(),
   });
 }
@@ -182,8 +184,8 @@ function challengeStarsText(stars = 0) {
   return `${"★".repeat(n)}${"☆".repeat(3 - n)}`;
 }
 function challengeResultMarkup(label, result) {
-  if (!result) return `<div class="challenge-result-row empty"><b>${label}</b><span>ещё не сыграно</span></div>`;
-  return `<div class="challenge-result-row"><div><b>${label}</b><span>${challengeStarsText(result.stars)} · ${result.moves} ход.</span></div><small>Подсказки ${result.hints} · Ошибки ${result.errors || 0} · Отмены ${result.undos}</small></div>`;
+  if (!result) return `<div class="challenge-result-row empty"><span class="challenge-avatar">•</span><div><b>${label}</b><span>ещё не сыграно</span></div></div>`;
+  return `<div class="challenge-result-row"><span class="challenge-avatar">${result.avatarEmoji || "🙂"}</span><div><div><b>${label}</b><span>${challengeStarsText(result.stars)} · ${result.moves} ход.</span></div><small>Подсказки ${result.hints} · Ошибки ${result.errors || 0} · Отмены ${result.undos}</small></div></div>`;
 }
 function challengeComparison(entry) {
   const me = entry?.creatorResult, friend = entry?.guestResult;
@@ -225,6 +227,7 @@ function rememberReceivedChallenge(data) {
       seed: data.seed,
       level: data.level,
       creatorName: data.creatorName || "Друг",
+      creatorAvatar: data.creatorAvatar || "🙂",
       creatorResult: data.creatorResult ? cleanChallengeResult(data.creatorResult) : null,
       guestToken: data.guestToken || null,
       seriesId: data.seriesId || null,
@@ -241,6 +244,7 @@ function rememberReceivedChallenge(data) {
     entry.seed = data.seed || entry.seed;
     entry.level = data.level || entry.level;
     entry.creatorName = data.creatorName || entry.creatorName || "Друг";
+    entry.creatorAvatar = data.creatorAvatar || entry.creatorAvatar || "🙂";
     if (data.creatorResult) entry.creatorResult = cleanChallengeResult(data.creatorResult);
     if (data.guestToken) entry.guestToken = data.guestToken;
     entry.seriesId = data.seriesId || entry.seriesId || null;
@@ -283,13 +287,14 @@ async function createRemoteChallenge(meta = {}) {
     seriesRound = Math.max(1, +meta.seriesRound || 1),
     seriesScoreCreator = Math.max(0, +meta.seriesScoreCreator || 0),
     seriesScoreGuest = Math.max(0, +meta.seriesScoreGuest || 0);
-  const data = await challengeApi("POST", "", { action: "create", seed, level, creatorName: profile.playerName || "Игрок", seriesId, seriesRound, seriesScoreCreator, seriesScoreGuest, pushClientId: profile.settings?.notifications ? profile.pushClientId : "" });
+  const data = await challengeApi("POST", "", { action: "create", seed, level, creatorName: profile.playerName || "Игрок", creatorAvatar: profile.avatarEmoji || "🙂", seriesId, seriesRound, seriesScoreCreator, seriesScoreGuest, pushClientId: profile.settings?.notifications && profile.settings?.challengeReminders !== false ? profile.pushClientId : "" });
   const entry = {
     code: data.code,
     ownerToken: data.ownerToken,
     seed,
     level,
     creatorName: profile.playerName || "Игрок",
+    creatorAvatar: profile.avatarEmoji || "🙂",
     createdAt: Date.now(),
     expiresAt: data.expiresAt || Date.now() + 7 * 86400000,
     status: "pending",
@@ -351,7 +356,8 @@ async function challengeInviteFile(entry) {
   ctx.font = "900 52px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("✦", 148, 149);
+  ctx.font = "900 54px system-ui, sans-serif";
+  ctx.fillText(entry.creatorAvatar || profile.avatarEmoji || "🙂", 148, 149);
 
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
@@ -453,7 +459,7 @@ async function startChallengeCode(value) {
   if (compact.length === 6 && SHORT_CHALLENGE_RE.test(shortCode)) {
     try {
       const data = await challengeApi("GET", `?code=${encodeURIComponent(shortCode)}`);
-      rememberReceivedChallenge({ code: shortCode, seed: data.seed, level: data.level, creatorName: data.creatorName || "Друг", seriesId: data.seriesId, seriesRound: data.seriesRound, seriesScoreCreator: data.seriesScoreCreator, seriesScoreGuest: data.seriesScoreGuest, creatorResult: data.creatorResult });
+      rememberReceivedChallenge({ code: shortCode, seed: data.seed, level: data.level, creatorName: data.creatorName || "Друг", creatorAvatar: data.creatorAvatar || "🙂", seriesId: data.seriesId, seriesRound: data.seriesRound, seriesScoreCreator: data.seriesScoreCreator, seriesScoreGuest: data.seriesScoreGuest, creatorResult: data.creatorResult });
       closeHub?.();
       makeLevel(data.level, {
         mode: "challenge",
@@ -461,6 +467,7 @@ async function startChallengeCode(value) {
         challengeCode: shortCode,
         challengeRole: "guest",
         challengeCreatorName: data.creatorName || "Друг",
+        challengeCreatorAvatar: data.creatorAvatar || "🙂",
         challengeCreatorResult: data.creatorResult || null,
         seriesId: data.seriesId, seriesRound: data.seriesRound, seriesScoreCreator: data.seriesScoreCreator, seriesScoreGuest: data.seriesScoreGuest,
       });
@@ -498,6 +505,7 @@ function recordGuestChallengeLocal(s = state, result = null) {
     seed: s.seed,
     level: s.level,
     creatorName: s.challengeCreatorName || "Друг",
+    creatorAvatar: s.challengeCreatorAvatar || "🙂",
     creatorResult: s.challengeCreatorResult || null, guestToken: s.challengeGuestToken || null, seriesId: s.seriesId, seriesRound: s.seriesRound, seriesScoreCreator: s.seriesScoreCreator, seriesScoreGuest: s.seriesScoreGuest,
   });
   if (!entry) return null;
@@ -517,7 +525,7 @@ function enqueueGuestChallengeSubmission(s = state, stars = null) {
       code: normalizeChallengeCode(s.challengeCode),
       submissionId,
       result,
-      pushClientId: profile.settings?.notifications ? profile.pushClientId : "",
+      pushClientId: profile.settings?.notifications && profile.settings?.challengeReminders !== false ? profile.pushClientId : "",
       createdAt: Date.now(),
     };
   recordGuestChallengeLocal(s, result);
@@ -627,6 +635,7 @@ function migrateLastGuestChallengeHistory() {
       seed: saved.seed,
       level: saved.level,
       creatorName: saved.challengeCreatorName || "Друг",
+      creatorAvatar: saved.challengeCreatorAvatar || "🙂",
     });
     if (!entry) return;
     entry.guestResult = cleanChallengeResult({
@@ -636,6 +645,7 @@ function migrateLastGuestChallengeHistory() {
       errors: saved.run?.errors || 0,
       undos: saved.run?.undos || 0,
       playerName: profile.playerName || "Игрок",
+      avatarEmoji: profile.avatarEmoji || "🙂",
       completedAt: Date.now(),
     });
     entry.status = "completed";

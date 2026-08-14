@@ -37,7 +37,7 @@ function hubTabsMarkup() {
 function profileHeroMarkup() {
   const title = titleCurrent(), rank = typeof playerRank === "function" ? playerRank(profile) : {name:"Игрок",icon:title.icon}, xp = typeof xpLevelProgress === "function" ? xpLevelProgress(profile) : {level:1,ratio:0,value:0,goal:250}, frame = FRAME_DEFS.find((f)=>f.id===profile.frame) || FRAME_DEFS[0];
   return `<section class="profile-hero" data-frame="${frame.id}" style="--frame-h:${frame.hue}">
-    <div class="profile-avatar">${title.icon}</div>
+    <div class="profile-avatar">${escapeHtml(profile.avatarEmoji || "🙂")}</div>
     <div class="profile-copy"><b>${escapeHtml(profile.playerName || "Игрок")}</b><span>${title.name} · ${rank.name}</span><div class="profile-xp"><i style="width:${xp.ratio*100}%"></i></div></div>
     <div class="profile-meta"><b>Ранг ${xp.level}</b><span>${xp.value}/${xp.goal} XP · ★ ${profile.totalStars}</span></div>
   </section>`;
@@ -139,20 +139,37 @@ function cardBackMarkup() {
     return `<button class="cardback-tile ${unlocked ? "" : "locked"} ${selected ? "selected" : ""} ${back.rare ? "rare" : ""}" data-card-back-id="${back.id}"><span class="cardback-preview back-${back.id}"><i>${back.rare ? "✦" : ""}</i></span><b>${back.name}</b><span>${unlocked ? (selected ? "Выбрано" : "Открыто") : cardBackUnlockLabel(back)}</span></button>`;
   }).join("");
 }
+function avatarEmojiMarkup() {
+  return `<div class="avatar-emoji-grid">${AVATAR_EMOJIS.map((emoji)=>`<button type="button" class="avatar-emoji ${profile.avatarEmoji===emoji?"selected":""}" data-avatar-emoji="${emoji}" aria-label="Аватар ${emoji}">${emoji}</button>`).join("")}</div>`;
+}
+function cardArtPackMarkup() {
+  return CARD_ART_PACK_DEFS.map((pack)=>{
+    const selected=profile.cardArtPack===pack.id, preview=pack.emojis.slice(0,3);
+    return `<button class="card-art-pack ${selected?"selected":""}" data-card-art-pack="${pack.id}"><span class="card-art-preview ${pack.id==="none"?"text-only":""}">${pack.id==="none"?`<i>Aa</i>`:preview.map((emoji)=>`<i>${emoji}</i>`).join("")}</span><b>${pack.icon} ${pack.name}</b><span>${pack.desc}</span></button>`;
+  }).join("");
+}
+function notificationPermissionLabel() {
+  if (!("Notification" in window)) return { cls:"blocked", text:"Не поддерживаются браузером" };
+  if (Notification.permission === "granted") return { cls:"ok", text:"Разрешение браузера получено" };
+  if (Notification.permission === "denied") return { cls:"blocked", text:"Заблокированы в настройках браузера" };
+  return { cls:"idle", text:"Браузер ещё не спрашивал разрешение" };
+}
 function appearanceTabMarkup() {
   const themes = THEME_DEFS.map((t)=>{ const unlocked=themeUnlocked(t); return `<button class="theme-tile theme-${t.id} ${unlocked?"":"locked"} ${profile.theme===t.id?"selected":""}" data-theme-id="${t.id}"><b>${t.name}</b><span>${unlocked?"Открыто":themeUnlockLabel(t)}</span></button>`; }).join("");
   const effects = EFFECT_DEFS.map((e)=>{ const unlocked=effectUnlocked(e); return `<button class="effect-tile ${unlocked?"":"locked"} ${profile.effect===e.id?"selected":""}" data-effect-id="${e.id}">${effectPreviewMarkup(e)}<b>${e.name}</b><span>${unlocked?"Открыто":effectUnlockLabel(e)}</span></button>`; }).join("");
   return `${profileHeroMarkup()}
     <section class="hub-section"><div class="hub-section-head"><h3>Темы</h3><small>выбери оформление</small></div><div class="theme-grid">${themes}</div></section>
     <section class="hub-section"><div class="hub-section-head"><h3>Рубашки</h3><small>${CARD_BACK_DEFS.filter((b) => cardBackUnlocked(b)).length}/${CARD_BACK_DEFS.length}</small></div><div class="cardback-grid">${cardBackMarkup()}</div></section>
+    <section class="hub-section"><div class="hub-section-head"><h3>Картинки на картах</h3><small>эмодзи-наборы</small></div><div class="card-art-pack-grid">${cardArtPackMarkup()}</div></section>
     <section class="hub-section"><div class="hub-section-head"><h3>Рамки профиля</h3><small>за финалы глав</small></div><div class="frame-grid">${typeof frameTilesMarkup === "function" ? frameTilesMarkup() : ""}</div></section>
     <section class="hub-section"><div class="hub-section-head"><h3>Эффекты победы</h3><small>косметические награды</small></div><div class="effect-grid">${effects}</div></section>`;
 }
 function settingsTabMarkup() {
-  const standalone=isStandalonePwa(), installLabel=standalone?"✓ Игра установлена":deferredInstallPrompt?"＋ Установить игру":"＋ На главный экран", report=CATEGORY_BANK_REPORT || {};
+  const standalone=isStandalonePwa(), installLabel=standalone?"✓ Игра установлена":deferredInstallPrompt?"＋ Установить игру":"＋ На главный экран", report=CATEGORY_BANK_REPORT || {}, notificationStatus=notificationPermissionLabel();
   return `${profileHeroMarkup()}
-    <section class="hub-section profile-settings"><div class="hub-section-head"><h3>Профиль</h3><small>имя и титул</small></div>
+    <section class="hub-section profile-settings"><div class="hub-section-head"><h3>Профиль</h3><small>имя, аватар и титул</small></div>
       <label class="profile-field"><span>Имя игрока</span><input id="playerNameInput" maxlength="20" value="${escapeHtml(profile.playerName || "Игрок")}" autocomplete="off" spellcheck="false"></label>
+      <div class="profile-field"><span>Аватар</span>${avatarEmojiMarkup()}</div>
       <label class="profile-field"><span>Титул</span><select id="playerTitleSelect">${availableTitleDefs(profile).map((t)=>`<option value="${t.id}" ${profile.titleId===t.id?"selected":""}>${t.icon} ${t.name}</option>`).join("")}</select></label>
       <button class="profile-save" id="saveProfileSettings">Сохранить профиль</button>
     </section>
@@ -162,11 +179,17 @@ function settingsTabMarkup() {
       <button class="setting-toggle ${profile.settings.haptics?"on":""}" id="hapticsToggle"><b>⌁ Вибрация</b><span>${profile.settings.haptics?"Включена":"Выключена"}</span></button>
       <button class="setting-toggle install" id="installPwa" ${standalone?"disabled":""}><b>${installLabel}</b><span>${standalone?"Standalone-режим":"Работает офлайн после установки"}</span></button>
     </div></section>
-    <section class="hub-section notification-settings"><div class="hub-section-head"><h3>Уведомления</h3><small>только полезные события</small></div><div class="settings-grid">
-      <button class="setting-toggle ${profile.settings.notifications?"on":""}" id="notificationToggle"><b>🔔 Push</b><span>${profile.settings.notifications?"Включены":"Выключены"}</span></button>
-      <button class="setting-toggle ${profile.settings.dailyReminders!==false?"on":""}" id="dailyReminderToggle"><b>☀ Daily</b><span>${profile.settings.dailyReminders!==false?"Напоминать":"Не напоминать"}</span></button>
-      <button class="setting-toggle ${profile.settings.weeklyReminders!==false?"on":""}" id="weeklyReminderToggle"><b>W Неделя</b><span>${profile.settings.weeklyReminders!==false?"Напоминать":"Не напоминать"}</span></button>
-    </div><p class="settings-note">Push нужен для ответа друга, Daily и окончания недельного испытания. Спам-уведомлений нет.</p></section>
+    <section class="hub-section notification-settings"><div class="hub-section-head"><h3>Уведомления</h3><small>управление по типам</small></div>
+      <div class="notification-state ${notificationStatus.cls}"><i></i><span>${notificationStatus.text}</span></div>
+      <div class="settings-grid notification-grid">
+        <button class="setting-toggle ${profile.settings.notifications?"on":""}" id="notificationToggle"><b>🔔 Все Push</b><span>${profile.settings.notifications?"Включены":"Выключены"}</span></button>
+        <button class="setting-toggle ${profile.settings.challengeReminders!==false?"on":""}" id="challengeReminderToggle"><b>⚔ Вызовы</b><span>${profile.settings.challengeReminders!==false?"Ответы друзей":"Не уведомлять"}</span></button>
+        <button class="setting-toggle ${profile.settings.dailyReminders!==false?"on":""}" id="dailyReminderToggle"><b>☀ Daily</b><span>${profile.settings.dailyReminders!==false?"Напоминать":"Не напоминать"}</span></button>
+        <button class="setting-toggle ${profile.settings.weeklyReminders!==false?"on":""}" id="weeklyReminderToggle"><b>W Неделя</b><span>${profile.settings.weeklyReminders!==false?"Напоминать":"Не напоминать"}</span></button>
+      </div>
+      <button class="notification-test" id="notificationTest" ${profile.settings.notifications && typeof Notification!=="undefined" && Notification.permission==="granted"?"":"disabled"}>Проверить уведомление</button>
+      <p class="settings-note">Главный переключатель отключает все системные Push. Остальные настройки позволяют отдельно выбрать ответы на вызовы, Daily и финал недели.</p>
+    </section>
     <section class="hub-section"><div class="hub-section-head"><h3>Сохранение</h3><small>не потеряй прогресс</small></div><div class="save-tools"><button id="exportSave">⇩ Экспорт прогресса</button><button id="importSave">⇧ Импорт прогресса</button></div></section>
     <section class="hub-section bank-health"><div class="hub-section-head"><h3>База слов</h3><small>внутренняя проверка</small></div><div class="bank-health-grid"><span><b>${report.categories||BANK.length}</b> категорий</span><span><b>${report.words||0}</b> слов</span><span><b>${report.ambiguousWords?.length||0}</b> пересечений</span><span><b>${report.warnings?.length||0}</b> предупреждений</span></div><p>Пересечения автоматически не попадают в один расклад; генератор также проверяет проходимость seed.</p></section>
     <section class="hub-section"><div class="hub-section-head"><h3>Обучение</h3><small>повторить механику</small></div><button class="wide-secondary" id="hubTutorial">◇ Запустить обучение заново</button></section>`;
@@ -207,18 +230,28 @@ function bindHubHandlers() {
     showToast("Профиль сохранён");
     renderHub();
   });
+  hubContent.querySelectorAll("[data-avatar-emoji]").forEach((btn)=>btn.onclick=()=>{
+    const emoji=btn.dataset.avatarEmoji; if(!AVATAR_EMOJIS.includes(emoji)) return;
+    profile.avatarEmoji=emoji; saveProfile();
+    hubContent.querySelectorAll("[data-avatar-emoji]").forEach((x)=>x.classList.toggle("selected",x.dataset.avatarEmoji===emoji));
+    const avatar=hubContent.querySelector(".profile-avatar"); if(avatar) avatar.textContent=emoji;
+    showToast(`Аватар ${emoji} выбран`);
+  });
   hubContent.querySelectorAll("[data-ach-filter]").forEach((btn)=>btn.onclick=()=>{achievementFilter=btn.dataset.achFilter;renderHub();});
   hubContent.querySelectorAll("[data-category-id]").forEach((btn)=>btn.onclick=()=>{hubCategoryId=btn.dataset.categoryId;renderHub();});
   hubContent.querySelectorAll("[data-theme-id]").forEach((btn)=>btn.onclick=()=>{const def=THEME_DEFS.find((x)=>x.id===btn.dataset.themeId);if(themeUnlocked(def)){profile.theme=def.id;saveProfile();}renderHub();if(!themeUnlocked(def))showToast(`Откроется за ${themeUnlockLabel(def)}`);});
   hubContent.querySelectorAll("[data-card-back-id]").forEach((btn)=>btn.onclick=()=>{const def=CARD_BACK_DEFS.find((x)=>x.id===btn.dataset.cardBackId);if(cardBackUnlocked(def)){profile.cardBack=def.id;saveProfile();}renderHub();if(!cardBackUnlocked(def))showToast(cardBackUnlockLabel(def));});
+  hubContent.querySelectorAll("[data-card-art-pack]").forEach((btn)=>btn.onclick=()=>{const def=cardArtPackById(btn.dataset.cardArtPack);profile.cardArtPack=def.id;saveProfile();renderHub();showToast(`Карты: ${def.name}`);});
   hubContent.querySelectorAll("[data-frame-id]").forEach((btn)=>btn.onclick=()=>{const def=FRAME_DEFS.find((x)=>x.id===btn.dataset.frameId);if(frameUnlocked(def)){profile.frame=def.id;saveProfile();}renderHub();if(!frameUnlocked(def))showToast(`Откроется после главы ${def.chapter}`);});
   hubContent.querySelectorAll("[data-effect-id]").forEach((btn)=>btn.onclick=()=>{const def=EFFECT_DEFS.find((x)=>x.id===btn.dataset.effectId);if(effectUnlocked(def)){profile.effect=def.id;saveProfile();burst(false);}renderHub();if(!effectUnlocked(def))showToast(effectUnlockLabel(def));});
   on("#soundToggle",()=>{profile.settings.sound=!profile.settings.sound;saveProfile();if(profile.settings.sound)playSfx("combo",.65);renderHub();});
   on("#musicToggle",()=>{profile.settings.music=!profile.settings.music;saveProfile();if(profile.settings.music)setBackgroundMusic("menu");else stopBackgroundMusic();renderHub();});
   on("#hapticsToggle",()=>{profile.settings.haptics=!profile.settings.haptics;saveProfile();if(profile.settings.haptics)haptic([8,20,8]);renderHub();});
   on("#notificationToggle",async()=>{if(profile.settings.notifications){await disablePushNotifications?.();renderHub();}else{try{await registerPushNotifications?.();}catch(err){console.error(err);showToast("Push пока не настроен на сервере");}renderHub();}});
+  on("#challengeReminderToggle",async()=>{profile.settings.challengeReminders=profile.settings.challengeReminders===false;saveProfile();await syncChallengePushPreference?.();syncPushState?.();renderHub();});
   on("#dailyReminderToggle",()=>{profile.settings.dailyReminders=profile.settings.dailyReminders===false;saveProfile();syncPushState?.();renderHub();});
   on("#weeklyReminderToggle",()=>{profile.settings.weeklyReminders=profile.settings.weeklyReminders===false;saveProfile();syncPushState?.();renderHub();});
+  on("#notificationTest",async()=>{const ok=await showSystemNotification?.("Словасьянс", "Тестовое уведомление работает ✓", {tag:"worditaire-test"}); if(!ok) showToast("Не удалось показать уведомление");});
   on("#exportSave",exportProgress); on("#importSave",importProgress);
   on("#installPwa",async()=>{if(isStandalonePwa())return;if(deferredInstallPrompt){const prompt=deferredInstallPrompt;deferredInstallPrompt=null;await prompt.prompt();const result=await prompt.userChoice.catch(()=>null);track("pwa_prompt",{outcome:result?.outcome||"unknown"});renderHub();}else{const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);showToast(ios?'iPhone: Поделиться → На экран «Домой»':'Открой меню браузера → Установить приложение');}});
 }

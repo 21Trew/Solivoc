@@ -375,7 +375,7 @@ function pushStatePayload() {
     dailyDoneKey:profile.daily.completedDates.includes(todayKey())?todayKey():"",
     weeklyKey:profile.weekly?.key||weekKey(todayKey()),
     weeklyCompleted:!!w.completed,
-    preferences:{daily:profile.settings.dailyReminders!==false,weekly:profile.settings.weeklyReminders!==false},
+    preferences:{challenge:profile.settings.challengeReminders!==false,daily:profile.settings.dailyReminders!==false,weekly:profile.settings.weeklyReminders!==false},
   };
 }
 async function registerPushNotifications(challengeEntry = null) {
@@ -399,9 +399,10 @@ async function registerPushNotifications(challengeEntry = null) {
   profile.settings.notifications = true;
   saveProfile();
   await pushApi({action:"register",...pushStatePayload(),subscription:sub.toJSON()});
-  if (challengeEntry?.code && challengeEntry.ownerToken) {
+  if (challengeEntry?.code && challengeEntry.ownerToken && profile.settings.challengeReminders !== false) {
     await challengeApi("POST","",{action:"attachPush",code:challengeEntry.code,ownerToken:challengeEntry.ownerToken,pushClientId:profile.pushClientId});
   }
+  await syncChallengePushPreference();
   showToast("Уведомления включены");
   return true;
 }
@@ -410,13 +411,27 @@ async function syncPushState() {
   try { await pushApi({action:"sync",...pushStatePayload()}); return true; } catch { return false; }
 }
 async function disablePushNotifications() {
+  profile.settings.notifications = false;
+  saveProfile();
+  await syncChallengePushPreference();
   try {
     const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription();
     await sub?.unsubscribe();
     if (profile.pushClientId) await pushApi({action:"unregister",clientId:profile.pushClientId});
   } catch {}
-  profile.settings.notifications = false;
-  saveProfile();
+}
+async function syncChallengePushPreference() {
+  const enabled = !!profile.settings.notifications && profile.settings.challengeReminders !== false && typeof Notification !== "undefined" && Notification.permission === "granted";
+  const pushClientId = enabled ? ensurePushClientId() : "";
+  const jobs = [];
+  for (const entry of (profile.sentChallenges || []).filter((x)=>x?.code && x?.ownerToken && !x?.guestResult && x.status !== "expired")) {
+    jobs.push(challengeApi("POST","",{action:"attachPush",code:entry.code,ownerToken:entry.ownerToken,pushClientId}).catch(()=>null));
+  }
+  for (const entry of (profile.receivedChallenges || []).filter((x)=>x?.code && x?.guestToken && x?.guestResult && !x?.creatorResult)) {
+    jobs.push(challengeApi("POST","",{action:"guestPush",code:entry.code,guestToken:entry.guestToken,pushClientId}).catch(()=>null));
+  }
+  if (jobs.length) await Promise.all(jobs);
+  return enabled;
 }
 async function showSystemNotification(title, body, data = {}) {
   if (!("Notification" in window) || !profile.settings.notifications || Notification.permission !== "granted") return false;
@@ -428,6 +443,7 @@ async function showSystemNotification(title, body, data = {}) {
 }
 let notificationChallengeEntry = null;
 function offerNotificationPrompt(entry = null) {
+  if (profile.settings.challengeReminders === false) return;
   if (!("Notification" in window) || Notification.permission !== "default" || profile.settings.notificationPrompted) return;
   notificationChallengeEntry = entry;
   $("#notificationPrompt")?.classList.add("show");

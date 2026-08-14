@@ -798,3 +798,26 @@ html[data-stack-fit="tight"] .card.category.open-under .name { padding-top: 1px;
 @media (prefers-reduced-motion: reduce) {
   .splash::before,.splash-mark,.splash-mini-card,.duel-result-icon { animation:none !important; }
 }
+
+/* Illustrated fronts keep the word visible in cascades. */
+.card.word-card.with-art.open-under {
+  gap: 0;
+  flex-direction: column;
+}
+.card.word-card.with-art.open-under .card-art-emoji {
+  display: none;
+}
+.card.word-card.with-art.open-under .word-label {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1;
+}
+@media (max-width: 370px) {
+  .avatar-emoji-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); gap:5px; }
+  .avatar-emoji { border-radius:9px; font-size:18px; }
+  .card-art-pack { min-height:96px; padding:7px; }
+  .card-art-preview i { width:30px; height:41px; font-size:16px; }
+}

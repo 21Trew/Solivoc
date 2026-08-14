@@ -35,6 +35,7 @@ function cleanState(body = {}) {
     weeklyKey: cleanText(body.weeklyKey, 24),
     weeklyCompleted: !!body.weeklyCompleted,
     preferences: {
+      challenge: body.preferences?.challenge !== false,
       daily: body.preferences?.daily !== false,
       weekly: body.preferences?.weekly !== false,
     },

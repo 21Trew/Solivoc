@@ -9,10 +9,12 @@ function defaultProfile() {
     achievements: [],
     theme: "violet",
     cardBack: "classic",
+    cardArtPack: "none",
     cardBackUnlocksSeen: ["classic"],
     effect: "spark",
     effectUnlocksSeen: ["spark"],
     playerName: "Игрок",
+    avatarEmoji: "🙂",
     titleId: "player",
     frame: "none",
     xp: 0,
@@ -31,7 +33,7 @@ function defaultProfile() {
     tutorialComplete: false,
     legacyStarsMigrated: false,
     categoryAchievementModelMigrated: false,
-    settings: { sound: true, music: true, haptics: true, notifications: false, dailyReminders: true, weeklyReminders: true, notificationPrompted: false },
+    settings: { sound: true, music: true, haptics: true, notifications: false, challengeReminders: true, dailyReminders: true, weeklyReminders: true, notificationPrompted: false },
     stats: { ...DEFAULT_STATS },
     daily: { lastDate: null, currentStreak: 0, bestStreak: 0, completedDates: [], freezeWeek: null, weekRewards: {} },
   };
@@ -143,6 +145,8 @@ function migrateMetaProfile() {
   profile.retention = { ...defaultProfile().retention, ...(profile.retention || {}) };
   profile.retention.openDays = Array.isArray(profile.retention.openDays) ? profile.retention.openDays : [];
   profile.frame = FRAME_DEFS.some((f) => f.id === profile.frame) ? profile.frame : "none";
+  profile.avatarEmoji = AVATAR_EMOJIS.includes(profile.avatarEmoji) ? profile.avatarEmoji : "🙂";
+  profile.cardArtPack = cardArtPackById(profile.cardArtPack).id;
   profile.pushClientId = String(profile.pushClientId || "");
   if (!profile.xpMigrated) {
     profile.xp = Math.max(+profile.xp || 0,
@@ -180,6 +184,11 @@ function applyCardBack(id) {
   const back = def && cardBackUnlocked(def) ? id : "classic";
   profile.cardBack = back;
   document.body.dataset.cardBack = back;
+}
+function applyCardArtPack(id) {
+  const pack = cardArtPackById(id);
+  profile.cardArtPack = pack.id;
+  document.body.dataset.cardArt = pack.id;
 }
 function effectUnlocked(def, p = profile) {
   if (!def) return false;
@@ -220,6 +229,7 @@ function saveProfile() {
   localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
   applyTheme(profile.theme);
   applyCardBack(profile.cardBack);
+  applyCardArtPack(profile.cardArtPack);
   applyEffect(profile.effect);
   applyTitle(profile.titleId);
   applyFrame(profile.frame);
@@ -243,6 +253,7 @@ function applyTheme(id) {
 recomputeStars();
 applyTheme(profile.theme);
 applyCardBack(profile.cardBack);
+applyCardArtPack(profile.cardArtPack);
 applyEffect(profile.effect);
 applyTitle(profile.titleId);
 applyFrame(profile.frame);

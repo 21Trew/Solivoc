@@ -10,7 +10,17 @@ function cardNode(g, extra = "") {
     const mystery = !!state?.special?.mysteryCategories && wordCount(g) === 0, label = mystery ? "???" : cc.label;
     card.classList.toggle("mystery-category", mystery);
     card.innerHTML = `<span class="name ${String(label).length <= 6 ? "short-title" : "long-title"}">${label}</span><span class="count">${wordCount(g)}/${cc.total}</span>`;
-  } else card.textContent = g.cards[0].label;
+  } else {
+    const single = g.cards[0], emoji = cardArtEmojiForCard(single);
+    card.classList.add("word-card");
+    if (emoji) {
+      card.classList.add("with-art");
+      const art = document.createElement("span"), label = document.createElement("span");
+      art.className = "card-art-emoji"; art.textContent = emoji; art.setAttribute("aria-hidden", "true");
+      label.className = "word-label"; label.textContent = single.label;
+      card.append(art, label);
+    } else card.textContent = single.label;
+  }
   card.title = g.cards.map((c) => c.label).join(", ");
   return card;
 }
