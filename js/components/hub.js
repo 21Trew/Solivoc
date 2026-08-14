@@ -136,7 +136,7 @@ function progressTabMarkup() {
 }
 function categoryDetailMarkup(cat) {
   if (!cat) return `<div class="empty-state">Выбери открытую категорию</div>`;
-  const stat = categoryStat(cat.id), known = new Set(stat.words || []), mastery = typeof categoryMasteryData === "function" ? categoryMasteryData(cat.id) : {ratio:known.size/cat.words.length,mastered:false};
+  const stat = categoryStat(cat.id), known = new Set(stat.words || []), completions = stat.completions || 0, mastery = typeof categoryMasteryData === "function" ? categoryMasteryData(cat.id) : {ratio:known.size/cat.words.length,mastered:false};
   return `<article class="encyclopedia-detail ${mastery.mastered?"mastered":""}"><div class="encyclopedia-title"><span style="--cat:${catHue(cat.id)}">${mastery.mastered?"★":cat.title.slice(0,1)}</span><div><b>${cat.title}</b><small>${mastery.mastered?"Категория освоена ★":`${known.size}/${cat.words.length} слов встречено`}</small></div></div>
     <div class="mastery-progress"><i style="width:${mastery.ratio*100}%"></i><span>${known.size}/${cat.words.length}</span></div>
     <div class="encyclopedia-meta"><span>Встречалась <b>${stat.encounters || 0}</b> раз</span><span>Собрана <b>${completions}</b> раз</span><span>Впервые: <b>${stat.firstLevel || "—"}</b></span></div>
