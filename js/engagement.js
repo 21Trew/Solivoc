@@ -286,71 +286,117 @@ function qualityAuditMarkup() {
 }
 
 function onboardingAvatarButtons(selected) {
-  return AVATAR_EMOJIS.map((emoji)=>`<button type="button" class="onboarding-avatar ${selected===emoji?"selected":""}" data-onboarding-avatar="${emoji}" aria-label="Выбрать аватар ${emoji}">${emoji}</button>`).join("");
+  const perPage = 8;
+  const pages = [];
+  for (let i = 0; i < AVATAR_EMOJIS.length; i += perPage) {
+    const items = AVATAR_EMOJIS.slice(i, i + perPage)
+      .map((emoji)=>`<button type="button" class="onboarding-avatar ${selected===emoji?"selected":""}" data-onboarding-avatar="${emoji}" aria-label="Выбрать аватар ${emoji}">${emoji}</button>`)
+      .join("");
+    pages.push(`<div class="onboarding-avatar-page" data-avatar-page="${pages.length}">${items}</div>`);
+  }
+  return pages.join("");
+}
+function onboardingAvatarPageCount() {
+  return Math.max(1, Math.ceil(AVATAR_EMOJIS.length / 8));
 }
 function bindOnboardingAvatarScroller(root) {
-  const grid = root?.querySelector?.(".onboarding-avatar-grid"),
+  const rail = root?.querySelector?.(".onboarding-avatar-grid"),
     prev = root?.querySelector?.("[data-avatar-scroll=prev]"),
-    next = root?.querySelector?.("[data-avatar-scroll=next]");
-  if (!grid) return;
+    next = root?.querySelector?.("[data-avatar-scroll=next]"),
+    dots = root?.querySelector?.("[data-avatar-dots]");
+  if (!rail) return;
 
-  const updateButtons = () => {
-    const max = Math.max(0, grid.scrollWidth - grid.clientWidth);
-    if (prev) prev.disabled = grid.scrollLeft <= 2;
-    if (next) next.disabled = grid.scrollLeft >= max - 2;
+  const count = onboardingAvatarPageCount();
+  const selectedButton = rail.querySelector(".onboarding-avatar.selected");
+  const selectedIndex = selectedButton ? AVATAR_EMOJIS.indexOf(selectedButton.dataset.onboardingAvatar) : 0;
+  let page = Math.max(0, Math.min(count - 1, Math.floor(Math.max(0, selectedIndex) / 8)));
+  let wheelLock = false;
+  let dragStartX = 0, dragStartLeft = 0, dragging = false, pointerId = null;
+
+  const pageWidth = () => Math.max(1, rail.clientWidth);
+  const renderDots = () => {
+    if (!dots) return;
+    dots.innerHTML = Array.from({length:count}, (_,i)=>`<i class="${i===page?"active":""}" data-avatar-dot="${i}"></i>`).join("");
+    dots.querySelectorAll("[data-avatar-dot]").forEach((dot)=>{
+      dot.onclick=()=>setPage(+dot.dataset.avatarDot, true);
+    });
   };
-  const move = (dir) => grid.scrollBy({ left: dir * Math.max(180, grid.clientWidth * 0.72), behavior: "smooth" });
-  if (prev) prev.onclick = () => move(-1);
-  if (next) next.onclick = () => move(1);
+  const updateControls = () => {
+    if (prev) prev.disabled = page <= 0;
+    if (next) next.disabled = page >= count - 1;
+    if (dots) dots.querySelectorAll("[data-avatar-dot]").forEach((dot,i)=>dot.classList.toggle("active", i===page));
+  };
+  const setPage = (index, smooth=true) => {
+    page = Math.max(0, Math.min(count - 1, index));
+    rail.scrollTo({ left: page * pageWidth(), behavior: smooth ? "smooth" : "auto" });
+    updateControls();
+  };
 
-  // A normal desktop mouse wheel has no horizontal axis. Convert its
-  // vertical wheel movement into horizontal movement while the pointer is
-  // over the avatar rail. Trackpads keep their native horizontal delta.
-  grid.addEventListener("wheel", (event) => {
-    if (grid.scrollWidth <= grid.clientWidth + 2) return;
+  if (prev) prev.onclick = () => setPage(page - 1, true);
+  if (next) next.onclick = () => setPage(page + 1, true);
+
+  // Desktop wheel/trackpad: one gesture advances one page instead of
+  // moving the rail pixel-by-pixel, which removes the jerky feeling.
+  rail.addEventListener("wheel", (event) => {
+    if (count <= 1) return;
     const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
-    if (!delta) return;
-    const before = grid.scrollLeft;
-    grid.scrollLeft += delta;
-    if (grid.scrollLeft !== before) event.preventDefault();
-    updateButtons();
-  }, { passive: false });
-
-  // Also support dragging the rail with a mouse, similar to a touch swipe.
-  let dragging = false, startX = 0, startLeft = 0, moved = false, pointerId = null;
-  grid.addEventListener("pointerdown", (event) => {
-    if (event.pointerType !== "mouse" || event.button !== 0) return;
-    dragging = true; moved = false; pointerId = event.pointerId;
-    startX = event.clientX; startLeft = grid.scrollLeft;
-    grid.classList.add("mouse-dragging");
-  });
-  grid.addEventListener("pointermove", (event) => {
-    if (!dragging || event.pointerId !== pointerId) return;
-    const dx = event.clientX - startX;
-    if (Math.abs(dx) > 4) moved = true;
-    if (!moved) return;
-    grid.scrollLeft = startLeft - dx;
+    if (Math.abs(delta) < 3) return;
     event.preventDefault();
-    updateButtons();
+    if (wheelLock) return;
+    const direction = delta > 0 ? 1 : -1;
+    if ((direction < 0 && page === 0) || (direction > 0 && page === count - 1)) return;
+    wheelLock = true;
+    setPage(page + direction, true);
+    window.setTimeout(()=>{ wheelLock = false; }, 320);
+  }, { passive:false });
+
+  // Mouse drag remains available, but it snaps cleanly to the nearest page.
+  rail.addEventListener("pointerdown", (event) => {
+    if (event.pointerType !== "mouse" || event.button !== 0) return;
+    dragging = true;
+    pointerId = event.pointerId;
+    dragStartX = event.clientX;
+    dragStartLeft = rail.scrollLeft;
+    rail.classList.add("mouse-dragging");
+    rail.setPointerCapture?.(event.pointerId);
   });
-  const finish = (event) => {
+  rail.addEventListener("pointermove", (event) => {
+    if (!dragging || event.pointerId !== pointerId) return;
+    const dx = event.clientX - dragStartX;
+    rail.scrollLeft = dragStartLeft - dx;
+    if (Math.abs(dx) > 2) event.preventDefault();
+  });
+  const finishDrag = (event) => {
     if (!dragging || (event && event.pointerId !== pointerId)) return;
     dragging = false;
-    grid.classList.remove("mouse-dragging");
+    rail.classList.remove("mouse-dragging");
+    try { rail.releasePointerCapture?.(pointerId); } catch {}
     pointerId = null;
-    updateButtons();
+    const nearest = Math.round(rail.scrollLeft / pageWidth());
+    setPage(nearest, true);
   };
-  grid.addEventListener("pointerup", finish);
-  grid.addEventListener("pointercancel", finish);
-  grid.addEventListener("pointerleave", finish);
-  grid.addEventListener("click", (event) => {
-    if (!moved) return;
-    event.preventDefault();
-    event.stopPropagation();
-    moved = false;
-  }, true);
-  grid.addEventListener("scroll", updateButtons, { passive: true });
-  requestAnimationFrame(updateButtons);
+  rail.addEventListener("pointerup", finishDrag);
+  rail.addEventListener("pointercancel", finishDrag);
+
+  // Native touch/trackpad scrolling updates the active dot continuously.
+  let raf = 0;
+  rail.addEventListener("scroll", () => {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      const nextPage = Math.max(0, Math.min(count - 1, Math.round(rail.scrollLeft / pageWidth())));
+      if (nextPage !== page) {
+        page = nextPage;
+        updateControls();
+      }
+    });
+  }, { passive:true });
+
+  renderDots();
+  requestAnimationFrame(()=>setPage(page, false));
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(()=>setPage(page, false));
+    ro.observe(rail);
+  }
 }
 function runFirstRunOnboarding() {
   if (profile.onboardingComplete) return Promise.resolve(false);
@@ -358,13 +404,13 @@ function runFirstRunOnboarding() {
   return new Promise((resolve)=>{
     let step=0, avatar=profile.avatarEmoji||"🙂", name=profile.playerName==="Игрок"?"":profile.playerName;
     const pages=[
-      ()=>`<div class="onboarding-step"><small>ДОБРО ПОЖАЛОВАТЬ</small><h2>Давай знакомиться!</h2><p>Имя и аватар будут видны друзьям в вызовах.</p><label><span>Твоё имя</span><input id="onboardingName" maxlength="20" value="${escapeHtml(name)}" placeholder="Например, Альберт Эйнштейн" autocomplete="off"></label><div class="onboarding-avatar-picker"><button type="button" class="onboarding-avatar-scroll prev" data-avatar-scroll="prev" aria-label="Предыдущие аватары">‹</button><div class="onboarding-avatar-grid">${onboardingAvatarButtons(avatar)}</div><button type="button" class="onboarding-avatar-scroll next" data-avatar-scroll="next" aria-label="Следующие аватары">›</button></div></div>`,
+      ()=>`<div class="onboarding-step"><small>ДОБРО ПОЖАЛОВАТЬ</small><h2>Давай знакомиться!</h2><p>Имя и аватар будут видны друзьям в вызовах.</p><label><span>Твоё имя</span><input id="onboardingName" maxlength="20" value="${escapeHtml(name)}" placeholder="Например, Альберт Эйнштейн" autocomplete="off"></label><div class="onboarding-avatar-picker"><button type="button" class="onboarding-avatar-scroll prev" data-avatar-scroll="prev" aria-label="Предыдущие аватары">‹</button><div class="onboarding-avatar-grid">${onboardingAvatarButtons(avatar)}</div><button type="button" class="onboarding-avatar-scroll next" data-avatar-scroll="next" aria-label="Следующие аватары">›</button></div><div class="onboarding-dots avatar-page-dots" data-avatar-dots></div></div>`,
       ()=>`<div class="onboarding-step"><small>КАК ИГРАТЬ · 1/2</small><h2>Ищи смысловые связи</h2><p>Открытые карты одной категории складываются вместе. Можно тащить всю открытую стопку.</p><div class="onboarding-demo"><span>МОРЕ</span><b>ВОЛНА</b><b>ПРИБОЙ</b><b>ОКЕАН</b></div></div>`,
       ()=>`<div class="onboarding-step"><small>КАК ИГРАТЬ · 2/2</small><h2>Собирай категории сверху</h2><p>Карточку категории отправь в свободный слот, затем собирай туда все связанные слова или картинки.</p><div class="onboarding-demo picture"><span>КИНО</span><b>🎬</b><b>🍿</b><b>🎟️</b><b>📽️</b></div></div>`,
       ()=>`<div class="onboarding-step"><small>ГОТОВО</small><h2>Начнём с короткого обучения</h2><p>Три простых расклада покажут перенос категории, сбор стопок и работу колоды. Потом откроется весь Словасьянс.</p><div class="onboarding-ready"><i>✦</i><span>Слова</span><i>🖼️</i><span>Картинки</span><i>⚔</i><span>Вызовы</span></div></div>`,
     ];
     const render=()=>{
-      content.innerHTML=`${pages[step]()}<div class="onboarding-dots">${pages.map((_,i)=>`<i class="${i===step?"active":""}"></i>`).join("")}</div><div class="onboarding-actions">${step?`<button class="secondary" id="onboardingBack">Назад</button>`:""}<button class="primary" id="onboardingNext">${step===pages.length-1?"Начать обучение →":"Дальше →"}</button></div>`;
+      content.innerHTML=`${pages[step]()}${step===0?"":`<div class="onboarding-dots onboarding-step-dots">${pages.map((_,i)=>`<i class="${i===step?"active":""}"></i>`).join("")}</div>`}<div class="onboarding-actions">${step?`<button class="secondary" id="onboardingBack">Назад</button>`:""}<button class="primary" id="onboardingNext">${step===pages.length-1?"Начать обучение →":"Дальше →"}</button></div>`;
       const input=$("#onboardingName"); if(input) input.oninput=()=>{name=input.value;};
       content.querySelectorAll("[data-onboarding-avatar]").forEach((btn)=>btn.onclick=()=>{avatar=btn.dataset.onboardingAvatar;content.querySelectorAll("[data-onboarding-avatar]").forEach((x)=>x.classList.toggle("selected",x===btn));});
       bindOnboardingAvatarScroller(content);
