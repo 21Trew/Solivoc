@@ -18,6 +18,24 @@ const CHAPTER_NAMES = [
   "Большой словарь",
   "Мастер ассоциаций",
 ];
+
+function chapterStarsForProfile(p, number) {
+  const start = (number - 1) * CHAPTER_SIZE + 1;
+  return Array.from({ length: CHAPTER_SIZE }, (_, i) => +(p.starsByLevel?.[start + i] || 0));
+}
+function completedChapterCount(p) {
+  const maxChapter = Math.max(1, Math.ceil(Math.max(1, +(p.currentLevel || 1) - 1) / CHAPTER_SIZE));
+  let count = 0;
+  for (let n = 1; n <= maxChapter; n++) if (chapterStarsForProfile(p, n).every((x) => x > 0)) count++;
+  return count;
+}
+function perfectChapterCount(p) {
+  const maxChapter = Math.max(1, Math.ceil(Math.max(1, +(p.currentLevel || 1) - 1) / CHAPTER_SIZE));
+  let count = 0;
+  for (let n = 1; n <= maxChapter; n++) if (chapterStarsForProfile(p, n).every((x) => x === 3)) count++;
+  return count;
+}
+
 const SPECIAL_LEVELS = [
   { id: "no-hints", icon: "◈", title: "Без подсказок", desc: "Подсказки отключены", offset: 5, noHints: true },
   { id: "precise", icon: "◇", title: "Точный расклад", desc: "Доступна только 1 отмена", offset: 10, maxUndos: 1 },
@@ -32,6 +50,16 @@ const THEME_DEFS = [
   { id: "paper", name: "Paper", stars: 100 },
   { id: "aurora", name: "Aurora", stars: 150 },
   { id: "neon", name: "Neon", stars: 225 },
+];
+const CARD_BACK_DEFS = [
+  { id: "classic", name: "Классика", desc: "Базовая рубашка", minAchievements: 0 },
+  { id: "prism", name: "Призма", desc: "За 4 достижения", minAchievements: 4 },
+  { id: "constellation", name: "Созвездия", desc: "За 8 достижений", minAchievements: 8 },
+  { id: "trophy", name: "Трофей", desc: "За 12 достижений", minAchievements: 12 },
+  { id: "crown", name: "Корона", desc: "За идеальную главу", achievement: "chapterPerfect1", rare: true },
+  { id: "ember", name: "Пламя", desc: "За серию 30 дней", achievement: "streak30", rare: true },
+  { id: "legend", name: "Легенда", desc: "За 3 идеальные главы", achievement: "chapterPerfect3", rare: true },
+  { id: "obsidian", name: "Обсидиан", desc: "За 5 идеальных глав", achievement: "chapterPerfect5", rare: true },
 ];
 const ACHIEVEMENTS = [
   {
@@ -113,6 +141,12 @@ const ACHIEVEMENTS = [
   },
   { id: "combo5", icon: "×5", title: "На волне", desc: "Сделать комбо ×5", test: (p) => (p.stats.maxCombo || 0) >= 5 },
   { id: "special5", icon: "◆", title: "Особый случай", desc: "Пройти 5 особых уровней", test: (p) => (p.stats.specialCompleted || 0) >= 5 },
+  { id: "chapter1", icon: "Ⅰ", title: "Первая глава", desc: "Полностью пройти 1 главу", test: (p) => completedChapterCount(p) >= 1 },
+  { id: "chapter3", icon: "Ⅲ", title: "Книжный червь", desc: "Полностью пройти 3 главы", test: (p) => completedChapterCount(p) >= 3 },
+  { id: "chapter5", icon: "Ⅴ", title: "Большая история", desc: "Полностью пройти 5 глав", test: (p) => completedChapterCount(p) >= 5 },
+  { id: "chapterPerfect1", icon: "♛", title: "Идеальная глава", desc: "Получить 30/30 ★ в одной главе", rare: true, test: (p) => perfectChapterCount(p) >= 1 },
+  { id: "chapterPerfect3", icon: "♛", title: "Безупречный путь", desc: "Получить 30/30 ★ в трёх главах", rare: true, test: (p) => perfectChapterCount(p) >= 3 },
+  { id: "chapterPerfect5", icon: "✦", title: "Легенда Словасьянса", desc: "Получить 30/30 ★ в пяти главах", rare: true, test: (p) => perfectChapterCount(p) >= 5 },
   { id: "streak7", icon: "🔥", title: "Привычка", desc: "Серия 7 дней", test: (p) => p.daily.bestStreak >= 7 },
   {
     id: "streak30",

@@ -1,5 +1,9 @@
 /* Game feel: procedural sound, combo, wrong-move feedback, category finish and deadlock UI. */
 let audioCtx = null,
+  musicMode = "game",
+  musicTimer = null,
+  musicStep = 0,
+  musicGeneration = 0,
   comboCount = 0,
   comboTimer = null,
   comboLastAt = 0,
@@ -11,13 +15,18 @@ let audioCtx = null,
 function soundEnabled() {
   return profile?.settings?.sound !== false;
 }
-function getAudioContext() {
-  if (!soundEnabled()) return null;
+function musicEnabled() {
+  return profile?.settings?.music !== false;
+}
+function ensureAudioContext() {
   const AudioCtor = window.AudioContext || window.webkitAudioContext;
   if (!AudioCtor) return null;
   if (!audioCtx) audioCtx = new AudioCtor();
   if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
   return audioCtx;
+}
+function getAudioContext() {
+  return soundEnabled() ? ensureAudioContext() : null;
 }
 function tone(freq, duration = 0.08, opts = {}) {
   const ctx = getAudioContext();
@@ -74,6 +83,71 @@ function playSfx(name, strength = 1, delay = 0) {
       );
       break;
   }
+}
+
+const MUSIC_PATTERNS = {
+  game: {
+    notes: [261.63, 329.63, 392, 329.63, 293.66, 369.99, 440, 369.99],
+    interval: 620,
+    duration: 0.56,
+    volume: 0.0065,
+    type: "triangle",
+  },
+  menu: {
+    notes: [196, 246.94, 293.66, 369.99, 293.66, 246.94, 220, 277.18],
+    interval: 820,
+    duration: 0.92,
+    volume: 0.0078,
+    type: "sine",
+  },
+};
+function musicTone(freq, duration, volume, type = "sine") {
+  const ctx = ensureAudioContext();
+  if (!ctx || ctx.state !== "running") return;
+  const start = ctx.currentTime,
+    osc = ctx.createOscillator(),
+    gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, start);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(volume, start + 0.08);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, volume * 0.55), start + duration * 0.68);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(start);
+  osc.stop(start + duration + 0.03);
+}
+function stopBackgroundMusic() {
+  musicGeneration++;
+  clearTimeout(musicTimer);
+  musicTimer = null;
+}
+function scheduleMusicStep(generation) {
+  if (generation !== musicGeneration || !musicEnabled() || document.hidden) return;
+  const pattern = MUSIC_PATTERNS[musicMode] || MUSIC_PATTERNS.game,
+    note = pattern.notes[musicStep % pattern.notes.length];
+  musicStep++;
+  musicTone(note, pattern.duration, pattern.volume, pattern.type);
+  // Very light upper note once per phrase gives the menu/game loops distinct character.
+  if (musicStep % 4 === 0) musicTone(note * (musicMode === "menu" ? 2 : 1.5), pattern.duration * 0.72, pattern.volume * 0.38, "sine");
+  musicTimer = setTimeout(() => scheduleMusicStep(generation), pattern.interval);
+}
+function setBackgroundMusic(mode = "game") {
+  musicMode = mode === "menu" ? "menu" : "game";
+  stopBackgroundMusic();
+  musicStep = 0;
+  if (!musicEnabled() || document.hidden) return;
+  const ctx = ensureAudioContext();
+  if (!ctx || ctx.state !== "running") return;
+  const generation = musicGeneration;
+  musicTimer = setTimeout(() => scheduleMusicStep(generation), 90);
+}
+function syncBackgroundMusic() {
+  if (!musicEnabled()) {
+    stopBackgroundMusic();
+    return;
+  }
+  setBackgroundMusic(hub?.classList.contains("show") ? "menu" : "game");
 }
 
 function resetCombo() {
@@ -221,7 +295,14 @@ function markStateChanged() {
 }
 
 function bindFeedbackEvents() {
-  document.addEventListener("pointerdown", () => getAudioContext(), { passive: true });
+  document.addEventListener(
+    "pointerdown",
+    () => {
+      ensureAudioContext();
+      if (!musicTimer && musicEnabled()) setTimeout(syncBackgroundMusic, 0);
+    },
+    { passive: true },
+  );
   $("#deadlockClose").onclick = () => {
     lastDeadlockSignature = stateSignature();
     hideDeadlock();
@@ -247,6 +328,11 @@ function bindFeedbackEvents() {
     else makeLevel(state.level, { mode: state.mode, seed: state.seed });
   };
 }
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) stopBackgroundMusic();
+  else if (musicEnabled()) setTimeout(syncBackgroundMusic, 120);
+});
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();

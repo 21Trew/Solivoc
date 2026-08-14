@@ -792,3 +792,116 @@ body[data-chapter-tone="4"] .app::after { background: #a85cff22; }
   align-content: start;
   grid-auto-rows: max-content;
 }
+
+/* ===== Achievement card backs ===== */
+.cardback-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+.cardback-tile {
+  min-width: 0;
+  min-height: 106px;
+  padding: 7px 5px 8px;
+  border: 1px solid #ffffff14;
+  border-radius: 14px;
+  background: #ffffff08;
+  color: #fff;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 5px;
+  text-align: center;
+}
+.cardback-tile.locked { opacity: .42; filter: saturate(.45); }
+.cardback-tile.selected { outline: 2px solid #fff; outline-offset: -3px; background: #ffffff10; }
+.cardback-tile.rare:not(.locked) { border-color: #ffd76a55; box-shadow: inset 0 0 22px #ffd56a0b; }
+.cardback-tile b { font-size: 9px; line-height: 1; }
+.cardback-tile > span:last-child { color: #aaa6cf; font-size: 7px; line-height: 1.12; font-weight: 750; }
+.cardback-preview {
+  position: relative;
+  width: 42px;
+  height: 58px;
+  overflow: hidden;
+  border: 2px solid #b8a9ff;
+  border-radius: 9px;
+  box-shadow: 0 5px 10px #05051650, inset 0 1px #ffffff55;
+  display: grid;
+  place-items: center;
+}
+.cardback-preview::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 6px;
+  border: 1px solid #ffffff4a;
+}
+.cardback-preview i { position: relative; z-index: 2; color: #fff; font-style: normal; font-size: 15px; text-shadow: 0 2px 5px #0008; }
+.cardback-preview.back-classic { background: linear-gradient(145deg, #8b62ff, #684dff 48%, #3c69e8); }
+.cardback-preview.back-prism { background: conic-gradient(from 210deg, #7b5cff, #2ed9df, #4f72ff, #d34cff, #7b5cff); }
+.cardback-preview.back-constellation { background: radial-gradient(circle at 28% 28%, #fff 0 1px, transparent 1.8px), radial-gradient(circle at 70% 62%, #88dcff 0 1px, transparent 1.7px), radial-gradient(circle at 45% 80%, #fff 0 1px, transparent 1.6px), linear-gradient(155deg, #101b4d, #18265e 55%, #0b1233); }
+.cardback-preview.back-trophy { background: radial-gradient(circle at 50% 32%, #ffe79655, transparent 26%), linear-gradient(145deg, #6d3e92, #9a672a 55%, #55316c); border-color: #ffd96f; }
+.cardback-preview.back-crown { background: linear-gradient(145deg, #12131d, #3b2b16 65%, #12131d); border-color: #f0ca67; }
+.cardback-preview.back-ember { background: radial-gradient(circle at 50% 76%, #ffb24f7a, transparent 28%), linear-gradient(145deg, #541a2c, #a7372c 58%, #341323); border-color: #ffac61; }
+.cardback-preview.back-legend { background: radial-gradient(circle at 20% 20%, #9affdc2a, transparent 25%), linear-gradient(145deg, #0b3b35, #345878 52%, #3c235f); border-color: #78f0c9; }
+.cardback-preview.back-obsidian { background: radial-gradient(circle at 70% 15%, #d232ff44, transparent 28%), linear-gradient(145deg, #080910, #171329 55%, #05060a); border-color: #7eeaff; box-shadow: 0 0 12px #6eefff35, inset 0 1px #ffffff55; }
+
+/* Selected back overrides the selected color theme only for the reverse side. */
+body[data-card-back="classic"] .card.face-down {
+  background: radial-gradient(circle at 30% 22%, #ffffff18 0 5%, transparent 6%), radial-gradient(circle at 72% 68%, #ffffff12 0 4%, transparent 5%), linear-gradient(145deg, #8b62ff 0%, #684dff 48%, #3c69e8 100%);
+  border-color: #b8a9ff;
+}
+body[data-card-back="prism"] .card.face-down {
+  background: conic-gradient(from 210deg at 52% 48%, #7b5cff, #2ed9df, #4f72ff, #d34cff, #7b5cff);
+  border-color: #b9f5ff;
+  box-shadow: 0 4px 0 #3c2f8d, 0 8px 16px #06072266, inset 0 1px #ffffffaa;
+}
+body[data-card-back="prism"] .card.face-down::before { background: linear-gradient(45deg, transparent 43%, #ffffff18 44% 47%, transparent 48%), linear-gradient(-45deg, transparent 43%, #ffffff10 44% 47%, transparent 48%); background-size: 15px 15px; }
+body[data-card-back="constellation"] .card.face-down {
+  background: radial-gradient(circle at 25% 20%, #fff 0 1px, transparent 1.7px), radial-gradient(circle at 72% 34%, #a8e8ff 0 1px, transparent 1.8px), radial-gradient(circle at 38% 72%, #fff 0 1px, transparent 1.6px), radial-gradient(circle at 80% 82%, #8da8ff 0 1px, transparent 1.8px), linear-gradient(155deg, #101b4d, #172961 58%, #090e28);
+  border-color: #8ec8ff;
+  box-shadow: 0 4px 0 #0a1747, 0 8px 18px #02051680, inset 0 1px #ffffff88;
+}
+body[data-card-back="constellation"] .card.face-down::before { background: none; border-color: #8fdcff45; }
+body[data-card-back="constellation"] .card.face-down::after { content: "✧"; transform: none; border-radius: 50%; border-color: #b7e9ff; }
+body[data-card-back="trophy"] .card.face-down {
+  background: radial-gradient(circle at 50% 25%, #ffe99b55, transparent 25%), linear-gradient(145deg, #5d347f, #9b672a 56%, #4e2a66);
+  border-color: #ffd96f;
+  box-shadow: 0 4px 0 #70441d, 0 8px 18px #06051378, inset 0 1px #fff0a5aa;
+}
+body[data-card-back="trophy"] .card.face-down::before { background: repeating-linear-gradient(135deg, #ffd96b10 0 5px, transparent 5px 11px); border-color: #ffe8a05c; }
+body[data-card-back="trophy"] .card.face-down::after { content: "★"; transform: none; border-color: #ffe8a0; color: #ffe071; }
+body[data-card-back="crown"] .card.face-down {
+  background: radial-gradient(circle at 50% 30%, #e9be5930, transparent 30%), linear-gradient(145deg, #11131b, #3a2a16 62%, #0d0e14);
+  border-color: #edc765;
+  box-shadow: 0 4px 0 #3a2a13, 0 8px 18px #0009, inset 0 1px #ffe69966;
+}
+body[data-card-back="crown"] .card.face-down::before { background: none; border-color: #d9b95955; }
+body[data-card-back="crown"] .card.face-down::after { content: "♛"; transform: none; border: 0; color: #f4d579; font-size: 22px; text-shadow: 0 2px 8px #000; }
+body[data-card-back="ember"] .card.face-down {
+  background: radial-gradient(circle at 50% 83%, #ffb14f78, transparent 28%), radial-gradient(circle at 35% 55%, #ff593340, transparent 23%), linear-gradient(145deg, #4b1525, #a6362d 58%, #2c101b);
+  border-color: #ffad62;
+  box-shadow: 0 4px 0 #641e1b, 0 8px 18px #16040880, inset 0 1px #ffd5a477;
+}
+body[data-card-back="ember"] .card.face-down::before { background: repeating-radial-gradient(ellipse at 50% 100%, #ffcb6b14 0 4px, transparent 5px 10px); border-color: #ffc07744; }
+body[data-card-back="ember"] .card.face-down::after { content: "◆"; transform: none; border-color: #ffd08d; color: #ffcf78; }
+body[data-card-back="legend"] .card.face-down {
+  background: radial-gradient(circle at 20% 18%, #9affdc2b, transparent 25%), radial-gradient(circle at 75% 78%, #bd85ff25, transparent 24%), linear-gradient(145deg, #0a3832, #345777 52%, #3a235c);
+  border-color: #7cf0cc;
+  box-shadow: 0 4px 0 #163e48, 0 8px 18px #02051380, inset 0 1px #a7ffe288;
+}
+body[data-card-back="legend"] .card.face-down::before { background: linear-gradient(60deg, transparent 47%, #c3ffe31b 48% 51%, transparent 52%); background-size: 14px 14px; border-color: #a2f8da45; }
+body[data-card-back="legend"] .card.face-down::after { content: "✦"; transform: none; border-radius: 50%; border-color: #9affdc; }
+body[data-card-back="obsidian"] .card.face-down {
+  background: radial-gradient(circle at 75% 16%, #d232ff42, transparent 28%), radial-gradient(circle at 18% 78%, #28ddff2c, transparent 28%), linear-gradient(145deg, #06070c, #171229 58%, #05060a);
+  border-color: #78eaff;
+  box-shadow: 0 0 14px #58eaff2f, 0 4px 0 #20182f, 0 8px 20px #000a, inset 0 1px #ffffff66;
+}
+body[data-card-back="obsidian"] .card.face-down::before { background: linear-gradient(135deg, transparent 45%, #7eeaff12 46% 48%, transparent 49%), linear-gradient(45deg, transparent 45%, #d95aff12 46% 48%, transparent 49%); background-size: 14px 14px; border-color: #7eeaff42; }
+body[data-card-back="obsidian"] .card.face-down::after { content: "✦"; transform: none; border-color: #7eeaff; color: #d7fbff; box-shadow: 0 0 12px #7eeaff45; }
+
+.achievement.rare:not(.locked) { background: linear-gradient(135deg, #ffd85c10, #8b62ff10); box-shadow: inset 0 0 0 1px #ffd96920; }
+
+@media (max-width: 370px) {
+  .cardback-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

@@ -8,9 +8,11 @@ function defaultProfile() {
     discovered: [],
     achievements: [],
     theme: "violet",
+    cardBack: "classic",
+    cardBackUnlocksSeen: ["classic"],
     tutorialComplete: false,
     legacyStarsMigrated: false,
-    settings: { sound: true, haptics: true },
+    settings: { sound: true, music: true, haptics: true },
     stats: { ...DEFAULT_STATS },
     daily: { lastDate: null, currentStreak: 0, bestStreak: 0, completedDates: [], freezeWeek: null },
   };
@@ -29,6 +31,7 @@ function loadProfile() {
         settings: { ...defaultProfile().settings, ...(p.settings || {}) },
         discovered: Array.isArray(p.discovered) ? p.discovered : [],
         achievements: Array.isArray(p.achievements) ? p.achievements : [],
+        cardBackUnlocksSeen: Array.isArray(p.cardBackUnlocksSeen) ? p.cardBackUnlocksSeen : ["classic"],
       };
     } catch {}
   }
@@ -66,10 +69,29 @@ function recomputeStars() {
     Object.values(profile.starsByLevel || {}).reduce((a, b) => a + (+b || 0), 0) +
     Object.values(profile.dailyStars || {}).reduce((a, b) => a + (+b || 0), 0);
 }
+function cardBackUnlocked(def, p = profile) {
+  if (!def) return false;
+  if (def.achievement) return p.achievements.includes(def.achievement);
+  return p.achievements.length >= (def.minAchievements || 0);
+}
+function cardBackUnlockLabel(def) {
+  if (def.achievement) {
+    const a = ACHIEVEMENTS.find((x) => x.id === def.achievement);
+    return a ? `Достижение: ${a.title}` : def.desc;
+  }
+  return def.minAchievements ? `${def.minAchievements} достижений` : "Базовая";
+}
+function applyCardBack(id) {
+  const def = CARD_BACK_DEFS.find((x) => x.id === id);
+  const back = def && cardBackUnlocked(def) ? id : "classic";
+  profile.cardBack = back;
+  document.body.dataset.cardBack = back;
+}
 function saveProfile() {
   recomputeStars();
   localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
   applyTheme(profile.theme);
+  applyCardBack(profile.cardBack);
 }
 function track(name, data = {}) {
   try {
@@ -89,3 +111,4 @@ function applyTheme(id) {
 }
 recomputeStars();
 applyTheme(profile.theme);
+applyCardBack(profile.cardBack);

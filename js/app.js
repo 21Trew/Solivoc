@@ -141,6 +141,7 @@ function boot() {
       load();
       checkAchievements();
       saveProfile();
+      setBackgroundMusic("game");
       setTimeout(() => scheduleDeadlockCheck(1000), 300);
     })
     .catch((err) => {

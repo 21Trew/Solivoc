@@ -58,9 +58,20 @@ function checkAchievements() {
       profile.achievements.push(a.id);
       fresh.push(a);
     }
-  if (fresh.length) {
+  const newlyUnlockedBacks = CARD_BACK_DEFS.filter(
+    (back) => back.id !== "classic" && cardBackUnlocked(back) && !profile.cardBackUnlocksSeen.includes(back.id),
+  );
+  if (fresh.length || newlyUnlockedBacks.length) {
+    newlyUnlockedBacks.forEach((back) => profile.cardBackUnlocksSeen.push(back.id));
     saveProfile();
-    queueAchievementNotifications(fresh);
+    queueAchievementNotifications([
+      ...fresh,
+      ...newlyUnlockedBacks.map((back) => ({
+        icon: "🂠",
+        title: `Новая рубашка: ${back.name}`,
+        desc: back.rare ? "Редкая награда уже доступна в меню" : "Новая награда уже доступна в меню",
+      })),
+    ]);
   }
   return fresh;
 }
