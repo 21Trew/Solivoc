@@ -36,32 +36,42 @@ function tone(freq, duration = 0.08, opts = {}) {
   osc.start(start);
   osc.stop(start + duration + 0.025);
 }
-function playSfx(name, strength = 1) {
+function playSfx(name, strength = 1, delay = 0) {
   if (!soundEnabled()) return;
   const v = Math.min(1.2, Math.max(0.5, strength));
   switch (name) {
     case "pickup":
-      tone(255, 0.055, { to: 320, volume: 0.025 * v, type: "triangle" });
+      tone(255, 0.055, { delay, to: 320, volume: 0.025 * v, type: "triangle" });
       break;
     case "drop":
-      tone(390, 0.065, { to: 330, volume: 0.033 * v, type: "triangle" });
+      tone(390, 0.065, { delay, to: 330, volume: 0.033 * v, type: "triangle" });
+      break;
+    case "deal":
+      tone(920, 0.026, { delay, to: 610, volume: 0.012 * v, type: "triangle" });
+      tone(205, 0.032, { delay: delay + 0.006, to: 155, volume: 0.018 * v, type: "sine" });
       break;
     case "flip":
-      tone(310, 0.055, { to: 520, volume: 0.025 * v, type: "sine" });
+      tone(310, 0.055, { delay, to: 520, volume: 0.025 * v, type: "sine" });
       break;
     case "error":
-      tone(155, 0.09, { to: 105, volume: 0.04 * v, type: "square" });
+      tone(155, 0.09, { delay, to: 105, volume: 0.04 * v, type: "square" });
+      break;
+    case "star":
+      tone(610, 0.09, { delay, to: 820, volume: 0.032 * v, type: "triangle" });
+      tone(980, 0.11, { delay: delay + 0.045, to: 1180, volume: 0.018 * v, type: "sine" });
       break;
     case "combo":
-      tone(520, 0.075, { to: 660, volume: 0.03 * v, type: "triangle" });
-      tone(780, 0.08, { delay: 0.055, to: 880, volume: 0.024 * v, type: "sine" });
+      tone(520, 0.075, { delay, to: 660, volume: 0.03 * v, type: "triangle" });
+      tone(780, 0.08, { delay: delay + 0.055, to: 880, volume: 0.024 * v, type: "sine" });
       break;
     case "category":
-      tone(440, 0.1, { to: 610, volume: 0.034 * v, type: "triangle" });
-      tone(660, 0.12, { delay: 0.065, to: 840, volume: 0.03 * v, type: "triangle" });
+      tone(440, 0.1, { delay, to: 610, volume: 0.034 * v, type: "triangle" });
+      tone(660, 0.12, { delay: delay + 0.065, to: 840, volume: 0.03 * v, type: "triangle" });
       break;
     case "win":
-      [523, 659, 784].forEach((f, i) => tone(f, 0.14, { delay: i * 0.075, volume: 0.03 * v, type: "triangle" }));
+      [523, 659, 784].forEach((f, i) =>
+        tone(f, 0.14, { delay: delay + i * 0.075, volume: 0.03 * v, type: "triangle" }),
+      );
       break;
   }
 }

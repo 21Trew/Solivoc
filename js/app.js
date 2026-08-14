@@ -90,7 +90,7 @@ function bindAppEvents() {
   };
 
   $("#next").onclick = () => {
-    modal.classList.remove("show");
+    closeWinModal();
     resetCombo();
     if (state.mode === "tutorial") {
       if (state.tutorialStep < 3)
@@ -99,11 +99,17 @@ function bindAppEvents() {
     } else if (state.mode === "daily") makeLevel(profile.currentLevel || 1);
     else makeLevel(state.level + 1);
   };
-  $("#replay").onclick = () => {
-    modal.classList.remove("show");
+  $("#winRestart").onclick = () => {
+    closeWinModal();
     resetCombo();
     if (state.mode === "daily") makeLevel(0, { mode: "daily", seed: state.seed });
+    else if (state.mode === "tutorial") makeLevel(state.tutorialStep, { mode: "tutorial", step: state.tutorialStep });
     else makeLevel(state.level, { mode: "regular", seed: state.seed });
+  };
+  $("#winMenu").onclick = () => {
+    closeWinModal();
+    resetCombo();
+    openHub();
   };
 
   let viewportResizeTimer;

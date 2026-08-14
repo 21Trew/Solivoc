@@ -326,60 +326,164 @@
      font-weight: 900;
    }
    /* Win progression */
+   .win-modal.show {
+     animation: winBackdropIn 0.28s ease-out both;
+   }
+   .win-modal .win-modal-card {
+     width: min(354px, 93vw);
+     padding: 27px 21px 21px;
+     overflow: visible;
+     transform-origin: center 58%;
+   }
+   .win-modal.show .win-modal-card {
+     animation: winModalIn 0.46s cubic-bezier(0.18, 0.88, 0.24, 1.12) both;
+   }
+   .win-modal .win-modal-card::after {
+     content: "";
+     position: absolute;
+     inset: -2px;
+     z-index: -1;
+     border-radius: 28px;
+     opacity: 0;
+     pointer-events: none;
+     background: conic-gradient(from 0deg, #ffd767, #ff8cb9, #9270ff, #5de0ff, #ffd767);
+     filter: blur(15px);
+   }
+   .win-modal.perfect .win-modal-card::after {
+     opacity: 0.42;
+     animation: perfectAura 3.2s linear infinite;
+   }
+   .win-modal.perfect .win-modal-card {
+     border-color: #ffe69a;
+     box-shadow:
+       0 28px 76px #000a,
+       0 0 0 2px #ffd96d4f,
+       0 0 42px #ffca5d34;
+   }
+   .win-modal.perfect .win-icon {
+     box-shadow:
+       0 12px 30px #ff9c4c55,
+       0 0 0 5px #ffd76728,
+       0 0 32px #ffd05b6b,
+       inset 0 1px #fff8;
+     animation: perfectIconFloat 1.7s ease-in-out infinite;
+   }
+   .win-modal.perfect-burst .win-modal-card {
+     animation: perfectCardPop 0.62s cubic-bezier(0.2, 0.85, 0.22, 1) both;
+   }
    .win-stars {
      position: relative;
-     display: flex;
-     justify-content: center;
-     gap: 5px;
-     margin: 5px 0 11px;
-     font-size: 31px;
-     line-height: 1;
-     color: #d8d4e6;
-   }
-   .win-stars .earned {
-     color: #ffbe36;
-     text-shadow: 0 3px 9px #ffab3d55;
-   }
-   .win-metrics {
-     position: relative;
-     display: flex;
-     justify-content: center;
+     display: grid;
+     grid-template-columns: repeat(3, minmax(0, 1fr));
      gap: 7px;
-     flex-wrap: wrap;
-     margin-bottom: 12px;
+     margin: 9px -3px 18px;
    }
-   .win-chip {
-     padding: 5px 8px;
-     border-radius: 99px;
-     background: #e9e5f6;
-     color: #625d75;
+   .win-star-item {
+     min-width: 0;
+     display: grid;
+     justify-items: center;
+     align-content: start;
+     gap: 6px;
+     opacity: 0;
+     transform: translateY(8px);
+   }
+   .win-star-item.revealed {
+     opacity: 1;
+     transform: translateY(0);
+     transition:
+       opacity 0.2s ease,
+       transform 0.28s cubic-bezier(0.2, 0.82, 0.2, 1);
+   }
+   .win-star-symbol {
+     display: block;
+     font-size: clamp(46px, 14vw, 58px);
+     line-height: 0.94;
+     color: #d7d3e4;
+     text-shadow: 0 3px 9px #7d72851c;
+     transform: scale(0.72) rotate(-8deg);
+     filter: grayscale(0.5);
+   }
+   .win-star-item.revealed .win-star-symbol {
+     animation: winStarMiss 0.34s ease-out both;
+   }
+   .win-star-item.earned.revealed .win-star-symbol {
+     color: #ffc43d;
+     filter: none;
+     text-shadow:
+       0 4px 11px #ff9d3f66,
+       0 0 20px #ffd65e70;
+     animation: winStarEarn 0.58s cubic-bezier(0.18, 0.9, 0.24, 1.2) both;
+   }
+   .win-star-label {
+     display: block;
+     max-width: 96px;
+     min-height: 27px;
+     color: #8b879b;
      font-size: 9px;
-     font-weight: 800;
+     line-height: 1.15;
+     font-weight: 850;
+     text-align: center;
    }
-   .win-chip.good {
-     background: #dcf6e6;
-     color: #23754b;
-   }
-   .win-star-total {
-     position: relative;
-     margin: 8px 0 5px;
-     font-size: 12px;
-     font-weight: 900;
+   .win-star-item.earned.revealed .win-star-label {
+     color: #514b61;
    }
    .win-next-unlock {
      position: relative;
+     min-height: 14px;
      color: #777287;
      font-size: 9px;
-     margin-bottom: 13px;
+     margin: 0 0 16px;
    }
    .modal-actions {
      display: grid;
-     gap: 7px;
+     gap: 15px;
+   }
+   .modal-actions .win-next {
+     min-height: 49px;
+     font-size: 13px;
+   }
+   .modal-secondary-actions {
+     display: grid;
+     grid-template-columns: 1fr 1fr;
+     gap: 9px;
    }
    .modal-card .secondary {
+     min-height: 43px;
      background: #ebe8f7;
      color: #4d4960;
      box-shadow: none;
+     font-size: 11px;
+   }
+   @keyframes winBackdropIn {
+     from { opacity: 0; }
+     to { opacity: 1; }
+   }
+   @keyframes winModalIn {
+     0% { opacity: 0; transform: translateY(28px) scale(0.88) rotate(-1.2deg); }
+     68% { opacity: 1; transform: translateY(-3px) scale(1.025) rotate(0.35deg); }
+     100% { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
+   }
+   @keyframes winStarEarn {
+     0% { transform: scale(0.5) rotate(-16deg); opacity: 0.35; }
+     56% { transform: scale(1.2) rotate(7deg); opacity: 1; }
+     76% { transform: scale(0.94) rotate(-2deg); }
+     100% { transform: scale(1) rotate(0); opacity: 1; }
+   }
+   @keyframes winStarMiss {
+     from { transform: scale(0.66) rotate(-7deg); opacity: 0; }
+     to { transform: scale(0.9) rotate(0); opacity: 0.72; }
+   }
+   @keyframes perfectAura {
+     to { transform: rotate(360deg); }
+   }
+   @keyframes perfectIconFloat {
+     0%, 100% { transform: translateY(0) rotate(-4deg) scale(1); }
+     50% { transform: translateY(-4px) rotate(2deg) scale(1.045); }
+   }
+   @keyframes perfectCardPop {
+     0% { transform: scale(1); }
+     38% { transform: scale(1.025); }
+     100% { transform: scale(1); }
    }
    /* tutorial */
    .coach.tutorial {

@@ -20,7 +20,6 @@ function animateInitialDeal() {
     .map((el, i) => ({ el, i, r: el.getBoundingClientRect() }))
     .sort((a, b) => (Math.abs(a.r.top - b.r.top) > 8 ? a.r.top - b.r.top : a.r.left - b.r.left));
   stockEl.classList.add("deal-pulse");
-  playSfx("pickup", 0.55);
   let maxEnd = 0;
   ordered.forEach(({ el, r }, i) => {
     const cx = r.left + r.width / 2,
@@ -30,6 +29,9 @@ function animateInitialDeal() {
       delay = Math.min(i * 34, 680),
       duration = 285;
     maxEnd = Math.max(maxEnd, delay + duration);
+    // A short, quiet card-slap follows the visual deal. Staggered tones make
+    // the initial layout feel physical without turning into a loud shuffle.
+    playSfx("deal", 0.56 + (i % 4) * 0.035, delay / 1000);
     el.classList.add("deal-card");
     el.animate(
       [

@@ -67,6 +67,16 @@ function checkAchievements() {
 function nextTheme() {
   return THEME_DEFS.find((t) => t.stars > profile.totalStars) || null;
 }
+let winRevealTimers = [];
+function clearWinRevealTimers() {
+  winRevealTimers.forEach(clearTimeout);
+  winRevealTimers = [];
+}
+function closeWinModal() {
+  clearWinRevealTimers();
+  modal.classList.remove("show", "perfect", "perfect-burst");
+  modal.setAttribute("aria-hidden", "true");
+}
 function finishLevel() {
   state.rewarded = true;
   const stars = calculateStars();
@@ -97,20 +107,20 @@ function finishLevel() {
   save();
   showWin(stars, newAchievements);
   resetCombo();
-  playSfx("win");
-  burst(true);
-  haptic([20, 35, 45]);
 }
 function showWin(stars, newAchievements = []) {
+  clearWinRevealTimers();
+  const noHints = state.run.hints === 0,
+    noUndos = state.run.undos === 0,
+    perfect = stars === 3;
+
   $("#winTitle").textContent =
     state.mode === "daily"
       ? "Daily пройден!"
       : state.mode === "tutorial"
         ? `Обучение ${state.tutorialStep}/3`
         : `Уровень ${state.level} пройден`;
-  $("#winStars").innerHTML = [1, 2, 3]
-    .map((i) => `<span class="${i <= stars ? "earned" : ""}">★</span>`)
-    .join("");
+
   $("#winText").textContent =
     state.mode === "daily"
       ? `Серия: ${profile.daily.currentStreak} дн.`
@@ -118,10 +128,24 @@ function showWin(stars, newAchievements = []) {
         ? state.tutorialStep < 3
           ? "Отлично. Переходим к следующей механике."
           : "Обучение закончено. Теперь начинается настоящая игра."
-        : `${state.totalCategories} категорий собрано${state.special ? ` · ${state.special.title}` : ""}.`;
-  $("#winMetrics").innerHTML =
-    `<span class="win-chip ${state.run.hints === 0 ? "good" : ""}">${state.run.hints ? "Подсказки: " + state.run.hints : "Без подсказок"}</span><span class="win-chip ${state.run.undos === 0 ? "good" : ""}">${state.run.undos ? "Отмены: " + state.run.undos : "Без отмен"}</span>`;
-  $("#winStarTotal").textContent = `★ ${profile.totalStars} всего`;
+        : perfect
+          ? "Идеальное прохождение!"
+          : state.special
+            ? state.special.title
+            : "Расклад завершён";
+
+  const rewards = [
+    { earned: true, label: "За уровень" },
+    { earned: noHints, label: "Без подсказок" },
+    { earned: noUndos, label: "Без отмен" },
+  ];
+  $("#winStars").innerHTML = rewards
+    .map(
+      (reward, i) =>
+        `<div class="win-star-item ${reward.earned ? "earned" : "missed"}" data-win-star="${i}"><span class="win-star-symbol">★</span><span class="win-star-label">${reward.label}</span></div>`,
+    )
+    .join("");
+
   const nt = nextTheme();
   $("#winUnlock").textContent = nt
     ? `До темы ${nt.name}: ${nt.stars - profile.totalStars} ★`
@@ -134,9 +158,37 @@ function showWin(stars, newAchievements = []) {
       : state.mode === "daily"
         ? "Новый уровень →"
         : "Следующий уровень →";
-  $("#replay").style.display = state.mode === "tutorial" ? "none" : "block";
+
+  modal.classList.remove("show", "perfect", "perfect-burst");
+  if (perfect) modal.classList.add("perfect");
+  modal.setAttribute("aria-hidden", "false");
+  // Force a fresh entrance animation even when a level is replayed immediately.
+  void modal.offsetWidth;
   modal.classList.add("show");
+
+  playSfx("win", perfect ? 0.9 : 0.72, 0.08);
+  haptic(perfect ? [14, 24, 20] : [12, 22, 14]);
+  burst(false);
+
+  rewards.forEach((reward, i) => {
+    const timer = setTimeout(() => {
+      const item = $(`[data-win-star="${i}"]`);
+      if (!item || !modal.classList.contains("show")) return;
+      item.classList.add("revealed");
+      if (reward.earned) {
+        playSfx("star", 0.8 + i * 0.08);
+        haptic(i === 2 && perfect ? [10, 20, 16] : 9);
+      }
+      if (i === 2 && perfect) {
+        modal.classList.add("perfect-burst");
+        burst(true);
+        setTimeout(() => modal.classList.remove("perfect-burst"), 720);
+      }
+    }, 420 + i * 430);
+    winRevealTimers.push(timer);
+  });
 }
+
 function updateCoach() {
   if (state.mode !== "tutorial") {
     coach.classList.remove("show", "tutorial");

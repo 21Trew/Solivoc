@@ -125,18 +125,19 @@
         </div>
       </div>
     </div>
-    <div class="modal" id="modal">
-      <div class="modal-card">
+    <div class="modal win-modal" id="modal" aria-hidden="true">
+      <div class="modal-card win-modal-card">
         <div class="win-icon">★</div>
         <h2 id="winTitle">Уровень пройден!</h2>
-        <div class="win-stars" id="winStars"></div>
-        <p id="winText">Все категории собраны.</p>
-        <div class="win-metrics" id="winMetrics"></div>
-        <div class="win-star-total" id="winStarTotal"></div>
+        <p id="winText">Отличная партия!</p>
+        <div class="win-stars" id="winStars" aria-label="Награды за уровень"></div>
         <div class="win-next-unlock" id="winUnlock"></div>
         <div class="modal-actions">
-          <button id="next">Следующий уровень →</button>
-          <button class="secondary" id="replay">Ещё раз</button>
+          <button class="win-next" id="next">Следующий уровень →</button>
+          <div class="modal-secondary-actions">
+            <button class="secondary" id="winRestart">↻ Заново</button>
+            <button class="secondary" id="winMenu">☰ Меню</button>
+          </div>
         </div>
       </div>
     </div>
