@@ -48,6 +48,7 @@ function bindAppEvents() {
   $("#restart").onclick = () => {
     if (autoMoveBusy || categoryAnimating) return;
     profile.stats.restarts++;
+    noteAdaptiveRestart?.();
     track("level_restarted", { level: state.level, mode: state.mode });
     resetCombo();
     restartCurrentLevel();
@@ -190,14 +191,19 @@ function boot() {
   bindFeedbackEvents();
   bindAppEvents();
   bindRetentionUi?.();
+  bindEngagementUi?.();
   registerPwa();
   retentionSessionStart?.();
+  prepareWeeklyDigest?.();
   setSplashProgress?.(18,"Загружаю словарь…");
   loadCategoryBank()
     .then(async () => {
       setSplashProgress?.(55,"Собираю прогресс…");
       migrateCategoryMasteryProgress?.();
       ensureWeeklyChallenge();
+      runQualityAudit?.();
+      setSplashProgress?.(64,"Настраиваю игру…");
+      await runFirstRunOnboarding?.();
       const challenge = challengeCodeFromUrl();
       let startedChallenge = false;
       if (challenge) {
@@ -217,6 +223,8 @@ function boot() {
       setSplashProgress?.(94,"Почти готово…");
       hideSplash?.();
       if (!startedChallenge && (gotResult || gotReceivedResult || unseenDuelEntry?.())) setTimeout(()=>showPendingDuelReveal?.(),900);
+      else setTimeout(()=>showPendingWeeklyDigest?.(),1100);
+      flushRemoteAnalytics?.();
       setTimeout(() => scheduleDeadlockCheck(1000), 300);
     })
     .catch((err) => {

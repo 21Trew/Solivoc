@@ -94,7 +94,7 @@ function configForMode(level, mode, rng, special = null, opts = {}) {
     const round = Math.max(1, opts.marathonRound || 1);
     return regularConfig(Math.min(180, 8 + round * 6), rng, null);
   }
-  return regularConfig(level, rng, special);
+  return typeof applyAdaptiveConfig === "function" ? applyAdaptiveConfig(regularConfig(level, rng, special), special) : regularConfig(level, rng, special);
 }
 
 function chooseCompatibleCategories(count, difficulty, rng) {

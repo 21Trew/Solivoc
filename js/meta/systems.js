@@ -1,7 +1,7 @@
 /* Meta systems: encyclopedia, weekly challenge, records, share challenges and save transfer. */
 function categoryStat(id) {
   profile.categoryStats ||= {};
-  return (profile.categoryStats[id] ||= { encounters: 0, completions: 0, firstLevel: null, words: [] });
+  return (profile.categoryStats[id] ||= { encounters: 0, completions: 0, firstLevel: null, words: [], discoveredAt: 0 });
 }
 function levelRefLabel(s = state) {
   if (!s) return null;
@@ -31,6 +31,7 @@ function recordVisibleKnowledge(s = state) {
   const changed = new Set();
   for (const card of visible) {
     if (!card?.cat) continue;
+    registerVisibleCategoryDiscovery?.(card.cat, levelRefLabel(s));
     const stat = categoryStat(card.cat);
     if (!stat.firstLevel) stat.firstLevel = levelRefLabel(s);
     if (card.type === "word" && !stat.words.includes(card.label)) {
@@ -39,7 +40,7 @@ function recordVisibleKnowledge(s = state) {
     }
   }
   if (changed.size) {
-    if (typeof checkCategoryMastery === "function") changed.forEach((id) => checkCategoryMastery(id));
+    changed.forEach((id) => String(id).startsWith("visual:") ? checkVisualCategoryMastery?.(id) : checkCategoryMastery?.(id));
     saveProfile();
   }
 }
@@ -175,6 +176,9 @@ function cleanChallengeResult(result = {}) {
     undos: Math.max(0, +result.undos || 0),
     playerName: String(result.playerName || "Игрок").trim().slice(0, 20) || "Игрок",
     avatarEmoji: AVATAR_EMOJIS.includes(result.avatarEmoji) ? result.avatarEmoji : "🙂",
+    title: String(result.title || "").trim().slice(0, 32),
+    rank: String(result.rank || "").trim().slice(0, 32),
+    featured: Array.isArray(result.featured) ? result.featured.map((x)=>String(x).slice(0,32)).slice(0,3) : [],
     completedAt: result.completedAt || Date.now(),
   };
 }
@@ -187,6 +191,9 @@ function resultForCurrentChallenge(s = state, stars = null) {
     undos: s?.run?.undos || 0,
     playerName: profile.playerName || "Игрок",
     avatarEmoji: profile.avatarEmoji || "🙂",
+    title: titleDefById(profile.titleId)?.name || "",
+    rank: playerRank?.(profile)?.name || "",
+    featured: (profile.featuredAchievements || []).slice(0,3),
     completedAt: Date.now(),
   });
 }
@@ -196,7 +203,7 @@ function challengeStarsText(stars = 0) {
 }
 function challengeResultMarkup(label, result) {
   if (!result) return `<div class="challenge-result-row empty"><span class="challenge-avatar">•</span><div><b>${label}</b><span>ещё не сыграно</span></div></div>`;
-  return `<div class="challenge-result-row"><span class="challenge-avatar">${result.avatarEmoji || "🙂"}</span><div><div><b>${label}</b><span>${challengeStarsText(result.stars)} · ${result.moves} ход.</span></div><small>Подсказки ${result.hints} · Ошибки ${result.errors || 0} · Отмены ${result.undos}</small></div></div>`;
+  return `<div class="challenge-result-row"><span class="challenge-avatar">${result.avatarEmoji || "🙂"}</span><div><div><b>${label}</b><span>${challengeStarsText(result.stars)} · ${result.moves} ход.</span></div><small>${result.title?`${escapeHtml(result.title)}${result.rank?` · ${escapeHtml(result.rank)}`:""}<br>`:""}Подсказки ${result.hints} · Ошибки ${result.errors || 0} · Отмены ${result.undos}</small></div></div>`;
 }
 function challengeComparison(entry) {
   const me = entry?.creatorResult, friend = entry?.guestResult;
@@ -212,13 +219,13 @@ function pruneSentChallenges() {
   profile.sentChallenges = (profile.sentChallenges || [])
     .filter((x) => x?.code && x?.seed)
     .sort((a, b) => (+b.createdAt || 0) - (+a.createdAt || 0))
-    .slice(0, 24);
+    .slice(0, 60);
 }
 function pruneReceivedChallenges() {
   profile.receivedChallenges = (profile.receivedChallenges || [])
     .filter((x) => x?.code && x?.seed)
     .sort((a, b) => (+b.completedAt || +b.startedAt || 0) - (+a.completedAt || +a.startedAt || 0))
-    .slice(0, 24);
+    .slice(0, 60);
 }
 function ownedChallengeByCode(code) {
   const normalized = normalizeChallengeCode(code);
@@ -325,6 +332,7 @@ async function createRemoteChallenge(meta = {}) {
   profile.sentChallenges.unshift(entry);
   pruneSentChallenges();
   saveProfile();
+  track("challenge_created");
   return entry;
 }
 function challengeShortLink(entryOrCode) {
@@ -432,6 +440,7 @@ async function shareChallengeEntry(entry) {
       setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1200);
     } else throw new Error("share unavailable");
     showToast(`Вызов ${entry.code} готов`);
+    track("challenge_shared");
     return true;
   } catch (err) {
     if (err?.name === "AbortError") return false;
@@ -489,6 +498,7 @@ async function startChallengeCode(value) {
         cardSourceMode: normalizeCardSourceMode(data.sourceMode),
       });
       window.history?.replaceState?.({}, "", location.pathname + location.hash);
+      track("challenge_accepted");
       return true;
     } catch (err) {
       console.error("Challenge start:", err);
@@ -665,6 +675,9 @@ function migrateLastGuestChallengeHistory() {
       undos: saved.run?.undos || 0,
       playerName: profile.playerName || "Игрок",
       avatarEmoji: profile.avatarEmoji || "🙂",
+      title: titleDefById(profile.titleId)?.name || "",
+      rank: playerRank?.(profile)?.name || "",
+      featured: (profile.featuredAchievements || []).slice(0,3),
       completedAt: Date.now(),
     });
     entry.status = "completed";

@@ -4,6 +4,9 @@ let hubChapterNumber = null,
   hubCategoryId = null,
   hubVisualCategoryId = null,
   hubEncyclopediaType = "words",
+  encyclopediaFilter = "all",
+  encyclopediaQuery = "",
+  encyclopediaSort = "progress",
   achievementFilter = "all",
   hubExpandedSections = new Set();
 
@@ -100,6 +103,7 @@ function playTabMarkup() {
     </div>
     ${ownedChallengesMarkup()}
     ${receivedChallengesMarkup()}
+    ${typeof duelHistoryMarkup === "function" ? duelHistoryMarkup() : ""}
     ${weeklyMarkup()}
     ${typeof nearGoalsMarkup === "function" ? nearGoalsMarkup(2) : ""}
     <section class="hub-section challenge-enter"><div class="hub-section-head"><h3>Код испытания</h3><small>6 символов</small></div><div class="challenge-input-row"><input id="challengeInput" inputmode="text" autocomplete="off" autocapitalize="characters" maxlength="6" placeholder="ABC123"><button id="challengeStart">Играть</button></div></section>
@@ -128,6 +132,7 @@ function progressTabMarkup() {
       <div class="stat-box"><b>${profile.stats.masteredCategories || 0}</b><span>освоено</span></div><div class="stat-box"><b>${profile.stats.bonusObjectivesCompleted || 0}</b><span>бонусов</span></div>
     </div>`;
   return `${profileHeroMarkup()}
+    ${typeof profileShowcaseMarkup === "function" ? profileShowcaseMarkup() : ""}
     ${collapsibleSectionMarkup("statistics", "Статистика", "твоя история", statsContent)}
     <section class="hub-section"><div class="hub-section-head"><h3>Достижения</h3><small>${profile.achievements.length}/${ACHIEVEMENTS.length}</small></div>
       <div class="achievement-filters">${[["all","Все"],["near","Почти"],["done","Получены"],["rare","Редкие"]].map(([id,label])=>`<button class="${achievementFilter===id?"active":""}" data-ach-filter="${id}">${label}</button>`).join("")}</div>
@@ -173,32 +178,53 @@ function associationCollectionsMarkup() {
     }).join("")}</div>
   </div>`;
 }
+function encyclopediaToolbarMarkup() {
+  const filters=[["all","Все"],["open","Открытые"],["unfinished","Не завершены"],["mastered","Освоены"],["new","Новые"]];
+  return `<div class="encyclopedia-tools"><label class="encyclopedia-search"><i>⌕</i><input id="encyclopediaSearch" value="${escapeHtml(encyclopediaQuery)}" placeholder="Найти категорию"></label><div class="encyclopedia-filters">${filters.map(([id,label])=>`<button class="${encyclopediaFilter===id?"active":""}" data-ency-filter="${id}">${label}</button>`).join("")}</div><div class="encyclopedia-sort"><span>Сортировка</span>${[["progress","Прогресс"],["name","А–Я"],["new","Новые"]].map(([id,label])=>`<button class="${encyclopediaSort===id?"active":""}" data-ency-sort="${id}">${label}</button>`).join("")}</div></div>`;
+}
+function filteredEncyclopediaItems(type="words") {
+  const source=type==="pictures"?allAssociationCategories():BANK, q=encyclopediaQuery.trim().toLocaleLowerCase("ru");
+  const list=source.map((cat)=>{
+    const state=categoryFilterState?.(cat.id,type)||{seen:false,mastered:false,recent:false,unfinished:false}, stat=categoryStat(cat.id),
+      total=type==="pictures"?(visualCategoryById(cat.id)?.category?.cards?.length||cat.words.length):(cat.words?.length||1), known=(stat.words||[]).length,
+      ratio=state.mastered?1:Math.min(1,known/Math.max(1,total));
+    return {cat,state,stat,ratio};
+  }).filter((item)=>{
+    if(q && (!item.state.seen || !String(item.cat.title||"").toLocaleLowerCase("ru").includes(q))) return false;
+    if(encyclopediaFilter==="open") return item.state.seen;
+    if(encyclopediaFilter==="unfinished") return item.state.unfinished;
+    if(encyclopediaFilter==="mastered") return item.state.mastered;
+    if(encyclopediaFilter==="new") return item.state.recent;
+    return true;
+  });
+  list.sort((a,b)=>{
+    if(encyclopediaSort==="name") return String(a.cat.title).localeCompare(String(b.cat.title),"ru");
+    if(encyclopediaSort==="new") return +(b.stat.discoveredAt||0)-+(a.stat.discoveredAt||0);
+    return (Number(b.state.seen)-Number(a.state.seen)) || (b.ratio-a.ratio) || String(a.cat.title).localeCompare(String(b.cat.title),"ru");
+  });
+  return list;
+}
+function wordEncyclopediaGridMarkup() {
+  const items=filteredEncyclopediaItems("words");
+  return `<div class="collection-grid encyclopedia-grid">${items.map(({cat,state})=>`<button class="collection-item ${state.seen?"seen":"locked"} ${state.mastered?"mastered":""} ${hubCategoryId===cat.id?"selected":""}" data-category-id="${cat.id}" ${state.seen?"":"disabled"}>${state.seen?`${state.mastered?"★ ":""}${escapeHtml(cat.title)}`:"???"}</button>`).join("") || `<div class="empty-state encyclopedia-empty">Ничего не найдено</div>`}</div>`;
+}
 function pictureEncyclopediaGridMarkup() {
-  const discovered = visualDiscoveredIds(profile);
-  return `<div class="visual-category-groups">${ASSOCIATION_COLLECTION_DEFS.map((collection)=>{
-    const categories = associationCollectionCategories(collection.id);
-    return `<section class="visual-category-group"><div class="visual-category-group-head"><b>${collection.icon} ${escapeHtml(collection.name)}</b><span>${categories.filter((c)=>discovered.has(c.id)).length}/${categories.length}</span></div><div class="collection-grid encyclopedia-grid visual-grid">${categories.map((cat)=>{
-      const seen=discovered.has(cat.id), stat=categoryStat(cat.id), info=visualCategoryById(cat.id), sample=info?.category?.cards?.[0]?.[0] || collection.icon;
-      return `<button class="collection-item visual-item ${seen?"seen":"locked"} ${hubVisualCategoryId===cat.id?"selected":""}" data-visual-category-id="${cat.id}" ${seen?"":"disabled"}><i>${seen?sample:"?"}</i><span>${seen?escapeHtml(cat.title):"???"}</span>${seen&&stat.completions?`<em>${stat.completions}×</em>`:""}</button>`;
-    }).join("")}</div></section>`;
-  }).join("")}</div>`;
+  const allowed=new Map(filteredEncyclopediaItems("pictures").map((x)=>[x.cat.id,x]));
+  const groups=ASSOCIATION_COLLECTION_DEFS.map((collection)=>{
+    const categories=associationCollectionCategories(collection.id).filter((c)=>allowed.has(c.id));
+    if(!categories.length)return "";
+    return `<section class="visual-category-group"><div class="visual-category-group-head"><b>${collection.icon} ${escapeHtml(collection.name)}</b><span>${categories.filter((c)=>allowed.get(c.id).state.seen).length}/${categories.length}</span></div><div class="collection-grid encyclopedia-grid visual-grid">${categories.map((cat)=>{const item=allowed.get(cat.id),state=item.state,stat=item.stat,info=visualCategoryById(cat.id),sample=info?.category?.cards?.[0]?.[0]||collection.icon;return `<button class="collection-item visual-item ${state.seen?"seen":"locked"} ${state.mastered?"mastered":""} ${hubVisualCategoryId===cat.id?"selected":""}" data-visual-category-id="${cat.id}" ${state.seen?"":"disabled"}><i>${state.seen?sample:"?"}</i><span>${state.seen?escapeHtml(cat.title):"???"}</span>${state.seen&&stat.completions?`<em>${stat.completions}×</em>`:""}</button>`;}).join("")}</div></section>`;
+  }).join("");
+  return `<div class="visual-category-groups">${groups||`<div class="empty-state encyclopedia-empty">Ничего не найдено</div>`}</div>`;
 }
 function collectionTabMarkup() {
-  const wordDiscovered = new Set(profile.discovered),
-    wordCount = discoveredCategoryCount(profile),
-    pictureDiscovered = visualDiscoveredIds(profile),
-    pictureCount = pictureDiscovered.size,
-    pictureTotal = totalVisualCategoryCount(),
-    totalCount = wordCount + pictureCount,
-    totalCategories = BANK.length + pictureTotal;
-  if (!hubCategoryId || !wordDiscovered.has(hubCategoryId)) hubCategoryId = BANK.find((c)=>wordDiscovered.has(c.id))?.id || null;
-  if (!hubVisualCategoryId || !pictureDiscovered.has(hubVisualCategoryId)) hubVisualCategoryId = allAssociationCategories().find((c)=>pictureDiscovered.has(c.id))?.id || null;
-  const cat = BANK.find((c)=>c.id===hubCategoryId);
-  const tabs = `<div class="encyclopedia-type-tabs"><button class="${hubEncyclopediaType==="words"?"active":""}" data-encyclopedia-tab="words"><b>Слова</b><span>${wordCount}/${BANK.length}</span></button><button class="${hubEncyclopediaType==="pictures"?"active":""}" data-encyclopedia-tab="pictures"><b>Картинки</b><span>${pictureCount}/${pictureTotal}</span></button></div>`;
-  const words = `<div class="encyclopedia-pane">${categoryDetailMarkup(cat)}<div class="collection-grid encyclopedia-grid">${BANK.map((c)=>{const m=wordDiscovered.has(c.id)&&typeof categoryMasteryData==="function"&&categoryMasteryData(c.id).mastered;return `<button class="collection-item ${wordDiscovered.has(c.id)?"seen":"locked"} ${m?"mastered":""} ${hubCategoryId===c.id?"selected":""}" data-category-id="${c.id}" ${wordDiscovered.has(c.id)?"":"disabled"}>${wordDiscovered.has(c.id)?`${m?"★ ":""}${c.title}`:"???"}</button>`;}).join("")}</div></div>`;
-  const pictures = `<div class="encyclopedia-pane">${associationCollectionsMarkup()}<div class="hub-subhead picture-categories-head"><h4>Категории картинок</h4><small>${pictureCount}/${pictureTotal} открыто</small></div>${visualCategoryDetailMarkup(hubVisualCategoryId)}${pictureEncyclopediaGridMarkup()}</div>`;
-  return `${profileHeroMarkup()}
-    <section class="hub-section encyclopedia-shell"><div class="hub-section-head encyclopedia-main-head"><div><h3>Энциклопедия</h3><small>слова и картинки в одной коллекции</small></div><strong>${totalCount}/${totalCategories}</strong></div>${tabs}${hubEncyclopediaType==="pictures"?pictures:words}</section>`;
+  const wordDiscovered=new Set(profile.discovered),wordCount=discoveredCategoryCount(profile),pictureDiscovered=visualDiscoveredIds(profile),pictureCount=pictureDiscovered.size,pictureTotal=totalVisualCategoryCount(),totalCount=wordCount+pictureCount,totalCategories=BANK.length+pictureTotal;
+  if(!hubCategoryId||!wordDiscovered.has(hubCategoryId))hubCategoryId=BANK.find((c)=>wordDiscovered.has(c.id))?.id||null;
+  if(!hubVisualCategoryId||!pictureDiscovered.has(hubVisualCategoryId))hubVisualCategoryId=allAssociationCategories().find((c)=>pictureDiscovered.has(c.id))?.id||null;
+  const cat=BANK.find((c)=>c.id===hubCategoryId),tabs=`<div class="encyclopedia-type-tabs"><button class="${hubEncyclopediaType==="words"?"active":""}" data-encyclopedia-tab="words"><b>Слова</b><span>${wordCount}/${BANK.length}</span></button><button class="${hubEncyclopediaType==="pictures"?"active":""}" data-encyclopedia-tab="pictures"><b>Картинки</b><span>${pictureCount}/${pictureTotal}</span></button></div>`,toolbar=encyclopediaToolbarMarkup();
+  const words=`<div class="encyclopedia-pane">${categoryDetailMarkup(cat)}${toolbar}${wordEncyclopediaGridMarkup()}</div>`;
+  const pictures=`<div class="encyclopedia-pane">${associationCollectionsMarkup()}<div class="hub-subhead picture-categories-head"><h4>Категории картинок</h4><small>${pictureCount}/${pictureTotal} открыто</small></div>${visualCategoryDetailMarkup(hubVisualCategoryId)}${toolbar}${pictureEncyclopediaGridMarkup()}</div>`;
+  return `${profileHeroMarkup()}<section class="hub-section encyclopedia-shell"><div class="hub-section-head encyclopedia-main-head"><div><h3>Энциклопедия</h3><small>все ассоциации в одном месте</small></div><strong>${totalCount}/${totalCategories}</strong></div>${tabs}${hubEncyclopediaType==="pictures"?pictures:words}</section>`;
 }
 function cardBackMarkup() {
   return CARD_BACK_DEFS.map((back) => {
@@ -223,10 +249,13 @@ function openProfileEditorModal() {
   if (!modal || !content) return;
   modal.dataset.avatar = profile.avatarEmoji || "🙂";
   modal.dataset.title = profile.titleId || "player";
+  modal.dataset.featured = (profile.featuredAchievements || []).join(",");
   content.innerHTML = `<div class="profile-editor-head"><div class="profile-editor-avatar-preview">${escapeHtml(profile.avatarEmoji || "🙂")}</div><div><small>ПРОФИЛЬ ИГРОКА</small><h2>Редактирование</h2></div></div>
     <label class="profile-field"><span>Имя игрока</span><input id="profileEditorName" maxlength="20" value="${escapeHtml(profile.playerName || "Игрок")}" autocomplete="off" spellcheck="false"></label>
     <div class="profile-field"><span>Аватар</span>${avatarEmojiMarkup(profile.avatarEmoji)}</div>
     <div class="profile-field"><span>Титул</span>${titlePillsMarkup(profile.titleId)}</div>
+    <label class="profile-field"><span>Любимая категория</span><select id="profileFavoriteCategory"><option value="">Не выбрана</option>${discoveredAllCategoryIds?.().map((id)=>`<option value="${id}" ${profile.favoriteCategory===id?"selected":""}>${categoryDisplayIcon?.(id)||"✦"} ${escapeHtml(categoryDisplayName?.(id)||id)}</option>`).join("")||""}</select></label>
+    <div class="profile-field"><span>Избранные достижения · до 3</span><div class="featured-picker">${(profile.achievements||[]).map((id)=>ACHIEVEMENTS.find((a)=>a.id===id)).filter(Boolean).map((a)=>`<button type="button" class="featured-pick ${(profile.featuredAchievements||[]).includes(a.id)?"selected":""}" data-featured-achievement="${a.id}"><i>${a.icon}</i><span>${escapeHtml(a.title)}</span></button>`).join("")||`<small>Сначала получи достижение</small>`}</div></div>
     <div class="profile-editor-actions"><button type="button" class="secondary" id="profileEditorCancel">Отмена</button><button type="button" class="primary" id="profileEditorSave">Сохранить</button></div>`;
   modal.classList.add("show");
   modal.setAttribute("aria-hidden", "false");
@@ -246,6 +275,11 @@ function openProfileEditorModal() {
     modal.dataset.title = btn.dataset.profileTitle;
     content.querySelectorAll("[data-profile-title]").forEach((x)=>x.classList.toggle("selected", x===btn));
   });
+  content.querySelectorAll("[data-featured-achievement]").forEach((btn)=>btn.onclick=()=>{
+    const set=new Set(String(modal.dataset.featured||"").split(",").filter(Boolean)),id=btn.dataset.featuredAchievement;
+    if(set.has(id))set.delete(id);else if(set.size<3)set.add(id);else{showToast("Можно выбрать до 3 достижений");return;}
+    modal.dataset.featured=[...set].join(",");btn.classList.toggle("selected",set.has(id));
+  });
   const close = $("#profileEditorClose"), cancel = $("#profileEditorCancel"), save = $("#profileEditorSave");
   if (close) close.onclick = closeProfileEditorModal;
   if (cancel) cancel.onclick = closeProfileEditorModal;
@@ -254,6 +288,8 @@ function openProfileEditorModal() {
     profile.playerName=(name||"Игрок").slice(0,20);
     if(AVATAR_EMOJIS.includes(avatar)) profile.avatarEmoji=avatar;
     if(title&&titleUnlocked(title)) profile.titleId=title.id;
+    profile.favoriteCategory=$("#profileFavoriteCategory")?.value||"";
+    profile.featuredAchievements=String(modal.dataset.featured||"").split(",").filter((id)=>profile.achievements.includes(id)).slice(0,3);
     saveProfile();
     closeProfileEditorModal();
     showToast("Профиль сохранён");
@@ -299,11 +335,13 @@ function settingsTabMarkup() {
   const saveContent = `<div class="save-tools"><button id="exportSave">⇩ Экспорт прогресса</button><button id="importSave">⇧ Импорт прогресса</button></div>`;
   const bankContent = `<div class="bank-health-grid"><span><b>${report.categories||BANK.length}</b> категорий</span><span><b>${report.words||0}</b> слов</span><span><b>${report.ambiguousWords?.length||0}</b> пересечений</span><span><b>${report.warnings?.length||0}</b> предупреждений</span></div><p>Пересечения автоматически не попадают в один расклад; генератор также проверяет проходимость seed.</p>`;
   const tutorialContent = `<button class="wide-secondary" id="hubTutorial">◇ Запустить обучение заново</button>`;
+  const diagnosticsContent = `${typeof qualityAuditMarkup==="function"?qualityAuditMarkup():""}<div class="analytics-health"><b>Аналитика</b><span>Локальные события: ${(()=>{try{return JSON.parse(localStorage.getItem(ANALYTICS_KEY))?.events?.length||0}catch{return 0}})()}</span><small>Анонимные агрегаты отправляются в /api/analytics без имён и текста раскладов.</small></div>`;
   return `${profileHeroMarkup()}
     ${collapsibleSectionMarkup("settings-main", "Настройки", "звук и ощущения", settingsContent)}
     ${collapsibleSectionMarkup("notifications", "Уведомления", "управление по типам", notificationsContent, "notification-settings")}
     ${collapsibleSectionMarkup("save", "Сохранение", "не потеряй прогресс", saveContent)}
     ${collapsibleSectionMarkup("bank", "База слов", "внутренняя проверка", bankContent, "bank-health")}
+    ${collapsibleSectionMarkup("diagnostics", "Диагностика", "QA и аналитика", diagnosticsContent, "diagnostics-health")}
     ${collapsibleSectionMarkup("tutorial", "Обучение", "повторить механику", tutorialContent)}`;
 }
 function renderHub() {
@@ -342,6 +380,10 @@ function bindHubHandlers() {
   hubContent.querySelectorAll("[data-category-id]").forEach((btn)=>btn.onclick=()=>{hubCategoryId=btn.dataset.categoryId;renderHub();});
   hubContent.querySelectorAll("[data-visual-category-id]").forEach((btn)=>btn.onclick=()=>{hubVisualCategoryId=btn.dataset.visualCategoryId;renderHub();});
   hubContent.querySelectorAll("[data-encyclopedia-tab]").forEach((btn)=>btn.onclick=()=>{hubEncyclopediaType=btn.dataset.encyclopediaTab;renderHub();});
+  hubContent.querySelectorAll("[data-ency-filter]").forEach((btn)=>btn.onclick=()=>{encyclopediaFilter=btn.dataset.encyFilter;renderHub();});
+  hubContent.querySelectorAll("[data-ency-sort]").forEach((btn)=>btn.onclick=()=>{encyclopediaSort=btn.dataset.encySort;renderHub();});
+  const encyclopediaSearch=$("#encyclopediaSearch"); if(encyclopediaSearch){let searchTimer;encyclopediaSearch.oninput=()=>{encyclopediaQuery=encyclopediaSearch.value;clearTimeout(searchTimer);searchTimer=setTimeout(()=>{renderHub();const next=$("#encyclopediaSearch");next?.focus();next?.setSelectionRange(next.value.length,next.value.length);},180);};}
+  hubContent.querySelectorAll("[data-duel-history-rematch]").forEach((btn)=>btn.onclick=()=>{const found=findDuelHistoryEntry?.(btn.dataset.duelHistoryRematch);if(found)createChallengeRematch?.(found.entry,found.perspective);});
   hubContent.querySelectorAll("[data-card-source-mode]").forEach((btn)=>btn.onclick=()=>{profile.settings.cardSourceMode=normalizeCardSourceMode(btn.dataset.cardSourceMode);saveProfile();showToast(`Расклады: ${btn.textContent.trim()}`);renderHub();});
   hubContent.querySelectorAll("[data-association-collection]").forEach((btn)=>btn.onclick=()=>{const id=btn.dataset.associationCollection;closeHub();makeLevel(1,{mode:"collection",collectionId:id,seed:`collection:${id}:${Date.now()}`});});
   hubContent.querySelectorAll("[data-theme-id]").forEach((btn)=>btn.onclick=()=>{const def=THEME_DEFS.find((x)=>x.id===btn.dataset.themeId);if(themeUnlocked(def)){profile.theme=def.id;saveProfile();}renderHub();if(!themeUnlocked(def))showToast(`Откроется за ${themeUnlockLabel(def)}`);});

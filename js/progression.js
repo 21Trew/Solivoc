@@ -115,6 +115,9 @@ function finishLevel() {
     if (state.run.hints === 0) profile.stats.noHintWins++;
     if (state.run.undos === 0) profile.stats.noUndoWins++;
     track("level_completed", { level: state.level, stars, moves: state.run.moves });
+    if (firstClear && state.level === 1) track("funnel_level_1_complete");
+    if (firstClear && state.level === 2) track("funnel_level_2_complete");
+    if (firstClear && state.level === 5) track("funnel_level_5_complete");
     if (typeof awardXp === "function") awardXp((firstClear ? 45 : 18) + stars * (firstClear ? 10 : 6), firstClear ? `Уровень ${state.level}` : "Повтор уровня", { notifyRank: false });
   } else if (state.mode === "daily") {
     const date = todayKey();
@@ -153,9 +156,10 @@ function finishLevel() {
     if (typeof awardXp === "function") awardXp(30 + stars * 8, "Марафон", { notifyRank: false });
   } else if (state.mode === "tutorial") {
     track("tutorial_completed", { step: state.tutorialStep });
-    if (state.tutorialStep === 3) profile.tutorialComplete = true;
+    if (state.tutorialStep === 3) { profile.tutorialComplete = true; track("tutorial_all_complete"); }
   }
 
+  if (state.mode === "regular") updateAdaptiveDifficulty?.(state, stars);
   recomputeStars();
   if (typeof rewardChapterFinal === "function") rewardChapterFinal(state, firstRegularClear);
   if (state.mode === "daily" && firstDailyClear && typeof awardDailyWeekMilestones === "function") awardDailyWeekMilestones();

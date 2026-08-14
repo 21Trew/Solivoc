@@ -840,3 +840,21 @@ html[data-stack-fit="tight"] .card.category.open-under .name { padding-top: 1px;
   .picture-collection span { font-size:16px; border-radius:8px; }
   .card-source-options button span { font-size:7px; }
 }
+
+/* Product polish v8 responsive */
+@media (max-width: 370px) {
+  .onboarding-card,.weekly-digest-card { padding:16px; border-radius:23px; }
+  .onboarding-step h2,.weekly-digest-card h2 { font-size:22px; }
+  .onboarding-avatar-grid { grid-template-columns:repeat(6,1fr); }
+  .onboarding-demo span,.onboarding-demo b { width:62px; height:88px; }
+  .weekly-digest-grid { grid-template-columns:repeat(2,1fr); }
+  .profile-showcase-grid { grid-template-columns:1fr 1fr; }
+  .featured-picker { grid-template-columns:1fr; }
+}
+@media (max-height: 650px) {
+  .onboarding-card,.weekly-digest-card { max-height:96dvh; padding:14px; }
+  .onboarding-logo { margin-bottom:10px; }
+  .onboarding-step p { margin-bottom:10px; }
+  .onboarding-demo { min-height:110px; padding:8px 4px; transform:scale(.88); transform-origin:center; }
+  .onboarding-dots { margin:10px 0; }
+}

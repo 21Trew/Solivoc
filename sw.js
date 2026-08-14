@@ -1,4 +1,4 @@
-const CACHE = "worditaire-static-v16";
+const CACHE = "worditaire-v17";
 const CORE = [
   "./",
   "./index.html",
@@ -18,6 +18,7 @@ const CORE = [
   "./js/generator.js",
   "./js/meta/systems.js",
   "./js/retention.js",
+  "./js/engagement.js",
   "./js/animations.js",
   "./js/game/feedback.js",
   "./js/game/state.js",

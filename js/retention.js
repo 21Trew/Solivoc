@@ -43,6 +43,12 @@ function awardXp(amount, reason = "", { notifyRank = true } = {}) {
 function retentionSessionStart() {
   profile.retention ||= { lastOpenDate: null, openDays: [], lastSessionAt: 0 };
   const today = todayKey();
+  if (!profile.retention.firstOpenAt) { profile.retention.firstOpenAt = Date.now(); track("first_open"); }
+  else {
+    const first = new Date(profile.retention.firstOpenAt), firstKey = localDateKey(first), age = daysBetween(firstKey, today);
+    if (age === 1 && !profile.retention.d1Tracked) { profile.retention.d1Tracked = true; track("retention_d1"); }
+    if (age >= 7 && !profile.retention.d7Tracked) { profile.retention.d7Tracked = true; track("retention_d7"); }
+  }
   if (!profile.retention.openDays.includes(today)) profile.retention.openDays.push(today);
   if (profile.retention.openDays.length > 90) profile.retention.openDays = profile.retention.openDays.slice(-90);
   const returning = !!profile.retention.lastOpenDate && profile.retention.lastOpenDate !== today;
@@ -468,7 +474,7 @@ function frameTilesMarkup() {
 }
 
 function bindRetentionUi() {
-  const closeDuel=$("#duelClose"); if(closeDuel) closeDuel.onclick=()=>{$("#duelResultModal")?.classList.remove("show"); $("#duelResultModal")?.setAttribute("aria-hidden","true");};
+  const closeDuel=$("#duelClose"); if(closeDuel) closeDuel.onclick=()=>{$("#duelResultModal")?.classList.remove("show"); $("#duelResultModal")?.setAttribute("aria-hidden","true"); setTimeout(()=>showPendingWeeklyDigest?.(),250);};
   const allow=$("#notificationAllow"); if(allow) allow.onclick=async()=>{ $("#notificationPrompt")?.classList.remove("show"); profile.settings.notificationPrompted=true; saveProfile(); try{await registerPushNotifications(notificationChallengeEntry);}catch(err){console.error(err);showToast("Не удалось включить push");} notificationChallengeEntry=null; };
   const later=$("#notificationLater"); if(later) later.onclick=()=>{$("#notificationPrompt")?.classList.remove("show");profile.settings.notificationPrompted=true;saveProfile();notificationChallengeEntry=null;};
   const retry=$("#splashRetry"); if(retry) retry.onclick=()=>location.reload();

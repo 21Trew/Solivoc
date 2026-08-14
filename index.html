@@ -189,6 +189,23 @@
         <div class="profile-editor-content" id="profileEditorContent"></div>
       </div>
     </div>
+    <div class="onboarding-modal" id="onboardingModal" aria-hidden="true">
+      <div class="onboarding-card" role="dialog" aria-modal="true" aria-label="Первый запуск">
+        <div class="onboarding-logo"><span>✦</span><b>Словасьянс</b></div>
+        <div id="onboardingContent"></div>
+      </div>
+    </div>
+    <div class="weekly-digest-modal" id="weeklyDigestModal" aria-hidden="true">
+      <div class="weekly-digest-card" role="dialog" aria-modal="true" aria-label="Итоги недели">
+        <button id="weeklyDigestClose" class="weekly-digest-close" aria-label="Закрыть">×</button>
+        <div class="weekly-digest-icon">📊</div>
+        <small>ТВОЯ НЕДЕЛЯ</small>
+        <h2>Посмотрим, что изменилось</h2>
+        <div class="weekly-digest-grid" id="weeklyDigestGrid"></div>
+        <div class="weekly-digest-xp" id="weeklyDigestXp">+0 XP за неделю</div>
+        <button class="weekly-digest-next" id="weeklyDigestNext">Новая неделя →</button>
+      </div>
+    </div>
     <div class="update-banner" id="updateBanner" aria-hidden="true">
       <div><b>Доступно обновление</b><span>Новая версия Словасьянса готова</span></div>
       <button id="updateNow">Обновить</button>
@@ -212,6 +229,7 @@
     <script src="./js/generator.js"></script>
     <script src="./js/meta/systems.js"></script>
     <script src="./js/retention.js"></script>
+    <script src="./js/engagement.js"></script>
     <script src="./js/animations.js"></script>
     <script src="./js/game/feedback.js"></script>
     <script src="./js/game/state.js"></script>

@@ -20,7 +20,14 @@ function defaultProfile() {
     xpMigrated: false,
     masteryMigrated: false,
     pushClientId: "",
-    retention: { lastOpenDate: null, openDays: [], lastSessionAt: 0 },
+    retention: { lastOpenDate: null, openDays: [], lastSessionAt: 0, firstOpenAt: 0, d1Tracked: false, d7Tracked: false },
+    onboardingComplete: false,
+    onboardingVersion: 1,
+    favoriteCategory: "",
+    featuredAchievements: [],
+    adaptive: { bias: 0, history: [], restartsSinceWin: 0 },
+    weeklyDigest: { key: "", baseline: null, pending: null, seenKey: "" },
+    analyticsClientId: "",
     categoryStats: {},
     associationCollections: {},
     visualDiscovered: [],
@@ -66,6 +73,10 @@ function loadProfile() {
         receivedChallenges: Array.isArray(p.receivedChallenges) ? p.receivedChallenges : [],
         pendingChallengeSubmissions: Array.isArray(p.pendingChallengeSubmissions) ? p.pendingChallengeSubmissions : [],
         weekly: { ...defaultProfile().weekly, ...(p.weekly || {}) },
+        onboardingComplete: typeof p.onboardingComplete === "boolean" ? p.onboardingComplete : !!p.tutorialComplete,
+        featuredAchievements: Array.isArray(p.featuredAchievements) ? p.featuredAchievements : [],
+        adaptive: { ...defaultProfile().adaptive, ...(p.adaptive || {}), history: Array.isArray(p.adaptive?.history) ? p.adaptive.history : [] },
+        weeklyDigest: { ...defaultProfile().weeklyDigest, ...(p.weeklyDigest || {}) },
       };
     } catch {}
   }
@@ -147,6 +158,14 @@ function migrateMetaProfile() {
   profile.daily.weekRewards = profile.daily.weekRewards && typeof profile.daily.weekRewards === "object" ? profile.daily.weekRewards : {};
   profile.retention = { ...defaultProfile().retention, ...(profile.retention || {}) };
   profile.retention.openDays = Array.isArray(profile.retention.openDays) ? profile.retention.openDays : [];
+  profile.adaptive = { ...defaultProfile().adaptive, ...(profile.adaptive || {}) };
+  profile.adaptive.history = Array.isArray(profile.adaptive.history) ? profile.adaptive.history.slice(-12) : [];
+  profile.weeklyDigest = { ...defaultProfile().weeklyDigest, ...(profile.weeklyDigest || {}) };
+  profile.featuredAchievements = Array.isArray(profile.featuredAchievements) ? profile.featuredAchievements.filter((id) => profile.achievements.includes(id)).slice(0, 3) : [];
+  profile.favoriteCategory = String(profile.favoriteCategory || "");
+  profile.analyticsClientId = String(profile.analyticsClientId || "");
+  if (!profile.analyticsClientId) profile.analyticsClientId = `a_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-5)}`;
+  if (profile.tutorialComplete && profile.onboardingComplete == null) profile.onboardingComplete = true;
   profile.frame = FRAME_DEFS.some((f) => f.id === profile.frame) ? profile.frame : "none";
   profile.avatarEmoji = AVATAR_EMOJIS.includes(profile.avatarEmoji) ? profile.avatarEmoji : "🙂";
   profile.associationCollections = profile.associationCollections && typeof profile.associationCollections === "object" ? profile.associationCollections : {};
@@ -238,6 +257,7 @@ function track(name, data = {}) {
     a.events.push({ name, t: Date.now(), ...data });
     if (a.events.length > 250) a.events = a.events.slice(-250);
     localStorage.setItem(ANALYTICS_KEY, JSON.stringify(a));
+    if (typeof queueRemoteAnalytics === "function") queueRemoteAnalytics(name, data);
   } catch {}
 }
 function applyTheme(id) {
