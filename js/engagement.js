@@ -311,7 +311,7 @@ function bindOnboardingAvatarScroller(root) {
   const selectedIndex = selectedButton ? AVATAR_EMOJIS.indexOf(selectedButton.dataset.onboardingAvatar) : 0;
   let page = Math.max(0, Math.min(count - 1, Math.floor(Math.max(0, selectedIndex) / 8)));
   let wheelLock = false;
-  let dragStartX = 0, dragStartLeft = 0, dragging = false, pointerId = null;
+  let dragStartX = 0, dragStartLeft = 0, dragging = false, pointerPressed = false, pointerId = null, suppressClick = false;
 
   const pageWidth = () => Math.max(1, rail.clientWidth);
   const renderDots = () => {
@@ -350,33 +350,51 @@ function bindOnboardingAvatarScroller(root) {
     window.setTimeout(()=>{ wheelLock = false; }, 320);
   }, { passive:false });
 
-  // Mouse drag remains available, but it snaps cleanly to the nearest page.
+  // Mouse click and drag are deliberately separated. Pointer capture is only
+  // enabled after a real horizontal movement, so a normal click still reaches
+  // the emoji button and selects the avatar.
   rail.addEventListener("pointerdown", (event) => {
     if (event.pointerType !== "mouse" || event.button !== 0) return;
-    dragging = true;
+    pointerPressed = true;
+    dragging = false;
     pointerId = event.pointerId;
     dragStartX = event.clientX;
     dragStartLeft = rail.scrollLeft;
-    rail.classList.add("mouse-dragging");
-    rail.setPointerCapture?.(event.pointerId);
   });
   rail.addEventListener("pointermove", (event) => {
-    if (!dragging || event.pointerId !== pointerId) return;
+    if (!pointerPressed || event.pointerId !== pointerId) return;
     const dx = event.clientX - dragStartX;
+    if (!dragging && Math.abs(dx) >= 7) {
+      dragging = true;
+      rail.classList.add("mouse-dragging");
+      rail.setPointerCapture?.(event.pointerId);
+    }
+    if (!dragging) return;
     rail.scrollLeft = dragStartLeft - dx;
-    if (Math.abs(dx) > 2) event.preventDefault();
+    event.preventDefault();
   });
   const finishDrag = (event) => {
-    if (!dragging || (event && event.pointerId !== pointerId)) return;
+    if (!pointerPressed || (event && event.pointerId !== pointerId)) return;
+    const wasDragging = dragging;
+    pointerPressed = false;
     dragging = false;
     rail.classList.remove("mouse-dragging");
     try { rail.releasePointerCapture?.(pointerId); } catch {}
     pointerId = null;
+    if (!wasDragging) return;
+    suppressClick = true;
     const nearest = Math.round(rail.scrollLeft / pageWidth());
     setPage(nearest, true);
+    window.setTimeout(()=>{ suppressClick = false; }, 120);
   };
   rail.addEventListener("pointerup", finishDrag);
   rail.addEventListener("pointercancel", finishDrag);
+  rail.addEventListener("click", (event) => {
+    if (!suppressClick) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    suppressClick = false;
+  }, true);
 
   // Native touch/trackpad scrolling updates the active dot continuously.
   let raf = 0;
