@@ -845,7 +845,8 @@ html[data-stack-fit="tight"] .card.category.open-under .name { padding-top: 1px;
 @media (max-width: 370px) {
   .onboarding-card,.weekly-digest-card { padding:16px; border-radius:23px; }
   .onboarding-step h2,.weekly-digest-card h2 { font-size:22px; }
-  .onboarding-avatar-grid { grid-template-columns:repeat(6,1fr); }
+  .onboarding-avatar-grid { grid-template-rows:repeat(2,46px); grid-auto-columns:46px; }
+  .onboarding-avatar { width:46px; height:46px; font-size:20px; }
   .onboarding-demo span,.onboarding-demo b { width:62px; height:88px; }
   .weekly-digest-grid { grid-template-columns:repeat(2,1fr); }
   .profile-showcase-grid { grid-template-columns:1fr 1fr; }

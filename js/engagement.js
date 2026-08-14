@@ -286,7 +286,7 @@ function qualityAuditMarkup() {
 }
 
 function onboardingAvatarButtons(selected) {
-  return AVATAR_EMOJIS.slice(0,16).map((emoji)=>`<button class="onboarding-avatar ${selected===emoji?"selected":""}" data-onboarding-avatar="${emoji}">${emoji}</button>`).join("");
+  return AVATAR_EMOJIS.map((emoji)=>`<button type="button" class="onboarding-avatar ${selected===emoji?"selected":""}" data-onboarding-avatar="${emoji}" aria-label="Выбрать аватар ${emoji}">${emoji}</button>`).join("");
 }
 function runFirstRunOnboarding() {
   if (profile.onboardingComplete) return Promise.resolve(false);
@@ -294,7 +294,7 @@ function runFirstRunOnboarding() {
   return new Promise((resolve)=>{
     let step=0, avatar=profile.avatarEmoji||"🙂", name=profile.playerName==="Игрок"?"":profile.playerName;
     const pages=[
-      ()=>`<div class="onboarding-step"><small>ДОБРО ПОЖАЛОВАТЬ</small><h2>Кто сегодня раскладывает?</h2><p>Имя и аватар будут видны друзьям в вызовах.</p><label><span>Имя игрока</span><input id="onboardingName" maxlength="20" value="${escapeHtml(name)}" placeholder="Например, Разраб" autocomplete="off"></label><div class="onboarding-avatar-grid">${onboardingAvatarButtons(avatar)}</div></div>`,
+      ()=>`<div class="onboarding-step"><small>ДОБРО ПОЖАЛОВАТЬ</small><h2>Давай знакомиться!</h2><p>Имя и аватар будут видны друзьям в вызовах.</p><label><span>Твоё имя</span><input id="onboardingName" maxlength="20" value="${escapeHtml(name)}" placeholder="Например, Альберт Эйнштейн" autocomplete="off"></label><div class="onboarding-avatar-grid">${onboardingAvatarButtons(avatar)}</div></div>`,
       ()=>`<div class="onboarding-step"><small>КАК ИГРАТЬ · 1/2</small><h2>Ищи смысловые связи</h2><p>Открытые карты одной категории складываются вместе. Можно тащить всю открытую стопку.</p><div class="onboarding-demo"><span>МОРЕ</span><b>ВОЛНА</b><b>ПРИБОЙ</b><b>ОКЕАН</b></div></div>`,
       ()=>`<div class="onboarding-step"><small>КАК ИГРАТЬ · 2/2</small><h2>Собирай категории сверху</h2><p>Карточку категории отправь в свободный слот, затем собирай туда все связанные слова или картинки.</p><div class="onboarding-demo picture"><span>КИНО</span><b>🎬</b><b>🍿</b><b>🎟️</b><b>📽️</b></div></div>`,
       ()=>`<div class="onboarding-step"><small>ГОТОВО</small><h2>Начнём с короткого обучения</h2><p>Три простых расклада покажут перенос категории, сбор стопок и работу колоды. Потом откроется весь Словасьянс.</p><div class="onboarding-ready"><i>✦</i><span>Слова</span><i>🖼️</i><span>Картинки</span><i>⚔</i><span>Вызовы</span></div></div>`,
@@ -302,7 +302,7 @@ function runFirstRunOnboarding() {
     const render=()=>{
       content.innerHTML=`${pages[step]()}<div class="onboarding-dots">${pages.map((_,i)=>`<i class="${i===step?"active":""}"></i>`).join("")}</div><div class="onboarding-actions">${step?`<button class="secondary" id="onboardingBack">Назад</button>`:""}<button class="primary" id="onboardingNext">${step===pages.length-1?"Начать обучение →":"Дальше →"}</button></div>`;
       const input=$("#onboardingName"); if(input) input.oninput=()=>{name=input.value;};
-      content.querySelectorAll("[data-onboarding-avatar]").forEach((btn)=>btn.onclick=()=>{avatar=btn.dataset.onboardingAvatar;render();});
+      content.querySelectorAll("[data-onboarding-avatar]").forEach((btn)=>btn.onclick=()=>{avatar=btn.dataset.onboardingAvatar;content.querySelectorAll("[data-onboarding-avatar]").forEach((x)=>x.classList.toggle("selected",x===btn));});
       const back=$("#onboardingBack"); if(back)back.onclick=()=>{step=Math.max(0,step-1);render();};
       $("#onboardingNext").onclick=()=>{
         if(step===0){name=(input?.value||name||"").trim().replace(/\s+/g," ");if(!name){input?.focus();input?.classList.add("error");return;}profile.playerName=name.slice(0,20);profile.avatarEmoji=avatar;saveProfile();}
