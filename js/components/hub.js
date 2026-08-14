@@ -22,11 +22,11 @@ function themeUnlockLabel(def) {
 }
 function hubTabsMarkup() {
   const tabs = [
-    ["play", "▶", "Играть"],
+    ["settings", "⚙", "Ещё"],
     ["progress", "★", "Прогресс"],
     ["collection", "▦", "Коллекция"],
     ["appearance", "✦", "Стиль"],
-    ["settings", "⚙", "Ещё"],
+    ["play", "▶", "Играть"],
   ];
   return `<nav class="hub-tabs">${tabs
     .map(([id, icon, label]) => `<button class="${hubTab === id ? "active" : ""}" data-hub-tab="${id}"><i>${icon}</i><span>${label}</span></button>`)
@@ -182,11 +182,12 @@ function renderHub() {
   recomputeStars();
   ensureWeeklyChallenge();
   const views = { play: playTabMarkup, progress: progressTabMarkup, collection: collectionTabMarkup, appearance: appearanceTabMarkup, settings: settingsTabMarkup };
-  hubContent.innerHTML = `${hubTabsMarkup()}${(views[hubTab] || playTabMarkup)()}`;
+  hubContent.innerHTML = (views[hubTab] || playTabMarkup)();
+  hubNav.innerHTML = hubTabsMarkup();
   bindHubHandlers();
 }
 function bindHubHandlers() {
-  hubContent.querySelectorAll("[data-hub-tab]").forEach((btn)=>btn.onclick=()=>{hubTab=btn.dataset.hubTab; renderHub();});
+  hubNav.querySelectorAll("[data-hub-tab]").forEach((btn)=>btn.onclick=()=>{hubTab=btn.dataset.hubTab; renderHub();});
   const on=(id,fn)=>{const el=$(id); if(el) el.onclick=fn;};
   on("#hubContinue",()=>{const next=profile.currentLevel||1; closeHub(); if(!state||state.rewarded||state.mode!=="regular") makeLevel(next,{mode:"regular"});});
   on("#hubDaily",()=>{closeHub(); makeLevel(0,{mode:"daily",seed:`daily:${todayKey()}`});});

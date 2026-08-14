@@ -125,8 +125,12 @@
        max(14px, env(safe-area-inset-left));
    }
    .hub-scroll {
-     padding: 12px max(12px, env(safe-area-inset-right)) max(22px, env(safe-area-inset-bottom))
+     padding: 14px max(12px, env(safe-area-inset-right)) 18px
        max(12px, env(safe-area-inset-left));
+   }
+   .hub-nav {
+     padding-left: max(12px, env(safe-area-inset-left));
+     padding-right: max(12px, env(safe-area-inset-right));
    }
 
    /* Compact phones: preserve five playable columns instead of shrinking the whole UI indiscriminately. */
@@ -758,4 +762,18 @@ html[data-stack-fit="tight"] .card.category.open-under .name { padding-top: 1px;
   .effect-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .encyclopedia-meta { grid-template-columns:1fr; }
   .save-tools { grid-template-columns:1fr; }
+}
+
+
+/* Bottom game-hub navigation. */
+@media (max-width: 370px) {
+  .hub-nav { padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); }
+  .hub-tabs { gap:4px; }
+  .hub-tabs button { min-height:50px; border-radius:13px; }
+  .hub-tabs button i { font-size:15px; }
+  .hub-tabs button span { font-size:7px; }
+}
+@media (max-height: 700px) {
+  .hub-tabs button { min-height:48px; }
+  .hub-nav { padding-top:6px; }
 }

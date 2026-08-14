@@ -33,7 +33,7 @@
      height: 100%;
      margin: auto;
      display: grid;
-     grid-template-rows: auto minmax(0, 1fr);
+     grid-template-rows: auto minmax(0, 1fr) auto;
      background: linear-gradient(160deg, #29205d, #151d4a);
      box-shadow: 0 0 60px #0008;
    }
@@ -60,7 +60,7 @@
    }
    .hub-scroll {
      overflow: auto;
-     padding: 12px 12px max(22px, env(safe-area-inset-bottom));
+     padding: 14px 12px 18px;
      display: grid;
      gap: 11px;
      overscroll-behavior: contain;
@@ -986,17 +986,43 @@ body[data-card-back="phoenix"] .card.face-down::after { content: "♨"; transfor
 /* ===== Game hub v2 ===== */
 .move-counter { display:inline-flex; align-items:center; gap:2px; color:#c8c3ea; font-weight:800; }
 .move-counter b { color:#fff; }
-.hub-tabs {
-  position: sticky; top: -12px; z-index: 20;
-  display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px;
-  padding:12px 0 8px; margin:-12px 0 0;
-  background:linear-gradient(180deg,#211a50 72%,transparent);
-  backdrop-filter:blur(14px);
+.hub-nav {
+  position: relative;
+  z-index: 30;
+  padding: 8px 12px max(10px, env(safe-area-inset-bottom));
+  border-top: 1px solid #ffffff12;
+  background: linear-gradient(180deg, #17143be8, #12102eea);
+  box-shadow: 0 -12px 30px #08071c3b, inset 0 1px #ffffff0b;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
-.hub-tabs button { min-width:0; min-height:48px; border:1px solid #ffffff10; border-radius:13px; background:#ffffff08; color:#aaa6cf; display:grid; place-items:center; align-content:center; gap:2px; padding:4px 2px; }
-.hub-tabs button i { font-style:normal; font-size:15px; line-height:1; }
-.hub-tabs button span { font-size:7px; font-weight:850; white-space:nowrap; }
-.hub-tabs button.active { color:#fff; background:linear-gradient(145deg,#7658ed55,#4acde026); border-color:#9686ff42; box-shadow:inset 0 1px #ffffff18; }
+.hub-tabs {
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:6px;
+}
+.hub-tabs button {
+  min-width:0;
+  min-height:54px;
+  border:1px solid #ffffff10;
+  border-radius:15px;
+  background:#ffffff08;
+  color:#aaa6cf;
+  display:grid;
+  place-items:center;
+  align-content:center;
+  gap:4px;
+  padding:5px 2px;
+  -webkit-tap-highlight-color:transparent;
+}
+.hub-tabs button i { font-style:normal; font-size:17px; line-height:1; }
+.hub-tabs button span { font-size:8px; font-weight:850; white-space:nowrap; }
+.hub-tabs button.active {
+  color:#fff;
+  background:linear-gradient(145deg,#7658ed66,#4acde02d);
+  border-color:#a393ff55;
+  box-shadow:0 7px 18px #22165d35,inset 0 1px #ffffff22;
+}
 .profile-hero { display:grid; grid-template-columns:48px minmax(0,1fr) auto; gap:10px; align-items:center; padding:12px 13px; border:1px solid #ffffff14; border-radius:18px; background:linear-gradient(135deg,#ffffff0e,#7059e817); }
 .profile-avatar { width:48px; height:48px; border-radius:15px; display:grid; place-items:center; font-size:22px; font-weight:900; background:linear-gradient(145deg,#9868ff,#4f7cff); box-shadow:0 8px 18px #2e1f7c40,inset 0 1px #fff7; }
 .profile-copy b,.profile-meta b { display:block; font-size:13px; }
@@ -1028,10 +1054,27 @@ body[data-card-back="phoenix"] .card.face-down::after { content: "♨"; transfor
 .challenge-input-row button,.wide-secondary,.save-tools button { border:1px solid #ffffff14; border-radius:12px; background:#ffffff0d; color:#fff; font-weight:850; padding:0 12px; }
 
 /* Chapter map — alternating path instead of a dashboard grid. */
-.chapter-path { position:relative; display:grid; grid-template-columns:repeat(5,1fr); gap:16px 7px; padding:7px 5px 5px; }
-.chapter-path::before { content:""; position:absolute; inset:28px 9% auto; height:calc(100% - 55px); opacity:.25; background:linear-gradient(90deg,transparent,#a996ff 8% 92%,transparent); clip-path:polygon(0 0,100% 0,100% 8%,14% 8%,14% 48%,86% 48%,86% 56%,0 56%); pointer-events:none; }
+.chapter-path {
+  position:relative;
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:10px 7px;
+  padding:8px 4px 4px;
+}
+.chapter-path::before { display:none; }
 .chapter-path .chapter-level { position:relative; z-index:1; }
-.chapter-path .chapter-level:nth-child(n+6) { transform:translateX(0); }
+.chapter-path .chapter-level::after {
+  content:"";
+  position:absolute;
+  top:50%;
+  left:100%;
+  width:7px;
+  height:1px;
+  background:#9f91ff2e;
+  pointer-events:none;
+}
+.chapter-path .chapter-level:nth-child(5n)::after,
+.chapter-path .chapter-level:last-child::after { display:none; }
 .chapter-section.perfect { border-color:#ffd96a3d; box-shadow:inset 0 0 28px #ffd85c08; }
 
 /* Achievement progress. */

@@ -10,6 +10,7 @@ const $ = (s) => document.querySelector(s),
   coach = $("#coach"),
   hub = $("#hub"),
   hubContent = $("#hubContent"),
+  hubNav = $("#hubNav"),
   achievementNotice = $("#achievementNotice");
 let state,
   history = [],
