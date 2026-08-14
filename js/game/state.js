@@ -7,6 +7,7 @@ function makeLevel(level = 1, opts = {}) {
   dealAnimating = false;
   stockEl?.classList.remove("deal-pulse");
   state = opts.mode === "tutorial" ? makeTutorial(opts.step || 1) : buildGeneratedLevel(level, opts);
+  if (typeof assignBonusObjective === "function") assignBonusObjective(state);
   history = [];
   if (typeof recordLevelKnowledge === "function") recordLevelKnowledge(state);
   initialDealPending = true;
@@ -24,7 +25,7 @@ function makeLevel(level = 1, opts = {}) {
 function restartCurrentLevel() {
   if (!state) return;
   if (state.mode === "tutorial") return makeLevel(state.tutorialStep, { mode: "tutorial", step: state.tutorialStep });
-  if (state.mode === "challenge") return makeLevel(state.level, { mode: "challenge", seed: state.seed, challengeCode: state.challengeCode, challengeRole: state.challengeRole, challengeCreatorName: state.challengeCreatorName });
+  if (state.mode === "challenge") return makeLevel(state.level, { mode: "challenge", seed: state.seed, challengeCode: state.challengeCode, challengeRole: state.challengeRole, challengeCreatorName: state.challengeCreatorName, challengeCreatorResult: state.challengeCreatorResult, challengeGuestToken: state.challengeGuestToken, seriesId: state.seriesId, seriesRound: state.seriesRound, seriesScoreCreator: state.seriesScoreCreator, seriesScoreGuest: state.seriesScoreGuest });
   if (state.mode === "marathon") return makeLevel(state.level, { mode: "marathon", seed: state.seed, marathonRound: state.marathonRound, marathonId: state.marathonId });
   if (state.mode === "calm") return makeLevel(state.level || 1, { mode: "calm", seed: state.seed });
   return makeLevel(state.level, { mode: state.mode, seed: state.seed });
@@ -46,6 +47,7 @@ function load() {
     if (s?.columns) {
       const restored = normalizeLoadedLayout(s);
       state = restored.state;
+      if (typeof assignBonusObjective === "function") assignBonusObjective(state);
       render();
       updateCoach();
       if (restored.migrated) setTimeout(() => showToast("Расклад адаптирован под 5 колонок"), 120);
@@ -58,6 +60,7 @@ function load() {
       profile.tutorialComplete = true;
       const restored = normalizeLoadedLayout(s);
       state = restored.state;
+      if (typeof assignBonusObjective === "function") assignBonusObjective(state);
       saveProfile();
       render();
       updateCoach();

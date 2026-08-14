@@ -5,7 +5,20 @@ function chapterInfo(level = 1) {
     end = start + CHAPTER_SIZE - 1;
   return { number, start, end, title: CHAPTER_NAMES[number - 1] || `Глава ${number}` };
 }
+function chapterFinalSpecial(level) {
+  if (!level || level % CHAPTER_SIZE !== 0) return null;
+  const chapter = chapterInfo(level).number, cycle = (chapter - 1) % 4;
+  const defs = [
+    { id: "final-mystery", icon: "◆", title: "Финал: Тайные категории", desc: "Названия категорий откроются после первого найденного слова", boss: true, mysteryCategories: true },
+    { id: "final-lock", icon: "◆", title: "Финал: Закрытый слот", desc: "Последний слот откроется после первой собранной категории", boss: true, lockedSlot: true, unlockAfter: 1 },
+    { id: "final-precise", icon: "◆", title: "Финал: Один шанс", desc: "Без подсказок и только одна прокрутка колоды", boss: true, noHints: true, maxRecycles: 1 },
+    { id: "final-mix", icon: "◆", title: "Финал: Большая смесь", desc: "Больше категорий, одна отмена и плотный расклад", boss: true, bigMix: true, maxUndos: 1 },
+  ];
+  return { ...defs[cycle], chapter };
+}
 function specialForLevel(level) {
+  const final = chapterFinalSpecial(level);
+  if (final) return final;
   if (!level || level < 5) return null;
   const offset = ((level - 1) % 20) + 1;
   const def = SPECIAL_LEVELS.find((x) => x.offset === offset);
@@ -211,7 +224,7 @@ function isLikelySolvable(s) {
   }
   return completed === target;
 }
-function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCode = null, challengeRole = null, challengeCreatorName = null, marathonRound = 1, marathonId = null } = {}) {
+function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCode = null, challengeRole = null, challengeCreatorName = null, challengeCreatorResult = null, challengeGuestToken = null, seriesId = null, seriesRound = 1, seriesScoreCreator = 0, seriesScoreGuest = 0, marathonRound = 1, marathonId = null } = {}) {
   const baseSeed = seed || (mode === "daily" ? `daily:${todayKey()}` : `level:${level}`);
   for (let attempt = 0; attempt < 45; attempt++) {
     const rng = makeRng(baseSeed + ":" + attempt);
@@ -256,6 +269,12 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
       challengeCode,
       challengeRole,
       challengeCreatorName,
+      challengeCreatorResult,
+      challengeGuestToken,
+      seriesId,
+      seriesRound,
+      seriesScoreCreator,
+      seriesScoreGuest,
       marathonRound: mode === "marathon" ? marathonRound : null,
       marathonId: mode === "marathon" ? marathonId || seed : null,
       rewarded: false,
@@ -300,6 +319,12 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
     challengeCode,
     challengeRole,
     challengeCreatorName,
+    challengeCreatorResult,
+    challengeGuestToken,
+    seriesId,
+    seriesRound,
+    seriesScoreCreator,
+    seriesScoreGuest,
     marathonRound: mode === "marathon" ? marathonRound : null,
     marathonId: mode === "marathon" ? marathonId || seed : null,
     rewarded: false,

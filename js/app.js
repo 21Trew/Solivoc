@@ -173,35 +173,54 @@ function startChallengeSyncLoop() {
     if (document.visibilityState !== "visible") return;
     flushPendingChallengeSubmissions?.();
     refreshOwnedChallenges?.({ notify: true });
+    refreshReceivedChallenges?.();
+    syncPushState?.();
   }, 20000);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
     flushPendingChallengeSubmissions?.();
     refreshOwnedChallenges?.({ notify: true });
+    refreshReceivedChallenges?.();
+    syncPushState?.();
   });
 }
 
 function boot() {
   bindFeedbackEvents();
   bindAppEvents();
+  bindRetentionUi?.();
   registerPwa();
+  retentionSessionStart?.();
+  setSplashProgress?.(18,"Загружаю словарь…");
   loadCategoryBank()
     .then(async () => {
+      setSplashProgress?.(55,"Собираю прогресс…");
+      migrateCategoryMasteryProgress?.();
       ensureWeeklyChallenge();
       const challenge = challengeCodeFromUrl();
       let startedChallenge = false;
-      if (challenge) startedChallenge = await startChallengeCode(challenge);
+      if (challenge) {
+        setSplashProgress?.(72,"Открываю вызов…");
+        startedChallenge = await startChallengeCode(challenge);
+      }
       if (!startedChallenge) load();
+      setSplashProgress?.(82,"Проверяю награды…");
       checkAchievements();
       saveProfile();
       flushPendingChallengeSubmissions?.();
-      refreshOwnedChallenges?.({ notify: false });
+      const gotResult = await refreshOwnedChallenges?.({ notify: true });
+      const gotReceivedResult = await refreshReceivedChallenges?.();
+      syncPushState?.();
       startChallengeSyncLoop();
       setBackgroundMusic("game");
+      setSplashProgress?.(94,"Почти готово…");
+      hideSplash?.();
+      if (!startedChallenge && (gotResult || gotReceivedResult || unseenDuelEntry?.())) setTimeout(()=>showPendingDuelReveal?.(),900);
       setTimeout(() => scheduleDeadlockCheck(1000), 300);
     })
     .catch((err) => {
       console.error(err);
+      showSplashError?.("Не удалось загрузить базу категорий");
       showToast("Ошибка загрузки базы категорий");
     });
 }

@@ -25,6 +25,22 @@
     <link rel="stylesheet" href="./styles/responsive.css" />
   </head>
   <body>
+    <div class="splash" id="splash" aria-live="polite">
+      <div class="splash-orbit" aria-hidden="true">
+        <span class="splash-mini-card c1">МОРЕ</span>
+        <span class="splash-mini-card c2">ВОЛНА</span>
+        <span class="splash-mini-card c3">НЕБО</span>
+        <span class="splash-mini-card c4">ОБЛАКО</span>
+      </div>
+      <div class="splash-core">
+        <div class="splash-mark">✦</div>
+        <h1>Словасьянс</h1>
+        <p>пасьянс ассоциаций</p>
+        <div class="splash-progress"><i id="splashBar"></i></div>
+        <span class="splash-status" id="splashStatus">Собираем слова…</span>
+        <button class="splash-retry" id="splashRetry" hidden>Попробовать снова</button>
+      </div>
+    </div>
     <div class="app">
       <header class="hud">
         <div class="top">
@@ -63,6 +79,7 @@
             <span class="move-counter">↯ <b id="moveCount">0</b></span>
           </span>
         </div>
+        <div class="bonus-objective-wrap" id="bonusObjective"></div>
       </header>
       <main class="game-scroll">
         <div class="game">
@@ -134,6 +151,8 @@
         <p id="winText">Отличная партия!</p>
         <div class="win-stars" id="winStars" aria-label="Награды за уровень"></div>
         <div class="win-record" id="winRecord"></div>
+        <div class="win-xp" id="winXp"></div>
+        <div class="win-goals" id="winGoals"></div>
         <button class="win-share" id="winShare" hidden>⇄ Поделиться результатом</button>
         <div class="win-next-unlock" id="winUnlock"></div>
         <div class="modal-actions">
@@ -143,6 +162,25 @@
             <button class="secondary" id="winMenu">☰ Меню</button>
           </div>
         </div>
+      </div>
+    </div>
+    <div class="duel-result-modal" id="duelResultModal" aria-hidden="true">
+      <div class="duel-result-card">
+        <button class="duel-close" id="duelClose" aria-label="Закрыть">×</button>
+        <div class="duel-result-icon" id="duelResultIcon">⚔</div>
+        <small class="duel-kicker">ВЫЗОВ ЗАВЕРШЁН</small>
+        <h2 id="duelResultTitle">Результат готов</h2>
+        <p id="duelResultSeries">Серия до 2 побед</p>
+        <div class="duel-score" id="duelScore">0 : 0</div>
+        <div class="duel-players"><div id="duelMe"></div><div id="duelFriend"></div></div>
+        <button class="duel-rematch" id="duelRematch">Реванш ⇄</button>
+      </div>
+    </div>
+    <div class="notification-prompt" id="notificationPrompt" aria-live="polite">
+      <div class="notification-prompt-card">
+        <div class="notification-prompt-icon">🔔</div>
+        <div><b>Узнать, когда друг сыграет?</b><span>Разреши только полезные уведомления: ответы на вызовы, Daily и финал недели.</span></div>
+        <div class="notification-prompt-actions"><button id="notificationAllow">Разрешить</button><button id="notificationLater">Не сейчас</button></div>
       </div>
     </div>
     <div class="update-banner" id="updateBanner" aria-hidden="true">
@@ -167,6 +205,7 @@
     <script src="./js/runtime.js"></script>
     <script src="./js/generator.js"></script>
     <script src="./js/meta/systems.js"></script>
+    <script src="./js/retention.js"></script>
     <script src="./js/animations.js"></script>
     <script src="./js/game/feedback.js"></script>
     <script src="./js/game/state.js"></script>

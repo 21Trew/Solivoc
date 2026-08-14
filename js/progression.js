@@ -97,7 +97,8 @@ function finishLevel() {
   state.rewarded = true;
   const stars = calculateStars();
   state.lastStars = stars;
-  let newAchievements = [];
+  let newAchievements = [], firstRegularClear = false, firstDailyClear = false;
+  state.run.xpEarned = 0;
   if (state.mode !== "tutorial") {
     profile.stats.gamesPlayed = (profile.stats.gamesPlayed || 0) + 1;
     profile.stats.totalMoves = (profile.stats.totalMoves || 0) + (state.run.moves || 0);
@@ -105,6 +106,7 @@ function finishLevel() {
   if (state.mode === "regular") {
     const old = profile.starsByLevel[state.level] || 0,
       firstClear = old === 0;
+    firstRegularClear = firstClear;
     profile.starsByLevel[state.level] = Math.max(old, stars);
     profile.currentLevel = Math.max(profile.currentLevel, state.level + 1);
     if (firstClear) profile.stats.levelsCompleted++;
@@ -113,40 +115,50 @@ function finishLevel() {
     if (state.run.hints === 0) profile.stats.noHintWins++;
     if (state.run.undos === 0) profile.stats.noUndoWins++;
     track("level_completed", { level: state.level, stars, moves: state.run.moves });
+    if (typeof awardXp === "function") awardXp((firstClear ? 45 : 18) + stars * (firstClear ? 10 : 6), firstClear ? `Уровень ${state.level}` : "Повтор уровня", { notifyRank: false });
   } else if (state.mode === "daily") {
     const date = todayKey();
+    firstDailyClear = !profile.daily.completedDates.includes(date);
     profile.dailyStars[date] = Math.max(profile.dailyStars[date] || 0, stars);
-    if (!profile.daily.completedDates.includes(date)) profile.stats.dailyCompleted++;
+    if (firstDailyClear) profile.stats.dailyCompleted++;
     updateDailyStreak(date);
     track("daily_completed", { date, stars, moves: state.run.moves });
+    if (typeof awardXp === "function") awardXp((firstDailyClear ? 70 : 25) + stars * 10, firstDailyClear ? "Daily" : "Повтор Daily", { notifyRank: false });
   } else if (state.mode === "challenge") {
     profile.stats.challengesCompleted = (profile.stats.challengesCompleted || 0) + 1;
     if (state.challengeRole === "creator") recordCreatorChallengeResult(state, stars);
     else if (state.challengeRole === "guest") enqueueGuestChallengeSubmission(state, stars);
     track("challenge_completed", { seed: state.seed, stars, moves: state.run.moves, role: state.challengeRole || "legacy" });
+    if (typeof awardXp === "function") awardXp(55 + stars * 10, "Вызов", { notifyRank: false });
   } else if (state.mode === "calm") {
     profile.stats.calmCompleted = (profile.stats.calmCompleted || 0) + 1;
     track("calm_completed", { stars, moves: state.run.moves });
+    if (typeof awardXp === "function") awardXp(20 + stars * 5, "Спокойный расклад", { notifyRank: false });
   } else if (state.mode === "marathon") {
     state.marathonSuccess = stars === 3;
     if (state.marathonSuccess) {
       profile.stats.bestMarathon = Math.max(profile.stats.bestMarathon || 0, state.marathonRound || 1);
     }
     track("marathon_round_completed", { round: state.marathonRound || 1, stars, moves: state.run.moves });
+    if (typeof awardXp === "function") awardXp(30 + stars * 8, "Марафон", { notifyRank: false });
   } else if (state.mode === "tutorial") {
     track("tutorial_completed", { step: state.tutorialStep });
     if (state.tutorialStep === 3) profile.tutorialComplete = true;
   }
 
   recomputeStars();
+  if (typeof rewardChapterFinal === "function") rewardChapterFinal(state, firstRegularClear);
+  if (state.mode === "daily" && firstDailyClear && typeof awardDailyWeekMilestones === "function") awardDailyWeekMilestones();
+  const bonusDone = typeof awardBonusObjective === "function" ? awardBonusObjective(state) : false;
   const record = typeof updatePersonalRecord === "function" ? updatePersonalRecord(stars, state) : null;
   if (typeof updateWeeklyChallenge === "function") updateWeeklyChallenge();
   newAchievements = checkAchievements();
   save();
-  showWin(stars, newAchievements, record);
+  if (typeof syncPushState === "function") syncPushState();
+  showWin(stars, newAchievements, record, bonusDone);
   resetCombo();
 }
-function showWin(stars, newAchievements = [], record = null) {
+function showWin(stars, newAchievements = [], record = null, bonusDone = false) {
   clearWinRevealTimers();
   const noHints = state.run.hints === 0,
     noUndos = state.run.undos === 0,
@@ -203,6 +215,11 @@ function showWin(stars, newAchievements = [], record = null) {
     recordEl.textContent = recordText;
     recordEl.classList.toggle("new-record", !!record?.isNew);
   }
+
+  const xpEl = $("#winXp");
+  if (xpEl) xpEl.innerHTML = `<b>+${state.run?.xpEarned || 0} XP</b><span>${bonusDone ? ` · бонус «${state.bonusObjective?.title || "цель"}» ✓` : ""}</span>`;
+  const goalsEl = $("#winGoals");
+  if (goalsEl && typeof nearGoalsMarkup === "function") goalsEl.innerHTML = nearGoalsMarkup(2);
 
   const shareBtn = $("#winShare");
   if (shareBtn) {

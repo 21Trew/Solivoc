@@ -231,6 +231,10 @@ const DEFAULT_STATS = {
   bestMarathon: 0,
   totalMoves: 0,
   personalRecords: 0,
+  masteredCategories: 0,
+  chapterFinalsCompleted: 0,
+  bonusObjectivesCompleted: 0,
+  seriesWins: 0,
 };
 
 const WEEKLY_DEFS = [
@@ -247,6 +251,22 @@ const EFFECT_DEFS = [
   { id: "comet", name: "Кометы", desc: "За ручное комбо ×10", achievement: "combo10", rare: true },
   { id: "aurora", name: "Сияние", desc: "За 3 недельных испытания", minWeekly: 3, rare: true },
   { id: "legend", name: "Легенда", desc: "За 5 идеальных глав", achievement: "chapterPerfect5", rare: true },
+];
+
+const FRAME_DEFS = [
+  { id: "none", name: "Без рамки", chapter: 0, hue: 250 },
+  { id: "chapter1", name: "Первые связи", chapter: 1, hue: 258 },
+  { id: "chapter2", name: "Знакомые миры", chapter: 2, hue: 195 },
+  { id: "chapter3", name: "Переплетения", chapter: 3, hue: 335 },
+  { id: "chapter4", name: "Тонкие намёки", chapter: 4, hue: 145 },
+  { id: "chapter5", name: "Большой словарь", chapter: 5, hue: 42 },
+  { id: "chapter6", name: "Мастер ассоциаций", chapter: 6, hue: 285 },
+  { id: "chapter7", name: "Скрытые смыслы", chapter: 7, hue: 12 },
+  { id: "chapter8", name: "Словесный лабиринт", chapter: 8, hue: 174 },
+  { id: "chapter9", name: "Точные связи", chapter: 9, hue: 220 },
+  { id: "chapter10", name: "Эрудит", chapter: 10, hue: 55 },
+  { id: "chapter11", name: "Большая энциклопедия", chapter: 11, hue: 316 },
+  { id: "chapter12", name: "За гранью очевидного", chapter: 12, hue: 105 },
 ];
 
 const TITLE_DEFS = [
@@ -291,6 +311,15 @@ ACHIEVEMENTS.push(
   { id: "marathon15", icon: "∞15", title: "Марафонец", desc: "Пройти 15 идеальных раскладов подряд", rare: true, test: (p) => (p.stats.bestMarathon || 0) >= 15 },
 );
 
+ACHIEVEMENTS.push(
+  { id: "mastery10", icon: "✦10", title: "Знаток категорий", desc: "Полностью изучить 10 категорий", test: (p) => (p.stats.masteredCategories || 0) >= 10 },
+  { id: "mastery50", icon: "✦50", title: "Словарь в голове", desc: "Полностью изучить 50 категорий", rare: true, test: (p) => (p.stats.masteredCategories || 0) >= 50 },
+  { id: "final1", icon: "◆Ⅰ", title: "Финалист", desc: "Пройти финал главы", test: (p) => (p.stats.chapterFinalsCompleted || 0) >= 1 },
+  { id: "final6", icon: "◆Ⅵ", title: "Покоритель глав", desc: "Пройти 6 финалов глав", rare: true, test: (p) => (p.stats.chapterFinalsCompleted || 0) >= 6 },
+  { id: "bonus10", icon: "+10", title: "Сверх плана", desc: "Выполнить 10 бонусных целей", test: (p) => (p.stats.bonusObjectivesCompleted || 0) >= 10 },
+  { id: "series3", icon: "⚔3", title: "Серийный победитель", desc: "Выиграть 3 серии вызовов", rare: true, test: (p) => (p.stats.seriesWins || 0) >= 3 },
+);
+
 function achievementProgressData(a, p = profile) {
   const map = {
     first:[p.stats.levelsCompleted,1], ten:[p.stats.levelsCompleted,10], twentyfive:[p.stats.levelsCompleted,25], fifty:[p.stats.levelsCompleted,50], hundred:[p.stats.levelsCompleted,100], twofifty:[p.stats.levelsCompleted,250], fivehundred:[p.stats.levelsCompleted,500],
@@ -306,6 +335,7 @@ function achievementProgressData(a, p = profile) {
     streak7:[p.daily.bestStreak||0,7], streak30:[p.daily.bestStreak||0,30], games100:[p.stats.gamesPlayed||0,100],
     weekly1:[p.stats.weeklyCompleted||0,1], weekly10:[p.stats.weeklyCompleted||0,10], moves1000:[p.stats.totalMoves||0,1000], records10:[p.stats.personalRecords||0,10],
     challenge1:[p.stats.challengesCompleted||0,1], challenge25:[p.stats.challengesCompleted||0,25], calm10:[p.stats.calmCompleted||0,10], marathon5:[p.stats.bestMarathon||0,5], marathon15:[p.stats.bestMarathon||0,15],
+    mastery10:[p.stats.masteredCategories||0,10], mastery50:[p.stats.masteredCategories||0,50], final1:[p.stats.chapterFinalsCompleted||0,1], final6:[p.stats.chapterFinalsCompleted||0,6], bonus10:[p.stats.bonusObjectivesCompleted||0,10], series3:[p.stats.seriesWins||0,3],
   };
   const pair = map[a.id];
   if (!pair) return null;

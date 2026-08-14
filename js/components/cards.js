@@ -7,7 +7,9 @@ function cardNode(g, extra = "") {
   if (displayCard?.uid) card.dataset.uid = displayCard.uid;
   if (cc) {
     card.style.setProperty("--cat-hue", catHue(cc.cat));
-    card.innerHTML = `<span class="name ${String(cc.label).length <= 6 ? "short-title" : "long-title"}">${cc.label}</span><span class="count">${wordCount(g)}/${cc.total}</span>`;
+    const mystery = !!state?.special?.mysteryCategories && wordCount(g) === 0, label = mystery ? "???" : cc.label;
+    card.classList.toggle("mystery-category", mystery);
+    card.innerHTML = `<span class="name ${String(label).length <= 6 ? "short-title" : "long-title"}">${label}</span><span class="count">${wordCount(g)}/${cc.total}</span>`;
   } else card.textContent = g.cards[0].label;
   card.title = g.cards.map((c) => c.label).join(", ");
   return card;

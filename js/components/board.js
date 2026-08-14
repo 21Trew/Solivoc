@@ -11,7 +11,8 @@ function render() {
   const step = stackStep();
   state.slots.forEach((g, i) => {
     const slot = document.createElement("div");
-    slot.className = "slot " + (g ? "" : "empty");
+    const locked = !!state.special?.lockedSlot && i === state.slots.length - 1 && state.completed < (state.special.unlockAfter || 1);
+    slot.className = "slot " + (g ? "" : "empty") + (locked ? " locked-slot" : "");
     slot.dataset.zone = "slot";
     slot.dataset.index = i;
     if (g) {
@@ -110,6 +111,11 @@ function render() {
   $("#starTotal").textContent = profile.totalStars;
   const moveEl = $("#moveCount");
   if (moveEl) moveEl.textContent = state.run?.moves || 0;
+  const bonusEl = $("#bonusObjective");
+  if (bonusEl) {
+    bonusEl.innerHTML = typeof bonusObjectiveMarkup === "function" ? bonusObjectiveMarkup(state) : "";
+    bonusEl.hidden = !bonusEl.innerHTML;
+  }
   $("#chapterLabel").textContent = chapter
     ? `глава ${chapter.number}`
     : state.mode === "daily"

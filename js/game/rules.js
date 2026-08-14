@@ -29,6 +29,7 @@ function canDropTo(p, zone, idx) {
   const moving = payloadGroup(p),
     cc = categoryCard(moving);
   if (zone === "slot") {
+    if (state.special?.lockedSlot && idx === state.slots.length - 1 && state.completed < (state.special.unlockAfter || 1)) return false;
     const dest = state.slots[idx];
     if (!dest) return !!cc;
     return canMerge(dest, moving) && !!categoryCard(dest);

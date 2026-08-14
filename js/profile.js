@@ -14,6 +14,12 @@ function defaultProfile() {
     effectUnlocksSeen: ["spark"],
     playerName: "Игрок",
     titleId: "player",
+    frame: "none",
+    xp: 0,
+    xpMigrated: false,
+    masteryMigrated: false,
+    pushClientId: "",
+    retention: { lastOpenDate: null, openDays: [], lastSessionAt: 0 },
     categoryStats: {},
     levelRecords: {},
     dailyRecords: {},
@@ -25,9 +31,9 @@ function defaultProfile() {
     tutorialComplete: false,
     legacyStarsMigrated: false,
     categoryAchievementModelMigrated: false,
-    settings: { sound: true, music: true, haptics: true },
+    settings: { sound: true, music: true, haptics: true, notifications: false, dailyReminders: true, weeklyReminders: true, notificationPrompted: false },
     stats: { ...DEFAULT_STATS },
-    daily: { lastDate: null, currentStreak: 0, bestStreak: 0, completedDates: [], freezeWeek: null },
+    daily: { lastDate: null, currentStreak: 0, bestStreak: 0, completedDates: [], freezeWeek: null, weekRewards: {} },
   };
 }
 function loadProfile() {
@@ -40,8 +46,9 @@ function loadProfile() {
         ...defaultProfile(),
         ...p,
         stats: { ...DEFAULT_STATS, ...(p.stats || {}) },
-        daily: { ...defaultProfile().daily, ...(p.daily || {}) },
+        daily: { ...defaultProfile().daily, ...(p.daily || {}), weekRewards: { ...(p.daily?.weekRewards || {}) } },
         settings: { ...defaultProfile().settings, ...(p.settings || {}) },
+        retention: { ...defaultProfile().retention, ...(p.retention || {}), openDays: Array.isArray(p.retention?.openDays) ? p.retention.openDays : [] },
         discovered: Array.isArray(p.discovered) ? p.discovered : [],
         achievements: Array.isArray(p.achievements) ? p.achievements : [],
         cardBackUnlocksSeen: Array.isArray(p.cardBackUnlocksSeen) ? p.cardBackUnlocksSeen : ["classic"],
@@ -132,6 +139,21 @@ function migrateMetaProfile() {
   profile.pendingChallengeSubmissions = Array.isArray(profile.pendingChallengeSubmissions) ? profile.pendingChallengeSubmissions : [];
   profile.weekly = { ...defaultProfile().weekly, ...(profile.weekly || {}) };
   profile.effectUnlocksSeen = Array.isArray(profile.effectUnlocksSeen) ? profile.effectUnlocksSeen : ["spark"];
+  profile.daily.weekRewards = profile.daily.weekRewards && typeof profile.daily.weekRewards === "object" ? profile.daily.weekRewards : {};
+  profile.retention = { ...defaultProfile().retention, ...(profile.retention || {}) };
+  profile.retention.openDays = Array.isArray(profile.retention.openDays) ? profile.retention.openDays : [];
+  profile.frame = FRAME_DEFS.some((f) => f.id === profile.frame) ? profile.frame : "none";
+  profile.pushClientId = String(profile.pushClientId || "");
+  if (!profile.xpMigrated) {
+    profile.xp = Math.max(+profile.xp || 0,
+      (+profile.stats.levelsCompleted || 0) * 45 +
+      (+profile.stats.dailyCompleted || 0) * 65 +
+      (+profile.stats.challengesCompleted || 0) * 55 +
+      (+profile.stats.specialCompleted || 0) * 20 +
+      (+profile.stats.weeklyCompleted || 0) * 120 +
+      (+profile.stats.masteredCategories || 0) * 100);
+    profile.xpMigrated = true;
+  }
   if (!titleDefById(profile.titleId) || !titleUnlocked(titleDefById(profile.titleId), profile)) profile.titleId = "player";
   if (!profile.playerName) profile.playerName = "Игрок";
 }
@@ -185,6 +207,14 @@ function applyTitle(id) {
   const def = titleDefById(id);
   profile.titleId = def && titleUnlocked(def) ? id : "player";
 }
+function frameUnlocked(def, p = profile) {
+  return !!def && (!def.chapter || completedChapterCount(p) >= def.chapter);
+}
+function applyFrame(id) {
+  const def = FRAME_DEFS.find((x) => x.id === id);
+  profile.frame = def && frameUnlocked(def) ? def.id : "none";
+  document.body.dataset.profileFrame = profile.frame;
+}
 function saveProfile() {
   recomputeStars();
   localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
@@ -192,6 +222,7 @@ function saveProfile() {
   applyCardBack(profile.cardBack);
   applyEffect(profile.effect);
   applyTitle(profile.titleId);
+  applyFrame(profile.frame);
 }
 function track(name, data = {}) {
   try {
@@ -214,3 +245,4 @@ applyTheme(profile.theme);
 applyCardBack(profile.cardBack);
 applyEffect(profile.effect);
 applyTitle(profile.titleId);
+applyFrame(profile.frame);

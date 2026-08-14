@@ -37,7 +37,10 @@ function recordVisibleKnowledge(s = state) {
       changed.add(card.cat);
     }
   }
-  if (changed.size) saveProfile();
+  if (changed.size) {
+    if (typeof checkCategoryMastery === "function") changed.forEach((id) => checkCategoryMastery(id));
+    saveProfile();
+  }
 }
 function recordCategoryCompletion(catId) {
   if (!catId) return;
@@ -222,6 +225,12 @@ function rememberReceivedChallenge(data) {
       seed: data.seed,
       level: data.level,
       creatorName: data.creatorName || "Друг",
+      creatorResult: data.creatorResult ? cleanChallengeResult(data.creatorResult) : null,
+      guestToken: data.guestToken || null,
+      seriesId: data.seriesId || null,
+      seriesRound: data.seriesRound || 1,
+      seriesScoreCreator: +data.seriesScoreCreator || 0,
+      seriesScoreGuest: +data.seriesScoreGuest || 0,
       startedAt: Date.now(),
       completedAt: null,
       status: "playing",
@@ -232,6 +241,12 @@ function rememberReceivedChallenge(data) {
     entry.seed = data.seed || entry.seed;
     entry.level = data.level || entry.level;
     entry.creatorName = data.creatorName || entry.creatorName || "Друг";
+    if (data.creatorResult) entry.creatorResult = cleanChallengeResult(data.creatorResult);
+    if (data.guestToken) entry.guestToken = data.guestToken;
+    entry.seriesId = data.seriesId || entry.seriesId || null;
+    entry.seriesRound = data.seriesRound || entry.seriesRound || 1;
+    if (data.seriesScoreCreator != null) entry.seriesScoreCreator = +data.seriesScoreCreator || 0;
+    if (data.seriesScoreGuest != null) entry.seriesScoreGuest = +data.seriesScoreGuest || 0;
     if (!entry.guestResult) entry.status = "playing";
   }
   pruneReceivedChallenges();
@@ -246,7 +261,8 @@ function ownedChallengesMarkup() {
     const friend = entry.guestResult, me = entry.creatorResult,
       status = friend ? `Завершён · ${friend.playerName}` : entry.status === "expired" ? "Код истёк или уже использован" : "Ждём, когда друг сыграет",
       compare = challengeComparison(entry);
-    return `<article class="owned-challenge ${friend ? "completed" : "pending"}"><div class="owned-challenge-code"><b>${entry.code}</b><span>${status}</span></div><div class="owned-challenge-results">${challengeResultMarkup("Ты", me)}${challengeResultMarkup(friend?.playerName || "Друг", friend)}${compare ? `<strong>${compare}</strong>` : ""}</div><div class="owned-challenge-actions"><button data-owned-challenge-play="${entry.code}">▶ ${me ? "Переиграть" : "Сыграть"}</button>${!friend && entry.status !== "expired" ? `<button data-owned-challenge-share="${entry.code}">⇄ Отправить</button>` : ""}</div></article>`;
+    const series = typeof seriesLabel === "function" ? seriesLabel(entry, "creator") : "";
+    return `<article class="owned-challenge ${friend ? "completed" : "pending"}"><div class="owned-challenge-code"><b>${entry.code}</b><span>${status}</span></div>${series ? `<div class="challenge-series-line">⚔ ${series}</div>` : ""}<div class="owned-challenge-results">${challengeResultMarkup("Ты", me)}${challengeResultMarkup(friend?.playerName || "Друг", friend)}${compare ? `<strong>${compare}</strong>` : ""}</div><div class="owned-challenge-actions"><button data-owned-challenge-play="${entry.code}">▶ ${me ? "Переиграть" : "Сыграть"}</button>${!friend && entry.status !== "expired" ? `<button data-owned-challenge-share="${entry.code}">⇄ Отправить</button>` : ""}${friend && me ? `<button data-owned-challenge-rematch="${entry.code}">⚔ Реванш</button>` : ""}</div></article>`;
   }).join("")}</div></section>`;
 }
 function receivedChallengesMarkup() {
@@ -254,15 +270,20 @@ function receivedChallengesMarkup() {
   const items = (profile.receivedChallenges || []).slice(0, 6);
   if (!items.length) return "";
   return `<section class="hub-section owned-challenges received-challenges"><div class="hub-section-head"><h3>Полученные вызовы</h3><small>${items.length}</small></div><div class="owned-challenge-list">${items.map((entry) => {
-    const result = entry.guestResult,
-      status = result ? `Пройден · от ${entry.creatorName || "друга"}` : `От ${entry.creatorName || "друга"} · не завершён`;
-    return `<article class="owned-challenge ${result ? "completed" : "pending"}"><div class="owned-challenge-code"><b>${entry.code}</b><span>${status}</span></div><div class="owned-challenge-results">${challengeResultMarkup("Ты", result)}</div></article>`;
+    const result = entry.guestResult, creatorResult = entry.creatorResult,
+      status = result ? `Пройден · от ${entry.creatorName || "друга"}` : `От ${entry.creatorName || "друга"} · не завершён`,
+      series = typeof seriesLabel === "function" ? seriesLabel(entry, "guest") : "";
+    return `<article class="owned-challenge ${result ? "completed" : "pending"}"><div class="owned-challenge-code"><b>${entry.code}</b><span>${status}</span></div>${series ? `<div class="challenge-series-line">⚔ ${series}</div>` : ""}<div class="owned-challenge-results">${challengeResultMarkup("Ты", result)}${creatorResult ? challengeResultMarkup(entry.creatorName || "Друг", creatorResult) : ""}</div>${result && creatorResult ? `<div class="owned-challenge-actions"><button data-received-challenge-rematch="${entry.code}">⚔ Реванш</button></div>` : ""}</article>`;
   }).join("")}</div></section>`;
 }
-async function createRemoteChallenge() {
+async function createRemoteChallenge(meta = {}) {
   const level = Math.max(12, profile.currentLevel || 1),
-    seed = `friend:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 8)}`;
-  const data = await challengeApi("POST", "", { action: "create", seed, level, creatorName: profile.playerName || "Игрок" });
+    seed = `friend:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 8)}`,
+    seriesId = meta.seriesId || `series:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 7)}`,
+    seriesRound = Math.max(1, +meta.seriesRound || 1),
+    seriesScoreCreator = Math.max(0, +meta.seriesScoreCreator || 0),
+    seriesScoreGuest = Math.max(0, +meta.seriesScoreGuest || 0);
+  const data = await challengeApi("POST", "", { action: "create", seed, level, creatorName: profile.playerName || "Игрок", seriesId, seriesRound, seriesScoreCreator, seriesScoreGuest, pushClientId: profile.settings?.notifications ? profile.pushClientId : "" });
   const entry = {
     code: data.code,
     ownerToken: data.ownerToken,
@@ -274,6 +295,11 @@ async function createRemoteChallenge() {
     status: "pending",
     creatorResult: null,
     guestResult: null,
+    seriesId,
+    seriesRound,
+    seriesScoreCreator,
+    seriesScoreGuest,
+    resultSeen: false,
   };
   profile.sentChallenges ||= [];
   profile.sentChallenges.unshift(entry);
@@ -398,6 +424,7 @@ async function shareNewChallenge() {
     const entry = await createRemoteChallenge();
     if (hub?.classList.contains("show") && typeof renderHub === "function") renderHub();
     await shareChallengeEntry(entry);
+    if (typeof offerNotificationPrompt === "function") offerNotificationPrompt(entry);
     return entry.code;
   } catch (err) {
     console.error("Challenge create:", err);
@@ -415,6 +442,7 @@ function playOwnedChallenge(code) {
     challengeCode: entry.code,
     challengeRole: "creator",
     challengeCreatorName: entry.creatorName || profile.playerName || "Игрок",
+    seriesId: entry.seriesId, seriesRound: entry.seriesRound, seriesScoreCreator: entry.seriesScoreCreator, seriesScoreGuest: entry.seriesScoreGuest,
   });
   return true;
 }
@@ -425,7 +453,7 @@ async function startChallengeCode(value) {
   if (compact.length === 6 && SHORT_CHALLENGE_RE.test(shortCode)) {
     try {
       const data = await challengeApi("GET", `?code=${encodeURIComponent(shortCode)}`);
-      rememberReceivedChallenge({ code: shortCode, seed: data.seed, level: data.level, creatorName: data.creatorName || "Друг" });
+      rememberReceivedChallenge({ code: shortCode, seed: data.seed, level: data.level, creatorName: data.creatorName || "Друг", seriesId: data.seriesId, seriesRound: data.seriesRound, seriesScoreCreator: data.seriesScoreCreator, seriesScoreGuest: data.seriesScoreGuest, creatorResult: data.creatorResult });
       closeHub?.();
       makeLevel(data.level, {
         mode: "challenge",
@@ -433,6 +461,8 @@ async function startChallengeCode(value) {
         challengeCode: shortCode,
         challengeRole: "guest",
         challengeCreatorName: data.creatorName || "Друг",
+        challengeCreatorResult: data.creatorResult || null,
+        seriesId: data.seriesId, seriesRound: data.seriesRound, seriesScoreCreator: data.seriesScoreCreator, seriesScoreGuest: data.seriesScoreGuest,
       });
       window.history?.replaceState?.({}, "", location.pathname + location.hash);
       return true;
@@ -459,6 +489,7 @@ function recordCreatorChallengeResult(s = state, stars = null) {
   entry.creatorResult = resultForCurrentChallenge(s, stars);
   entry.status = entry.guestResult ? "completed" : "pending";
   saveProfile();
+  if (entry.ownerToken) challengeApi("POST", "", { action: "ownerResult", code: entry.code, ownerToken: entry.ownerToken, result: entry.creatorResult }).catch((err)=>console.warn("Owner result sync",err));
 }
 function recordGuestChallengeLocal(s = state, result = null) {
   if (!s?.challengeCode || s.challengeRole !== "guest") return null;
@@ -467,6 +498,7 @@ function recordGuestChallengeLocal(s = state, result = null) {
     seed: s.seed,
     level: s.level,
     creatorName: s.challengeCreatorName || "Друг",
+    creatorResult: s.challengeCreatorResult || null, guestToken: s.challengeGuestToken || null, seriesId: s.seriesId, seriesRound: s.seriesRound, seriesScoreCreator: s.seriesScoreCreator, seriesScoreGuest: s.seriesScoreGuest,
   });
   if (!entry) return null;
   entry.guestResult = cleanChallengeResult(result || resultForCurrentChallenge(s));
@@ -485,6 +517,7 @@ function enqueueGuestChallengeSubmission(s = state, stars = null) {
       code: normalizeChallengeCode(s.challengeCode),
       submissionId,
       result,
+      pushClientId: profile.settings?.notifications ? profile.pushClientId : "",
       createdAt: Date.now(),
     };
   recordGuestChallengeLocal(s, result);
@@ -499,10 +532,21 @@ async function flushPendingChallengeSubmissions() {
   let changed = false;
   for (const item of queue) {
     try {
-      await challengeApi("POST", "", { action: "complete", code: item.code, submissionId: item.submissionId, result: item.result }, { keepalive: true });
+      const data = await challengeApi("POST", "", { action: "complete", code: item.code, submissionId: item.submissionId, result: item.result, pushClientId: item.pushClientId || "" }, { keepalive: true });
       profile.pendingChallengeSubmissions = profile.pendingChallengeSubmissions.filter((x) => x.submissionId !== item.submissionId);
       const received = receivedChallengeByCode(item.code);
-      if (received) received.synced = true;
+      if (received) {
+        received.synced = true;
+        if (data.guestToken) received.guestToken = data.guestToken;
+        if (data.creatorResult) received.creatorResult = cleanChallengeResult(data.creatorResult);
+        if (data.seriesId) received.seriesId = data.seriesId;
+        if (data.seriesRound) received.seriesRound = data.seriesRound;
+        if (data.seriesScoreCreator != null) received.seriesScoreCreator = +data.seriesScoreCreator || 0;
+        if (data.seriesScoreGuest != null) received.seriesScoreGuest = +data.seriesScoreGuest || 0;
+        if (received.guestToken && received.creatorResult) challengeApi("POST","",{action:"ack",code:received.code,guestToken:received.guestToken}).catch(()=>{});
+        if (received.creatorResult && typeof finalizeSeriesForEntry === "function") finalizeSeriesForEntry(received,"guest");
+        if (received.creatorResult && typeof queueDuelReveal === "function") queueDuelReveal(received,"guest");
+      }
       changed = true;
     } catch (err) {
       if (err?.status === 410 || err?.status === 404) {
@@ -522,12 +566,18 @@ async function refreshOwnedChallenges({ notify = true } = {}) {
     try {
       const data = await challengeApi("GET", `?code=${encodeURIComponent(entry.code)}&ownerToken=${encodeURIComponent(entry.ownerToken)}`);
       if (data.status === "completed" && data.guestResult) {
+        const wasNew = !entry.guestResult;
         entry.guestResult = cleanChallengeResult(data.guestResult);
+        if (data.creatorResult) entry.creatorResult = cleanChallengeResult(data.creatorResult);
         entry.status = "completed";
+        if (wasNew) entry.resultSeen = false;
         changed = true;
         try { await challengeApi("POST", "", { action: "ack", code: entry.code, ownerToken: entry.ownerToken }); } catch {}
-        if (notify && typeof queueAchievementNotifications === "function") {
+        if (typeof finalizeSeriesForEntry === "function") finalizeSeriesForEntry(entry,"creator");
+        if (wasNew && typeof queueDuelReveal === "function") queueDuelReveal(entry);
+        if (wasNew && notify && typeof queueAchievementNotifications === "function") {
           queueAchievementNotifications([{ icon: "⇄", title: "Друг завершил вызов", desc: `${entry.code} · ${challengeStarsText(entry.guestResult.stars)} · ${entry.guestResult.moves} ход. · ошибок ${entry.guestResult.errors || 0}` }]);
+          if (typeof showSystemNotification === "function") showSystemNotification("Друг завершил вызов", `${entry.guestResult.playerName || "Друг"}: ${challengeStarsText(entry.guestResult.stars)} · ${entry.guestResult.moves} ходов`, { tag:`challenge-${entry.code}` });
         }
       } else if (data.status === "pending") entry.status = "pending";
     } catch (err) {
@@ -543,6 +593,25 @@ async function refreshOwnedChallenges({ notify = true } = {}) {
   }
   return changed;
 }
+async function refreshReceivedChallenges() {
+  const items = (profile.receivedChallenges || []).filter((x)=>x?.guestToken && x?.guestResult && !x.creatorResult).slice(0,12);
+  if (!items.length) return false;
+  let changed=false;
+  for (const entry of items) {
+    try {
+      const data=await challengeApi("GET",`?code=${encodeURIComponent(entry.code)}&guestToken=${encodeURIComponent(entry.guestToken)}`);
+      if (data.creatorResult) {
+        entry.creatorResult=cleanChallengeResult(data.creatorResult); changed=true;
+        if (typeof finalizeSeriesForEntry === "function") finalizeSeriesForEntry(entry,"guest");
+        if (typeof queueDuelReveal === "function") queueDuelReveal(entry,"guest");
+        try{await challengeApi("POST","",{action:"ack",code:entry.code,guestToken:entry.guestToken});}catch{}
+      }
+    } catch(err) { if(err?.status===404||err?.status===410) entry.synced=true; }
+  }
+  if(changed) saveProfile();
+  return changed;
+}
+
 function challengeCodeFromUrl() {
   const params = new URLSearchParams(location.search);
   return params.get("c") || params.get("challenge") || "";
