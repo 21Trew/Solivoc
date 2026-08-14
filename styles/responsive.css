@@ -821,3 +821,21 @@ html[data-stack-fit="tight"] .card.category.open-under .name { padding-top: 1px;
   .card-art-pack { min-height:96px; padding:7px; }
   .card-art-preview i { width:30px; height:41px; font-size:16px; }
 }
+
+/* Profile editor / accordion refinements. */
+@media (max-width: 370px) {
+  .profile-hero { grid-template-columns:42px minmax(0,1fr) auto; }
+  .profile-meta { grid-column:auto; display:block; text-align:right; }
+  .profile-meta strong { font-size:8px; }
+  .profile-meta span { font-size:7px; }
+  .profile-editor-card { border-radius:20px; }
+  .profile-editor-content { padding:15px 12px 12px; }
+  .profile-editor-head { grid-template-columns:46px minmax(0,1fr); }
+  .profile-editor-avatar-preview { width:46px; height:46px; border-radius:14px; }
+  .title-pill-grid { grid-template-columns:1fr 1fr; gap:6px; }
+  .title-pill { min-height:45px; padding:6px 7px; grid-template-columns:27px minmax(0,1fr); gap:6px; }
+  .title-pill i { width:27px; height:27px; }
+  .title-pill span { font-size:7.8px; }
+  .collapsible-section > summary { min-height:50px; padding:10px 11px; }
+  .collapsible-content { padding:0 11px 11px; }
+}
