@@ -60,7 +60,8 @@ function burst(strong = false) {
   const n = strong ? 42 : 16;
   for (let i = 0; i < n; i++) {
     const el = document.createElement("i");
-    el.className = "spark";
+    const effect = profile?.effect || "spark";
+    el.className = `spark spark-${effect}`;
     const a = (Math.PI * 2 * i) / n + (Math.random() - 0.5) * 0.35,
       d = strong ? rnd(100, 245) : rnd(55, 125);
     el.style.setProperty("--x", Math.cos(a) * d + "px");

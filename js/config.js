@@ -2,9 +2,9 @@
 let BANK = [];
 const SAVE_KEY = "worditaire-state-v10";
 const OLD_SAVE_KEY = "assoc-klondike-v7";
-const PROFILE_KEY = "worditaire-profile-v5";
-const PREV_PROFILE_KEY = "worditaire-profile-v4";
-const LEGACY_PROFILE_KEYS = ["worditaire-profile-v3", "worditaire-profile-v2"];
+const PROFILE_KEY = "worditaire-profile-v6";
+const PREV_PROFILE_KEY = "worditaire-profile-v5";
+const LEGACY_PROFILE_KEYS = ["worditaire-profile-v4", "worditaire-profile-v3", "worditaire-profile-v2"];
 const ANALYTICS_KEY = "worditaire-analytics-v1";
 const RECENT_KEY = "assoc-recent-categories-v2";
 const MAX_CARD_WORD_LEN = 10,
@@ -18,6 +18,12 @@ const CHAPTER_NAMES = [
   "Тонкие намёки",
   "Большой словарь",
   "Мастер ассоциаций",
+  "Скрытые смыслы",
+  "Словесный лабиринт",
+  "Точные связи",
+  "Эрудит",
+  "Большая энциклопедия",
+  "За гранью очевидного",
 ];
 
 function chapterStarsForProfile(p, number) {
@@ -219,4 +225,69 @@ const DEFAULT_STATS = {
   maxDragCombo: 0,
   deadlocks: 0,
   specialCompleted: 0,
+  weeklyCompleted: 0,
+  challengesCompleted: 0,
+  calmCompleted: 0,
+  bestMarathon: 0,
+  totalMoves: 0,
+  personalRecords: 0,
 };
+
+const WEEKLY_DEFS = [
+  { id: "stars", icon: "★", title: "Звёздная неделя", desc: "Заработать 12 звёзд за неделю", metric: "stars", goal: 12 },
+  { id: "noHints", icon: "?", title: "Своя голова", desc: "Пройти 5 партий без подсказок", metric: "noHintWins", goal: 5 },
+  { id: "perfect", icon: "★★★", title: "Идеальная неделя", desc: "Закрыть 4 расклада на 3 звезды", metric: "tripleStarWins", goal: 4 },
+  { id: "categories", icon: "▦", title: "Собиратель", desc: "Собрать 30 категорий за неделю", metric: "categoriesCompleted", goal: 30 },
+];
+
+const EFFECT_DEFS = [
+  { id: "spark", name: "Искры", desc: "Базовый эффект", minAchievements: 0 },
+  { id: "confetti", name: "Конфетти", desc: "За 8 достижений", minAchievements: 8 },
+  { id: "petals", name: "Лепестки", desc: "За идеальную главу", achievement: "chapterPerfect1" },
+  { id: "comet", name: "Кометы", desc: "За ручное комбо ×10", achievement: "combo10", rare: true },
+  { id: "aurora", name: "Сияние", desc: "За 3 недельных испытания", minWeekly: 3, rare: true },
+  { id: "legend", name: "Легенда", desc: "За 5 идеальных глав", achievement: "chapterPerfect5", rare: true },
+];
+
+const TITLE_DEFS = [
+  { id: "player", name: "Игрок", icon: "◇" },
+  { id: "collector", name: "Коллекционер", icon: "▦", achievement: "collector" },
+  { id: "perfectionist", name: "Перфекционист", icon: "★", achievement: "perfect10" },
+  { id: "hand", name: "Мастер движений", icon: "×", achievement: "combo10" },
+  { id: "explorer", name: "Исследователь", icon: "◎", achievement: "discover75" },
+  { id: "legend", name: "Легенда", icon: "✦", achievement: "chapterPerfect5" },
+];
+
+ACHIEVEMENTS.push(
+  { id: "weekly1", icon: "W1", title: "Новая традиция", desc: "Выполнить недельное испытание", test: (p) => (p.stats.weeklyCompleted || 0) >= 1 },
+  { id: "weekly10", icon: "W10", title: "Десять недель", desc: "Выполнить 10 недельных испытаний", rare: true, test: (p) => (p.stats.weeklyCompleted || 0) >= 10 },
+  { id: "moves1000", icon: "↯", title: "Тысяча ходов", desc: "Сделать 1000 ходов", test: (p) => (p.stats.totalMoves || 0) >= 1000 },
+  { id: "records10", icon: "↯10", title: "Лучше себя", desc: "Установить 10 личных рекордов", test: (p) => (p.stats.personalRecords || 0) >= 10 },
+  { id: "challenge1", icon: "⇄", title: "Вызов принят", desc: "Пройти испытание по коду", test: (p) => (p.stats.challengesCompleted || 0) >= 1 },
+  { id: "challenge25", icon: "⇄25", title: "Дуэлянт", desc: "Пройти 25 испытаний по коду", rare: true, test: (p) => (p.stats.challengesCompleted || 0) >= 25 },
+  { id: "calm10", icon: "☁", title: "Спокойствие", desc: "Пройти 10 спокойных раскладов", test: (p) => (p.stats.calmCompleted || 0) >= 10 },
+  { id: "marathon5", icon: "∞5", title: "На дистанции", desc: "Пройти 5 идеальных раскладов подряд в марафоне", test: (p) => (p.stats.bestMarathon || 0) >= 5 },
+  { id: "marathon15", icon: "∞15", title: "Марафонец", desc: "Пройти 15 идеальных раскладов подряд", rare: true, test: (p) => (p.stats.bestMarathon || 0) >= 15 },
+);
+
+function achievementProgressData(a, p = profile) {
+  const map = {
+    first:[p.stats.levelsCompleted,1], ten:[p.stats.levelsCompleted,10], twentyfive:[p.stats.levelsCompleted,25], fifty:[p.stats.levelsCompleted,50], hundred:[p.stats.levelsCompleted,100], twofifty:[p.stats.levelsCompleted,250], fivehundred:[p.stats.levelsCompleted,500],
+    clean:[p.stats.tripleStarWins,1], perfect10:[p.stats.tripleStarWins,10], perfect25:[p.stats.tripleStarWins,25], perfect50:[p.stats.tripleStarWins,50], perfect100:[p.stats.tripleStarWins,100],
+    nohint:[p.stats.noHintWins,20], nohint50:[p.stats.noHintWins,50], nohint100:[p.stats.noHintWins,100],
+    noundo:[p.stats.noUndoWins,20], noundo50:[p.stats.noUndoWins,50], noundo100:[p.stats.noUndoWins,100],
+    discover25:[discoveredCategoryCount(p),25], discover50:[discoveredCategoryCount(p),50], discover75:[discoveredCategoryCount(p),75], collector:[discoveredCategoryCount(p),100], encyclopedia:[discoveredCategoryCount(p),125], collectorAll:[discoveredCategoryCount(p), Math.max(1, BANK.length)],
+    daily:[p.stats.dailyCompleted,1], daily7:[p.stats.dailyCompleted,7], daily30:[p.stats.dailyCompleted,30], daily100:[p.stats.dailyCompleted,100],
+    combo3:[p.stats.maxDragCombo||0,3], combo5:[p.stats.maxDragCombo||0,5], combo10:[p.stats.maxDragCombo||0,10],
+    special5:[p.stats.specialCompleted||0,5], special10:[p.stats.specialCompleted||0,10], special25:[p.stats.specialCompleted||0,25],
+    chapter1:[completedChapterCount(p),1], chapter3:[completedChapterCount(p),3], chapter5:[completedChapterCount(p),5],
+    chapterPerfect1:[perfectChapterCount(p),1], chapterPerfect3:[perfectChapterCount(p),3], chapterPerfect5:[perfectChapterCount(p),5],
+    streak7:[p.daily.bestStreak||0,7], streak30:[p.daily.bestStreak||0,30], games100:[p.stats.gamesPlayed||0,100],
+    weekly1:[p.stats.weeklyCompleted||0,1], weekly10:[p.stats.weeklyCompleted||0,10], moves1000:[p.stats.totalMoves||0,1000], records10:[p.stats.personalRecords||0,10],
+    challenge1:[p.stats.challengesCompleted||0,1], challenge25:[p.stats.challengesCompleted||0,25], calm10:[p.stats.calmCompleted||0,10], marathon5:[p.stats.bestMarathon||0,5], marathon15:[p.stats.bestMarathon||0,15],
+  };
+  const pair = map[a.id];
+  if (!pair) return null;
+  return { value: Math.min(pair[1], Math.max(0, +pair[0] || 0)), goal: pair[1] };
+}
+

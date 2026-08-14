@@ -50,8 +50,7 @@ function bindAppEvents() {
     profile.stats.restarts++;
     track("level_restarted", { level: state.level, mode: state.mode });
     resetCombo();
-    if (state.mode === "tutorial") makeLevel(state.tutorialStep, { mode: "tutorial", step: state.tutorialStep });
-    else makeLevel(state.level, { mode: state.mode, seed: state.seed });
+    restartCurrentLevel();
   };
 
   $("#hint").onclick = () => {
@@ -97,20 +96,25 @@ function bindAppEvents() {
         makeLevel(state.tutorialStep + 1, { mode: "tutorial", step: state.tutorialStep + 1 });
       else makeLevel(profile.currentLevel || 1);
     } else if (state.mode === "daily") makeLevel(profile.currentLevel || 1);
-    else makeLevel(state.level + 1);
+    else if (state.mode === "challenge") startChallengeCode(createChallengeCode());
+    else if (state.mode === "calm") makeLevel(1, { mode: "calm", seed: `calm:${Date.now()}:${Math.random()}` });
+    else if (state.mode === "marathon") {
+      const nextRound = state.marathonSuccess ? (state.marathonRound || 1) + 1 : 1;
+      const runId = state.marathonSuccess ? state.marathonId : `marathon:${Date.now().toString(36)}`;
+      makeLevel(nextRound, { mode: "marathon", seed: `${runId}:${nextRound}`, marathonRound: nextRound, marathonId: runId });
+    } else makeLevel(state.level + 1);
   };
   $("#winRestart").onclick = () => {
     closeWinModal();
     resetCombo();
-    if (state.mode === "daily") makeLevel(0, { mode: "daily", seed: state.seed });
-    else if (state.mode === "tutorial") makeLevel(state.tutorialStep, { mode: "tutorial", step: state.tutorialStep });
-    else makeLevel(state.level, { mode: "regular", seed: state.seed });
+    restartCurrentLevel();
   };
   $("#winMenu").onclick = () => {
     closeWinModal();
     resetCombo();
     openHub();
   };
+  $("#winShare").onclick = shareCurrentResult;
 
   let viewportResizeTimer;
   window.addEventListener(
@@ -127,8 +131,32 @@ function bindAppEvents() {
 
 function registerPwa() {
   if (!("serviceWorker" in navigator) || !/^https?:$/.test(location.protocol)) return;
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch((err) => console.warn("Service worker:", err));
+  window.addEventListener("load", async () => {
+    try {
+      const reg = await navigator.serviceWorker.register("./sw.js");
+      const banner = $("#updateBanner"), updateBtn = $("#updateNow");
+      const showUpdate = (worker) => {
+        if (!worker || !navigator.serviceWorker.controller) return;
+        banner?.classList.add("show");
+        banner?.setAttribute("aria-hidden", "false");
+        if (updateBtn) updateBtn.onclick = () => worker.postMessage({ type: "SKIP_WAITING" });
+      };
+      if (reg.waiting) showUpdate(reg.waiting);
+      reg.addEventListener("updatefound", () => {
+        const worker = reg.installing;
+        worker?.addEventListener("statechange", () => {
+          if (worker.state === "installed") showUpdate(worker);
+        });
+      });
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (refreshing) return;
+        refreshing = true;
+        location.reload();
+      });
+    } catch (err) {
+      console.warn("Service worker:", err);
+    }
   });
 }
 
@@ -138,7 +166,10 @@ function boot() {
   registerPwa();
   loadCategoryBank()
     .then(() => {
-      load();
+      ensureWeeklyChallenge();
+      const challenge = challengeCodeFromUrl();
+      if (challenge && decodeChallengeCode(challenge)) startChallengeCode(challenge);
+      else load();
       checkAchievements();
       saveProfile();
       setBackgroundMusic("game");

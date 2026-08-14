@@ -8,6 +8,7 @@ function makeLevel(level = 1, opts = {}) {
   stockEl?.classList.remove("deal-pulse");
   state = opts.mode === "tutorial" ? makeTutorial(opts.step || 1) : buildGeneratedLevel(level, opts);
   history = [];
+  if (typeof recordLevelKnowledge === "function") recordLevelKnowledge(state);
   initialDealPending = true;
   if (state.mode === "regular") rememberCategories(state.categoryIds);
   track("level_started", { level: state.level, mode: state.mode, seed: state.seed });
@@ -19,6 +20,14 @@ function makeLevel(level = 1, opts = {}) {
       playSfx("combo", 0.65);
     }, 850);
   setTimeout(() => scheduleDeadlockCheck(900), 250);
+}
+function restartCurrentLevel() {
+  if (!state) return;
+  if (state.mode === "tutorial") return makeLevel(state.tutorialStep, { mode: "tutorial", step: state.tutorialStep });
+  if (state.mode === "challenge") return makeLevel(state.level, { mode: "challenge", seed: state.seed, challengeCode: state.challengeCode });
+  if (state.mode === "marathon") return makeLevel(state.level, { mode: "marathon", seed: state.seed, marathonRound: state.marathonRound, marathonId: state.marathonId });
+  if (state.mode === "calm") return makeLevel(state.level || 1, { mode: "calm", seed: state.seed });
+  return makeLevel(state.level, { mode: state.mode, seed: state.seed });
 }
 function snapshot() {
   return structuredClone(state);

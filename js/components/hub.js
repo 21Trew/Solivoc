@@ -1,11 +1,44 @@
-/* Main menu / progression hub component: chapters, themes, card backs, collection, settings and PWA install. */
-let hubChapterNumber = null;
+/* Game hub: play, progression, encyclopedia, appearance and settings. */
+let hubChapterNumber = null,
+  hubTab = "play",
+  hubCategoryId = null,
+  achievementFilter = "all",
+  hubPreview = { type: "theme", id: null };
 
 function isStandalonePwa() {
   return window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true;
 }
 function levelStarsMarkup(stars) {
   return stars ? `${"★".repeat(stars)}${"☆".repeat(3 - stars)}` : "···";
+}
+function titleCurrent() {
+  return TITLE_DEFS.find((x) => x.id === profile.titleId) || TITLE_DEFS[0];
+}
+function themeUnlocked(def) {
+  return profile.totalStars >= def.stars;
+}
+function themeUnlockLabel(def) {
+  return def.stars ? `${def.stars} ★` : "Базовая";
+}
+function hubTabsMarkup() {
+  const tabs = [
+    ["play", "▶", "Играть"],
+    ["progress", "★", "Прогресс"],
+    ["collection", "▦", "Коллекция"],
+    ["appearance", "✦", "Стиль"],
+    ["settings", "⚙", "Ещё"],
+  ];
+  return `<nav class="hub-tabs">${tabs
+    .map(([id, icon, label]) => `<button class="${hubTab === id ? "active" : ""}" data-hub-tab="${id}"><i>${icon}</i><span>${label}</span></button>`)
+    .join("")}</nav>`;
+}
+function profileHeroMarkup() {
+  const title = titleCurrent();
+  return `<section class="profile-hero">
+    <div class="profile-avatar">${title.icon}</div>
+    <div class="profile-copy"><b>${profile.playerName || "Игрок"}</b><span>${title.name} · ур. ${profile.currentLevel || 1}</span></div>
+    <div class="profile-meta"><b>★ ${profile.totalStars}</b><span>${profile.achievements.length}/${ACHIEVEMENTS.length} достиж.</span></div>
+  </section>`;
 }
 function chapterMarkup(number) {
   const info = chapterInfo((number - 1) * CHAPTER_SIZE + 1),
@@ -19,175 +52,172 @@ function chapterMarkup(number) {
       `<button class="chapter-level ${unlocked ? "unlocked" : "locked"} ${current ? "current" : ""}" data-chapter-level="${level}" ${unlocked ? "" : "disabled"}><span class="chapter-level-number">${special ? `<i>${special.icon}</i>` : ""}${level}</span><span class="chapter-level-stars">${unlocked ? levelStarsMarkup(stars) : "🔒"}</span></button>`,
     );
   }
-  const earned = chapterStarsForProfile(profile, number).reduce((a, b) => a + b, 0);
-  return `<section class="hub-section chapter-section"><div class="hub-section-head chapter-head"><button class="chapter-nav" id="chapterPrev" ${number <= 1 ? "disabled" : ""}>‹</button><div><h3>Глава ${number} · ${info.title}</h3><small>${earned}/30 ★</small></div><button class="chapter-nav" id="chapterNext" ${info.end >= (profile.currentLevel || 1) ? "disabled" : ""}>›</button></div><div class="chapter-grid">${levels.join("")}</div></section>`;
+  const earned = chapterStarsForProfile(profile, number).reduce((a, b) => a + b, 0),
+    perfect = earned === 30;
+  return `<section class="hub-section chapter-section ${perfect ? "perfect" : ""}">
+    <div class="hub-section-head chapter-head"><button class="chapter-nav" id="chapterPrev" ${number <= 1 ? "disabled" : ""}>‹</button><div><h3>Глава ${number} · ${info.title}</h3><small>${earned}/30 ★${perfect ? " · идеально" : ""}</small></div><button class="chapter-nav" id="chapterNext" ${info.end >= (profile.currentLevel || 1) ? "disabled" : ""}>›</button></div>
+    <div class="chapter-path">${levels.join("")}</div>
+  </section>`;
+}
+function weeklyMarkup() {
+  const w = weeklyProgress();
+  return `<section class="weekly-card ${w.completed ? "done" : ""}">
+    <div class="weekly-icon">${w.def.icon}</div>
+    <div class="weekly-copy"><small>НЕДЕЛЬНОЕ ИСПЫТАНИЕ</small><b>${w.def.title}</b><span>${w.def.desc}</span><div class="weekly-progress"><i style="width:${w.ratio * 100}%"></i></div><em>${w.value}/${w.goal}${w.completed ? " · выполнено ✓" : ""}</em></div>
+  </section>`;
+}
+function playTabMarkup() {
+  const nt = nextTheme(),
+    dailyDone = profile.daily.completedDates.includes(todayKey()),
+    currentChapter = chapterInfo(profile.currentLevel || 1),
+    nextLevel = profile.currentLevel || 1,
+    continueLevel = state?.mode === "regular" && !state.rewarded ? state.level : nextLevel;
+  if (!hubChapterNumber) hubChapterNumber = currentChapter.number;
+  hubChapterNumber = Math.max(1, Math.min(hubChapterNumber, currentChapter.number));
+  return `${profileHeroMarkup()}
+    <section class="hub-hero play-hero">
+      <div class="hub-hero-top"><div><div class="hub-level">Глава ${currentChapter.number} · ${currentChapter.title}</div><div class="hub-stars">Уровень ${continueLevel}</div></div><span class="daily-badge">🔥 ${profile.daily.currentStreak} дн.</span></div>
+      <div class="hub-progress"><i style="width:${nt ? Math.min(100, (profile.totalStars / nt.stars) * 100) : 100}%"></i></div>
+      <div class="hub-level" style="margin-top:6px">${nt ? `До темы ${nt.name}: ${nt.stars - profile.totalStars} ★` : "Все темы за звёзды открыты"}</div>
+      <button class="hero-play" id="hubContinue">▶ Продолжить</button>
+    </section>
+    <div class="mode-grid">
+      <button class="mode-card daily" id="hubDaily"><i>☀</i><b>Daily</b><span>${dailyDone ? "Сегодня пройдено ✓" : "Один расклад для всех"}</span></button>
+      <button class="mode-card marathon" id="hubMarathon"><i>∞</i><b>Марафон</b><span>Рекорд: ${profile.stats.bestMarathon || 0}</span></button>
+      <button class="mode-card calm" id="hubCalm"><i>☁</i><b>Спокойно</b><span>Лёгкие бесконечные расклады</span></button>
+      <button class="mode-card challenge" id="hubShareChallenge"><i>⇄</i><b>Вызов другу</b><span>Одинаковый seed</span></button>
+    </div>
+    ${weeklyMarkup()}
+    <section class="hub-section challenge-enter"><div class="hub-section-head"><h3>Код испытания</h3><small>получи от друга</small></div><div class="challenge-input-row"><input id="challengeInput" inputmode="text" placeholder="Вставь код"><button id="challengeStart">Играть</button></div></section>
+    ${chapterMarkup(hubChapterNumber)}`;
+}
+function achievementCardMarkup(a) {
+  const done = profile.achievements.includes(a.id), progress = achievementProgressData(a, profile), ratio = progress ? progress.value / progress.goal : done ? 1 : 0;
+  return `<div class="achievement ${done ? "done-achievement" : "locked"} ${a.rare ? "rare" : ""}"><div class="ico">${a.icon}</div><div class="achievement-copy"><b>${a.title}</b><p>${a.desc}${a.rare ? " · редкое" : ""}</p>${progress ? `<div class="achievement-progress"><i style="width:${Math.min(1, ratio) * 100}%"></i></div><small>${progress.value}/${progress.goal}</small>` : ""}</div><span class="done">${done ? "✓" : ""}</span></div>`;
+}
+function progressTabMarkup() {
+  const chaptersDone = completedChapterCount(profile), perfectChapters = perfectChapterCount(profile), discoveredCount = discoveredCategoryCount(profile);
+  const filtered = ACHIEVEMENTS.filter((a) => {
+    const done = profile.achievements.includes(a.id), p = achievementProgressData(a, profile), ratio = p ? p.value / p.goal : 0;
+    if (achievementFilter === "done") return done;
+    if (achievementFilter === "near") return !done && ratio >= 0.5;
+    if (achievementFilter === "rare") return !!a.rare;
+    return true;
+  });
+  const titles = TITLE_DEFS.map((t) => {
+    const unlocked = titleUnlocked(t), selected = profile.titleId === t.id;
+    return `<button class="title-chip ${selected ? "selected" : ""} ${unlocked ? "" : "locked"}" data-title-id="${t.id}" ${unlocked ? "" : "disabled"}>${t.icon} ${unlocked ? t.name : "???"}</button>`;
+  }).join("");
+  return `${profileHeroMarkup()}
+    <section class="hub-section profile-editor"><div class="hub-section-head"><h3>Профиль</h3><button class="text-button" id="editName">Изменить имя</button></div><div class="title-grid">${titles}</div></section>
+    <section class="hub-section"><div class="hub-section-head"><h3>Статистика</h3><small>твоя история</small></div><div class="stats-grid expanded">
+      <div class="stat-box"><b>${profile.stats.levelsCompleted}</b><span>уровней</span></div><div class="stat-box"><b>${profile.stats.gamesPlayed || 0}</b><span>партий</span></div>
+      <div class="stat-box"><b>${discoveredCount}</b><span>категорий</span></div><div class="stat-box"><b>${profile.stats.tripleStarWins}</b><span>★★★</span></div>
+      <div class="stat-box"><b>${profile.stats.totalMoves || 0}</b><span>ходов</span></div><div class="stat-box"><b>${profile.stats.personalRecords || 0}</b><span>рекордов</span></div>
+      <div class="stat-box"><b>×${profile.stats.maxDragCombo || 0}</b><span>комбо</span></div><div class="stat-box"><b>${profile.stats.bestMarathon || 0}</b><span>марафон</span></div>
+      <div class="stat-box"><b>${chaptersDone}</b><span>глав</span></div><div class="stat-box"><b>${perfectChapters}</b><span>идеальных глав</span></div>
+    </div></section>
+    <section class="hub-section"><div class="hub-section-head"><h3>Достижения</h3><small>${profile.achievements.length}/${ACHIEVEMENTS.length}</small></div>
+      <div class="achievement-filters">${[["all","Все"],["near","Почти"],["done","Получены"],["rare","Редкие"]].map(([id,label])=>`<button class="${achievementFilter===id?"active":""}" data-ach-filter="${id}">${label}</button>`).join("")}</div>
+      <div class="achievement-list">${filtered.map(achievementCardMarkup).join("") || `<div class="empty-state">Здесь пока пусто</div>`}</div>
+    </section>`;
+}
+function categoryDetailMarkup(cat) {
+  if (!cat) return `<div class="empty-state">Выбери открытую категорию</div>`;
+  const stat = categoryStat(cat.id), known = new Set(stat.words || []);
+  return `<article class="encyclopedia-detail"><div class="encyclopedia-title"><span style="--cat:${catHue(cat.id)}">${cat.title.slice(0,1)}</span><div><b>${cat.title}</b><small>${known.size}/${cat.words.length} слов встречено</small></div></div>
+    <div class="encyclopedia-meta"><span>Встречалась <b>${stat.encounters || 0}</b> раз</span><span>Собрана <b>${stat.completions || 0}</b> раз</span><span>Впервые: <b>${stat.firstLevel || "—"}</b></span></div>
+    <div class="word-collection">${cat.words.map((w)=>`<span class="${known.has(w)?"known":"unknown"}">${known.has(w)?w:"???"}</span>`).join("")}</div></article>`;
+}
+function collectionTabMarkup() {
+  const discovered = new Set(profile.discovered), count = discoveredCategoryCount(profile);
+  if (!hubCategoryId || !discovered.has(hubCategoryId)) hubCategoryId = BANK.find((c)=>discovered.has(c.id))?.id || null;
+  const cat = BANK.find((c)=>c.id===hubCategoryId);
+  return `${profileHeroMarkup()}
+    <section class="hub-section"><div class="hub-section-head"><h3>Энциклопедия</h3><small>${count}/${BANK.length} категорий</small></div>${categoryDetailMarkup(cat)}
+      <div class="collection-grid encyclopedia-grid">${BANK.map((c)=>`<button class="collection-item ${discovered.has(c.id)?"seen":"locked"} ${hubCategoryId===c.id?"selected":""}" data-category-id="${c.id}" ${discovered.has(c.id)?"":"disabled"}>${discovered.has(c.id)?c.title:"???"}</button>`).join("")}</div>
+    </section>`;
 }
 function cardBackMarkup() {
   return CARD_BACK_DEFS.map((back) => {
-    const unlocked = cardBackUnlocked(back),
-      selected = profile.cardBack === back.id;
-    return `<button class="cardback-tile ${unlocked ? "" : "locked"} ${selected ? "selected" : ""} ${back.rare ? "rare" : ""}" data-card-back-id="${back.id}" ${unlocked ? "" : "disabled"}><span class="cardback-preview back-${back.id}"><i>${back.rare ? "✦" : ""}</i></span><b>${back.name}</b><span>${unlocked ? (selected ? "Выбрано" : "Открыто") : cardBackUnlockLabel(back)}</span></button>`;
+    const unlocked = cardBackUnlocked(back), selected = profile.cardBack === back.id;
+    return `<button class="cardback-tile ${unlocked ? "" : "locked"} ${selected ? "selected" : ""} ${back.rare ? "rare" : ""}" data-card-back-id="${back.id}"><span class="cardback-preview back-${back.id}"><i>${back.rare ? "✦" : ""}</i></span><b>${back.name}</b><span>${unlocked ? (selected ? "Выбрано" : "Открыто") : cardBackUnlockLabel(back)}</span></button>`;
   }).join("");
 }
-
+function appearancePreviewMarkup() {
+  const type = hubPreview.type, id = hubPreview.id || (type === "back" ? profile.cardBack : type === "effect" ? profile.effect : profile.theme);
+  if (type === "back") {
+    const def = CARD_BACK_DEFS.find((x)=>x.id===id) || CARD_BACK_DEFS[0], unlocked = cardBackUnlocked(def);
+    return `<div class="cosmetic-stage"><span class="big-back cardback-preview back-${def.id}"><i>${def.rare?"✦":""}</i></span><div><b>${def.name}</b><span>${unlocked?"Можно выбрать":cardBackUnlockLabel(def)}</span></div></div>`;
+  }
+  if (type === "effect") {
+    const def = EFFECT_DEFS.find((x)=>x.id===id) || EFFECT_DEFS[0], unlocked = effectUnlocked(def);
+    return `<div class="cosmetic-stage">${effectPreviewMarkup(def)}<div><b>${def.name}</b><span>${unlocked?"Можно выбрать":effectUnlockLabel(def)}</span></div></div>`;
+  }
+  const def = THEME_DEFS.find((x)=>x.id===id) || THEME_DEFS[0], unlocked = themeUnlocked(def);
+  return `<div class="cosmetic-stage theme-stage theme-${def.id}"><div class="mini-board"><i></i><i></i><i></i></div><div><b>${def.name}</b><span>${unlocked?"Можно выбрать":themeUnlockLabel(def)}</span></div></div>`;
+}
+function appearanceTabMarkup() {
+  const themes = THEME_DEFS.map((t)=>{ const unlocked=themeUnlocked(t); return `<button class="theme-tile theme-${t.id} ${unlocked?"":"locked"} ${profile.theme===t.id?"selected":""}" data-theme-id="${t.id}"><b>${t.name}</b><span>${unlocked?"Открыто":themeUnlockLabel(t)}</span></button>`; }).join("");
+  const effects = EFFECT_DEFS.map((e)=>{ const unlocked=effectUnlocked(e); return `<button class="effect-tile ${unlocked?"":"locked"} ${profile.effect===e.id?"selected":""}" data-effect-id="${e.id}">${effectPreviewMarkup(e)}<b>${e.name}</b><span>${unlocked?"Открыто":effectUnlockLabel(e)}</span></button>`; }).join("");
+  return `${profileHeroMarkup()}${appearancePreviewMarkup()}
+    <section class="hub-section"><div class="hub-section-head"><h3>Темы</h3><small>нажми для предпросмотра</small></div><div class="theme-grid">${themes}</div></section>
+    <section class="hub-section"><div class="hub-section-head"><h3>Рубашки</h3><small>${CARD_BACK_DEFS.filter((b) => cardBackUnlocked(b)).length}/${CARD_BACK_DEFS.length}</small></div><div class="cardback-grid">${cardBackMarkup()}</div></section>
+    <section class="hub-section"><div class="hub-section-head"><h3>Эффекты победы</h3><small>косметические награды</small></div><div class="effect-grid">${effects}</div></section>`;
+}
+function settingsTabMarkup() {
+  const standalone=isStandalonePwa(), installLabel=standalone?"✓ Игра установлена":deferredInstallPrompt?"＋ Установить игру":"＋ На главный экран", report=CATEGORY_BANK_REPORT || {};
+  return `${profileHeroMarkup()}
+    <section class="hub-section"><div class="hub-section-head"><h3>Настройки</h3><small>звук и ощущения</small></div><div class="settings-grid">
+      <button class="setting-toggle ${profile.settings.sound?"on":""}" id="soundToggle"><b>♪ Эффекты</b><span>${profile.settings.sound?"Включены":"Выключены"}</span></button>
+      <button class="setting-toggle ${profile.settings.music?"on":""}" id="musicToggle"><b>♫ Музыка</b><span>${profile.settings.music?"Включена":"Выключена"}</span></button>
+      <button class="setting-toggle ${profile.settings.haptics?"on":""}" id="hapticsToggle"><b>⌁ Вибрация</b><span>${profile.settings.haptics?"Включена":"Выключена"}</span></button>
+      <button class="setting-toggle install" id="installPwa" ${standalone?"disabled":""}><b>${installLabel}</b><span>${standalone?"Standalone-режим":"Работает офлайн после установки"}</span></button>
+    </div></section>
+    <section class="hub-section"><div class="hub-section-head"><h3>Сохранение</h3><small>не потеряй прогресс</small></div><div class="save-tools"><button id="exportSave">⇩ Экспорт прогресса</button><button id="importSave">⇧ Импорт прогресса</button></div></section>
+    <section class="hub-section bank-health"><div class="hub-section-head"><h3>База слов</h3><small>внутренняя проверка</small></div><div class="bank-health-grid"><span><b>${report.categories||BANK.length}</b> категорий</span><span><b>${report.words||0}</b> слов</span><span><b>${report.ambiguousWords?.length||0}</b> пересечений</span><span><b>${report.warnings?.length||0}</b> предупреждений</span></div><p>Пересечения автоматически не попадают в один расклад; генератор также проверяет проходимость seed.</p></section>
+    <section class="hub-section"><div class="hub-section-head"><h3>Обучение</h3><small>повторить механику</small></div><button class="wide-secondary" id="hubTutorial">◇ Запустить обучение заново</button></section>`;
+}
 function renderHub() {
   recomputeStars();
-  const nt = nextTheme(),
-    dailyDone = profile.daily.completedDates.includes(todayKey()),
-    discovered = new Set(profile.discovered),
-    discoveredCount = discoveredCategoryCount(profile),
-    unlockedThemes = THEME_DEFS.filter((t) => profile.totalStars >= t.stars),
-    unlockedBacks = CARD_BACK_DEFS.filter((b) => cardBackUnlocked(b)),
-    currentChapter = chapterInfo(profile.currentLevel || 1),
-    chaptersDone = completedChapterCount(profile),
-    perfectChapters = perfectChapterCount(profile);
-
-  if (!hubChapterNumber) hubChapterNumber = currentChapter.number;
-  hubChapterNumber = Math.max(1, Math.min(hubChapterNumber, currentChapter.number));
-
-  const collection = BANK.map(
-    (c) => `<div class="collection-item ${discovered.has(c.id) ? "seen" : "locked"}">${discovered.has(c.id) ? c.title : "???"}</div>`,
-  ).join("");
-  const achievements = ACHIEVEMENTS.map((a) => {
-    const done = profile.achievements.includes(a.id);
-    return `<div class="achievement ${done ? "" : "locked"} ${a.rare ? "rare" : ""}"><div class="ico">${a.icon}</div><div><b>${a.title}</b><p>${a.desc}${a.rare ? " · редкое" : ""}</p></div><span class="done">${done ? "✓" : ""}</span></div>`;
-  }).join("");
-  const themes = THEME_DEFS.map((t) => {
-    const unlocked = profile.totalStars >= t.stars;
-    return `<button class="theme-tile theme-${t.id} ${unlocked ? "" : "locked"} ${profile.theme === t.id ? "selected" : ""}" data-theme-id="${t.id}" ${unlocked ? "" : "disabled"}><b>${t.name}</b><span>${unlocked ? "Открыто" : t.stars + " ★"}</span></button>`;
-  }).join("");
-
-  const nextLevel = profile.currentLevel || 1,
-    continueLevel = state?.mode === "regular" && !state.rewarded ? state.level : nextLevel,
-    levelStars = profile.starsByLevel[nextLevel] || 0,
-    standalone = isStandalonePwa(),
-    installLabel = standalone ? "✓ Игра установлена" : deferredInstallPrompt ? "＋ Установить игру" : "＋ На главный экран";
-
-  hubContent.innerHTML = `
-    <section class="hub-hero">
-      <div class="hub-hero-top"><div><div class="hub-level">Глава ${currentChapter.number} · ${currentChapter.title}</div><div class="hub-stars">★ ${profile.totalStars}</div></div><span class="daily-badge">🔥 ${profile.daily.currentStreak} дн.</span></div>
-      <div class="hub-progress"><i style="width:${nt ? Math.min(100, (profile.totalStars / nt.stars) * 100) : 100}%"></i></div>
-      <div class="hub-level" style="margin-top:6px">${nt ? `Следующая тема ${nt.name} — ещё ${nt.stars - profile.totalStars} ★` : "Все темы за звёзды открыты"}</div>
-    </section>
-    <div class="hub-actions">
-      <button class="hub-action primary" id="hubContinue"><strong>▶ Продолжить</strong><span>Уровень ${continueLevel}</span></button>
-      <button class="hub-action daily" id="hubDaily"><strong>☀ Daily</strong><span>${dailyDone ? "Сегодня пройдено ✓" : "Один расклад для всех"}</span></button>
-      <button class="hub-action" id="hubTutorial"><strong>◇ Обучение</strong><span>3 коротких шага</span></button>
-      <button class="hub-action" id="hubNew"><strong>↻ Текущий уровень</strong><span>${levelStars ? "Лучший результат: " + levelStars + " ★" : "Ещё не пройден"}</span></button>
-    </div>
-    ${chapterMarkup(hubChapterNumber)}
-    <section class="hub-section"><div class="hub-section-head"><h3>Настройки</h3><small>звук и ощущения</small></div><div class="settings-grid">
-      <button class="setting-toggle ${profile.settings.sound ? "on" : ""}" id="soundToggle"><b>♪ Эффекты</b><span>${profile.settings.sound ? "Включены" : "Выключены"}</span></button>
-      <button class="setting-toggle ${profile.settings.music ? "on" : ""}" id="musicToggle"><b>♫ Музыка</b><span>${profile.settings.music ? "Включена" : "Выключена"}</span></button>
-      <button class="setting-toggle ${profile.settings.haptics ? "on" : ""}" id="hapticsToggle"><b>⌁ Вибрация</b><span>${profile.settings.haptics ? "Включена" : "Выключена"}</span></button>
-      <button class="setting-toggle install" id="installPwa" ${standalone ? "disabled" : ""}><b>${installLabel}</b><span>${standalone ? "Standalone-режим" : deferredInstallPrompt ? "Работает офлайн" : "Через меню браузера"}</span></button>
-    </div></section>
-    <section class="hub-section"><div class="hub-section-head"><h3>Темы</h3><small>${unlockedThemes.length}/${THEME_DEFS.length} · за звёзды</small></div><div class="theme-grid">${themes}</div></section>
-    <section class="hub-section"><div class="hub-section-head"><h3>Рубашки карт</h3><small>${unlockedBacks.length}/${CARD_BACK_DEFS.length} · за достижения</small></div><div class="cardback-grid">${cardBackMarkup()}</div></section>
-    <section class="hub-section"><div class="hub-section-head"><h3>Коллекция категорий</h3><small>${discoveredCount}/${BANK.length}</small></div><div class="collection-grid">${collection}</div></section>
-    <section class="hub-section"><div class="hub-section-head"><h3>Достижения</h3><small>${profile.achievements.length}/${ACHIEVEMENTS.length}</small></div><div class="achievement-list">${achievements}</div></section>
-    <section class="hub-section"><div class="hub-section-head"><h3>Статистика</h3><small>локально на устройстве</small></div><div class="stats-grid">
-      <div class="stat-box"><b>${profile.stats.levelsCompleted}</b><span>уровней</span></div>
-      <div class="stat-box"><b>${profile.stats.gamesPlayed || 0}</b><span>сыграно партий</span></div>
-      <div class="stat-box"><b>${discoveredCount}</b><span>открыто категорий</span></div>
-      <div class="stat-box"><b>${profile.stats.tripleStarWins}</b><span>★★★ уровней</span></div>
-      <div class="stat-box"><b>×${profile.stats.maxDragCombo || 0}</b><span>ручное комбо</span></div>
-      <div class="stat-box"><b>${chaptersDone}</b><span>глав пройдено</span></div>
-      <div class="stat-box"><b>${perfectChapters}</b><span>идеальных глав</span></div>
-      <div class="stat-box"><b>${profile.stats.specialCompleted || 0}</b><span>особых уровней</span></div>
-      <div class="stat-box"><b>${profile.daily.bestStreak}</b><span>рекорд серии</span></div>
-    </div></section>`;
-
-  $("#hubContinue").onclick = () => {
-    closeHub();
-    if (!state || state.rewarded || state.mode !== "regular") makeLevel(nextLevel, { mode: "regular" });
-  };
-  $("#hubDaily").onclick = () => {
-    closeHub();
-    makeLevel(0, { mode: "daily", seed: `daily:${todayKey()}` });
-  };
-  $("#hubTutorial").onclick = () => {
-    closeHub();
-    makeLevel(1, { mode: "tutorial", step: 1 });
-  };
-  $("#hubNew").onclick = () => {
-    closeHub();
-    makeLevel(profile.currentLevel || 1);
-  };
-  $("#chapterPrev").onclick = () => {
-    hubChapterNumber = Math.max(1, hubChapterNumber - 1);
-    renderHub();
-  };
-  $("#chapterNext").onclick = () => {
-    hubChapterNumber = Math.min(currentChapter.number, hubChapterNumber + 1);
-    renderHub();
-  };
-  hubContent.querySelectorAll("[data-chapter-level]").forEach((btn) => {
-    btn.onclick = () => {
-      const level = +btn.dataset.chapterLevel;
-      closeHub();
-      makeLevel(level, { mode: "regular" });
-    };
-  });
-  $("#soundToggle").onclick = () => {
-    profile.settings.sound = !profile.settings.sound;
-    saveProfile();
-    if (profile.settings.sound) playSfx("combo", 0.65);
-    renderHub();
-  };
-  $("#musicToggle").onclick = () => {
-    profile.settings.music = !profile.settings.music;
-    saveProfile();
-    if (profile.settings.music) setBackgroundMusic("menu");
-    else stopBackgroundMusic();
-    renderHub();
-  };
-  $("#hapticsToggle").onclick = () => {
-    profile.settings.haptics = !profile.settings.haptics;
-    saveProfile();
-    if (profile.settings.haptics) haptic([8, 20, 8]);
-    renderHub();
-  };
-  $("#installPwa").onclick = async () => {
-    if (isStandalonePwa()) return;
-    if (deferredInstallPrompt) {
-      const prompt = deferredInstallPrompt;
-      deferredInstallPrompt = null;
-      await prompt.prompt();
-      const result = await prompt.userChoice.catch(() => null);
-      track("pwa_prompt", { outcome: result?.outcome || "unknown" });
-      renderHub();
-    } else {
-      const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-      showToast(ios ? "iPhone: Поделиться → На экран «Домой»" : "Открой меню браузера → Установить приложение");
-    }
-  };
-  hubContent.querySelectorAll("[data-theme-id]").forEach((btn) => {
-    btn.onclick = () => {
-      profile.theme = btn.dataset.themeId;
-      saveProfile();
-      renderHub();
-      showToast(`Тема: ${THEME_DEFS.find((t) => t.id === profile.theme).name}`);
-    };
-  });
-  hubContent.querySelectorAll("[data-card-back-id]").forEach((btn) => {
-    btn.onclick = () => {
-      const def = CARD_BACK_DEFS.find((x) => x.id === btn.dataset.cardBackId);
-      if (!def || !cardBackUnlocked(def)) return;
-      profile.cardBack = def.id;
-      saveProfile();
-      renderHub();
-      showToast(`Рубашка: ${def.name}`);
-    };
-  });
+  ensureWeeklyChallenge();
+  const views = { play: playTabMarkup, progress: progressTabMarkup, collection: collectionTabMarkup, appearance: appearanceTabMarkup, settings: settingsTabMarkup };
+  hubContent.innerHTML = `${hubTabsMarkup()}${(views[hubTab] || playTabMarkup)()}`;
+  bindHubHandlers();
 }
-
-function openHub() {
+function bindHubHandlers() {
+  hubContent.querySelectorAll("[data-hub-tab]").forEach((btn)=>btn.onclick=()=>{hubTab=btn.dataset.hubTab; renderHub();});
+  const on=(id,fn)=>{const el=$(id); if(el) el.onclick=fn;};
+  on("#hubContinue",()=>{const next=profile.currentLevel||1; closeHub(); if(!state||state.rewarded||state.mode!=="regular") makeLevel(next,{mode:"regular"});});
+  on("#hubDaily",()=>{closeHub(); makeLevel(0,{mode:"daily",seed:`daily:${todayKey()}`});});
+  on("#hubMarathon",()=>{closeHub(); const runId=`marathon:${Date.now().toString(36)}`; makeLevel(1,{mode:"marathon",seed:`${runId}:1`,marathonRound:1,marathonId:runId});});
+  on("#hubCalm",()=>{closeHub(); makeLevel(1,{mode:"calm",seed:`calm:${Date.now()}:${Math.random()}`});});
+  on("#hubShareChallenge",()=>shareNewChallenge());
+  on("#challengeStart",()=>startChallengeCode($("#challengeInput")?.value));
+  on("#hubTutorial",()=>{closeHub(); makeLevel(1,{mode:"tutorial",step:1});});
+  on("#chapterPrev",()=>{hubChapterNumber=Math.max(1,(hubChapterNumber||1)-1);renderHub();});
+  on("#chapterNext",()=>{hubChapterNumber=Math.min(chapterInfo(profile.currentLevel||1).number,(hubChapterNumber||1)+1);renderHub();});
+  hubContent.querySelectorAll("[data-chapter-level]").forEach((btn)=>btn.onclick=()=>{closeHub();makeLevel(+btn.dataset.chapterLevel,{mode:"regular"});});
+  on("#editName",()=>{const name=window.prompt("Имя игрока",profile.playerName||"Игрок")?.trim(); if(name){profile.playerName=name.slice(0,20);saveProfile();renderHub();}});
+  hubContent.querySelectorAll("[data-title-id]").forEach((btn)=>btn.onclick=()=>{const def=TITLE_DEFS.find((x)=>x.id===btn.dataset.titleId);if(def&&titleUnlocked(def)){profile.titleId=def.id;saveProfile();renderHub();}});
+  hubContent.querySelectorAll("[data-ach-filter]").forEach((btn)=>btn.onclick=()=>{achievementFilter=btn.dataset.achFilter;renderHub();});
+  hubContent.querySelectorAll("[data-category-id]").forEach((btn)=>btn.onclick=()=>{hubCategoryId=btn.dataset.categoryId;renderHub();});
+  hubContent.querySelectorAll("[data-theme-id]").forEach((btn)=>btn.onclick=()=>{const def=THEME_DEFS.find((x)=>x.id===btn.dataset.themeId);hubPreview={type:"theme",id:def.id};if(themeUnlocked(def)){profile.theme=def.id;saveProfile();}renderHub();if(!themeUnlocked(def))showToast(`Откроется за ${themeUnlockLabel(def)}`);});
+  hubContent.querySelectorAll("[data-card-back-id]").forEach((btn)=>btn.onclick=()=>{const def=CARD_BACK_DEFS.find((x)=>x.id===btn.dataset.cardBackId);hubPreview={type:"back",id:def.id};if(cardBackUnlocked(def)){profile.cardBack=def.id;saveProfile();}renderHub();if(!cardBackUnlocked(def))showToast(cardBackUnlockLabel(def));});
+  hubContent.querySelectorAll("[data-effect-id]").forEach((btn)=>btn.onclick=()=>{const def=EFFECT_DEFS.find((x)=>x.id===btn.dataset.effectId);hubPreview={type:"effect",id:def.id};if(effectUnlocked(def)){profile.effect=def.id;saveProfile();burst(false);}renderHub();if(!effectUnlocked(def))showToast(effectUnlockLabel(def));});
+  on("#soundToggle",()=>{profile.settings.sound=!profile.settings.sound;saveProfile();if(profile.settings.sound)playSfx("combo",.65);renderHub();});
+  on("#musicToggle",()=>{profile.settings.music=!profile.settings.music;saveProfile();if(profile.settings.music)setBackgroundMusic("menu");else stopBackgroundMusic();renderHub();});
+  on("#hapticsToggle",()=>{profile.settings.haptics=!profile.settings.haptics;saveProfile();if(profile.settings.haptics)haptic([8,20,8]);renderHub();});
+  on("#exportSave",exportProgress); on("#importSave",importProgress);
+  on("#installPwa",async()=>{if(isStandalonePwa())return;if(deferredInstallPrompt){const prompt=deferredInstallPrompt;deferredInstallPrompt=null;await prompt.prompt();const result=await prompt.userChoice.catch(()=>null);track("pwa_prompt",{outcome:result?.outcome||"unknown"});renderHub();}else{const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);showToast(ios?'iPhone: Поделиться → На экран «Домой»':'Открой меню браузера → Установить приложение');}});
+}
+function openHub(tab = null) {
+  if (tab) hubTab = tab;
   hubChapterNumber = chapterInfo(profile.currentLevel || 1).number;
   renderHub();
   hub.classList.add("show");
   setBackgroundMusic("menu");
-  track("hub_opened");
+  track("hub_opened", { tab: hubTab });
 }
 function closeHub() {
   hub.classList.remove("show");

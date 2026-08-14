@@ -1,9 +1,11 @@
-const CACHE = "worditaire-static-v5";
+const CACHE = "worditaire-static-v7";
 const CORE = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
   "./icons/icon.svg",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png",
   "./styles/base.css",
   "./styles/meta.css",
   "./styles/responsive.css",
@@ -14,6 +16,7 @@ const CORE = [
   "./js/data.js",
   "./js/runtime.js",
   "./js/generator.js",
+  "./js/meta/systems.js",
   "./js/animations.js",
   "./js/game/feedback.js",
   "./js/game/state.js",
@@ -26,7 +29,10 @@ const CORE = [
   "./js/app.js"
 ];
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(CORE)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(CORE)));
+});
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
 });
 self.addEventListener("activate", (event) => {
   event.waitUntil(

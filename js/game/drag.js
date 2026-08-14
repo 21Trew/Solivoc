@@ -186,6 +186,9 @@ function startDrag(e) {
     gripY: e.clientY - top,
     originLeft: left,
     originTop: top,
+    sourceBounds: { left, top, right, bottom },
+    lastX: e.clientX,
+    lastY: e.clientY,
     moved: false,
   };
   moveDrag(e);
@@ -204,6 +207,15 @@ function moveDrag(e) {
   }
   drag.ghost.style.left = e.clientX - drag.gripX + "px";
   drag.ghost.style.top = e.clientY - drag.gripY + "px";
+  const vx = e.clientX - drag.lastX;
+  const tilt = Math.max(-4.5, Math.min(4.5, vx * 0.55));
+  drag.ghost.style.setProperty("--drag-tilt", `${tilt.toFixed(2)}deg`);
+  drag.lastX = e.clientX;
+  drag.lastY = e.clientY;
+  const nx = (e.clientX / Math.max(1, innerWidth) - 0.5) * 2;
+  const ny = (e.clientY / Math.max(1, innerHeight) - 0.5) * 2;
+  document.documentElement.style.setProperty("--parallax-x", `${(nx * 4).toFixed(1)}px`);
+  document.documentElement.style.setProperty("--parallax-y", `${(ny * 3).toFixed(1)}px`);
 }
 async function returnDragGhost(d) {
   if (motionReduced()) return;
@@ -221,22 +233,46 @@ async function returnDragGhost(d) {
     )
     .finished.catch(() => {});
 }
+function resetDragParallax() {
+  document.documentElement.style.setProperty("--parallax-x", "0px");
+  document.documentElement.style.setProperty("--parallax-y", "0px");
+}
+function droppedBackOnOrigin(d, target, e) {
+  if (!d) return false;
+  if (d.payload.source === "column" && target?.dataset.zone === "column" && +target.dataset.index === d.payload.ci) return true;
+  if (d.payload.source === "slot" && target?.dataset.zone === "slot" && +target.dataset.index === d.payload.si) return true;
+  const b = d.sourceBounds, pad = 18;
+  return !!b && e.clientX >= b.left - pad && e.clientX <= b.right + pad && e.clientY >= b.top - pad && e.clientY <= b.bottom + pad;
+}
+async function cancelDragWithoutPenalty(d) {
+  await returnDragGhost(d);
+  d.sourceNodes.forEach((n) => n.classList.remove("drag-source"));
+  setSourceVacancy(d.vacancyNodes, false);
+  d.ghost.remove();
+  resetDragParallax();
+}
 async function endDrag(e) {
   if (!drag) return;
   const d = drag;
   drag = null;
   if (!d.moved) {
     d.ghost.remove();
+    resetDragParallax();
     handleCardTap(d.card, d.payload);
     return;
   }
-  const target = targetFromPoint(e.clientX, e.clientY),
-    valid = canDrop(d.payload, target);
+  const target = targetFromPoint(e.clientX, e.clientY);
+  if (droppedBackOnOrigin(d, target, e)) {
+    await cancelDragWithoutPenalty(d);
+    return;
+  }
+  const valid = canDrop(d.payload, target);
   if (!valid) {
     await returnDragGhost(d);
     d.sourceNodes.forEach((n) => n.classList.remove("drag-source"));
     setSourceVacancy(d.vacancyNodes, false);
     d.ghost.remove();
+    resetDragParallax();
     feedbackWrongMove(d.sourceNodes, target);
     scheduleDeadlockCheck(260);
     return;
@@ -244,5 +280,6 @@ async function endDrag(e) {
   d.ghost.remove();
   d.sourceNodes.forEach((n) => n.classList.remove("drag-source"));
   setSourceVacancy(d.vacancyNodes, false);
+  resetDragParallax();
   if (!performDrop(d.payload, target, { comboEligible: true })) feedbackWrongMove(d.sourceNodes, target);
 }

@@ -1,4 +1,5 @@
 /* Category-bank loading, validation and conflict rules. */
+let CATEGORY_BANK_REPORT = { categories: 0, ambiguousWords: [], explicitConflicts: 0, warnings: [] };
 const fitsCardText = (s, maxLen) => {
   s = String(s || "").trim();
   return !!s && !/[\s\-‑]/.test(s) && s.length <= maxLen;
@@ -28,6 +29,31 @@ function categoriesConflict(a, b) {
   const aw = new Set(a.words.map(normWord));
   return b.words.some((w) => aw.has(normWord(w)));
 }
+
+function validateCategoryBank(list = BANK) {
+  const wordOwners = new Map(), warnings = [];
+  for (const cat of list) {
+    if (cat.words.length < 3) warnings.push(`${cat.title}: меньше 3 слов`);
+    for (const word of cat.words) {
+      const key = normWord(word);
+      if (!wordOwners.has(key)) wordOwners.set(key, []);
+      wordOwners.get(key).push({ id: cat.id, title: cat.title, word });
+    }
+  }
+  const ambiguousWords = [...wordOwners.entries()]
+    .filter(([, owners]) => new Set(owners.map((x) => x.id)).size > 1)
+    .map(([word, owners]) => ({ word, categories: owners.map((x) => x.title) }))
+    .sort((a, b) => b.categories.length - a.categories.length || a.word.localeCompare(b.word));
+  CATEGORY_BANK_REPORT = {
+    categories: list.length,
+    words: [...wordOwners.values()].reduce((n, x) => n + x.length, 0),
+    ambiguousWords,
+    explicitConflicts: list.reduce((n, c) => n + (c.conflicts?.length || 0), 0),
+    warnings,
+  };
+  return CATEGORY_BANK_REPORT;
+}
+
 function getRecentCategories() {
   try {
     return JSON.parse(localStorage.getItem(RECENT_KEY)) || [];
@@ -57,4 +83,5 @@ async function loadCategoryBank() {
     }
   }
   if (BANK.length < 50) throw new Error("База категорий не загружена");
+  validateCategoryBank(BANK);
 }

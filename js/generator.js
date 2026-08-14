@@ -11,9 +11,35 @@ function specialForLevel(level) {
   const def = SPECIAL_LEVELS.find((x) => x.offset === offset);
   return def ? { ...def } : null;
 }
+const WORD_DIFFICULTY_CACHE = new Map();
+function wordDifficulty(cat, word) {
+  const cacheKey = `${cat?.id || ""}:${word}`;
+  if (WORD_DIFFICULTY_CACHE.has(cacheKey)) return WORD_DIFFICULTY_CACHE.get(cacheKey);
+  const explicit = cat?.wordDifficulty?.[word];
+  if (Number.isFinite(+explicit)) {
+    const score = Math.max(1, Math.min(5, +explicit));
+    WORD_DIFFICULTY_CACHE.set(cacheKey, score);
+    return score;
+  }
+  const normalized = normWord(word);
+  const owners = BANK.reduce((n, c) => n + (c.words || []).some((w) => normWord(w) === normalized), 0);
+  let score = word.length <= 5 ? 1 : word.length <= 7 ? 2 : word.length <= 9 ? 3 : 4;
+  if (owners > 1) score += 1;
+  score = Math.max(1, Math.min(5, score));
+  WORD_DIFFICULTY_CACHE.set(cacheKey, score);
+  return score;
+}
 function categoryDifficulty(cat) {
-  const avg = cat.words.reduce((n, w) => n + w.length, 0) / cat.words.length;
-  return avg <= 5.7 ? 1 : avg <= 7.3 ? 2 : 3;
+  if (Number.isFinite(+cat?.difficulty)) return Math.max(1, Math.min(5, +cat.difficulty));
+  const avg = cat.words.reduce((n, w) => n + wordDifficulty(cat, w), 0) / Math.max(1, cat.words.length);
+  return avg < 1.8 ? 1 : avg < 2.5 ? 2 : avg < 3.2 ? 3 : avg < 4 ? 4 : 5;
+}
+function chooseWordsForDifficulty(cat, count, difficulty, rng) {
+  const target = Math.max(1, Math.min(5, difficulty));
+  const randomized = shuffle(cat.words, rng);
+  randomized.sort((a, b) => Math.abs(wordDifficulty(cat, a) - target) - Math.abs(wordDifficulty(cat, b) - target));
+  const pool = randomized.slice(0, Math.max(count, Math.min(randomized.length, count + 4)));
+  return shuffle(pool, rng).slice(0, count);
 }
 function regularConfig(level, rng, special = null) {
   let colRange;
@@ -28,9 +54,9 @@ function regularConfig(level, rng, special = null) {
   const ranges = { 3: [3, 4], 4: [4, 6], 5: [6, 10] },
     cr = ranges[cols];
   const cats = rnd(cr[0], cr[1], rng);
-  let difficulty = level <= 12 ? 1 : level <= 50 ? 2 : 3;
+  let difficulty = level <= 12 ? 1 : level <= 35 ? 2 : level <= 80 ? 3 : level <= 160 ? 4 : 5;
   if (recovery) difficulty = Math.max(1, difficulty - 1);
-  let words = difficulty === 1 ? [3, 5] : difficulty === 2 ? [4, 7] : [5, 9];
+  let words = difficulty === 1 ? [3, 5] : difficulty === 2 ? [4, 6] : difficulty === 3 ? [4, 7] : [5, 9];
   if (special?.bigMix) {
     cols = 5;
     const mixRange = ranges[5];
@@ -40,6 +66,23 @@ function regularConfig(level, rng, special = null) {
   }
   return { cols, cats, difficulty, words };
 }
+function configForMode(level, mode, rng, special = null, opts = {}) {
+  if (mode === "daily") return { cols: 5, cats: 7, difficulty: 3, words: [4, 7] };
+  if (mode === "challenge") {
+    const cfg = regularConfig(Math.max(12, level || 25), rng, null);
+    return { ...cfg, difficulty: Math.max(2, Math.min(5, cfg.difficulty)) };
+  }
+  if (mode === "calm") {
+    const cols = rnd(3, 4, rng), ranges = { 3: [3, 4], 4: [4, 5] };
+    return { cols, cats: rnd(...ranges[cols], rng), difficulty: 1, words: [3, 5] };
+  }
+  if (mode === "marathon") {
+    const round = Math.max(1, opts.marathonRound || 1);
+    return regularConfig(Math.min(180, 8 + round * 6), rng, null);
+  }
+  return regularConfig(level, rng, special);
+}
+
 function chooseCompatibleCategories(count, difficulty, rng) {
   const close = shuffle(BANK, rng).sort(
     (a, b) => Math.abs(categoryDifficulty(a) - difficulty) - Math.abs(categoryDifficulty(b) - difficulty),
@@ -54,16 +97,19 @@ function chooseCompatibleCategories(count, difficulty, rng) {
   return [];
 }
 function randomColumnCounts(total, cols, rng) {
-  const counts = Array(cols).fill(1);
+  const counts = Array(cols).fill(1),
+    softMax = Math.max(2, Math.ceil(total / cols) + 2);
   let rest = total - cols;
   while (rest > 0) {
-    counts[rnd(0, cols - 1, rng)]++;
+    const candidates = counts.map((n, i) => (n < softMax ? i : -1)).filter((i) => i >= 0);
+    const target = candidates.length ? candidates[rnd(0, candidates.length - 1, rng)] : rnd(0, cols - 1, rng);
+    counts[target]++;
     rest--;
   }
   for (let i = 0; i < cols * 5; i++) {
     const a = rnd(0, cols - 1, rng),
       b = rnd(0, cols - 1, rng);
-    if (a !== b && counts[a] > 1 && rng() < 0.75) {
+    if (a !== b && counts[a] > 1 && counts[b] < softMax && rng() < 0.75) {
       counts[a]--;
       counts[b]++;
     }
@@ -165,12 +211,12 @@ function isLikelySolvable(s) {
   }
   return completed === target;
 }
-function buildGeneratedLevel(level, { mode = "regular", seed = null } = {}) {
+function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCode = null, marathonRound = 1, marathonId = null } = {}) {
   const baseSeed = seed || (mode === "daily" ? `daily:${todayKey()}` : `level:${level}`);
   for (let attempt = 0; attempt < 45; attempt++) {
     const rng = makeRng(baseSeed + ":" + attempt);
     const special = mode === "regular" ? specialForLevel(level) : null,
-      cfg = mode === "daily" ? { cols: 5, cats: 7, difficulty: 2, words: [4, 7] } : regularConfig(level, rng, special);
+      cfg = configForMode(level, mode, rng, special, { marathonRound });
     const chosen = chooseCompatibleCategories(cfg.cats, cfg.difficulty, rng);
     if (chosen.length < cfg.cats) continue;
     const cards = [];
@@ -178,7 +224,7 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null } = {}) {
       const maxN = Math.min(cfg.words[1], 9, cat.words.length),
         minN = Math.min(cfg.words[0], maxN),
         n = rnd(minN, maxN, rng),
-        words = shuffle(cat.words, rng).slice(0, n);
+        words = chooseWordsForDifficulty(cat, n, cfg.difficulty, rng);
       cards.push({ uid: uid(), cat: cat.id, label: cat.title, type: "category", total: n });
       for (const w of words) cards.push({ uid: uid(), cat: cat.id, label: w, type: "word", total: n });
     }
@@ -207,6 +253,9 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null } = {}) {
       categoryIds: chosen.map((c) => c.id),
       run: { hints: 0, undos: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },
       special,
+      challengeCode,
+      marathonRound: mode === "marathon" ? marathonRound : null,
+      marathonId: mode === "marathon" ? marathonId || seed : null,
       rewarded: false,
       generationAttempt: attempt,
     };
@@ -215,12 +264,12 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null } = {}) {
   console.warn("Solver fallback: используем последний корректно сформированный расклад");
   const rng = makeRng(baseSeed + ":fallback"),
     special = mode === "regular" ? specialForLevel(level) : null,
-    cfg = mode === "daily" ? { cols: 5, cats: 7, difficulty: 2, words: [4, 6] } : regularConfig(level, rng, special),
+    cfg = configForMode(level, mode, rng, special, { marathonRound }),
     chosen = chooseCompatibleCategories(cfg.cats, cfg.difficulty, rng),
     cards = [];
   for (const cat of chosen) {
     const n = Math.min(4, cat.words.length),
-      words = shuffle(cat.words, rng).slice(0, n);
+      words = chooseWordsForDifficulty(cat, n, cfg.difficulty, rng);
     cards.push({ uid: uid(), cat: cat.id, label: cat.title, type: "category", total: n });
     for (const w of words) cards.push({ uid: uid(), cat: cat.id, label: w, type: "word", total: n });
   }
@@ -246,6 +295,9 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null } = {}) {
     categoryIds: chosen.map((c) => c.id),
     run: { hints: 0, undos: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },
     special,
+    challengeCode,
+    marathonRound: mode === "marathon" ? marathonRound : null,
+    marathonId: mode === "marathon" ? marathonId || seed : null,
     rewarded: false,
     generationAttempt: "fallback",
   };

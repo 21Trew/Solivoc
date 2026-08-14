@@ -125,7 +125,10 @@ function stopBackgroundMusic() {
 function scheduleMusicStep(generation) {
   if (generation !== musicGeneration || !musicEnabled() || document.hidden) return;
   const pattern = MUSIC_PATTERNS[musicMode] || MUSIC_PATTERNS.game,
-    note = pattern.notes[musicStep % pattern.notes.length];
+    baseNote = pattern.notes[musicStep % pattern.notes.length],
+    chapterTone = state?.mode === "regular" ? ((chapterInfo(state.level).number - 1) % 4) : 0,
+    shifts = [1, 1.05946, 0.94387, 1.12246],
+    note = musicMode === "game" ? baseNote * shifts[chapterTone] : baseNote;
   musicStep++;
   musicTone(note, pattern.duration, pattern.volume, pattern.type);
   // Very light upper note once per phrase gives the menu/game loops distinct character.
@@ -159,7 +162,7 @@ function resetCombo() {
   el?.classList.remove("show");
 }
 function registerCombo(productive = true) {
-  if (!productive || state?.mode === "tutorial") return;
+  if (!productive || state?.mode === "tutorial" || state?.mode === "calm") return;
   const now = performance.now();
   if (comboLastAt && now - comboLastAt > 8500) comboCount = 0;
   comboLastAt = now;
@@ -326,8 +329,7 @@ function bindFeedbackEvents() {
   $("#deadlockRestart").onclick = () => {
     hideDeadlock();
     resetCombo();
-    if (state.mode === "daily") makeLevel(0, { mode: "daily", seed: state.seed });
-    else makeLevel(state.level, { mode: state.mode, seed: state.seed });
+    restartCurrentLevel();
   };
 }
 

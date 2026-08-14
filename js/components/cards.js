@@ -90,8 +90,8 @@ function fitTableauGeometry() {
 
   if (required <= available) return;
 
-  const minCwByCols = { 3: 62, 4: 56, 5: 49 },
-    minStepByCols = { 3: 17, 4: 17, 5: 16 },
+  const minCwByCols = { 3: 54, 4: 52, 5: 47 },
+    minStepByCols = { 3: 15, 4: 15, 5: 14 },
     minCw = Math.min(baseCw, minCwByCols[state.cols] || 50),
     minStep = minStepByCols[state.cols] || 16;
 
@@ -105,14 +105,14 @@ function fitTableauGeometry() {
   }
 
   if (cw * ratio + Math.max(0, units - 1) * step > available) {
-    cw = Math.max(46, Math.min(cw, (available - Math.max(0, units - 1) * step) / ratio));
+    cw = Math.max(42, Math.min(cw, (available - Math.max(0, units - 1) * step) / ratio));
   }
   if (cw * ratio + Math.max(0, units - 1) * step > available && units > 1) {
     step = Math.max(14, (available - cw * ratio) / (units - 1));
   }
 
-  root.style.setProperty("--cw", `${Math.max(46, cw).toFixed(2)}px`);
-  root.style.setProperty("--stack-step", `${Math.max(14, step).toFixed(2)}px`);
+  root.style.setProperty("--cw", `${Math.max(42, cw).toFixed(2)}px`);
+  root.style.setProperty("--stack-step", `${Math.max(12, step).toFixed(2)}px`);
   root.dataset.stackFit = step < 19 ? "tight" : "compact";
 }
 

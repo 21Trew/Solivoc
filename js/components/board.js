@@ -91,18 +91,53 @@ function render() {
     state.columns.reduce((n, c) => n + c.reduce((m, g) => m + g.cards.length, 0), 0) +
     state.slots.reduce((n, g) => n + (g ? g.cards.length : 0), 0);
   fitAllCardText();
+  if (typeof recordVisibleKnowledge === "function") recordVisibleKnowledge(state);
   $("#level").textContent =
-    state.mode === "daily" ? "D" : state.mode === "tutorial" ? `T${state.tutorialStep}` : state.level;
+    state.mode === "daily"
+      ? "D"
+      : state.mode === "tutorial"
+        ? `T${state.tutorialStep}`
+        : state.mode === "challenge"
+          ? "C"
+          : state.mode === "marathon"
+            ? `M${state.marathonRound || 1}`
+            : state.mode === "calm"
+              ? "☁"
+              : state.level;
   $("#left").textContent = left;
   $("#progressText").textContent = `${state.completed}/${state.totalCategories}`;
   $("#progressBar").style.width = (state.completed / state.totalCategories) * 100 + "%";
   $("#starTotal").textContent = profile.totalStars;
-  $("#chapterLabel").textContent = chapter ? `глава ${chapter.number}` : state.mode === "daily" ? "daily" : "прогресс";
+  const moveEl = $("#moveCount");
+  if (moveEl) moveEl.textContent = state.run?.moves || 0;
+  $("#chapterLabel").textContent = chapter
+    ? `глава ${chapter.number}`
+    : state.mode === "daily"
+      ? "daily"
+      : state.mode === "challenge"
+        ? "вызов"
+        : state.mode === "marathon"
+          ? `марафон ${state.marathonRound || 1}`
+          : state.mode === "calm"
+            ? "спокойно"
+            : "прогресс";
   const specialBadge = $("#specialBadge");
   if (state.mode === "regular" && state.special) {
     specialBadge.hidden = false;
     specialBadge.textContent = `${state.special.icon} ${state.special.title}`;
     specialBadge.title = state.special.desc;
+  } else if (state.mode === "challenge") {
+    specialBadge.hidden = false;
+    specialBadge.textContent = "⇄ Вызов";
+    specialBadge.title = "Одинаковый расклад можно отправить другу";
+  } else if (state.mode === "marathon") {
+    specialBadge.hidden = false;
+    specialBadge.textContent = `∞ Раунд ${state.marathonRound || 1}`;
+    specialBadge.title = "Марафон продолжается только при ★★★";
+  } else if (state.mode === "calm") {
+    specialBadge.hidden = false;
+    specialBadge.textContent = "☁ Спокойный режим";
+    specialBadge.title = "Лёгкие расклады без комбо и особых ограничений";
   } else {
     specialBadge.hidden = true;
     specialBadge.textContent = "";

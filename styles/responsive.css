@@ -334,7 +334,7 @@ Three-column rounds should feel like a card game, not a five-column web grid. */
      --gap: 7px;
    }
    html[data-cols="3"] {
-     --cw: clamp(74px, 21vw, 88px);
+     --cw: clamp(70px, 20vw, 82px);
      --gap: clamp(8px, 2.2vw, 10px);
      --radius: clamp(17px, 4.5vw, 20px);
    }
@@ -533,7 +533,7 @@ Three-column rounds should feel like a card game, not a five-column web grid. */
    /* Small widths: keep hierarchy, only compress what is necessary. */
    @media (max-width: 370px) {
      html[data-cols="3"] {
-       --cw: clamp(70px, 21vw, 80px);
+       --cw: clamp(66px, 20vw, 76px);
        --gap: 7px;
      }
      html[data-cols="4"] {
@@ -691,7 +691,7 @@ maintained in JS, so the card never jumps under the finger. */
      position: fixed;
      z-index: 9999;
      pointer-events: none;
-     transform: none !important;
+     transform: rotate(var(--drag-tilt, 0deg));
      filter: drop-shadow(0 18px 20px #0008);
      will-change: left, top;
      overflow: visible;
@@ -744,3 +744,18 @@ maintained in JS, so the card never jumps under the finger. */
 html[data-stack-fit="tight"] .card.open-under:not(.category) { padding-top: 2px; line-height: .95; }
 html[data-stack-fit="tight"] .card.category.open-under { padding-top: 2px; }
 html[data-stack-fit="tight"] .card.category.open-under .name { padding-top: 1px; padding-bottom: 1px; }
+
+
+/* Hub v2 narrow-screen refinements. */
+@media (max-width: 370px) {
+  .hub-tabs { gap:3px; }
+  .hub-tabs button { min-height:45px; border-radius:11px; }
+  .hub-tabs button span { font-size:6.5px; }
+  .mode-grid { gap:6px; }
+  .mode-card { min-height:80px; padding:9px; }
+  .profile-hero { grid-template-columns:42px minmax(0,1fr) auto; padding:10px; gap:8px; }
+  .profile-avatar { width:42px; height:42px; }
+  .effect-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .encyclopedia-meta { grid-template-columns:1fr; }
+  .save-tools { grid-template-columns:1fr; }
+}

@@ -10,6 +10,15 @@ function defaultProfile() {
     theme: "violet",
     cardBack: "classic",
     cardBackUnlocksSeen: ["classic"],
+    effect: "spark",
+    effectUnlocksSeen: ["spark"],
+    playerName: "Игрок",
+    titleId: "player",
+    categoryStats: {},
+    levelRecords: {},
+    dailyRecords: {},
+    challengeRecords: {},
+    weekly: { key: null, id: null, baseline: {}, completed: false, completedCount: 0 },
     tutorialComplete: false,
     legacyStarsMigrated: false,
     categoryAchievementModelMigrated: false,
@@ -33,6 +42,12 @@ function loadProfile() {
         discovered: Array.isArray(p.discovered) ? p.discovered : [],
         achievements: Array.isArray(p.achievements) ? p.achievements : [],
         cardBackUnlocksSeen: Array.isArray(p.cardBackUnlocksSeen) ? p.cardBackUnlocksSeen : ["classic"],
+        effectUnlocksSeen: Array.isArray(p.effectUnlocksSeen) ? p.effectUnlocksSeen : ["spark"],
+        categoryStats: p.categoryStats && typeof p.categoryStats === "object" ? p.categoryStats : {},
+        levelRecords: p.levelRecords && typeof p.levelRecords === "object" ? p.levelRecords : {},
+        dailyRecords: p.dailyRecords && typeof p.dailyRecords === "object" ? p.dailyRecords : {},
+        challengeRecords: p.challengeRecords && typeof p.challengeRecords === "object" ? p.challengeRecords : {},
+        weekly: { ...defaultProfile().weekly, ...(p.weekly || {}) },
       };
     } catch {}
   }
@@ -97,6 +112,21 @@ function migrateAchievementCounters() {
   profile.stats.gamesPlayed = Math.max(+profile.stats.gamesPlayed || 0, analyticsGames, minimumKnownGames);
 }
 migrateAchievementCounters();
+function migrateMetaProfile() {
+  profile.categoryStats = profile.categoryStats || {};
+  for (const id of profile.discovered || []) {
+    const old = profile.categoryStats[id] || {};
+    profile.categoryStats[id] = { encounters: 1, completions: 1, firstLevel: null, words: [], ...old };
+  }
+  profile.levelRecords = profile.levelRecords || {};
+  profile.dailyRecords = profile.dailyRecords || {};
+  profile.challengeRecords = profile.challengeRecords || {};
+  profile.weekly = { ...defaultProfile().weekly, ...(profile.weekly || {}) };
+  profile.effectUnlocksSeen = Array.isArray(profile.effectUnlocksSeen) ? profile.effectUnlocksSeen : ["spark"];
+  if (!TITLE_DEFS.some((x) => x.id === profile.titleId)) profile.titleId = "player";
+  if (!profile.playerName) profile.playerName = "Игрок";
+}
+migrateMetaProfile();
 function recomputeStars() {
   profile.totalStars =
     Object.values(profile.starsByLevel || {}).reduce((a, b) => a + (+b || 0), 0) +
@@ -120,11 +150,39 @@ function applyCardBack(id) {
   profile.cardBack = back;
   document.body.dataset.cardBack = back;
 }
+function effectUnlocked(def, p = profile) {
+  if (!def) return false;
+  if (def.achievement) return p.achievements.includes(def.achievement);
+  if (def.minWeekly) return (p.stats.weeklyCompleted || 0) >= def.minWeekly;
+  return p.achievements.length >= (def.minAchievements || 0);
+}
+function effectUnlockLabel(def) {
+  if (def.achievement) {
+    const a = ACHIEVEMENTS.find((x) => x.id === def.achievement);
+    return a ? `Достижение: ${a.title}` : def.desc;
+  }
+  if (def.minWeekly) return `${def.minWeekly} недельных испытания`;
+  return def.minAchievements ? `${def.minAchievements} достижений` : "Базовый";
+}
+function titleUnlocked(def, p = profile) {
+  return !!def && (!def.achievement || p.achievements.includes(def.achievement));
+}
+function applyEffect(id) {
+  const def = EFFECT_DEFS.find((x) => x.id === id);
+  profile.effect = def && effectUnlocked(def) ? id : "spark";
+  document.body.dataset.effect = profile.effect;
+}
+function applyTitle(id) {
+  const def = TITLE_DEFS.find((x) => x.id === id);
+  profile.titleId = def && titleUnlocked(def) ? id : "player";
+}
 function saveProfile() {
   recomputeStars();
   localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
   applyTheme(profile.theme);
   applyCardBack(profile.cardBack);
+  applyEffect(profile.effect);
+  applyTitle(profile.titleId);
 }
 function track(name, data = {}) {
   try {
@@ -145,3 +203,5 @@ function applyTheme(id) {
 recomputeStars();
 applyTheme(profile.theme);
 applyCardBack(profile.cardBack);
+applyEffect(profile.effect);
+applyTitle(profile.titleId);

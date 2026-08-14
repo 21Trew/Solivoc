@@ -61,8 +61,12 @@ function checkAchievements() {
   const newlyUnlockedBacks = CARD_BACK_DEFS.filter(
     (back) => back.id !== "classic" && cardBackUnlocked(back) && !profile.cardBackUnlocksSeen.includes(back.id),
   );
-  if (fresh.length || newlyUnlockedBacks.length) {
+  const newlyUnlockedEffects = EFFECT_DEFS.filter(
+    (effect) => effect.id !== "spark" && effectUnlocked(effect) && !profile.effectUnlocksSeen.includes(effect.id),
+  );
+  if (fresh.length || newlyUnlockedBacks.length || newlyUnlockedEffects.length) {
     newlyUnlockedBacks.forEach((back) => profile.cardBackUnlocksSeen.push(back.id));
+    newlyUnlockedEffects.forEach((effect) => profile.effectUnlocksSeen.push(effect.id));
     saveProfile();
     queueAchievementNotifications([
       ...fresh,
@@ -71,6 +75,7 @@ function checkAchievements() {
         title: `Новая рубашка: ${back.name}`,
         desc: back.rare ? "Редкая награда уже доступна в меню" : "Новая награда уже доступна в меню",
       })),
+      ...newlyUnlockedEffects.map((effect) => ({ icon: "✦", title: `Новый эффект: ${effect.name}`, desc: effect.desc })),
     ]);
   }
   return fresh;
@@ -91,8 +96,12 @@ function closeWinModal() {
 function finishLevel() {
   state.rewarded = true;
   const stars = calculateStars();
+  state.lastStars = stars;
   let newAchievements = [];
-  if (state.mode === "regular" || state.mode === "daily") profile.stats.gamesPlayed = (profile.stats.gamesPlayed || 0) + 1;
+  if (state.mode !== "tutorial") {
+    profile.stats.gamesPlayed = (profile.stats.gamesPlayed || 0) + 1;
+    profile.stats.totalMoves = (profile.stats.totalMoves || 0) + (state.run.moves || 0);
+  }
   if (state.mode === "regular") {
     const old = profile.starsByLevel[state.level] || 0,
       firstClear = old === 0;
@@ -103,48 +112,72 @@ function finishLevel() {
     if (firstClear && state.special) profile.stats.specialCompleted = (profile.stats.specialCompleted || 0) + 1;
     if (state.run.hints === 0) profile.stats.noHintWins++;
     if (state.run.undos === 0) profile.stats.noUndoWins++;
-    track("level_completed", { level: state.level, stars });
+    track("level_completed", { level: state.level, stars, moves: state.run.moves });
   } else if (state.mode === "daily") {
     const date = todayKey();
     profile.dailyStars[date] = Math.max(profile.dailyStars[date] || 0, stars);
     if (!profile.daily.completedDates.includes(date)) profile.stats.dailyCompleted++;
     updateDailyStreak(date);
-    track("daily_completed", { date, stars });
+    track("daily_completed", { date, stars, moves: state.run.moves });
+  } else if (state.mode === "challenge") {
+    profile.stats.challengesCompleted = (profile.stats.challengesCompleted || 0) + 1;
+    track("challenge_completed", { seed: state.seed, stars, moves: state.run.moves });
+  } else if (state.mode === "calm") {
+    profile.stats.calmCompleted = (profile.stats.calmCompleted || 0) + 1;
+    track("calm_completed", { stars, moves: state.run.moves });
+  } else if (state.mode === "marathon") {
+    state.marathonSuccess = stars === 3;
+    if (state.marathonSuccess) {
+      profile.stats.bestMarathon = Math.max(profile.stats.bestMarathon || 0, state.marathonRound || 1);
+    }
+    track("marathon_round_completed", { round: state.marathonRound || 1, stars, moves: state.run.moves });
   } else if (state.mode === "tutorial") {
     track("tutorial_completed", { step: state.tutorialStep });
     if (state.tutorialStep === 3) profile.tutorialComplete = true;
   }
+
   recomputeStars();
+  const record = typeof updatePersonalRecord === "function" ? updatePersonalRecord(stars, state) : null;
+  if (typeof updateWeeklyChallenge === "function") updateWeeklyChallenge();
   newAchievements = checkAchievements();
   save();
-  showWin(stars, newAchievements);
+  showWin(stars, newAchievements, record);
   resetCombo();
 }
-function showWin(stars, newAchievements = []) {
+function showWin(stars, newAchievements = [], record = null) {
   clearWinRevealTimers();
   const noHints = state.run.hints === 0,
     noUndos = state.run.undos === 0,
-    perfect = stars === 3;
+    perfect = stars === 3,
+    moves = state.run.moves || 0;
 
+  const titles = {
+    daily: "Daily пройден!",
+    challenge: "Вызов пройден!",
+    calm: "Спокойный расклад завершён",
+    marathon: state.marathonSuccess ? `Марафон · раунд ${state.marathonRound}` : "Марафон окончен",
+  };
   $("#winTitle").textContent =
-    state.mode === "daily"
-      ? "Daily пройден!"
-      : state.mode === "tutorial"
-        ? `Обучение ${state.tutorialStep}/3`
-        : `Уровень ${state.level} пройден`;
+    state.mode === "tutorial" ? `Обучение ${state.tutorialStep}/3` : titles[state.mode] || `Уровень ${state.level} пройден`;
 
   $("#winText").textContent =
     state.mode === "daily"
       ? `Серия: ${profile.daily.currentStreak} дн.`
-      : state.mode === "tutorial"
-        ? state.tutorialStep < 3
-          ? "Отлично. Переходим к следующей механике."
-          : "Обучение закончено. Теперь начинается настоящая игра."
-        : perfect
-          ? "Идеальное прохождение!"
-          : state.special
-            ? state.special.title
-            : "Расклад завершён";
+      : state.mode === "challenge"
+        ? perfect ? "Идеальный ответ на вызов!" : "Расклад решён. Можно улучшить результат."
+        : state.mode === "calm"
+          ? "Без спешки. Просто хороший расклад."
+          : state.mode === "marathon"
+            ? state.marathonSuccess ? `Серия продолжается: ${state.marathonRound} ★★★ подряд` : `Результат серии: ${Math.max(0, (state.marathonRound || 1) - 1)} идеальных раскладов`
+            : state.mode === "tutorial"
+              ? state.tutorialStep < 3
+                ? "Отлично. Переходим к следующей механике."
+                : "Обучение закончено. Теперь начинается настоящая игра."
+              : perfect
+                ? "Идеальное прохождение!"
+                : state.special
+                  ? state.special.title
+                  : "Расклад завершён";
 
   const rewards = [
     { earned: true, label: "За уровень" },
@@ -158,10 +191,34 @@ function showWin(stars, newAchievements = []) {
     )
     .join("");
 
+  const recordEl = $("#winRecord");
+  if (recordEl) {
+    const recordText = record?.isNew
+      ? `↯ ${moves} ходов · Новый личный рекорд!`
+      : record?.best
+        ? `↯ ${moves} ходов · Лучший: ${record.best}`
+        : `↯ ${moves} ходов`;
+    recordEl.textContent = recordText;
+    recordEl.classList.toggle("new-record", !!record?.isNew);
+  }
+
+  const shareBtn = $("#winShare");
+  if (shareBtn) {
+    shareBtn.hidden = state.mode === "tutorial";
+    shareBtn.textContent = state.mode === "challenge" ? "⇄ Поделиться вызовом" : "⇄ Поделиться результатом";
+  }
+
   const nt = nextTheme();
-  $("#winUnlock").textContent = nt
-    ? `До темы ${nt.name}: ${nt.stars - profile.totalStars} ★`
-    : "Все темы открыты";
+  $("#winUnlock").textContent =
+    state.mode === "calm"
+      ? "Спокойный режим не расходует и не требует наград"
+      : state.mode === "marathon"
+        ? `Лучший марафон: ${profile.stats.bestMarathon || 0}`
+        : state.mode === "challenge"
+          ? "Результат сохранён для этого кода"
+          : nt
+            ? `До темы ${nt.name}: ${nt.stars - profile.totalStars} ★`
+            : "Все темы за звёзды открыты";
   $("#next").textContent =
     state.mode === "tutorial"
       ? state.tutorialStep < 3
@@ -169,12 +226,17 @@ function showWin(stars, newAchievements = []) {
         : "Начать игру →"
       : state.mode === "daily"
         ? "Новый уровень →"
-        : "Следующий уровень →";
+        : state.mode === "calm"
+          ? "Ещё расклад →"
+          : state.mode === "challenge"
+            ? "Новый вызов →"
+            : state.mode === "marathon"
+              ? state.marathonSuccess ? "Продолжить марафон →" : "Новый марафон →"
+              : "Следующий уровень →";
 
   modal.classList.remove("show", "perfect", "perfect-burst");
   if (perfect) modal.classList.add("perfect");
   modal.setAttribute("aria-hidden", "false");
-  // Force a fresh entrance animation even when a level is replayed immediately.
   void modal.offsetWidth;
   modal.classList.add("show");
 
