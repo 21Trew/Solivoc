@@ -95,10 +95,8 @@ async function finalizeCompletedSlot(i) {
   state.completed++;
   if (state.mode !== "tutorial") {
     profile.stats.categoriesCompleted++;
-    if (state.mode !== "collection") {
-      if (typeof recordCategoryCompletion === "function") recordCategoryCompletion(cc.cat);
-      if (!profile.discovered.includes(cc.cat)) profile.discovered.push(cc.cat);
-    }
+    if (typeof recordCategoryCompletion === "function") recordCategoryCompletion(cc.cat);
+    if (!String(cc.cat).startsWith("visual:") && !profile.discovered.includes(cc.cat)) profile.discovered.push(cc.cat);
     track("category_completed", { category: cc.cat, mode: state.mode, collectionId: state.collectionId || null });
     checkAchievements();
   }

@@ -10,11 +10,12 @@ function levelRefLabel(s = state) {
   if (s.mode === "challenge") return "Испытание";
   if (s.mode === "marathon") return `Марафон ${s.marathonRound || 1}`;
   if (s.mode === "calm") return "Спокойный режим";
+  if (s.mode === "collection") return `Картинки · ${associationCollectionById(s.collectionId).name}`;
   return null;
 }
 function recordLevelKnowledge(s = state) {
-  if (!s || s.mode === "tutorial" || s.mode === "collection") return;
-  const ref = levelRefLabel(s);
+  if (!s || s.mode === "tutorial") return;
+  const ref = levelRefLabel(s) || (s.mode === "collection" ? `Картинки · ${associationCollectionById(s.collectionId).name}` : "Расклад");
   for (const id of new Set(s.categoryIds || [])) {
     const stat = categoryStat(id);
     stat.encounters = (stat.encounters || 0) + 1;
@@ -22,7 +23,7 @@ function recordLevelKnowledge(s = state) {
   }
 }
 function recordVisibleKnowledge(s = state) {
-  if (!s || s.mode === "tutorial" || s.mode === "collection") return;
+  if (!s || s.mode === "tutorial") return;
   const visible = [];
   s.columns?.forEach((col) => col.forEach((g) => { if (g.faceUp) visible.push(...g.cards); }));
   s.slots?.forEach((g) => { if (g) visible.push(...g.cards); });
@@ -43,9 +44,19 @@ function recordVisibleKnowledge(s = state) {
   }
 }
 function recordCategoryCompletion(catId) {
-  if (!catId || String(catId).startsWith("visual:")) return;
+  if (!catId) return;
   const stat = categoryStat(catId);
   stat.completions = (stat.completions || 0) + 1;
+  if (String(catId).startsWith("visual:")) {
+    profile.visualDiscovered ||= [];
+    if (!profile.visualDiscovered.includes(catId)) profile.visualDiscovered.push(catId);
+    const info = visualCategoryById(catId);
+    if (info) {
+      profile.associationCollections ||= {};
+      const progress = profile.associationCollections[info.collection.id] ||= { plays: 0, wins: 0, completedCategories: [] };
+      progress.completedCategories = [...new Set([...(progress.completedCategories || []), catId])];
+    }
+  }
 }
 
 function metricValue(metric, p = profile) {
@@ -228,6 +239,7 @@ function rememberReceivedChallenge(data) {
       level: data.level,
       creatorName: data.creatorName || "Друг",
       creatorAvatar: data.creatorAvatar || "🙂",
+      sourceMode: normalizeCardSourceMode(data.sourceMode),
       creatorResult: data.creatorResult ? cleanChallengeResult(data.creatorResult) : null,
       guestToken: data.guestToken || null,
       seriesId: data.seriesId || null,
@@ -245,6 +257,7 @@ function rememberReceivedChallenge(data) {
     entry.level = data.level || entry.level;
     entry.creatorName = data.creatorName || entry.creatorName || "Друг";
     entry.creatorAvatar = data.creatorAvatar || entry.creatorAvatar || "🙂";
+    entry.sourceMode = normalizeCardSourceMode(data.sourceMode || entry.sourceMode);
     if (data.creatorResult) entry.creatorResult = cleanChallengeResult(data.creatorResult);
     if (data.guestToken) entry.guestToken = data.guestToken;
     entry.seriesId = data.seriesId || entry.seriesId || null;
@@ -282,17 +295,19 @@ function receivedChallengesMarkup() {
 }
 async function createRemoteChallenge(meta = {}) {
   const level = Math.max(12, profile.currentLevel || 1),
+    sourceMode = normalizeCardSourceMode(profile.settings.cardSourceMode),
     seed = `friend:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 8)}`,
     seriesId = meta.seriesId || `series:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 7)}`,
     seriesRound = Math.max(1, +meta.seriesRound || 1),
     seriesScoreCreator = Math.max(0, +meta.seriesScoreCreator || 0),
     seriesScoreGuest = Math.max(0, +meta.seriesScoreGuest || 0);
-  const data = await challengeApi("POST", "", { action: "create", seed, level, creatorName: profile.playerName || "Игрок", creatorAvatar: profile.avatarEmoji || "🙂", seriesId, seriesRound, seriesScoreCreator, seriesScoreGuest, pushClientId: profile.settings?.notifications && profile.settings?.challengeReminders !== false ? profile.pushClientId : "" });
+  const data = await challengeApi("POST", "", { action: "create", seed, level, sourceMode, creatorName: profile.playerName || "Игрок", creatorAvatar: profile.avatarEmoji || "🙂", seriesId, seriesRound, seriesScoreCreator, seriesScoreGuest, pushClientId: profile.settings?.notifications && profile.settings?.challengeReminders !== false ? profile.pushClientId : "" });
   const entry = {
     code: data.code,
     ownerToken: data.ownerToken,
     seed,
     level,
+    sourceMode,
     creatorName: profile.playerName || "Игрок",
     creatorAvatar: profile.avatarEmoji || "🙂",
     createdAt: Date.now(),
@@ -449,6 +464,7 @@ function playOwnedChallenge(code) {
     challengeRole: "creator",
     challengeCreatorName: entry.creatorName || profile.playerName || "Игрок",
     seriesId: entry.seriesId, seriesRound: entry.seriesRound, seriesScoreCreator: entry.seriesScoreCreator, seriesScoreGuest: entry.seriesScoreGuest,
+    cardSourceMode: normalizeCardSourceMode(entry.sourceMode),
   });
   return true;
 }
@@ -459,7 +475,7 @@ async function startChallengeCode(value) {
   if (compact.length === 6 && SHORT_CHALLENGE_RE.test(shortCode)) {
     try {
       const data = await challengeApi("GET", `?code=${encodeURIComponent(shortCode)}`);
-      rememberReceivedChallenge({ code: shortCode, seed: data.seed, level: data.level, creatorName: data.creatorName || "Друг", creatorAvatar: data.creatorAvatar || "🙂", seriesId: data.seriesId, seriesRound: data.seriesRound, seriesScoreCreator: data.seriesScoreCreator, seriesScoreGuest: data.seriesScoreGuest, creatorResult: data.creatorResult });
+      rememberReceivedChallenge({ code: shortCode, seed: data.seed, level: data.level, sourceMode: data.sourceMode, creatorName: data.creatorName || "Друг", creatorAvatar: data.creatorAvatar || "🙂", seriesId: data.seriesId, seriesRound: data.seriesRound, seriesScoreCreator: data.seriesScoreCreator, seriesScoreGuest: data.seriesScoreGuest, creatorResult: data.creatorResult });
       closeHub?.();
       makeLevel(data.level, {
         mode: "challenge",
@@ -470,6 +486,7 @@ async function startChallengeCode(value) {
         challengeCreatorAvatar: data.creatorAvatar || "🙂",
         challengeCreatorResult: data.creatorResult || null,
         seriesId: data.seriesId, seriesRound: data.seriesRound, seriesScoreCreator: data.seriesScoreCreator, seriesScoreGuest: data.seriesScoreGuest,
+        cardSourceMode: normalizeCardSourceMode(data.sourceMode),
       });
       window.history?.replaceState?.({}, "", location.pathname + location.hash);
       return true;
@@ -504,6 +521,7 @@ function recordGuestChallengeLocal(s = state, result = null) {
     code: s.challengeCode,
     seed: s.seed,
     level: s.level,
+    sourceMode: s.cardSourceMode,
     creatorName: s.challengeCreatorName || "Друг",
     creatorAvatar: s.challengeCreatorAvatar || "🙂",
     creatorResult: s.challengeCreatorResult || null, guestToken: s.challengeGuestToken || null, seriesId: s.seriesId, seriesRound: s.seriesRound, seriesScoreCreator: s.seriesScoreCreator, seriesScoreGuest: s.seriesScoreGuest,
@@ -634,6 +652,7 @@ function migrateLastGuestChallengeHistory() {
       code,
       seed: saved.seed,
       level: saved.level,
+      sourceMode: saved.cardSourceMode,
       creatorName: saved.challengeCreatorName || "Друг",
       creatorAvatar: saved.challengeCreatorAvatar || "🙂",
     });

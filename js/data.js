@@ -26,6 +26,11 @@ function categoriesConflict(a, b) {
   if (!a || !b) return false;
   if (a.conflictGroup && a.conflictGroup === b.conflictGroup) return true;
   if (a.conflicts?.includes(b.id) || b.conflicts?.includes(a.id)) return true;
+  if (a.visual || b.visual) {
+    if (!!a.visual !== !!b.visual) return false;
+    const exact = new Set((a.words || []).map(String));
+    return (b.words || []).some((w) => exact.has(String(w)));
+  }
   const aw = new Set(a.words.map(normWord));
   return b.words.some((w) => aw.has(normWord(w)));
 }

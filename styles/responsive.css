@@ -833,3 +833,10 @@ html[data-stack-fit="tight"] .card.category.open-under .name { padding-top: 1px;
   .collapsible-section > summary { min-height:50px; padding:10px 11px; }
   .collapsible-content { padding:0 11px 11px; }
 }
+
+@media (max-width:370px) {
+  .visual-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .picture-collection { gap:4px; }
+  .picture-collection span { font-size:16px; border-radius:8px; }
+  .card-source-options button span { font-size:7px; }
+}

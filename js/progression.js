@@ -139,7 +139,7 @@ function finishLevel() {
     progress.completedCategories = [...new Set([...(progress.completedCategories || []), ...(state.categoryIds || [])])];
     profile.stats.collectionGamesCompleted = (profile.stats.collectionGamesCompleted || 0) + 1;
     track("collection_completed", { collectionId: collection.id, categories: state.categoryIds?.length || 0, stars, moves: state.run.moves });
-    if (typeof awardXp === "function") awardXp(40 + stars * 8, `Коллекция: ${collection.name}`, { notifyRank: false });
+    if (typeof awardXp === "function") awardXp(40 + stars * 8, `Картинки: ${collection.name}`, { notifyRank: false });
   } else if (state.mode === "calm") {
     profile.stats.calmCompleted = (profile.stats.calmCompleted || 0) + 1;
     track("calm_completed", { stars, moves: state.run.moves });

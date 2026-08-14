@@ -148,7 +148,7 @@ function render() {
     const collection = associationCollectionById(state.collectionId);
     specialBadge.hidden = false;
     specialBadge.textContent = `${collection.icon} ${collection.name}`;
-    specialBadge.title = "Игровая коллекция: собирай картинки по ассоциациям";
+    specialBadge.title = "Картинки: собирай карточки по ассоциациям";
   } else if (state.mode === "calm") {
     specialBadge.hidden = false;
     specialBadge.textContent = "☁ Спокойный режим";

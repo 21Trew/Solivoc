@@ -2,6 +2,8 @@
 let hubChapterNumber = null,
   hubTab = "play",
   hubCategoryId = null,
+  hubVisualCategoryId = null,
+  hubEncyclopediaType = "words",
   achievementFilter = "all",
   hubExpandedSections = new Set();
 
@@ -27,7 +29,7 @@ function hubTabsMarkup() {
   const tabs = [
     ["settings", "⚙", "Ещё"],
     ["progress", "★", "Прогресс"],
-    ["collection", "▦", "Коллекция"],
+    ["collection", "▦", "Энциклопедия"],
     ["appearance", "✦", "Стиль"],
     ["play", "▶", "Играть"],
   ];
@@ -137,32 +139,66 @@ function categoryDetailMarkup(cat) {
   const stat = categoryStat(cat.id), known = new Set(stat.words || []), mastery = typeof categoryMasteryData === "function" ? categoryMasteryData(cat.id) : {ratio:known.size/cat.words.length,mastered:false};
   return `<article class="encyclopedia-detail ${mastery.mastered?"mastered":""}"><div class="encyclopedia-title"><span style="--cat:${catHue(cat.id)}">${mastery.mastered?"★":cat.title.slice(0,1)}</span><div><b>${cat.title}</b><small>${mastery.mastered?"Категория освоена ★":`${known.size}/${cat.words.length} слов встречено`}</small></div></div>
     <div class="mastery-progress"><i style="width:${mastery.ratio*100}%"></i><span>${known.size}/${cat.words.length}</span></div>
-    <div class="encyclopedia-meta"><span>Встречалась <b>${stat.encounters || 0}</b> раз</span><span>Собрана <b>${stat.completions || 0}</b> раз</span><span>Впервые: <b>${stat.firstLevel || "—"}</b></span></div>
+    <div class="encyclopedia-meta"><span>Встречалась <b>${stat.encounters || 0}</b> раз</span><span>Собрана <b>${completions}</b> раз</span><span>Впервые: <b>${stat.firstLevel || "—"}</b></span></div>
     <div class="word-collection">${cat.words.map((w)=>`<span class="${known.has(w)?"known":"unknown"}">${known.has(w)?w:"???"}</span>`).join("")}</div></article>`;
 }
+function visualCategoryDetailMarkup(id) {
+  const info = visualCategoryById(id);
+  if (!info) return `<div class="empty-state">Выбери открытую категорию картинок</div>`;
+  const visual = associationCollectionCategories(info.collection.id).find((x) => x.id === id),
+    stat = categoryStat(id),
+    legacyCompleted = associationCollectionProgress(info.collection.id).completedCategories.includes(id),
+    known = new Set((stat.words?.length ? stat.words : legacyCompleted ? visual.words : []) || []),
+    discovered = visualDiscoveredIds(profile).has(id),
+    completions = stat.completions || (legacyCompleted ? 1 : 0);
+  if (!discovered) return `<div class="empty-state">Эта категория картинок ещё не встречалась</div>`;
+  return `<article class="encyclopedia-detail visual-encyclopedia-detail">
+    <div class="encyclopedia-title"><span class="visual-category-icon">${info.collection.icon}</span><div><b>${escapeHtml(info.category.title)}</b><small>${escapeHtml(info.collection.name)} · ${known.size}/${visual.words.length} картинок встречено</small></div></div>
+    <div class="mastery-progress"><i style="width:${Math.min(1, known.size / Math.max(1, visual.words.length)) * 100}%"></i><span>${known.size}/${visual.words.length}</span></div>
+    <div class="encyclopedia-meta"><span>Встречалась <b>${stat.encounters || 0}</b> раз</span><span>Собрана <b>${stat.completions || 0}</b> раз</span><span>Впервые: <b>${escapeHtml(stat.firstLevel || "—")}</b></span></div>
+    <div class="picture-collection">${info.category.cards.map(([emoji,label])=>`<span class="${known.has(emoji)?"known":"unknown"}" title="${known.has(emoji)?escapeHtml(label):"Не открыто"}">${known.has(emoji)?emoji:"❔"}</span>`).join("")}</div>
+  </article>`;
+}
 function associationCollectionsMarkup() {
-  return `<section class="hub-section association-collections-section">
-    <div class="hub-section-head"><h3>Игровые коллекции</h3><small>картинки тоже надо объединять по смыслу</small></div>
+  return `<div class="association-collections-block">
+    <div class="hub-subhead"><h4>Картинки</h4><small>выбери набор для отдельного расклада</small></div>
     <div class="association-collection-grid">${ASSOCIATION_COLLECTION_DEFS.map((collection) => {
       const progress = associationCollectionProgress(collection.id), samples = collection.categories.slice(0, 3);
       return `<button class="association-collection-card" data-association-collection="${collection.id}">
         <span class="association-collection-preview">${samples.map((cat) => `<i title="${escapeHtml(cat.title)}">${cat.cards[0][0]}</i>`).join("")}</span>
         <span class="association-collection-copy"><b>${collection.icon} ${collection.name}</b><small>${escapeHtml(collection.desc)}</small></span>
         <span class="association-collection-progress"><i style="width:${progress.total ? (progress.completed / progress.total) * 100 : 0}%"></i></span>
-        <span class="association-collection-meta">${progress.completed}/${progress.total} ассоциаций${progress.completed === progress.total ? " · освоено ✓" : " · играть →"}</span>
+        <span class="association-collection-meta">${progress.completed}/${progress.total} категорий${progress.completed === progress.total ? " · освоено ✓" : " · играть →"}</span>
       </button>`;
     }).join("")}</div>
-  </section>`;
+  </div>`;
+}
+function pictureEncyclopediaGridMarkup() {
+  const discovered = visualDiscoveredIds(profile);
+  return `<div class="visual-category-groups">${ASSOCIATION_COLLECTION_DEFS.map((collection)=>{
+    const categories = associationCollectionCategories(collection.id);
+    return `<section class="visual-category-group"><div class="visual-category-group-head"><b>${collection.icon} ${escapeHtml(collection.name)}</b><span>${categories.filter((c)=>discovered.has(c.id)).length}/${categories.length}</span></div><div class="collection-grid encyclopedia-grid visual-grid">${categories.map((cat)=>{
+      const seen=discovered.has(cat.id), stat=categoryStat(cat.id), info=visualCategoryById(cat.id), sample=info?.category?.cards?.[0]?.[0] || collection.icon;
+      return `<button class="collection-item visual-item ${seen?"seen":"locked"} ${hubVisualCategoryId===cat.id?"selected":""}" data-visual-category-id="${cat.id}" ${seen?"":"disabled"}><i>${seen?sample:"?"}</i><span>${seen?escapeHtml(cat.title):"???"}</span>${seen&&stat.completions?`<em>${stat.completions}×</em>`:""}</button>`;
+    }).join("")}</div></section>`;
+  }).join("")}</div>`;
 }
 function collectionTabMarkup() {
-  const discovered = new Set(profile.discovered), count = discoveredCategoryCount(profile);
-  if (!hubCategoryId || !discovered.has(hubCategoryId)) hubCategoryId = BANK.find((c)=>discovered.has(c.id))?.id || null;
+  const wordDiscovered = new Set(profile.discovered),
+    wordCount = discoveredCategoryCount(profile),
+    pictureDiscovered = visualDiscoveredIds(profile),
+    pictureCount = pictureDiscovered.size,
+    pictureTotal = totalVisualCategoryCount(),
+    totalCount = wordCount + pictureCount,
+    totalCategories = BANK.length + pictureTotal;
+  if (!hubCategoryId || !wordDiscovered.has(hubCategoryId)) hubCategoryId = BANK.find((c)=>wordDiscovered.has(c.id))?.id || null;
+  if (!hubVisualCategoryId || !pictureDiscovered.has(hubVisualCategoryId)) hubVisualCategoryId = allAssociationCategories().find((c)=>pictureDiscovered.has(c.id))?.id || null;
   const cat = BANK.find((c)=>c.id===hubCategoryId);
+  const tabs = `<div class="encyclopedia-type-tabs"><button class="${hubEncyclopediaType==="words"?"active":""}" data-encyclopedia-tab="words"><b>Слова</b><span>${wordCount}/${BANK.length}</span></button><button class="${hubEncyclopediaType==="pictures"?"active":""}" data-encyclopedia-tab="pictures"><b>Картинки</b><span>${pictureCount}/${pictureTotal}</span></button></div>`;
+  const words = `<div class="encyclopedia-pane">${categoryDetailMarkup(cat)}<div class="collection-grid encyclopedia-grid">${BANK.map((c)=>{const m=wordDiscovered.has(c.id)&&typeof categoryMasteryData==="function"&&categoryMasteryData(c.id).mastered;return `<button class="collection-item ${wordDiscovered.has(c.id)?"seen":"locked"} ${m?"mastered":""} ${hubCategoryId===c.id?"selected":""}" data-category-id="${c.id}" ${wordDiscovered.has(c.id)?"":"disabled"}>${wordDiscovered.has(c.id)?`${m?"★ ":""}${c.title}`:"???"}</button>`;}).join("")}</div></div>`;
+  const pictures = `<div class="encyclopedia-pane">${associationCollectionsMarkup()}<div class="hub-subhead picture-categories-head"><h4>Категории картинок</h4><small>${pictureCount}/${pictureTotal} открыто</small></div>${visualCategoryDetailMarkup(hubVisualCategoryId)}${pictureEncyclopediaGridMarkup()}</div>`;
   return `${profileHeroMarkup()}
-    ${associationCollectionsMarkup()}
-    <section class="hub-section"><div class="hub-section-head"><h3>Энциклопедия слов</h3><small>${count}/${BANK.length} категорий</small></div>${categoryDetailMarkup(cat)}
-      <div class="collection-grid encyclopedia-grid">${BANK.map((c)=>{const m=discovered.has(c.id)&&typeof categoryMasteryData==="function"&&categoryMasteryData(c.id).mastered;return `<button class="collection-item ${discovered.has(c.id)?"seen":"locked"} ${m?"mastered":""} ${hubCategoryId===c.id?"selected":""}" data-category-id="${c.id}" ${discovered.has(c.id)?"":"disabled"}>${discovered.has(c.id)?`${m?"★ ":""}${c.title}`:"???"}</button>`;}).join("")}</div>
-    </section>`;
+    <section class="hub-section encyclopedia-shell"><div class="hub-section-head encyclopedia-main-head"><div><h3>Энциклопедия</h3><small>слова и картинки в одной коллекции</small></div><strong>${totalCount}/${totalCategories}</strong></div>${tabs}${hubEncyclopediaType==="pictures"?pictures:words}</section>`;
 }
 function cardBackMarkup() {
   return CARD_BACK_DEFS.map((back) => {
@@ -244,7 +280,8 @@ function settingsTabMarkup() {
     installLabel=standalone?"✓ Игра установлена":deferredInstallPrompt?"＋ Установить игру":"＋ На главный экран",
     report=CATEGORY_BANK_REPORT || {},
     notificationStatus=notificationPermissionLabel();
-  const settingsContent = `<div class="settings-grid">
+  const sourceMode = normalizeCardSourceMode(profile.settings.cardSourceMode);
+  const settingsContent = `<div class="card-source-setting"><div class="hub-subhead"><h4>Карты в раскладах</h4><small>какие ассоциации использовать во всех режимах</small></div><div class="card-source-options">${[["words","Только слова","Аа"],["pictures","Только картинки","🖼️"],["all","Все колоды","▦"]].map(([id,label,icon])=>`<button class="${sourceMode===id?"active":""}" data-card-source-mode="${id}"><i>${icon}</i><span>${label}</span></button>`).join("")}</div></div><div class="settings-grid">
       <button class="setting-toggle ${profile.settings.sound?"on":""}" id="soundToggle"><b>♪ Эффекты</b><span>${profile.settings.sound?"Включены":"Выключены"}</span></button>
       <button class="setting-toggle ${profile.settings.music?"on":""}" id="musicToggle"><b>♫ Музыка</b><span>${profile.settings.music?"Включена":"Выключена"}</span></button>
       <button class="setting-toggle ${profile.settings.haptics?"on":""}" id="hapticsToggle"><b>⌁ Вибрация</b><span>${profile.settings.haptics?"Включена":"Выключена"}</span></button>
@@ -303,6 +340,9 @@ function bindHubHandlers() {
   }));
   hubContent.querySelectorAll("[data-ach-filter]").forEach((btn)=>btn.onclick=()=>{achievementFilter=btn.dataset.achFilter;renderHub();});
   hubContent.querySelectorAll("[data-category-id]").forEach((btn)=>btn.onclick=()=>{hubCategoryId=btn.dataset.categoryId;renderHub();});
+  hubContent.querySelectorAll("[data-visual-category-id]").forEach((btn)=>btn.onclick=()=>{hubVisualCategoryId=btn.dataset.visualCategoryId;renderHub();});
+  hubContent.querySelectorAll("[data-encyclopedia-tab]").forEach((btn)=>btn.onclick=()=>{hubEncyclopediaType=btn.dataset.encyclopediaTab;renderHub();});
+  hubContent.querySelectorAll("[data-card-source-mode]").forEach((btn)=>btn.onclick=()=>{profile.settings.cardSourceMode=normalizeCardSourceMode(btn.dataset.cardSourceMode);saveProfile();showToast(`Расклады: ${btn.textContent.trim()}`);renderHub();});
   hubContent.querySelectorAll("[data-association-collection]").forEach((btn)=>btn.onclick=()=>{const id=btn.dataset.associationCollection;closeHub();makeLevel(1,{mode:"collection",collectionId:id,seed:`collection:${id}:${Date.now()}`});});
   hubContent.querySelectorAll("[data-theme-id]").forEach((btn)=>btn.onclick=()=>{const def=THEME_DEFS.find((x)=>x.id===btn.dataset.themeId);if(themeUnlocked(def)){profile.theme=def.id;saveProfile();}renderHub();if(!themeUnlocked(def))showToast(`Откроется за ${themeUnlockLabel(def)}`);});
   hubContent.querySelectorAll("[data-card-back-id]").forEach((btn)=>btn.onclick=()=>{const def=CARD_BACK_DEFS.find((x)=>x.id===btn.dataset.cardBackId);if(cardBackUnlocked(def)){profile.cardBack=def.id;saveProfile();}renderHub();if(!cardBackUnlocked(def))showToast(cardBackUnlockLabel(def));});

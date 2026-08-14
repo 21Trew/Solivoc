@@ -73,6 +73,61 @@ const ASSOCIATION_COLLECTION_DEFS = [
       { id: "tired", title: "Усталость", cards: [["😴","Сон"],["🥱","Зевок"],["😪","Дремота"],["🫠","Растаял"],["😵‍💫","Головокружение"],["💤","Спит"]] },
     ],
   },
+  {
+    id: "transport", name: "Транспорт", icon: "🚗", desc: "Транспорт по назначению, среде и типу",
+    categories: [
+      { id: "city", title: "Город", cards: [["🚕","Такси"],["🚌","Автобус"],["🚎","Троллейбус"],["🚋","Трамвай"],["🚇","Метро"],["🚲","Велосипед"]] },
+      { id: "road", title: "Дорога", cards: [["🚗","Авто"],["🚙","Кроссовер"],["🏎️","Гоночная"],["🚚","Грузовик"],["🏍️","Мотоцикл"],["🛻","Пикап"]] },
+      { id: "air", title: "Воздух", cards: [["✈️","Самолёт"],["🛩️","Лёгкий самолёт"],["🚁","Вертолёт"],["🛫","Взлёт"],["🪂","Парашют"],["🎈","Воздушный шар"]] },
+      { id: "sea", title: "Море", cards: [["🚢","Корабль"],["⛴️","Паром"],["🛳️","Лайнер"],["⛵","Яхта"],["🚤","Катер"],["🛶","Каноэ"]] },
+      { id: "rail", title: "Рельсы", cards: [["🚂","Паровоз"],["🚆","Поезд"],["🚄","Экспресс"],["🚅","Скоростной"],["🚈","Электричка"],["🚞","Горный поезд"]] },
+      { id: "service", title: "Службы", cards: [["🚑","Скорая"],["🚒","Пожарная"],["🚓","Полиция"],["🚔","Патруль"],["🚐","Фургон"],["🚜","Трактор"]] },
+    ],
+  },
+  {
+    id: "home", name: "Дом", icon: "🏠", desc: "Комнаты, вещи и домашние занятия",
+    categories: [
+      { id: "kitchen", title: "Кухня", cards: [["🍳","Сковорода"],["🥣","Миска"],["🔪","Нож"],["🥄","Ложка"],["🫖","Чайник"],["🧂","Соль"]] },
+      { id: "bedroom", title: "Спальня", cards: [["🛏️","Кровать"],["🛌","Сон"],["⏰","Будильник"],["🪞","Зеркало"],["👕","Одежда"],["💡","Лампа"]] },
+      { id: "bathroom", title: "Ванная", cards: [["🛁","Ванна"],["🚿","Душ"],["🧼","Мыло"],["🪥","Щётка"],["🧴","Шампунь"],["🧻","Бумага"]] },
+      { id: "cleaning", title: "Уборка", cards: [["🧹","Веник"],["🧽","Губка"],["🪣","Ведро"],["🧺","Корзина"],["🧤","Перчатки"],["🫧","Пена"]] },
+      { id: "office", title: "Работа", cards: [["💻","Ноутбук"],["🖥️","Монитор"],["⌨️","Клавиатура"],["🖱️","Мышь"],["📝","Запись"],["📎","Скрепка"]] },
+      { id: "repair", title: "Ремонт", cards: [["🔨","Молоток"],["🪛","Отвёртка"],["🔧","Ключ"],["🪚","Пила"],["🧰","Инструменты"],["🪜","Лестница"]] },
+    ],
+  },
+  {
+    id: "sports", name: "Спорт", icon: "⚽", desc: "Виды спорта, инвентарь и соревнования",
+    categories: [
+      { id: "ball", title: "Мяч", cards: [["⚽","Футбол"],["🏀","Баскетбол"],["🏐","Волейбол"],["🏈","Регби"],["⚾","Бейсбол"],["🎾","Теннис"]] },
+      { id: "winter", title: "Зима", cards: [["⛷️","Лыжи"],["🏂","Сноуборд"],["⛸️","Коньки"],["🥌","Кёрлинг"],["🏒","Хоккей"],["🛷","Сани"]] },
+      { id: "water", title: "Водный", cards: [["🏊","Плавание"],["🏄","Сёрфинг"],["🚣","Гребля"],["🤽","Водное поло"],["🛶","Каяк"],["⛵","Парус"]] },
+      { id: "fight", title: "Борьба", cards: [["🥊","Бокс"],["🥋","Кимоно"],["🤼","Борьба"],["🤺","Фехтование"],["🏋️","Штанга"],["💪","Сила"]] },
+      { id: "track", title: "Стадион", cards: [["🏃","Бег"],["🏃‍♀️","Забег"],["🥇","Медаль"],["🏟️","Стадион"],["⏱️","Секундомер"],["🏆","Кубок"]] },
+      { id: "target", title: "Точность", cards: [["🏹","Лук"],["🎯","Мишень"],["🎳","Боулинг"],["⛳","Гольф"],["🎱","Бильярд"],["🥏","Фрисби"]] },
+    ],
+  },
+  {
+    id: "travel", name: "Путешествия", icon: "🧳", desc: "Отпуск, дорога и места вокруг света",
+    categories: [
+      { id: "beach", title: "Пляж", cards: [["🏖️","Пляж"],["🏝️","Остров"],["🌴","Пальма"],["👙","Купальник"],["🩴","Шлёпанцы"],["⛱️","Зонт"]] },
+      { id: "camping", title: "Поход", cards: [["⛺","Палатка"],["🥾","Ботинок"],["🎒","Рюкзак"],["🔥","Костёр"],["🧭","Компас"],["🏕️","Кемпинг"]] },
+      { id: "hotel", title: "Отель", cards: [["🏨","Отель"],["🛎️","Звонок"],["🧳","Чемодан"],["🛏️","Номер"],["🔑","Ключ"],["🧾","Счёт"]] },
+      { id: "airport", title: "Аэропорт", cards: [["🛫","Вылет"],["🛬","Посадка"],["🎫","Билет"],["🛂","Паспортный контроль"],["🧳","Багаж"],["🛃","Таможня"]] },
+      { id: "city", title: "Туризм", cards: [["🗺️","Карта"],["📸","Фото"],["🏛️","Музей"],["🗽","Достопримечательность"],["🚶","Прогулка"],["🧭","Навигация"]] },
+      { id: "mountain", title: "Высота", cards: [["🏔️","Горы"],["🚡","Канатка"],["🧗","Скалолаз"],["🥾","Треккинг"],["🌲","Лес"],["🏞️","Парк"]] },
+    ],
+  },
+  {
+    id: "celebration", name: "Праздники", icon: "🎉", desc: "Праздники, подарки и яркие события",
+    categories: [
+      { id: "birthday", title: "Деньрожд", cards: [["🎂","Торт"],["🎁","Подарок"],["🎈","Шар"],["🥳","Праздник"],["🕯️","Свеча"],["🎉","Конфетти"]] },
+      { id: "newyear", title: "Новыйгод", cards: [["🎄","Ёлка"],["🎅","Санта"],["❄️","Снег"],["🎁","Подарок"],["🥂","Бокалы"],["✨","Огни"]] },
+      { id: "halloween", title: "Хэллоуин", cards: [["🎃","Тыква"],["👻","Призрак"],["🧙","Ведьма"],["🦇","Летучая мышь"],["🍬","Сладости"],["🕸️","Паутина"]] },
+      { id: "wedding", title: "Свадьба", cards: [["💍","Кольцо"],["💐","Букет"],["👰","Невеста"],["🤵","Жених"],["🥂","Тост"],["❤️","Любовь"]] },
+      { id: "party", title: "Вечеринка", cards: [["🎶","Музыка"],["💃","Танец"],["🪩","Диско"],["🥳","Веселье"],["🍹","Коктейль"],["🎊","Конфетти"]] },
+      { id: "victory", title: "Победа", cards: [["🏆","Кубок"],["🥇","Золото"],["🎖️","Награда"],["👏","Аплодисменты"],["🎉","Праздник"],["🔥","Триумф"]] },
+    ],
+  },
 ];
 
 function associationCollectionById(id) {
@@ -84,9 +139,39 @@ function associationCollectionCategories(id) {
     id: `visual:${collection.id}:${cat.id}`,
     title: cat.title,
     visual: true,
+    visualCollection: collection.id,
+    visualCollectionName: collection.name,
+    difficulty: 2,
     words: cat.cards.map(([emoji]) => emoji),
     visualLabels: Object.fromEntries(cat.cards),
   }));
+}
+function allAssociationCategories() {
+  return ASSOCIATION_COLLECTION_DEFS.flatMap((collection) => associationCollectionCategories(collection.id));
+}
+function visualCategoryById(id) {
+  if (!String(id || "").startsWith("visual:")) return null;
+  const [, collectionId, categoryId] = String(id).split(":");
+  const collection = ASSOCIATION_COLLECTION_DEFS.find((x) => x.id === collectionId);
+  const category = collection?.categories.find((x) => x.id === categoryId);
+  return collection && category ? { collection, category, id: `visual:${collection.id}:${category.id}` } : null;
+}
+function normalizeCardSourceMode(value) {
+  return ["words", "pictures", "all"].includes(value) ? value : "all";
+}
+function visualDiscoveredIds(p = typeof profile !== "undefined" ? profile : null) {
+  const ids = new Set(Array.isArray(p?.visualDiscovered) ? p.visualDiscovered : []);
+  for (const collection of ASSOCIATION_COLLECTION_DEFS) {
+    const completed = p?.associationCollections?.[collection.id]?.completedCategories || [];
+    completed.forEach((id) => ids.add(id));
+  }
+  return ids;
+}
+function visualDiscoveredCategoryCount(p = typeof profile !== "undefined" ? profile : null) {
+  return visualDiscoveredIds(p).size;
+}
+function totalVisualCategoryCount() {
+  return ASSOCIATION_COLLECTION_DEFS.reduce((n, collection) => n + collection.categories.length, 0);
 }
 function associationCollectionProgress(id, p = typeof profile !== "undefined" ? profile : null) {
   const collection = associationCollectionById(id), raw = p?.associationCollections?.[collection.id] || {};
