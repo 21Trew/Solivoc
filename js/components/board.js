@@ -5,6 +5,7 @@ function render() {
   const chapter = state.mode === "regular" ? chapterInfo(state.level) : null;
   document.body.dataset.chapter = chapter ? String(chapter.number) : "0";
   document.body.dataset.chapterTone = chapter ? String(((chapter.number - 1) % 4) + 1) : "0";
+  fitTableauGeometry();
   tableau.innerHTML = "";
   slotsAnchor.innerHTML = "";
   const step = stackStep();

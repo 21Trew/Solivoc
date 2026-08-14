@@ -18,7 +18,7 @@ function defaultProfile() {
   };
 }
 function loadProfile() {
-  const keys = [PROFILE_KEY, PREV_PROFILE_KEY];
+  const keys = [PROFILE_KEY, PREV_PROFILE_KEY, ...(typeof LEGACY_PROFILE_KEYS !== "undefined" ? LEGACY_PROFILE_KEYS : [])];
   for (const key of keys) {
     try {
       const p = JSON.parse(localStorage.getItem(key));

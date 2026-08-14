@@ -89,7 +89,7 @@ function renderHub() {
       <div class="stat-box"><b>${profile.stats.levelsCompleted}</b><span>уровней</span></div>
       <div class="stat-box"><b>${profile.stats.categoriesCompleted}</b><span>категорий</span></div>
       <div class="stat-box"><b>${profile.stats.tripleStarWins}</b><span>★★★ уровней</span></div>
-      <div class="stat-box"><b>×${profile.stats.maxCombo || 0}</b><span>лучшее комбо</span></div>
+      <div class="stat-box"><b>×${profile.stats.maxDragCombo || 0}</b><span>ручное комбо</span></div>
       <div class="stat-box"><b>${chaptersDone}</b><span>глав пройдено</span></div>
       <div class="stat-box"><b>${perfectChapters}</b><span>идеальных глав</span></div>
       <div class="stat-box"><b>${profile.stats.specialCompleted || 0}</b><span>особых уровней</span></div>

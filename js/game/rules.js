@@ -103,7 +103,7 @@ async function finalizeCompletedSlot(i) {
   render();
   markStateChanged();
 }
-function performDrop(p, target) {
+function performDrop(p, target, options = {}) {
   if (!canDrop(p, target) || categoryAnimating) return false;
   const zone = target.dataset.zone,
     idx = +target.dataset.index,
@@ -120,7 +120,10 @@ function performDrop(p, target) {
     else col.push(moving);
   }
   state.run.moves++;
-  registerCombo(productive);
+  if (options.comboEligible) {
+    if (productive) registerCombo(true);
+    else resetCombo();
+  } else resetCombo();
   playSfx("drop");
   haptic(9);
   render();

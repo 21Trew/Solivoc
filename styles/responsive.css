@@ -334,8 +334,8 @@ Three-column rounds should feel like a card game, not a five-column web grid. */
      --gap: 7px;
    }
    html[data-cols="3"] {
-     --cw: clamp(82px, 23.2vw, 98px);
-     --gap: clamp(9px, 2.5vw, 12px);
+     --cw: clamp(74px, 21vw, 88px);
+     --gap: clamp(8px, 2.2vw, 10px);
      --radius: clamp(17px, 4.5vw, 20px);
    }
    html[data-cols="4"] {
@@ -533,8 +533,8 @@ Three-column rounds should feel like a card game, not a five-column web grid. */
    /* Small widths: keep hierarchy, only compress what is necessary. */
    @media (max-width: 370px) {
      html[data-cols="3"] {
-       --cw: clamp(78px, 23vw, 86px);
-       --gap: 8px;
+       --cw: clamp(70px, 21vw, 80px);
+       --gap: 7px;
      }
      html[data-cols="4"] {
        --cw: clamp(65px, 18.4vw, 70px);
@@ -739,3 +739,8 @@ maintained in JS, so the card never jumps under the finger. */
        padding-top: 3px;
      }
    }
+
+/* Dynamic vertical fit: only active when JS detects that a real stack would overflow. */
+html[data-stack-fit="tight"] .card.open-under:not(.category) { padding-top: 2px; line-height: .95; }
+html[data-stack-fit="tight"] .card.category.open-under { padding-top: 2px; }
+html[data-stack-fit="tight"] .card.category.open-under .name { padding-top: 1px; padding-bottom: 1px; }

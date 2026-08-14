@@ -61,3 +61,58 @@ function colY(col, index, step = stackStep()) {
   for (let i = 0; i < index; i++) y += Math.max(1, col[i].faceUp ? col[i].cards.length : 1) * step;
   return y;
 }
+
+/* Keep every tableau stack inside the fixed game viewport.
+   CSS defines the preferred card size; this only shrinks geometry when a real
+   column would otherwise cross the lower board edge. */
+function resetTableauGeometryFit() {
+  const root = document.documentElement;
+  root.style.removeProperty("--cw");
+  root.style.removeProperty("--stack-step");
+  delete root.dataset.stackFit;
+}
+function visualUnitsInColumn(col) {
+  return Math.max(1, col.reduce((sum, g) => sum + Math.max(1, g.faceUp ? g.cards.length : 1), 0));
+}
+function fitTableauGeometry() {
+  resetTableauGeometryFit();
+  if (!state?.columns?.length || !tableau) return;
+
+  const root = document.documentElement,
+    cs = getComputedStyle(root),
+    baseCw = parseFloat(cs.getPropertyValue("--cw")) || 64,
+    baseCh = parseFloat(cs.getPropertyValue("--ch")) || baseCw * 1.54,
+    baseStep = parseFloat(cs.getPropertyValue("--stack-step")) || 24,
+    ratio = baseCh / baseCw || 1.54,
+    available = Math.max(120, tableau.clientHeight - 6),
+    units = Math.max(...state.columns.map(visualUnitsInColumn)),
+    required = baseCh + Math.max(0, units - 1) * baseStep;
+
+  if (required <= available) return;
+
+  const minCwByCols = { 3: 62, 4: 56, 5: 49 },
+    minStepByCols = { 3: 17, 4: 17, 5: 16 },
+    minCw = Math.min(baseCw, minCwByCols[state.cols] || 50),
+    minStep = minStepByCols[state.cols] || 16;
+
+  let cw = Math.min(baseCw, (available - Math.max(0, units - 1) * baseStep) / ratio);
+  cw = Math.max(minCw, cw);
+  let step = baseStep;
+
+  if (baseCh * (cw / baseCw) + Math.max(0, units - 1) * step > available && units > 1) {
+    step = Math.min(baseStep, (available - cw * ratio) / (units - 1));
+    step = Math.max(minStep, step);
+  }
+
+  if (cw * ratio + Math.max(0, units - 1) * step > available) {
+    cw = Math.max(46, Math.min(cw, (available - Math.max(0, units - 1) * step) / ratio));
+  }
+  if (cw * ratio + Math.max(0, units - 1) * step > available && units > 1) {
+    step = Math.max(14, (available - cw * ratio) / (units - 1));
+  }
+
+  root.style.setProperty("--cw", `${Math.max(46, cw).toFixed(2)}px`);
+  root.style.setProperty("--stack-step", `${Math.max(14, step).toFixed(2)}px`);
+  root.dataset.stackFit = step < 19 ? "tight" : "compact";
+}
+

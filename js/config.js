@@ -2,8 +2,9 @@
 let BANK = [];
 const SAVE_KEY = "worditaire-state-v10";
 const OLD_SAVE_KEY = "assoc-klondike-v7";
-const PROFILE_KEY = "worditaire-profile-v3";
-const PREV_PROFILE_KEY = "worditaire-profile-v2";
+const PROFILE_KEY = "worditaire-profile-v4";
+const PREV_PROFILE_KEY = "worditaire-profile-v3";
+const LEGACY_PROFILE_KEYS = ["worditaire-profile-v2"];
 const ANALYTICS_KEY = "worditaire-analytics-v1";
 const RECENT_KEY = "assoc-recent-categories-v2";
 const MAX_CARD_WORD_LEN = 10,
@@ -50,14 +51,27 @@ const THEME_DEFS = [
   { id: "paper", name: "Paper", stars: 100 },
   { id: "aurora", name: "Aurora", stars: 150 },
   { id: "neon", name: "Neon", stars: 225 },
+  { id: "forest", name: "Forest", stars: 300 },
+  { id: "frost", name: "Frost", stars: 375 },
+  { id: "candy", name: "Candy", stars: 450 },
+  { id: "midnight", name: "Midnight", stars: 550 },
+  { id: "gold", name: "Gold", stars: 700 },
 ];
 const CARD_BACK_DEFS = [
   { id: "classic", name: "Классика", desc: "Базовая рубашка", minAchievements: 0 },
   { id: "prism", name: "Призма", desc: "За 4 достижения", minAchievements: 4 },
   { id: "constellation", name: "Созвездия", desc: "За 8 достижений", minAchievements: 8 },
   { id: "trophy", name: "Трофей", desc: "За 12 достижений", minAchievements: 12 },
+  { id: "mosaic", name: "Мозаика", desc: "За 16 достижений", minAchievements: 16 },
+  { id: "velvet", name: "Бархат", desc: "За 20 достижений", minAchievements: 20 },
+  { id: "glacier", name: "Ледник", desc: "За 24 достижения", minAchievements: 24 },
+  { id: "lotus", name: "Лотос", desc: "За 28 достижений", minAchievements: 28 },
   { id: "crown", name: "Корона", desc: "За идеальную главу", achievement: "chapterPerfect1", rare: true },
   { id: "ember", name: "Пламя", desc: "За серию 30 дней", achievement: "streak30", rare: true },
+  { id: "master", name: "Мастер", desc: "За комбо ×10", achievement: "combo10", rare: true },
+  { id: "atlas", name: "Атлас", desc: "За всю коллекцию категорий", achievement: "collectorAll", rare: true },
+  { id: "chronicle", name: "Хроника", desc: "За 100 Daily", achievement: "daily100", rare: true },
+  { id: "phoenix", name: "Феникс", desc: "За 25 особых уровней", achievement: "special25", rare: true },
   { id: "legend", name: "Легенда", desc: "За 3 идеальные главы", achievement: "chapterPerfect3", rare: true },
   { id: "obsidian", name: "Обсидиан", desc: "За 5 идеальных глав", achievement: "chapterPerfect5", rare: true },
 ];
@@ -139,7 +153,7 @@ const ACHIEVEMENTS = [
     desc: "Пройти Daily",
     test: (p) => p.stats.dailyCompleted >= 1,
   },
-  { id: "combo5", icon: "×5", title: "На волне", desc: "Сделать комбо ×5", test: (p) => (p.stats.maxCombo || 0) >= 5 },
+  { id: "combo5", icon: "×5", title: "На волне", desc: "Сделать комбо ×5", test: (p) => (p.stats.maxDragCombo || 0) >= 5 },
   { id: "special5", icon: "◆", title: "Особый случай", desc: "Пройти 5 особых уровней", test: (p) => (p.stats.specialCompleted || 0) >= 5 },
   { id: "chapter1", icon: "Ⅰ", title: "Первая глава", desc: "Полностью пройти 1 главу", test: (p) => completedChapterCount(p) >= 1 },
   { id: "chapter3", icon: "Ⅲ", title: "Книжный червь", desc: "Полностью пройти 3 главы", test: (p) => completedChapterCount(p) >= 3 },
@@ -155,6 +169,27 @@ const ACHIEVEMENTS = [
     desc: "Серия 30 дней",
     test: (p) => p.daily.bestStreak >= 30,
   },
+  { id: "twentyfive", icon: "25", title: "Уверенный старт", desc: "Пройти 25 уровней", test: (p) => p.stats.levelsCompleted >= 25 },
+  { id: "twofifty", icon: "250", title: "Длинная дистанция", desc: "Пройти 250 уровней", test: (p) => p.stats.levelsCompleted >= 250 },
+  { id: "fivehundred", icon: "500", title: "Неостановимый", desc: "Пройти 500 уровней", rare: true, test: (p) => p.stats.levelsCompleted >= 500 },
+  { id: "perfect25", icon: "★25", title: "Четверть сотни", desc: "25 уровней на 3 звезды", test: (p) => p.stats.tripleStarWins >= 25 },
+  { id: "perfect50", icon: "★50", title: "Безупречная форма", desc: "50 уровней на 3 звезды", test: (p) => p.stats.tripleStarWins >= 50 },
+  { id: "perfect100", icon: "★100", title: "Золотой стандарт", desc: "100 уровней на 3 звезды", rare: true, test: (p) => p.stats.tripleStarWins >= 100 },
+  { id: "nohint50", icon: "?50", title: "Своя голова", desc: "50 побед без подсказок", test: (p) => p.stats.noHintWins >= 50 },
+  { id: "nohint100", icon: "?100", title: "Без подсказок", desc: "100 побед без подсказок", rare: true, test: (p) => p.stats.noHintWins >= 100 },
+  { id: "noundo50", icon: "↶50", title: "Без оглядки", desc: "50 побед без отмен", test: (p) => p.stats.noUndoWins >= 50 },
+  { id: "noundo100", icon: "↶100", title: "Только вперёд", desc: "100 побед без отмен", rare: true, test: (p) => p.stats.noUndoWins >= 100 },
+  { id: "collectorAll", icon: "▦✓", title: "Полная коллекция", desc: "Открыть все категории", rare: true, test: (p) => BANK.length > 0 && p.discovered.length >= BANK.length },
+  { id: "categories100", icon: "100", title: "Собиратель", desc: "Собрать 100 категорий", test: (p) => p.stats.categoriesCompleted >= 100 },
+  { id: "categories1000", icon: "1K", title: "Архивариус", desc: "Собрать 1000 категорий", test: (p) => p.stats.categoriesCompleted >= 1000 },
+  { id: "categories2500", icon: "2.5K", title: "Живая энциклопедия", desc: "Собрать 2500 категорий", rare: true, test: (p) => p.stats.categoriesCompleted >= 2500 },
+  { id: "daily7", icon: "☀7", title: "Неделя Daily", desc: "Пройти 7 Daily", test: (p) => p.stats.dailyCompleted >= 7 },
+  { id: "daily30", icon: "☀30", title: "Месяц Daily", desc: "Пройти 30 Daily", test: (p) => p.stats.dailyCompleted >= 30 },
+  { id: "daily100", icon: "☀100", title: "Ритуал", desc: "Пройти 100 Daily", rare: true, test: (p) => p.stats.dailyCompleted >= 100 },
+  { id: "combo3", icon: "×3", title: "Точная рука", desc: "Сделать ручное комбо ×3", test: (p) => (p.stats.maxDragCombo || 0) >= 3 },
+  { id: "combo10", icon: "×10", title: "Мастер движений", desc: "Сделать ручное комбо ×10", rare: true, test: (p) => (p.stats.maxDragCombo || 0) >= 10 },
+  { id: "special10", icon: "◆10", title: "Любитель испытаний", desc: "Пройти 10 особых уровней", test: (p) => (p.stats.specialCompleted || 0) >= 10 },
+  { id: "special25", icon: "◆25", title: "Испытатель", desc: "Пройти 25 особых уровней", rare: true, test: (p) => (p.stats.specialCompleted || 0) >= 25 },
 ];
 const DEFAULT_STATS = {
   levelsCompleted: 0,
@@ -169,6 +204,7 @@ const DEFAULT_STATS = {
   restarts: 0,
   dailyCompleted: 0,
   maxCombo: 0,
+  maxDragCombo: 0,
   deadlocks: 0,
   specialCompleted: 0,
 };

@@ -97,7 +97,7 @@ async function animateAutoMove(card, payload, target) {
   state.run.autoMoves++;
   profile.stats.autoMoves++;
   track("auto_move", { mode: state.mode });
-  const moved = performDrop(payload, target);
+  const moved = performDrop(payload, target, { comboEligible: false });
   if (!moved) {
     sources.forEach((n) => n.classList.remove("auto-source"));
     setSourceVacancy(vacancyNodes, false);
@@ -244,5 +244,5 @@ async function endDrag(e) {
   d.ghost.remove();
   d.sourceNodes.forEach((n) => n.classList.remove("drag-source"));
   setSourceVacancy(d.vacancyNodes, false);
-  if (!performDrop(d.payload, target)) feedbackWrongMove(d.sourceNodes, target);
+  if (!performDrop(d.payload, target, { comboEligible: true })) feedbackWrongMove(d.sourceNodes, target);
 }
