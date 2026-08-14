@@ -90,6 +90,7 @@ function playTabMarkup() {
       <button class="mode-card challenge" id="hubShareChallenge"><i>⇄</i><b>Вызов другу</b><span>Короткий код + картинка</span></button>
     </div>
     ${ownedChallengesMarkup()}
+    ${receivedChallengesMarkup()}
     ${weeklyMarkup()}
     <section class="hub-section challenge-enter"><div class="hub-section-head"><h3>Код испытания</h3><small>6 символов</small></div><div class="challenge-input-row"><input id="challengeInput" inputmode="text" autocomplete="off" autocapitalize="characters" maxlength="6" placeholder="ABC123"><button id="challengeStart">Играть</button></div></section>
     ${chapterMarkup(hubChapterNumber)}`;

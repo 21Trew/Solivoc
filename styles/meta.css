@@ -1180,8 +1180,14 @@ body[data-card-back="phoenix"] .card.face-down::after { content: "♨"; transfor
 .owned-challenge-code { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
 .owned-challenge-code b { font:900 18px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.08em; color:#fff; }
 .owned-challenge-code span { max-width:62%; text-align:right; color:#aaa6cf; font-size:8px; line-height:1.25; font-weight:750; }
-.owned-challenge-results { display:grid; gap:3px; margin-top:8px; color:#c9c6e8; font-size:8px; }
+.owned-challenge-results { display:grid; gap:7px; margin-top:9px; color:#c9c6e8; font-size:8px; }
 .owned-challenge-results strong { color:#ffd86a; font-size:8px; }
+.challenge-result-row { display:grid; gap:3px; padding:7px 8px; border-radius:10px; background:#ffffff07; border:1px solid #ffffff0d; }
+.challenge-result-row > div { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.challenge-result-row b { color:#fff; font-size:9px; }
+.challenge-result-row span { color:#d7d3ef; font-size:8px; font-weight:800; }
+.challenge-result-row small { color:#aaa6cf; font-size:7.5px; line-height:1.25; }
+.challenge-result-row.empty { opacity:.65; }
 .owned-challenge-actions { display:flex; gap:7px; margin-top:9px; }
 .owned-challenge-actions button { min-height:36px; border:1px solid #ffffff16; border-radius:10px; background:#ffffff0d; color:#fff; padding:0 11px; font-weight:850; font-size:9px; }
 .challenge-input-row input { text-transform:uppercase; letter-spacing:.12em; font-weight:900; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }

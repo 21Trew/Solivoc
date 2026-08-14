@@ -112,19 +112,20 @@ function updatePersonalRecord(stars, s = state) {
 const CHALLENGE_API = "/api/challenges";
 const SHORT_CHALLENGE_RE = /^[A-HJ-NP-Z2-9]{6}$/;
 
-function normalizeChallengeCode(value) {
+function challengeCodeFromValue(value) {
   let raw = String(value || "").trim();
-  if (/challenge=/i.test(raw)) {
-    try { raw = new URL(raw, location.href).searchParams.get("challenge") || raw; } catch {}
-  }
-  return raw.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+  try {
+    const url = new URL(raw, location.href);
+    raw = url.searchParams.get("c") || url.searchParams.get("challenge") || raw;
+  } catch {}
+  return raw;
+}
+function normalizeChallengeCode(value) {
+  return challengeCodeFromValue(value).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
 }
 function legacyDecodeChallengeCode(code) {
   try {
-    let raw = String(code || "").trim();
-    if (/challenge=/i.test(raw)) {
-      try { raw = new URL(raw, location.href).searchParams.get("challenge") || raw; } catch {}
-    }
+    const raw = challengeCodeFromValue(code);
     const padded = raw.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((raw.length + 3) % 4);
     const p = JSON.parse(decodeURIComponent(escape(atob(padded))));
     if (p?.v !== 1 || !p.seed) return null;
@@ -156,6 +157,7 @@ function cleanChallengeResult(result = {}) {
     stars: Math.max(1, Math.min(3, +result.stars || 1)),
     moves: Math.max(0, +result.moves || 0),
     hints: Math.max(0, +result.hints || 0),
+    errors: Math.max(0, +result.errors || 0),
     undos: Math.max(0, +result.undos || 0),
     playerName: String(result.playerName || "Игрок").trim().slice(0, 20) || "Игрок",
     completedAt: result.completedAt || Date.now(),
@@ -166,6 +168,7 @@ function resultForCurrentChallenge(s = state, stars = null) {
     stars: stars ?? s?.lastStars ?? 1,
     moves: s?.run?.moves || 0,
     hints: s?.run?.hints || 0,
+    errors: s?.run?.errors || 0,
     undos: s?.run?.undos || 0,
     playerName: profile.playerName || "Игрок",
     completedAt: Date.now(),
@@ -175,11 +178,18 @@ function challengeStarsText(stars = 0) {
   const n = Math.max(0, Math.min(3, +stars || 0));
   return `${"★".repeat(n)}${"☆".repeat(3 - n)}`;
 }
+function challengeResultMarkup(label, result) {
+  if (!result) return `<div class="challenge-result-row empty"><b>${label}</b><span>ещё не сыграно</span></div>`;
+  return `<div class="challenge-result-row"><div><b>${label}</b><span>${challengeStarsText(result.stars)} · ${result.moves} ход.</span></div><small>Подсказки ${result.hints} · Ошибки ${result.errors || 0} · Отмены ${result.undos}</small></div>`;
+}
 function challengeComparison(entry) {
   const me = entry?.creatorResult, friend = entry?.guestResult;
   if (!me || !friend) return "";
   if (me.stars !== friend.stars) return me.stars > friend.stars ? "Ты взял больше звёзд" : "Друг взял больше звёзд";
-  if (me.moves && friend.moves && me.moves !== friend.moves) return me.moves < friend.moves ? `Ты быстрее на ${friend.moves - me.moves} ход.` : `Друг быстрее на ${me.moves - friend.moves} ход.`;
+  if (me.moves !== friend.moves) return me.moves < friend.moves ? `Ты быстрее на ${friend.moves - me.moves} ход.` : `Друг быстрее на ${me.moves - friend.moves} ход.`;
+  if ((me.errors || 0) !== (friend.errors || 0)) return (me.errors || 0) < (friend.errors || 0) ? "У тебя меньше ошибок" : "У друга меньше ошибок";
+  if (me.hints !== friend.hints) return me.hints < friend.hints ? "Ты использовал меньше подсказок" : "Друг использовал меньше подсказок";
+  if (me.undos !== friend.undos) return me.undos < friend.undos ? "Ты использовал меньше отмен" : "Друг использовал меньше отмен";
   return "Результаты равны";
 }
 function pruneSentChallenges() {
@@ -188,20 +198,65 @@ function pruneSentChallenges() {
     .sort((a, b) => (+b.createdAt || 0) - (+a.createdAt || 0))
     .slice(0, 24);
 }
+function pruneReceivedChallenges() {
+  profile.receivedChallenges = (profile.receivedChallenges || [])
+    .filter((x) => x?.code && x?.seed)
+    .sort((a, b) => (+b.completedAt || +b.startedAt || 0) - (+a.completedAt || +a.startedAt || 0))
+    .slice(0, 24);
+}
 function ownedChallengeByCode(code) {
   const normalized = normalizeChallengeCode(code);
   return (profile.sentChallenges || []).find((x) => x.code === normalized) || null;
+}
+function receivedChallengeByCode(code) {
+  const normalized = normalizeChallengeCode(code);
+  return (profile.receivedChallenges || []).find((x) => x.code === normalized) || null;
+}
+function rememberReceivedChallenge(data) {
+  if (!data?.code || !data?.seed) return null;
+  profile.receivedChallenges ||= [];
+  let entry = receivedChallengeByCode(data.code);
+  if (!entry) {
+    entry = {
+      code: normalizeChallengeCode(data.code),
+      seed: data.seed,
+      level: data.level,
+      creatorName: data.creatorName || "Друг",
+      startedAt: Date.now(),
+      completedAt: null,
+      status: "playing",
+      guestResult: null,
+    };
+    profile.receivedChallenges.unshift(entry);
+  } else {
+    entry.seed = data.seed || entry.seed;
+    entry.level = data.level || entry.level;
+    entry.creatorName = data.creatorName || entry.creatorName || "Друг";
+    if (!entry.guestResult) entry.status = "playing";
+  }
+  pruneReceivedChallenges();
+  saveProfile();
+  return entry;
 }
 function ownedChallengesMarkup() {
   pruneSentChallenges();
   const items = (profile.sentChallenges || []).slice(0, 6);
   if (!items.length) return "";
   return `<section class="hub-section owned-challenges"><div class="hub-section-head"><h3>Мои вызовы</h3><small>${items.length}</small></div><div class="owned-challenge-list">${items.map((entry) => {
-    const friend = entry.guestResult, me = entry.creatorResult;
-    const status = friend ? `${friend.playerName}: ${challengeStarsText(friend.stars)} · ${friend.moves} ход.` : entry.status === "expired" ? "Код истёк или уже использован" : "Ждём, когда друг сыграет";
-    const mine = me ? `Ты: ${challengeStarsText(me.stars)} · ${me.moves} ход.` : "Ты ещё не играл этот расклад";
-    const compare = challengeComparison(entry);
-    return `<article class="owned-challenge ${friend ? "completed" : "pending"}"><div class="owned-challenge-code"><b>${entry.code}</b><span>${status}</span></div><div class="owned-challenge-results"><span>${mine}</span>${compare ? `<strong>${compare}</strong>` : ""}</div><div class="owned-challenge-actions"><button data-owned-challenge-play="${entry.code}">▶ ${me ? "Переиграть" : "Сыграть"}</button>${!friend && entry.status !== "expired" ? `<button data-owned-challenge-share="${entry.code}">⇄ Отправить</button>` : ""}</div></article>`;
+    const friend = entry.guestResult, me = entry.creatorResult,
+      status = friend ? `Завершён · ${friend.playerName}` : entry.status === "expired" ? "Код истёк или уже использован" : "Ждём, когда друг сыграет",
+      compare = challengeComparison(entry);
+    return `<article class="owned-challenge ${friend ? "completed" : "pending"}"><div class="owned-challenge-code"><b>${entry.code}</b><span>${status}</span></div><div class="owned-challenge-results">${challengeResultMarkup("Ты", me)}${challengeResultMarkup(friend?.playerName || "Друг", friend)}${compare ? `<strong>${compare}</strong>` : ""}</div><div class="owned-challenge-actions"><button data-owned-challenge-play="${entry.code}">▶ ${me ? "Переиграть" : "Сыграть"}</button>${!friend && entry.status !== "expired" ? `<button data-owned-challenge-share="${entry.code}">⇄ Отправить</button>` : ""}</div></article>`;
+  }).join("")}</div></section>`;
+}
+function receivedChallengesMarkup() {
+  pruneReceivedChallenges();
+  const items = (profile.receivedChallenges || []).slice(0, 6);
+  if (!items.length) return "";
+  return `<section class="hub-section owned-challenges received-challenges"><div class="hub-section-head"><h3>Полученные вызовы</h3><small>${items.length}</small></div><div class="owned-challenge-list">${items.map((entry) => {
+    const result = entry.guestResult,
+      status = result ? `Пройден · от ${entry.creatorName || "друга"}` : `От ${entry.creatorName || "друга"} · не завершён`;
+    return `<article class="owned-challenge ${result ? "completed" : "pending"}"><div class="owned-challenge-code"><b>${entry.code}</b><span>${status}</span></div><div class="owned-challenge-results">${challengeResultMarkup("Ты", result)}</div></article>`;
   }).join("")}</div></section>`;
 }
 async function createRemoteChallenge() {
@@ -225,6 +280,11 @@ async function createRemoteChallenge() {
   pruneSentChallenges();
   saveProfile();
   return entry;
+}
+function challengeShortLink(entryOrCode) {
+  const code = normalizeChallengeCode(entryOrCode?.code || entryOrCode);
+  const origin = /^https?:$/.test(location.protocol) ? location.origin : "https://solivoc.vercel.app";
+  return `${origin.replace(/\/$/, "")}/?c=${code}`;
 }
 async function challengeInviteFile(entry) {
   const canvas = document.createElement("canvas");
@@ -284,12 +344,11 @@ async function challengeInviteFile(entry) {
   ctx.fillText(entry.code, 89, 414);
 
   ctx.fillStyle = "rgba(255,255,255,.72)";
-  ctx.font = "700 27px system-ui, sans-serif";
-  ctx.fillText("Открой игру → Вызов другу → введи код", 94, 500);
-  ctx.textAlign = "right";
-  ctx.font = "700 22px system-ui, sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,.52)";
-  ctx.fillText(location.host || "Словасьянс", 1100, 530);
+  ctx.font = "700 25px system-ui, sans-serif";
+  ctx.fillText("По коду или по короткой ссылке", 94, 495);
+  ctx.font = "800 23px system-ui, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,.58)";
+  ctx.fillText(challengeShortLink(entry).replace(/^https?:\/\//, ""), 94, 535);
 
   const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png", 0.96));
   return new File([blob], `slovasyans-${entry.code}.png`, { type: "image/png" });
@@ -306,13 +365,16 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 async function shareChallengeEntry(entry) {
   if (!entry) return false;
-  const text = `Сыграем в Словасьянс? Код ${entry.code}`;
+  const link = challengeShortLink(entry),
+    text = `Словасьянс — вызов\nКод: ${entry.code}\n${link}`;
   try {
     const file = await challengeInviteFile(entry);
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ title: "Словасьянс — вызов", text, files: [file] });
+      // Do not pass a separate `url`: Telegram and some other apps otherwise
+      // create a second message/link preview. The link stays in the image caption.
+      await navigator.share({ text, files: [file] });
     } else if (navigator.share && /^https?:$/.test(location.protocol)) {
-      await navigator.share({ title: "Словасьянс — вызов", text });
+      await navigator.share({ text });
     } else if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);
       const a = document.createElement("a");
@@ -326,7 +388,7 @@ async function shareChallengeEntry(entry) {
     return true;
   } catch (err) {
     if (err?.name === "AbortError") return false;
-    window.prompt("Код испытания", entry.code);
+    window.prompt("Скопируй код и ссылку", text);
     return false;
   }
 }
@@ -357,15 +419,13 @@ function playOwnedChallenge(code) {
   return true;
 }
 async function startChallengeCode(value) {
-  let raw = String(value || "").trim();
-  if (/challenge=/i.test(raw)) {
-    try { raw = new URL(raw, location.href).searchParams.get("challenge") || raw; } catch {}
-  }
-  const compact = raw.toUpperCase().replace(/[^A-Z0-9]/g, ""),
+  const raw = challengeCodeFromValue(value),
+    compact = raw.toUpperCase().replace(/[^A-Z0-9]/g, ""),
     shortCode = compact;
   if (compact.length === 6 && SHORT_CHALLENGE_RE.test(shortCode)) {
     try {
       const data = await challengeApi("GET", `?code=${encodeURIComponent(shortCode)}`);
+      rememberReceivedChallenge({ code: shortCode, seed: data.seed, level: data.level, creatorName: data.creatorName || "Друг" });
       closeHub?.();
       makeLevel(data.level, {
         mode: "challenge",
@@ -400,16 +460,34 @@ function recordCreatorChallengeResult(s = state, stars = null) {
   entry.status = entry.guestResult ? "completed" : "pending";
   saveProfile();
 }
+function recordGuestChallengeLocal(s = state, result = null) {
+  if (!s?.challengeCode || s.challengeRole !== "guest") return null;
+  const entry = rememberReceivedChallenge({
+    code: s.challengeCode,
+    seed: s.seed,
+    level: s.level,
+    creatorName: s.challengeCreatorName || "Друг",
+  });
+  if (!entry) return null;
+  entry.guestResult = cleanChallengeResult(result || resultForCurrentChallenge(s));
+  entry.status = "completed";
+  entry.completedAt = entry.guestResult.completedAt || Date.now();
+  pruneReceivedChallenges();
+  saveProfile();
+  return entry;
+}
 function enqueueGuestChallengeSubmission(s = state, stars = null) {
   if (!s?.challengeCode || s.challengeRole !== "guest") return;
   const submissionId = s.challengeSubmissionId || uid();
   s.challengeSubmissionId = submissionId;
-  const item = {
-    code: normalizeChallengeCode(s.challengeCode),
-    submissionId,
-    result: resultForCurrentChallenge(s, stars),
-    createdAt: Date.now(),
-  };
+  const result = resultForCurrentChallenge(s, stars),
+    item = {
+      code: normalizeChallengeCode(s.challengeCode),
+      submissionId,
+      result,
+      createdAt: Date.now(),
+    };
+  recordGuestChallengeLocal(s, result);
   profile.pendingChallengeSubmissions ||= [];
   if (!profile.pendingChallengeSubmissions.some((x) => x.submissionId === submissionId)) profile.pendingChallengeSubmissions.push(item);
   saveProfile();
@@ -423,6 +501,8 @@ async function flushPendingChallengeSubmissions() {
     try {
       await challengeApi("POST", "", { action: "complete", code: item.code, submissionId: item.submissionId, result: item.result }, { keepalive: true });
       profile.pendingChallengeSubmissions = profile.pendingChallengeSubmissions.filter((x) => x.submissionId !== item.submissionId);
+      const received = receivedChallengeByCode(item.code);
+      if (received) received.synced = true;
       changed = true;
     } catch (err) {
       if (err?.status === 410 || err?.status === 404) {
@@ -447,7 +527,7 @@ async function refreshOwnedChallenges({ notify = true } = {}) {
         changed = true;
         try { await challengeApi("POST", "", { action: "ack", code: entry.code, ownerToken: entry.ownerToken }); } catch {}
         if (notify && typeof queueAchievementNotifications === "function") {
-          queueAchievementNotifications([{ icon: "⇄", title: "Друг завершил вызов", desc: `${entry.code} · ${challengeStarsText(entry.guestResult.stars)} · ${entry.guestResult.moves} ход.` }]);
+          queueAchievementNotifications([{ icon: "⇄", title: "Друг завершил вызов", desc: `${entry.code} · ${challengeStarsText(entry.guestResult.stars)} · ${entry.guestResult.moves} ход. · ошибок ${entry.guestResult.errors || 0}` }]);
         }
       } else if (data.status === "pending") entry.status = "pending";
     } catch (err) {
@@ -464,8 +544,37 @@ async function refreshOwnedChallenges({ notify = true } = {}) {
   return changed;
 }
 function challengeCodeFromUrl() {
-  return new URLSearchParams(location.search).get("challenge") || "";
+  const params = new URLSearchParams(location.search);
+  return params.get("c") || params.get("challenge") || "";
 }
+function migrateLastGuestChallengeHistory() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if (!saved || saved.mode !== "challenge" || saved.challengeRole !== "guest" || !saved.rewarded || !saved.challengeCode || !saved.seed) return;
+    const code = normalizeChallengeCode(saved.challengeCode);
+    if (!code || receivedChallengeByCode(code)) return;
+    const entry = rememberReceivedChallenge({
+      code,
+      seed: saved.seed,
+      level: saved.level,
+      creatorName: saved.challengeCreatorName || "Друг",
+    });
+    if (!entry) return;
+    entry.guestResult = cleanChallengeResult({
+      stars: saved.lastStars || 1,
+      moves: saved.run?.moves || 0,
+      hints: saved.run?.hints || 0,
+      errors: saved.run?.errors || 0,
+      undos: saved.run?.undos || 0,
+      playerName: profile.playerName || "Игрок",
+      completedAt: Date.now(),
+    });
+    entry.status = "completed";
+    entry.completedAt = entry.guestResult.completedAt;
+    saveProfile();
+  } catch {}
+}
+migrateLastGuestChallengeHistory();
 
 
 async function shareCurrentResult() {
@@ -474,6 +583,7 @@ async function shareCurrentResult() {
     starText = `${"★".repeat(stars)}${"☆".repeat(3 - stars)}`,
     moves = state.run?.moves || 0,
     hints = state.run?.hints || 0,
+    errors = state.run?.errors || 0,
     undos = state.run?.undos || 0;
   let title = `Словасьянс · Уровень ${state.level}`,
     extra = "";
@@ -483,7 +593,7 @@ async function shareCurrentResult() {
     const code = normalizeChallengeCode(state.challengeCode || "");
     if (code) extra = ` · код ${code}`;
   }
-  const text = `${title}\n${starText} · ${moves} ходов · ${hints} подсказок · ${undos} отмен${extra}`;
+  const text = `${title}\n${starText} · ${moves} ходов · ${hints} подсказок · ${errors} ошибок · ${undos} отмен${extra}`;
   try {
     if (navigator.share && /^https?:$/.test(location.protocol)) await navigator.share({ title, text });
     else if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);

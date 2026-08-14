@@ -251,7 +251,7 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
       completed: 0,
       totalCategories: cfg.cats,
       categoryIds: chosen.map((c) => c.id),
-      run: { hints: 0, undos: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },
+      run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },
       special,
       challengeCode,
       challengeRole,
@@ -295,7 +295,7 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
     completed: 0,
     totalCategories: chosen.length,
     categoryIds: chosen.map((c) => c.id),
-    run: { hints: 0, undos: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },
+    run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },
     special,
     challengeCode,
     challengeRole,
@@ -351,13 +351,13 @@ function makeTutorial(step = 1) {
     completed: 0,
     totalCategories: 1,
     categoryIds: [cat.id],
-    run: { hints: 0, undos: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },
+    run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },
     special: null,
     rewarded: false,
   };
 }
 function normalizeState(s) {
-  s.run = { hints: 0, undos: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now(), ...(s.run || {}) };
+  s.run = { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now(), ...(s.run || {}) };
   s.mode = s.mode || "regular";
   s.seed = s.seed || `legacy:${s.level || 1}`;
   s.rewarded = !!s.rewarded;

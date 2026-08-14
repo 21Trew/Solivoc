@@ -187,6 +187,10 @@ function registerCombo(productive = true) {
 
 function feedbackWrongMove(nodes = [], target = null, message = "Сюда положить нельзя") {
   resetCombo();
+  if (state?.run) {
+    state.run.errors = (state.run.errors || 0) + 1;
+    try { save(); } catch {}
+  }
   playSfx("error");
   haptic([18, 28, 16]);
   nodes.filter(Boolean).forEach((node) => {

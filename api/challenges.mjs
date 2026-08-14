@@ -83,6 +83,7 @@ function cleanResult(value) {
     stars: Math.max(1, Math.min(3, Number(value?.stars) || 1)),
     moves: Math.max(0, Math.min(100000, Number(value?.moves) || 0)),
     hints: Math.max(0, Math.min(10000, Number(value?.hints) || 0)),
+    errors: Math.max(0, Math.min(10000, Number(value?.errors) || 0)),
     undos: Math.max(0, Math.min(10000, Number(value?.undos) || 0)),
     playerName: String(value?.playerName || "Игрок").trim().slice(0, 20) || "Игрок",
     completedAt: Date.now(),

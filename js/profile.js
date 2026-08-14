@@ -19,6 +19,7 @@ function defaultProfile() {
     dailyRecords: {},
     challengeRecords: {},
     sentChallenges: [],
+    receivedChallenges: [],
     pendingChallengeSubmissions: [],
     weekly: { key: null, id: null, baseline: {}, completed: false, completedCount: 0 },
     tutorialComplete: false,
@@ -50,6 +51,7 @@ function loadProfile() {
         dailyRecords: p.dailyRecords && typeof p.dailyRecords === "object" ? p.dailyRecords : {},
         challengeRecords: p.challengeRecords && typeof p.challengeRecords === "object" ? p.challengeRecords : {},
         sentChallenges: Array.isArray(p.sentChallenges) ? p.sentChallenges : [],
+        receivedChallenges: Array.isArray(p.receivedChallenges) ? p.receivedChallenges : [],
         pendingChallengeSubmissions: Array.isArray(p.pendingChallengeSubmissions) ? p.pendingChallengeSubmissions : [],
         weekly: { ...defaultProfile().weekly, ...(p.weekly || {}) },
       };
@@ -126,6 +128,7 @@ function migrateMetaProfile() {
   profile.dailyRecords = profile.dailyRecords || {};
   profile.challengeRecords = profile.challengeRecords || {};
   profile.sentChallenges = Array.isArray(profile.sentChallenges) ? profile.sentChallenges : [];
+  profile.receivedChallenges = Array.isArray(profile.receivedChallenges) ? profile.receivedChallenges : [];
   profile.pendingChallengeSubmissions = Array.isArray(profile.pendingChallengeSubmissions) ? profile.pendingChallengeSubmissions : [];
   profile.weekly = { ...defaultProfile().weekly, ...(profile.weekly || {}) };
   profile.effectUnlocksSeen = Array.isArray(profile.effectUnlocksSeen) ? profile.effectUnlocksSeen : ["spark"];
