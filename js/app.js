@@ -4,7 +4,7 @@ function bindAppEvents() {
   document.addEventListener(
     "touchend",
     (e) => {
-      if (!e.target.closest(".card,.stock,.waste,.slot,button,.brand")) return;
+      if (!e.target.closest(".card,.stock,.waste,.slot,button,.game-profile-button,.hub-profile-button")) return;
       const now = Date.now();
       if (now - lastTouchEndAt < 360) e.preventDefault();
       lastTouchEndAt = now;
@@ -22,7 +22,7 @@ function bindAppEvents() {
   window.addEventListener("pointermove", moveDrag, { passive: false });
   window.addEventListener("pointerup", endDrag);
 
-  $(".brand").addEventListener("click", openHub);
+  $("#gameProfileButton")?.addEventListener("click", openProfileEditorModal);
   $("#menuButton").onclick = openHub;
   $("#hubClose").onclick = closeHub;
 
@@ -221,21 +221,29 @@ async function boot() {
       startedChallenge = await startChallengeCode(challenge);
     }
 
+    let openHomeAfterLoad = false;
     if (!startedChallenge) {
       if (onboardingRan) makeLevel(1,{mode:"tutorial",step:1});
-      else load();
+      else {
+        load();
+        openHomeAfterLoad = profile.settings?.startupScreen !== "game";
+      }
     }
 
     setSplashProgress?.(82,"Проверяю награды…");
     checkAchievements();
     saveProfile();
     startChallengeSyncLoop();
-    setBackgroundMusic("game");
 
     if (!onboardingRan) {
       setSplashProgress?.(94,"Почти готово…");
       await hideSplash?.();
     }
+
+    if (openHomeAfterLoad && !startedChallenge) openHub("play");
+    else setBackgroundMusic(musicModeForState?.() || "game");
+    renderGlobalProfileHeaders?.();
+    setTimeout(() => showPendingRankUp?.(), 500);
 
     // Network synchronization must never keep the loading screen open.
     // Redis/Push/analytics can finish after the local game is already ready.

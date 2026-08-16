@@ -73,6 +73,23 @@ function burst(strong = false) {
     setTimeout(() => el.remove(), 1100);
   }
 }
+
+function confettiRain(strong = false) {
+  if (!celebration || motionReduced?.()) return;
+  const n = strong ? 58 : 34;
+  for (let i = 0; i < n; i++) {
+    const el = document.createElement("i");
+    el.className = "confetti-piece";
+    el.style.setProperty("--confetti-x", `${rnd(2, 98)}vw`);
+    el.style.setProperty("--confetti-drift", `${rnd(-65, 65)}px`);
+    el.style.setProperty("--confetti-rot", `${rnd(180, 900)}deg`);
+    el.style.setProperty("--confetti-h", rnd(0, 360));
+    el.style.setProperty("--confetti-delay", `${(Math.random() * (strong ? .7 : .45)).toFixed(2)}s`);
+    el.style.setProperty("--confetti-time", `${(1.15 + Math.random() * .75).toFixed(2)}s`);
+    celebration.appendChild(el);
+    setTimeout(() => el.remove(), 2700);
+  }
+}
 function showToast(text) {
   toast.textContent = text;
   toast.classList.add("show");

@@ -175,7 +175,7 @@ function cleanChallengeResult(result = {}) {
     errors: Math.max(0, +result.errors || 0),
     undos: Math.max(0, +result.undos || 0),
     playerName: String(result.playerName || "Игрок").trim().slice(0, 20) || "Игрок",
-    avatarEmoji: AVATAR_EMOJIS.includes(result.avatarEmoji) ? result.avatarEmoji : "🙂",
+    avatarEmoji: String(result.avatarEmoji || "🙂").slice(0, 8) || "🙂",
     title: String(result.title || "").trim().slice(0, 32),
     rank: String(result.rank || "").trim().slice(0, 32),
     featured: Array.isArray(result.featured) ? result.featured.map((x)=>String(x).slice(0,32)).slice(0,3) : [],
@@ -296,6 +296,7 @@ function ownedChallengeCardMarkup(entry, { compact = false } = {}) {
       ${!me || !friend ? `<button data-owned-challenge-play="${entry.code}">▶ ${me ? "Переиграть" : "Сыграть"}</button>` : ""}
       ${!friend && entry.status !== "expired" ? `<button data-owned-challenge-share="${entry.code}">⇄ Отправить</button>` : ""}
       ${friend && me ? `<button data-owned-challenge-rematch="${entry.code}">⚔ Реванш</button>` : ""}
+      <button class="challenge-delete" data-owned-challenge-delete="${entry.code}" title="Удалить вызов">✕ Удалить</button>
     </div>
   </article>`;
 }
@@ -314,8 +315,32 @@ function receivedChallengeCardMarkup(entry, { compact = false } = {}) {
     <div class="owned-challenge-actions">
       ${!result ? `<button data-received-challenge-play="${entry.code}">▶ Сыграть</button>` : ""}
       ${result && creatorResult ? `<button data-received-challenge-rematch="${entry.code}">⚔ Реванш</button>` : ""}
+      <button class="challenge-delete" data-received-challenge-delete="${entry.code}" title="Удалить вызов">✕ Удалить</button>
     </div>
   </article>`;
+}
+async function deleteOwnedChallenge(code) {
+  const entry = ownedChallengeByCode(code);
+  if (!entry) return;
+  const pending = !(entry.creatorResult && entry.guestResult) && entry.status !== "expired";
+  if (!confirm(pending ? "Удалить и отменить этот вызов? Друг больше не сможет открыть код." : "Удалить этот вызов из истории?")) return;
+  if (pending && entry.ownerToken) {
+    try { await challengeApi("POST", "", { action: "cancel", code: entry.code, ownerToken: entry.ownerToken }); }
+    catch (error) { if (![404, 410].includes(error?.status)) console.warn("Challenge cancel", error); }
+  }
+  profile.sentChallenges = (profile.sentChallenges || []).filter((x) => x.code !== entry.code);
+  saveProfile();
+  showToast(pending ? "Вызов удалён" : "Матч удалён из истории");
+  renderHub?.();
+}
+function deleteReceivedChallenge(code) {
+  const entry = receivedChallengeByCode(code);
+  if (!entry) return;
+  if (!confirm("Удалить этот вызов с устройства?")) return;
+  profile.receivedChallenges = (profile.receivedChallenges || []).filter((x) => x.code !== entry.code);
+  saveProfile();
+  showToast("Вызов удалён");
+  renderHub?.();
 }
 function ownedChallengesMarkup() {
   pruneSentChallenges();

@@ -334,23 +334,27 @@ Scale the physical pieces from the ACTUAL number of tableau columns.
 Three-column rounds should feel like a card game, not a five-column web grid. */
    :root {
      --cw: 64px;
-     --ch: calc(var(--cw) * 1.54);
+     --card-ratio: 1.42;
+     --ch: calc(var(--cw) * var(--card-ratio));
      --gap: 7px;
    }
    html[data-cols="3"] {
-     --cw: clamp(74px, 21vw, 88px);
+     --cw: clamp(78px, 22vw, 92px);
+     --card-ratio: 1.46;
      --gap: clamp(8px, 2.2vw, 10px);
-     --radius: clamp(17px, 4.5vw, 20px);
+     --radius: clamp(16px, 4vw, 18px);
    }
    html[data-cols="4"] {
-     --cw: clamp(68px, 18.8vw, 80px);
-     --gap: clamp(7px, 2vw, 9px);
-     --radius: clamp(15px, 4vw, 18px);
+     --cw: clamp(72px, 20vw, 84px);
+     --card-ratio: 1.38;
+     --gap: clamp(6px, 1.8vw, 8px);
+     --radius: clamp(14px, 3.6vw, 16px);
    }
    html[data-cols="5"] {
-     --cw: clamp(54px, 15.7vw, 66px);
-     --gap: clamp(4px, 1.25vw, 6px);
-     --radius: clamp(14px, 3.6vw, 16px);
+     --cw: clamp(60px, 17.2vw, 72px);
+     --card-ratio: 1.32;
+     --gap: clamp(4px, 1.15vw, 5px);
+     --radius: clamp(13px, 3.2vw, 15px);
    }
 
    /* More legible, game-like top HUD. */
@@ -537,16 +541,16 @@ Three-column rounds should feel like a card game, not a five-column web grid. */
    /* Small widths: keep hierarchy, only compress what is necessary. */
    @media (max-width: 370px) {
      html[data-cols="3"] {
-       --cw: clamp(70px, 21vw, 80px);
+       --cw: clamp(72px, 22vw, 84px);
        --gap: 7px;
      }
      html[data-cols="4"] {
-       --cw: clamp(65px, 18.4vw, 70px);
-       --gap: 6px;
+       --cw: clamp(68px, 20.5vw, 76px);
+       --gap: 5px;
      }
      html[data-cols="5"] {
-       --cw: clamp(53px, 15.2vw, 57px);
-       --gap: 4px;
+       --cw: clamp(57px, 17.4vw, 63px);
+       --gap: 3px;
      }
      .brand-mark {
        width: 38px;
@@ -858,4 +862,26 @@ html[data-stack-fit="tight"] .card.category.open-under .name { padding-top: 1px;
   .onboarding-step p { margin-bottom:10px; }
   .onboarding-demo { min-height:110px; padding:8px 4px; transform:scale(.88); transform-origin:center; }
   .onboarding-dots { margin:10px 0; }
+}
+
+/* Stable card geometry: width is fixed by column count; vertical fit compresses smoothly. */
+.slot, .stock, .waste, .column, .card {
+  transition-property: width, height, min-height, border-radius, filter, box-shadow, opacity, transform;
+  transition-duration: .2s, .2s, .2s, .2s, .14s, .14s, .14s, .14s;
+  transition-timing-function: cubic-bezier(.2,.8,.2,1);
+}
+.drag-stack .card, .drag-stack .drag-main { transition: none !important; }
+
+/* Persistent profile header sizing. */
+@media (max-width: 420px) {
+  .game-profile-button { max-width: 44vw; grid-template-columns: 35px minmax(0,1fr); gap:7px; }
+  .game-profile-button .global-profile-avatar { width:35px; height:35px; border-radius:11px; font-size:19px; }
+  .game-profile-button .global-profile-copy b { font-size:12px; }
+  .game-profile-button .global-profile-copy small { font-size:7.5px; }
+}
+@media (max-width: 350px) {
+  .game-profile-button { max-width: 41vw; grid-template-columns:32px minmax(0,1fr); gap:6px; }
+  .game-profile-button .global-profile-avatar { width:32px; height:32px; font-size:17px; }
+  .game-profile-button .global-profile-copy b { font-size:11px; }
+  .game-profile-button .global-profile-copy small { font-size:7px; }
 }

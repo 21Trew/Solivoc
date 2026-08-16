@@ -62,6 +62,22 @@ export async function POST(request){
     }
     const code=cleanCode(body.code); if(!code)return json({error:"invalid_code"},400);
 
+    if(body.action==="cancel"){
+      const ownerToken=String(body.ownerToken||""),active=parse(await redis(["GET",activeKey(code)]));
+      if(active){
+        if(active.ownerToken!==ownerToken)return json({error:"forbidden"},403);
+        await redis(["DEL",activeKey(code)]);
+        return json({ok:true,deleted:true,status:"active"});
+      }
+      const result=parse(await redis(["GET",resultKey(code)]));
+      if(result){
+        if(result.ownerToken!==ownerToken)return json({error:"forbidden"},403);
+        await redis(["DEL",resultKey(code)]);
+        return json({ok:true,deleted:true,status:"result"});
+      }
+      return json({ok:true,alreadyDeleted:true});
+    }
+
     if(body.action==="attachPush"){
       const ownerToken=String(body.ownerToken||""),pushClientId=String(body.pushClientId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),active=parse(await redis(["GET",activeKey(code)]));
       if(!active)return json({error:"not_found"},404);if(active.ownerToken!==ownerToken)return json({error:"forbidden"},403);

@@ -100,6 +100,20 @@ const MUSIC_PATTERNS = {
     volume: 0.0078,
     type: "sine",
   },
+  challenge: {
+    notes: [220, 261.63, 329.63, 293.66, 246.94, 311.13, 369.99, 329.63],
+    interval: 470,
+    duration: 0.42,
+    volume: 0.0072,
+    type: "triangle",
+  },
+  victory: {
+    notes: [523.25, 659.25, 783.99, 1046.5, 783.99, 987.77, 1174.66, 1046.5],
+    interval: 390,
+    duration: 0.52,
+    volume: 0.0092,
+    type: "triangle",
+  },
 };
 function musicTone(freq, duration, volume, type = "sine") {
   const ctx = ensureAudioContext();
@@ -132,11 +146,14 @@ function scheduleMusicStep(generation) {
   musicStep++;
   musicTone(note, pattern.duration, pattern.volume, pattern.type);
   // Very light upper note once per phrase gives the menu/game loops distinct character.
-  if (musicStep % 4 === 0) musicTone(note * (musicMode === "menu" ? 2 : 1.5), pattern.duration * 0.72, pattern.volume * 0.38, "sine");
+  if (musicStep % 4 === 0) musicTone(note * (musicMode === "menu" || musicMode === "victory" ? 2 : 1.5), pattern.duration * 0.72, pattern.volume * 0.38, "sine");
   musicTimer = setTimeout(() => scheduleMusicStep(generation), pattern.interval);
 }
+function musicModeForState(s = state) {
+  return s?.mode === "challenge" ? "challenge" : "game";
+}
 function setBackgroundMusic(mode = "game") {
-  musicMode = mode === "menu" ? "menu" : "game";
+  musicMode = ["menu", "game", "challenge", "victory"].includes(mode) ? mode : "game";
   stopBackgroundMusic();
   musicStep = 0;
   if (!musicEnabled() || document.hidden) return;
@@ -150,7 +167,7 @@ function syncBackgroundMusic() {
     stopBackgroundMusic();
     return;
   }
-  setBackgroundMusic(hub?.classList.contains("show") ? "menu" : "game");
+  setBackgroundMusic(hub?.classList.contains("show") ? "menu" : musicModeForState());
 }
 
 function resetCombo() {

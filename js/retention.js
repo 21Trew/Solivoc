@@ -29,16 +29,69 @@ function xpLevelProgress(p = profile) {
 function awardXp(amount, reason = "", { notifyRank = true } = {}) {
   amount = Math.max(0, Math.round(+amount || 0));
   if (!amount) return 0;
-  const beforeLevel = playerXpLevel(profile), beforeRank = playerRank(profile).name;
-  profile.xp = Math.max(0, (+profile.xp || 0) + amount);
-  const afterLevel = playerXpLevel(profile), afterRank = playerRank(profile).name;
+  const beforeLevel = playerXpLevel(profile), beforeRankDef = playerRank(profile), beforeXp = +profile.xp || 0;
+  profile.xp = Math.max(0, beforeXp + amount);
+  const afterLevel = playerXpLevel(profile), afterRankDef = playerRank(profile);
   if (state?.run) state.run.xpEarned = (state.run.xpEarned || 0) + amount;
   track("xp_awarded", { amount, reason, level: afterLevel });
-  saveProfile();
-  if (notifyRank && typeof queueAchievementNotifications === "function" && (afterLevel > beforeLevel || afterRank !== beforeRank)) {
-    queueAchievementNotifications([{ icon: playerRank(profile).icon, title: `Ранг ${afterLevel} · ${afterRank}`, desc: `+${amount} XP${reason ? ` · ${reason}` : ""}` }]);
+  if (afterLevel > beforeLevel) {
+    const avatars = [];
+    for (let level = beforeLevel + 1; level <= afterLevel; level++) {
+      const reward = rankRewardAvatar?.(level);
+      if (reward) avatars.push(reward);
+    }
+    const rankChanged = afterRankDef.name !== beforeRankDef.name;
+    const titleReward = rankChanged
+      ? TITLE_DEFS.find((x) => x.minXp && x.name === afterRankDef.name && profile.xp >= x.minXp)?.id || null
+      : null;
+    profile.pendingRankUp = {
+      fromLevel: beforeLevel,
+      level: afterLevel,
+      rankName: afterRankDef.name,
+      rankIcon: afterRankDef.icon,
+      avatars,
+      titleReward,
+      reason,
+      createdAt: Date.now(),
+    };
+    track("rank_up", { from: beforeLevel, to: afterLevel, rank: afterRankDef.name });
   }
+  saveProfile();
+  renderGlobalProfileHeaders?.();
+  if (afterLevel > beforeLevel && !$("#modal")?.classList.contains("show")) setTimeout(() => showPendingRankUp?.(), 260);
   return amount;
+}
+
+function closeRankUpModal() {
+  const modal = $("#rankUpModal");
+  if (!modal) return;
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden", "true");
+  profile.pendingRankUp = null;
+  saveProfile();
+}
+function showPendingRankUp() {
+  const data = profile.pendingRankUp, modal = $("#rankUpModal");
+  if (!data || !modal) return false;
+  if ($("#modal")?.classList.contains("show") || $("#duelResultModal")?.classList.contains("show") || $("#onboardingModal")?.classList.contains("show")) return false;
+  $("#rankUpNumber").textContent = `Ранг ${data.level}`;
+  $("#rankUpName").textContent = data.rankName || playerRank(profile).name;
+  const rewards = [];
+  if (data.avatars?.length) rewards.push(`<div class="rank-reward"><i>${data.avatars.at(-1)}</i><span><b>Новый аватар</b><small>${data.avatars.length > 1 ? `Открыто ${data.avatars.length} новых аватара` : "Доступен в профиле"}</small></span></div>`);
+  if (data.titleReward) {
+    const title = titleDefById(data.titleReward);
+    if (title) rewards.push(`<div class="rank-reward"><i>${title.icon}</i><span><b>Новый титул «${escapeHtml(title.name)}»</b><small>Можно выбрать в профиле</small></span></div>`);
+  }
+  if (!rewards.length) rewards.push(`<div class="rank-reward"><i>${data.rankIcon || "✦"}</i><span><b>Новый уровень профиля</b><small>Продолжай собирать XP до следующей награды</small></span></div>`);
+  $("#rankUpRewards").innerHTML = rewards.join("");
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+  playSfx?.("star", .95);
+  confettiRain?.(false);
+  haptic?.([12,20,18]);
+  $("#rankUpClose").onclick = closeRankUpModal;
+  modal.onclick = (e) => { if (e.target === modal) closeRankUpModal(); };
+  return true;
 }
 function retentionSessionStart() {
   profile.retention ||= { lastOpenDate: null, openDays: [], lastSessionAt: 0 };

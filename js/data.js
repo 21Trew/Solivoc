@@ -1,8 +1,12 @@
 /* Category-bank loading, validation and conflict rules. */
 let CATEGORY_BANK_REPORT = { categories: 0, ambiguousWords: [], explicitConflicts: 0, warnings: [] };
-const fitsCardText = (s, maxLen) => {
+const fitsCardWord = (s, maxLen) => {
   s = String(s || "").trim();
   return !!s && !/[\s\-‑]/.test(s) && s.length <= maxLen;
+};
+const fitsCardTitle = (s, maxLen) => {
+  s = String(s || "").trim().replace(/\s+/g, " ");
+  return !!s && s.length <= maxLen;
 };
 const sanitizeCategoryBank = (list) =>
   (Array.isArray(list) ? list : [])
@@ -11,11 +15,11 @@ const sanitizeCategoryBank = (list) =>
       for (const raw of Array.isArray(cat.words) ? cat.words : []) {
         const word = String(raw).trim();
         const key = word.toLowerCase();
-        if (fitsCardText(word, MAX_CARD_WORD_LEN) && !uniqueWords.has(key)) uniqueWords.set(key, word);
+        if (fitsCardWord(word, MAX_CARD_WORD_LEN) && !uniqueWords.has(key)) uniqueWords.set(key, word);
       }
-      return { ...cat, title: String(cat.title || "").trim(), words: [...uniqueWords.values()] };
+      return { ...cat, title: String(cat.title || "").trim().replace(/\s+/g, " "), words: [...uniqueWords.values()] };
     })
-    .filter((cat) => fitsCardText(cat.title, MAX_CARD_TITLE_LEN) && cat.words.length >= 3);
+    .filter((cat) => fitsCardTitle(cat.title, MAX_CARD_TITLE_LEN) && cat.words.length >= 3);
 const normWord = (s) =>
   String(s)
     .toLowerCase()
@@ -24,6 +28,7 @@ const normWord = (s) =>
     .trim();
 function categoriesConflict(a, b) {
   if (!a || !b) return false;
+  if (normWord(a.title) === normWord(b.title)) return true;
   if (a.conflictGroup && a.conflictGroup === b.conflictGroup) return true;
   if (a.conflicts?.includes(b.id) || b.conflicts?.includes(a.id)) return true;
   if (a.visual || b.visual) {
@@ -36,8 +41,11 @@ function categoriesConflict(a, b) {
 }
 
 function validateCategoryBank(list = BANK) {
-  const wordOwners = new Map(), warnings = [];
+  const wordOwners = new Map(), titleOwners = new Map(), warnings = [];
   for (const cat of list) {
+    const titleKey = normWord(cat.title);
+    if (!titleOwners.has(titleKey)) titleOwners.set(titleKey, []);
+    titleOwners.get(titleKey).push(cat.id);
     if (cat.words.length < 3) warnings.push(`${cat.title}: меньше 3 слов`);
     for (const word of cat.words) {
       const key = normWord(word);
@@ -54,6 +62,7 @@ function validateCategoryBank(list = BANK) {
     words: [...wordOwners.values()].reduce((n, x) => n + x.length, 0),
     ambiguousWords,
     explicitConflicts: list.reduce((n, c) => n + (c.conflicts?.length || 0), 0),
+    duplicateTitles: [...titleOwners.entries()].filter(([, ids]) => ids.length > 1).map(([title, ids]) => ({ title, ids })),
     warnings,
   };
   return CATEGORY_BANK_REPORT;

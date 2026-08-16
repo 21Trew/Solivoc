@@ -44,13 +44,13 @@
     <div class="app">
       <header class="hud">
         <div class="top">
-          <div class="brand">
-            <span class="brand-mark">✦</span>
-            <span class="brand-copy">
-              <b>Словасьянс</b>
-              <small>пасьянс ассоциаций</small>
+          <button class="game-profile-button global-profile-button" id="gameProfileButton" type="button" aria-label="Открыть профиль">
+            <span class="global-profile-avatar" id="gameProfileAvatar">🙂</span>
+            <span class="global-profile-copy">
+              <b id="gameProfileName">Игрок</b>
+              <small id="gameProfileMeta">Ранг 1 · Новичок</small>
             </span>
-          </div>
+          </button>
           <div class="stats">
             <span class="pill">
               Ур.
@@ -130,6 +130,16 @@
           <strong class="achievement-notice-title" id="achievementNoticeTitle"></strong>
           <span class="achievement-notice-desc" id="achievementNoticeDesc"></span>
         </div>
+      </div>
+    </div>
+    <div class="rank-up-modal" id="rankUpModal" aria-hidden="true">
+      <div class="rank-up-card" role="dialog" aria-modal="true" aria-label="Новый ранг">
+        <div class="rank-up-burst" aria-hidden="true">✦</div>
+        <small>НОВЫЙ РАНГ</small>
+        <div class="rank-up-number" id="rankUpNumber">Ранг 2</div>
+        <h2 id="rankUpName">Связист</h2>
+        <div class="rank-up-rewards" id="rankUpRewards"></div>
+        <button id="rankUpClose">Забрать награду →</button>
       </div>
     </div>
     <div class="deadlock-modal" id="deadlockModal" aria-hidden="true">
@@ -213,8 +223,14 @@
     <div class="hub" id="hub">
       <div class="hub-shell">
         <div class="hub-head">
-          <span class="brand-mark">✦</span>
-          <h2>Словасьянс</h2>
+          <button class="hub-profile-button global-profile-button" id="hubProfileButton" type="button" aria-label="Открыть профиль">
+            <span class="global-profile-avatar" id="hubProfileAvatar">🙂</span>
+            <span class="global-profile-copy">
+              <b id="hubProfileName">Игрок</b>
+              <small id="hubProfileMeta">Ранг 1 · Новичок</small>
+            </span>
+            <span class="hub-profile-xp"><i id="hubProfileXpBar"></i></span>
+          </button>
           <button class="hub-close" id="hubClose">×</button>
         </div>
         <div class="hub-scroll" id="hubContent"></div>

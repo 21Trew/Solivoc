@@ -15,6 +15,7 @@ function makeLevel(level = 1, opts = {}) {
   track("level_started", { level: state.level, mode: state.mode, seed: state.seed });
   render();
   updateCoach();
+  setBackgroundMusic?.(musicModeForState?.(state) || "game");
   if (state.mode === "regular" && state.special)
     setTimeout(() => {
       showToast(`${state.special.icon} ${state.special.title}: ${state.special.desc}`);
@@ -29,7 +30,7 @@ function restartCurrentLevel() {
   if (state.mode === "marathon") return makeLevel(state.level, { mode: "marathon", seed: state.seed, marathonRound: state.marathonRound, marathonId: state.marathonId, cardSourceMode: state.cardSourceMode });
   if (state.mode === "calm") return makeLevel(state.level || 1, { mode: "calm", seed: state.seed, cardSourceMode: state.cardSourceMode });
   if (state.mode === "collection") return makeLevel(state.level || 1, { mode: "collection", seed: state.seed, collectionId: state.collectionId });
-  return makeLevel(state.level, { mode: state.mode, seed: state.seed, cardSourceMode: state.cardSourceMode });
+  return makeLevel(state.level, { mode: state.mode, seed: state.seed, cardSourceMode: state.cardSourceMode, categoryCooldownIds: state.categoryCooldownIds });
 }
 function snapshot() {
   return structuredClone(state);

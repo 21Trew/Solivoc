@@ -81,7 +81,7 @@ function colY(col, index, step = stackStep()) {
    column would otherwise cross the lower board edge. */
 function resetTableauGeometryFit() {
   const root = document.documentElement;
-  root.style.removeProperty("--cw");
+  root.style.removeProperty("--ch");
   root.style.removeProperty("--stack-step");
   delete root.dataset.stackFit;
 }
@@ -95,38 +95,33 @@ function fitTableauGeometry() {
   const root = document.documentElement,
     cs = getComputedStyle(root),
     baseCw = parseFloat(cs.getPropertyValue("--cw")) || 64,
-    baseCh = parseFloat(cs.getPropertyValue("--ch")) || baseCw * 1.54,
+    baseCh = parseFloat(cs.getPropertyValue("--ch")) || baseCw * 1.42,
     baseStep = parseFloat(cs.getPropertyValue("--stack-step")) || 24,
-    ratio = baseCh / baseCw || 1.54,
     available = Math.max(120, tableau.clientHeight - 6),
     units = Math.max(...state.columns.map(visualUnitsInColumn)),
     required = baseCh + Math.max(0, units - 1) * baseStep;
 
   if (required <= available) return;
 
-  const minCwByCols = { 3: 54, 4: 52, 5: 47 },
-    minStepByCols = { 3: 15, 4: 15, 5: 14 },
-    minCw = Math.min(baseCw, minCwByCols[state.cols] || 50),
-    minStep = minStepByCols[state.cols] || 16;
+  // Keep card WIDTH stable for the whole level. Vertical compression is much
+  // less jarring and keeps four/five-column rounds readable.
+  const minRatioByCols = { 3: 1.28, 4: 1.20, 5: 1.14 },
+    minStepByCols = { 3: 14, 4: 13, 5: 12 },
+    minCh = baseCw * (minRatioByCols[state.cols] || 1.18),
+    minStep = minStepByCols[state.cols] || 12;
+  let ch = baseCh,
+    step = baseStep;
 
-  let cw = Math.min(baseCw, (available - Math.max(0, units - 1) * baseStep) / ratio);
-  cw = Math.max(minCw, cw);
-  let step = baseStep;
-
-  if (baseCh * (cw / baseCw) + Math.max(0, units - 1) * step > available && units > 1) {
-    step = Math.min(baseStep, (available - cw * ratio) / (units - 1));
-    step = Math.max(minStep, step);
+  if (units > 1) step = Math.max(minStep, Math.min(baseStep, (available - ch) / (units - 1)));
+  if (ch + Math.max(0, units - 1) * step > available) {
+    ch = Math.max(minCh, available - Math.max(0, units - 1) * step);
+  }
+  if (ch + Math.max(0, units - 1) * step > available && units > 1) {
+    step = Math.max(10, (available - ch) / (units - 1));
   }
 
-  if (cw * ratio + Math.max(0, units - 1) * step > available) {
-    cw = Math.max(42, Math.min(cw, (available - Math.max(0, units - 1) * step) / ratio));
-  }
-  if (cw * ratio + Math.max(0, units - 1) * step > available && units > 1) {
-    step = Math.max(14, (available - cw * ratio) / (units - 1));
-  }
-
-  root.style.setProperty("--cw", `${Math.max(46, cw).toFixed(2)}px`);
-  root.style.setProperty("--stack-step", `${Math.max(12, step).toFixed(2)}px`);
-  root.dataset.stackFit = step < 19 ? "tight" : "compact";
+  root.style.setProperty("--ch", `${Math.max(minCh, ch).toFixed(2)}px`);
+  root.style.setProperty("--stack-step", `${Math.max(10, step).toFixed(2)}px`);
+  root.dataset.stackFit = step < 16 ? "tight" : "compact";
 }
 

@@ -92,6 +92,8 @@ function closeWinModal() {
   clearWinRevealTimers();
   modal.classList.remove("show", "perfect", "perfect-burst");
   modal.setAttribute("aria-hidden", "true");
+  setBackgroundMusic?.(musicModeForState?.() || "game");
+  setTimeout(() => showPendingRankUp?.(), 160);
 }
 function finishLevel() {
   state.rewarded = true;
@@ -270,15 +272,19 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
               ? state.marathonSuccess ? "Продолжить марафон →" : "Новый марафон →"
               : "Следующий уровень →";
 
+  const winIcon = modal.querySelector(".win-icon");
+  if (winIcon) winIcon.textContent = state.mode === "challenge" ? "⚔" : state.mode === "daily" ? "☀" : perfect ? "🏆" : "★";
   modal.classList.remove("show", "perfect", "perfect-burst");
   if (perfect) modal.classList.add("perfect");
   modal.setAttribute("aria-hidden", "false");
   void modal.offsetWidth;
   modal.classList.add("show");
 
+  setBackgroundMusic?.("victory");
   playSfx("win", perfect ? 0.9 : 0.72, 0.08);
   haptic(perfect ? [14, 24, 20] : [12, 22, 14]);
   burst(false);
+  confettiRain?.(perfect);
 
   rewards.forEach((reward, i) => {
     const timer = setTimeout(() => {

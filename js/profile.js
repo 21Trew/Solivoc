@@ -17,6 +17,7 @@ function defaultProfile() {
     titleId: "player",
     frame: "none",
     xp: 0,
+    pendingRankUp: null,
     xpMigrated: false,
     masteryMigrated: false,
     pushClientId: "",
@@ -41,7 +42,7 @@ function defaultProfile() {
     tutorialComplete: false,
     legacyStarsMigrated: false,
     categoryAchievementModelMigrated: false,
-    settings: { sound: true, music: true, haptics: true, notifications: false, challengeReminders: true, dailyReminders: true, weeklyReminders: true, notificationPrompted: false, cardSourceMode: "all" },
+    settings: { sound: true, music: true, haptics: true, notifications: false, challengeReminders: true, dailyReminders: true, weeklyReminders: true, notificationPrompted: false, cardSourceMode: "all", startupScreen: "home" },
     stats: { ...DEFAULT_STATS },
     daily: { lastDate: null, currentStreak: 0, bestStreak: 0, completedDates: [], freezeWeek: null, weekRewards: {} },
   };
@@ -167,9 +168,10 @@ function migrateMetaProfile() {
   if (!profile.analyticsClientId) profile.analyticsClientId = `a_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-5)}`;
   if (profile.tutorialComplete && profile.onboardingComplete == null) profile.onboardingComplete = true;
   profile.frame = FRAME_DEFS.some((f) => f.id === profile.frame) ? profile.frame : "none";
-  profile.avatarEmoji = AVATAR_EMOJIS.includes(profile.avatarEmoji) ? profile.avatarEmoji : "🙂";
+  profile.avatarEmoji = availableAvatarEmojis(profile).includes(profile.avatarEmoji) ? profile.avatarEmoji : "🙂";
   profile.associationCollections = profile.associationCollections && typeof profile.associationCollections === "object" ? profile.associationCollections : {};
   profile.pushClientId = String(profile.pushClientId || "");
+  profile.settings.startupScreen = profile.settings.startupScreen === "game" ? "game" : "home";
   if (!profile.xpMigrated) {
     profile.xp = Math.max(+profile.xp || 0,
       (+profile.stats.levelsCompleted || 0) * 45 +
@@ -222,7 +224,7 @@ function effectUnlockLabel(def) {
   return def.minAchievements ? `${def.minAchievements} достижений` : "Базовый";
 }
 function titleUnlocked(def, p = profile) {
-  return !!def && (!def.achievement || p.achievements.includes(def.achievement));
+  return !!def && (!def.achievement || p.achievements.includes(def.achievement)) && (!def.minXp || (+p.xp || 0) >= def.minXp);
 }
 function applyEffect(id) {
   const def = EFFECT_DEFS.find((x) => x.id === id);

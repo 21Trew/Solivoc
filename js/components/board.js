@@ -1,5 +1,6 @@
 /* Main board renderer and stock interaction. */
 function render() {
+  renderGlobalProfileHeaders?.();
   document.documentElement.style.setProperty("--cols", state.cols);
   document.documentElement.dataset.cols = String(state.cols);
   const chapter = state.mode === "regular" ? chapterInfo(state.level) : null;

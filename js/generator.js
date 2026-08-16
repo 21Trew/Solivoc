@@ -97,45 +97,58 @@ function configForMode(level, mode, rng, special = null, opts = {}) {
   return typeof applyAdaptiveConfig === "function" ? applyAdaptiveConfig(regularConfig(level, rng, special), special) : regularConfig(level, rng, special);
 }
 
-function chooseCompatibleCategories(count, difficulty, rng) {
-  const close = shuffle(BANK, rng).sort(
+function categoryByAnyId(id) {
+  if (String(id || "").startsWith("visual:")) return allAssociationCategories().find((x) => x.id === id) || null;
+  return BANK.find((x) => x.id === id) || null;
+}
+function categoryCooldownSets(ids = []) {
+  const idSet = new Set(ids.filter(Boolean));
+  const titleSet = new Set();
+  for (const id of idSet) {
+    const cat = categoryByAnyId(id);
+    if (cat?.title) titleSet.add(normWord(cat.title));
+  }
+  return { idSet, titleSet };
+}
+function chooseCompatibleFromPool(pool, count, difficulty, rng, initial = [], cooldownIds = []) {
+  const { idSet, titleSet } = categoryCooldownSets(cooldownIds);
+  const ordered = shuffle(pool, rng).sort(
     (a, b) => Math.abs(categoryDifficulty(a) - difficulty) - Math.abs(categoryDifficulty(b) - difficulty),
   );
-  const chosen = [];
-  for (const cat of close) {
-    if (chosen.every((c) => !categoriesConflict(cat, c))) {
-      chosen.push(cat);
-      if (chosen.length === count) return chosen;
+  const fresh = ordered.filter((cat) => !idSet.has(cat.id) && !titleSet.has(normWord(cat.title)));
+  const stale = ordered.filter((cat) => idSet.has(cat.id) || titleSet.has(normWord(cat.title)));
+  const chosen = [...initial];
+  const fill = (source) => {
+    for (const cat of source) {
+      if (chosen.some((x) => x.id === cat.id)) continue;
+      if (chosen.every((c) => !categoriesConflict(cat, c))) {
+        chosen.push(cat);
+        if (chosen.length === count) return true;
+      }
     }
-  }
+    return false;
+  };
+  // Recent categories are a hard cooldown while there are enough compatible alternatives.
+  // Only fall back to them when a heavily constrained pool would otherwise fail to generate.
+  if (fill(fresh)) return chosen;
+  if (fill(stale)) return chosen;
   return [];
 }
-function chooseCompatibleFromPool(pool, count, difficulty, rng, initial = []) {
-  const close = shuffle(pool, rng).sort(
-    (a, b) => Math.abs(categoryDifficulty(a) - difficulty) - Math.abs(categoryDifficulty(b) - difficulty),
-  );
-  const chosen = [...initial];
-  for (const cat of close) {
-    if (chosen.some((x) => x.id === cat.id)) continue;
-    if (chosen.every((c) => !categoriesConflict(cat, c))) {
-      chosen.push(cat);
-      if (chosen.length === count) return chosen;
-    }
-  }
-  return chosen.length === count ? chosen : [];
+function chooseCompatibleCategories(count, difficulty, rng, cooldownIds = []) {
+  return chooseCompatibleFromPool(BANK, count, difficulty, rng, [], cooldownIds);
 }
-function categoriesForSourceMode(count, difficulty, rng, sourceMode = "all") {
+function categoriesForSourceMode(count, difficulty, rng, sourceMode = "all", cooldownIds = []) {
   const mode = normalizeCardSourceMode(sourceMode);
   const visuals = allAssociationCategories();
-  if (mode === "words") return chooseCompatibleCategories(count, difficulty, rng);
-  if (mode === "pictures") return chooseCompatibleFromPool(visuals, count, 2, rng);
-  if (count <= 1) return chooseCompatibleFromPool([...BANK, ...visuals], count, difficulty, rng);
+  if (mode === "words") return chooseCompatibleCategories(count, difficulty, rng, cooldownIds);
+  if (mode === "pictures") return chooseCompatibleFromPool(visuals, count, 2, rng, [], cooldownIds);
+  if (count <= 1) return chooseCompatibleFromPool([...BANK, ...visuals], count, difficulty, rng, [], cooldownIds);
   const visualTarget = Math.max(1, Math.min(count - 1, Math.round(count * (0.34 + rng() * 0.18))));
   const wordTarget = count - visualTarget;
-  const words = chooseCompatibleFromPool(BANK, wordTarget, difficulty, rng);
-  if (words.length !== wordTarget) return chooseCompatibleFromPool([...BANK, ...visuals], count, difficulty, rng);
-  const mixed = chooseCompatibleFromPool(visuals, count, 2, rng, words);
-  return mixed.length === count ? shuffle(mixed, rng) : chooseCompatibleFromPool([...BANK, ...visuals], count, difficulty, rng);
+  const words = chooseCompatibleFromPool(BANK, wordTarget, difficulty, rng, [], cooldownIds);
+  if (words.length !== wordTarget) return chooseCompatibleFromPool([...BANK, ...visuals], count, difficulty, rng, [], cooldownIds);
+  const mixed = chooseCompatibleFromPool(visuals, count, 2, rng, words, cooldownIds);
+  return mixed.length === count ? shuffle(mixed, rng) : chooseCompatibleFromPool([...BANK, ...visuals], count, difficulty, rng, [], cooldownIds);
 }
 function randomColumnCounts(total, cols, rng) {
   const counts = Array(cols).fill(1),
@@ -252,16 +265,17 @@ function isLikelySolvable(s) {
   }
   return completed === target;
 }
-function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCode = null, challengeRole = null, challengeCreatorName = null, challengeCreatorAvatar = null, challengeCreatorResult = null, challengeGuestToken = null, seriesId = null, seriesRound = 1, seriesScoreCreator = 0, seriesScoreGuest = 0, marathonRound = 1, marathonId = null, collectionId = null, cardSourceMode = null } = {}) {
+function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCode = null, challengeRole = null, challengeCreatorName = null, challengeCreatorAvatar = null, challengeCreatorResult = null, challengeGuestToken = null, seriesId = null, seriesRound = 1, seriesScoreCreator = 0, seriesScoreGuest = 0, marathonRound = 1, marathonId = null, collectionId = null, cardSourceMode = null, categoryCooldownIds = null } = {}) {
   const baseSeed = seed || (mode === "daily" ? `daily:${todayKey()}` : mode === "collection" ? `collection:${collectionId || "animals"}:${Date.now()}` : `level:${level}`);
   const sourceMode = mode === "collection" ? "pictures" : normalizeCardSourceMode(cardSourceMode || profile?.settings?.cardSourceMode);
+  const cooldownIds = mode === "regular" ? (Array.isArray(categoryCooldownIds) ? [...categoryCooldownIds] : getRecentCategories().slice(0, 40)) : [];
   for (let attempt = 0; attempt < 45; attempt++) {
     const rng = makeRng(baseSeed + ":" + attempt);
     const special = mode === "regular" ? specialForLevel(level) : null,
       cfg = configForMode(level, mode, rng, special, { marathonRound });
     const chosen = mode === "collection"
       ? chooseCompatibleFromPool(associationCollectionCategories(collectionId), cfg.cats, 2, rng)
-      : categoriesForSourceMode(cfg.cats, cfg.difficulty, rng, sourceMode);
+      : categoriesForSourceMode(cfg.cats, cfg.difficulty, rng, sourceMode, cooldownIds);
     if (chosen.length < cfg.cats) continue;
     const cards = [];
     for (const cat of chosen) {
@@ -295,6 +309,7 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
       completed: 0,
       totalCategories: cfg.cats,
       categoryIds: chosen.map((c) => c.id),
+      categoryCooldownIds: cooldownIds,
       collectionId: mode === "collection" ? associationCollectionById(collectionId).id : null,
       cardSourceMode: sourceMode,
       run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },
@@ -322,7 +337,7 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
     cfg = configForMode(level, mode, rng, special, { marathonRound }),
     chosen = mode === "collection"
       ? chooseCompatibleFromPool(associationCollectionCategories(collectionId), cfg.cats, 2, rng)
-      : categoriesForSourceMode(cfg.cats, cfg.difficulty, rng, sourceMode),
+      : categoriesForSourceMode(cfg.cats, cfg.difficulty, rng, sourceMode, cooldownIds),
     cards = [];
   for (const cat of chosen) {
     const n = Math.min(mode === "collection" ? 5 : 4, cat.words.length),
@@ -350,6 +365,7 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
     completed: 0,
     totalCategories: chosen.length,
     categoryIds: chosen.map((c) => c.id),
+    categoryCooldownIds: cooldownIds,
     collectionId: mode === "collection" ? associationCollectionById(collectionId).id : null,
     cardSourceMode: sourceMode,
     run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },

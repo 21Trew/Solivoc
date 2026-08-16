@@ -56,6 +56,16 @@ function profileHeroMarkup() {
     <div class="profile-meta"><b>Ранг ${xp.level}</b><strong>${escapeHtml(rank.name)}</strong><span>${xp.value}/${xp.goal} XP · ★ ${profile.totalStars}</span></div>
   </section>`;
 }
+function renderGlobalProfileHeaders() {
+  const rank = typeof playerRank === "function" ? playerRank(profile) : { name: "Новичок" },
+    xp = typeof xpLevelProgress === "function" ? xpLevelProgress(profile) : { level: 1, ratio: 0 };
+  const values = [
+    ["#gameProfileAvatar", profile.avatarEmoji || "🙂"], ["#gameProfileName", profile.playerName || "Игрок"], ["#gameProfileMeta", `Ранг ${xp.level} · ${rank.name}`],
+    ["#hubProfileAvatar", profile.avatarEmoji || "🙂"], ["#hubProfileName", profile.playerName || "Игрок"], ["#hubProfileMeta", `Ранг ${xp.level} · ${rank.name}`],
+  ];
+  for (const [selector, value] of values) { const el = $(selector); if (el) el.textContent = value; }
+  const bar = $("#hubProfileXpBar"); if (bar) bar.style.width = `${Math.max(0, Math.min(1, xp.ratio || 0)) * 100}%`;
+}
 function collapsibleSectionMarkup(key, title, subtitle, content, extraClass = "") {
   const open = hubExpandedSections.has(key);
   return `<details class="hub-section collapsible-section ${extraClass}" data-collapsible="${key}" ${open ? "open" : ""}>
@@ -93,8 +103,7 @@ function playTabMarkup() {
   const dailyDone = profile.daily.completedDates.includes(todayKey()), currentChapter = chapterInfo(profile.currentLevel || 1);
   if (!hubChapterNumber) hubChapterNumber = currentChapter.number;
   hubChapterNumber = Math.max(1, Math.min(hubChapterNumber, currentChapter.number));
-  return `${profileHeroMarkup()}
-    ${typeof smartHomeMarkup === "function" ? smartHomeMarkup() : ""}
+  return `${typeof smartHomeMarkup === "function" ? smartHomeMarkup() : ""}
     ${typeof dailyCalendarMarkup === "function" ? dailyCalendarMarkup() : ""}
     <div class="mode-grid">
       <button class="mode-card daily" id="hubDaily"><i>☀</i><b>Daily</b><span>${dailyDone ? "Сегодня пройдено ✓" : "Один расклад для всех"}</span></button>
@@ -130,8 +139,7 @@ function progressTabMarkup() {
       <div class="stat-box"><b>${typeof playerXpLevel === "function" ? playerXpLevel(profile) : 1}</b><span>ранг</span></div><div class="stat-box"><b>${profile.xp || 0}</b><span>XP</span></div>
       <div class="stat-box"><b>${profile.stats.masteredCategories || 0}</b><span>освоено</span></div><div class="stat-box"><b>${profile.stats.bonusObjectivesCompleted || 0}</b><span>бонусов</span></div>
     </div>`;
-  return `${profileHeroMarkup()}
-    ${typeof profileShowcaseMarkup === "function" ? profileShowcaseMarkup() : ""}
+  return `${typeof profileShowcaseMarkup === "function" ? profileShowcaseMarkup() : ""}
     ${collapsibleSectionMarkup("statistics", "Статистика", "твоя история", statsContent)}
     <section class="hub-section"><div class="hub-section-head"><h3>Достижения</h3><small>${profile.achievements.length}/${ACHIEVEMENTS.length}</small></div>
       <div class="achievement-filters">${[["all","Все"],["near","Почти"],["done","Получены"],["rare","Редкие"]].map(([id,label])=>`<button class="${achievementFilter===id?"active":""}" data-ach-filter="${id}">${label}</button>`).join("")}</div>
@@ -223,7 +231,7 @@ function collectionTabMarkup() {
   const cat=BANK.find((c)=>c.id===hubCategoryId),tabs=`<div class="encyclopedia-type-tabs"><button class="${hubEncyclopediaType==="words"?"active":""}" data-encyclopedia-tab="words"><b>Слова</b><span>${wordCount}/${BANK.length}</span></button><button class="${hubEncyclopediaType==="pictures"?"active":""}" data-encyclopedia-tab="pictures"><b>Картинки</b><span>${pictureCount}/${pictureTotal}</span></button></div>`,toolbar=encyclopediaToolbarMarkup();
   const words=`<div class="encyclopedia-pane">${categoryDetailMarkup(cat)}${toolbar}${wordEncyclopediaGridMarkup()}</div>`;
   const pictures=`<div class="encyclopedia-pane">${associationCollectionsMarkup()}<div class="hub-subhead picture-categories-head"><h4>Категории картинок</h4><small>${pictureCount}/${pictureTotal} открыто</small></div>${visualCategoryDetailMarkup(hubVisualCategoryId)}${toolbar}${pictureEncyclopediaGridMarkup()}</div>`;
-  return `${profileHeroMarkup()}<section class="hub-section encyclopedia-shell"><div class="hub-section-head encyclopedia-main-head"><div><h3>Энциклопедия</h3><small>все ассоциации в одном месте</small></div><strong>${totalCount}/${totalCategories}</strong></div>${tabs}${hubEncyclopediaType==="pictures"?pictures:words}</section>`;
+  return `<section class="hub-section encyclopedia-shell"><div class="hub-section-head encyclopedia-main-head"><div><h3>Энциклопедия</h3><small>все ассоциации в одном месте</small></div><strong>${totalCount}/${totalCategories}</strong></div>${tabs}${hubEncyclopediaType==="pictures"?pictures:words}</section>`;
 }
 function cardBackMarkup() {
   return CARD_BACK_DEFS.map((back) => {
@@ -232,7 +240,7 @@ function cardBackMarkup() {
   }).join("");
 }
 function avatarEmojiMarkup(selectedEmoji = profile.avatarEmoji) {
-  return `<div class="avatar-emoji-grid">${AVATAR_EMOJIS.map((emoji)=>`<button type="button" class="avatar-emoji ${selectedEmoji===emoji?"selected":""}" data-profile-avatar="${emoji}" aria-label="Аватар ${emoji}">${emoji}</button>`).join("")}</div>`;
+  return `<div class="avatar-emoji-grid">${availableAvatarEmojis(profile).map((emoji)=>`<button type="button" class="avatar-emoji ${selectedEmoji===emoji?"selected":""}" data-profile-avatar="${emoji}" aria-label="Аватар ${emoji}">${emoji}</button>`).join("")}</div>`;
 }
 function titlePillsMarkup(selectedTitle = profile.titleId) {
   return `<div class="title-pill-grid">${availableTitleDefs(profile).map((t)=>`<button type="button" class="title-pill ${selectedTitle===t.id?"selected":""}" data-profile-title="${t.id}"><i>${escapeHtml(t.icon)}</i><span>${escapeHtml(t.name)}</span></button>`).join("")}</div>`;
@@ -285,13 +293,14 @@ function openProfileEditorModal() {
   if (save) save.onclick = ()=>{
     const name=(nameInput?.value||"").trim().replace(/\s+/g," "), avatar=modal.dataset.avatar, title=titleDefById(modal.dataset.title);
     profile.playerName=(name||"Игрок").slice(0,20);
-    if(AVATAR_EMOJIS.includes(avatar)) profile.avatarEmoji=avatar;
+    if(availableAvatarEmojis(profile).includes(avatar)) profile.avatarEmoji=avatar;
     if(title&&titleUnlocked(title)) profile.titleId=title.id;
     profile.favoriteCategory=$("#profileFavoriteCategory")?.value||"";
     profile.featuredAchievements=String(modal.dataset.featured||"").split(",").filter((id)=>profile.achievements.includes(id)).slice(0,3);
     saveProfile();
     closeProfileEditorModal();
     showToast("Профиль сохранён");
+    renderGlobalProfileHeaders();
     renderHub();
   };
 }
@@ -304,8 +313,7 @@ function notificationPermissionLabel() {
 function appearanceTabMarkup() {
   const themes = THEME_DEFS.map((t)=>{ const unlocked=themeUnlocked(t); return `<button class="theme-tile theme-${t.id} ${unlocked?"":"locked"} ${profile.theme===t.id?"selected":""}" data-theme-id="${t.id}"><b>${t.name}</b><span>${unlocked?"Открыто":themeUnlockLabel(t)}</span></button>`; }).join("");
   const effects = EFFECT_DEFS.map((e)=>{ const unlocked=effectUnlocked(e); return `<button class="effect-tile ${unlocked?"":"locked"} ${profile.effect===e.id?"selected":""}" data-effect-id="${e.id}">${effectPreviewMarkup(e)}<b>${e.name}</b><span>${unlocked?"Открыто":effectUnlockLabel(e)}</span></button>`; }).join("");
-  return `${profileHeroMarkup()}
-    <section class="hub-section"><div class="hub-section-head"><h3>Темы</h3><small>выбери оформление</small></div><div class="theme-grid">${themes}</div></section>
+  return `<section class="hub-section"><div class="hub-section-head"><h3>Темы</h3><small>выбери оформление</small></div><div class="theme-grid">${themes}</div></section>
     <section class="hub-section"><div class="hub-section-head"><h3>Рубашки</h3><small>${CARD_BACK_DEFS.filter((b) => cardBackUnlocked(b)).length}/${CARD_BACK_DEFS.length}</small></div><div class="cardback-grid">${cardBackMarkup()}</div></section>
     <section class="hub-section"><div class="hub-section-head"><h3>Рамки профиля</h3><small>за финалы глав</small></div><div class="frame-grid">${typeof frameTilesMarkup === "function" ? frameTilesMarkup() : ""}</div></section>
     <section class="hub-section"><div class="hub-section-head"><h3>Эффекты победы</h3><small>косметические награды</small></div><div class="effect-grid">${effects}</div></section>`;
@@ -316,7 +324,12 @@ function settingsTabMarkup() {
     report=CATEGORY_BANK_REPORT || {},
     notificationStatus=notificationPermissionLabel();
   const sourceMode = normalizeCardSourceMode(profile.settings.cardSourceMode);
-  const settingsContent = `<div class="card-source-setting"><div class="hub-subhead"><h4>Карты в раскладах</h4><small>какие ассоциации использовать во всех режимах</small></div><div class="card-source-options">${[["words","Только слова","Аа"],["pictures","Только картинки","🖼️"],["all","Все колоды","▦"]].map(([id,label,icon])=>`<button class="${sourceMode===id?"active":""}" data-card-source-mode="${id}"><i>${icon}</i><span>${label}</span></button>`).join("")}</div></div><div class="settings-grid">
+  const startupScreen = profile.settings.startupScreen === "game" ? "game" : "home";
+  const settingsContent = `<div class="card-source-setting"><div class="hub-subhead"><h4>Карты в раскладах</h4><small>какие ассоциации использовать во всех режимах</small></div><div class="card-source-options">${[["words","Только слова","Аа"],["pictures","Только картинки","🖼️"],["all","Все колоды","▦"]].map(([id,label,icon])=>`<button class="${sourceMode===id?"active":""}" data-card-source-mode="${id}"><i>${icon}</i><span>${label}</span></button>`).join("")}</div></div>
+    <div class="startup-setting"><div class="hub-subhead"><h4>При запуске</h4><small>куда переходить после загрузки приложения</small></div><div class="startup-options">
+      <button class="${startupScreen==="home"?"active":""}" data-startup-screen="home"><i>⌂</i><span><b>Стартовая</b><small>Открывать меню игры</small></span></button>
+      <button class="${startupScreen==="game"?"active":""}" data-startup-screen="game"><i>▶</i><span><b>Сразу в игру</b><small>Продолжать последний расклад</small></span></button>
+    </div></div><div class="settings-grid">
       <button class="setting-toggle ${profile.settings.sound?"on":""}" id="soundToggle"><b>♪ Эффекты</b><span>${profile.settings.sound?"Включены":"Выключены"}</span></button>
       <button class="setting-toggle ${profile.settings.music?"on":""}" id="musicToggle"><b>♫ Музыка</b><span>${profile.settings.music?"Включена":"Выключена"}</span></button>
       <button class="setting-toggle ${profile.settings.haptics?"on":""}" id="hapticsToggle"><b>⌁ Вибрация</b><span>${profile.settings.haptics?"Включена":"Выключена"}</span></button>
@@ -335,8 +348,7 @@ function settingsTabMarkup() {
   const bankContent = `<div class="bank-health-grid"><span><b>${report.categories||BANK.length}</b> категорий</span><span><b>${report.words||0}</b> слов</span><span><b>${report.ambiguousWords?.length||0}</b> пересечений</span><span><b>${report.warnings?.length||0}</b> предупреждений</span></div><p>Пересечения автоматически не попадают в один расклад; генератор также проверяет проходимость seed.</p>`;
   const tutorialContent = `<button class="wide-secondary" id="hubTutorial">◇ Запустить обучение заново</button>`;
   const diagnosticsContent = `${typeof qualityAuditMarkup==="function"?qualityAuditMarkup():""}<div class="analytics-health"><b>Аналитика</b><span>Локальные события: ${(()=>{try{return JSON.parse(localStorage.getItem(ANALYTICS_KEY))?.events?.length||0}catch{return 0}})()}</span><small>Анонимные агрегаты отправляются в /api/analytics без имён и текста раскладов.</small></div>`;
-  return `${profileHeroMarkup()}
-    ${collapsibleSectionMarkup("settings-main", "Настройки", "звук и ощущения", settingsContent)}
+  return `${collapsibleSectionMarkup("settings-main", "Настройки", "звук и ощущения", settingsContent)}
     ${collapsibleSectionMarkup("notifications", "Уведомления", "управление по типам", notificationsContent, "notification-settings")}
     ${collapsibleSectionMarkup("save", "Сохранение", "не потеряй прогресс", saveContent)}
     ${collapsibleSectionMarkup("bank", "База слов", "внутренняя проверка", bankContent, "bank-health")}
@@ -345,6 +357,7 @@ function settingsTabMarkup() {
 }
 function renderHub() {
   recomputeStars();
+  renderGlobalProfileHeaders();
   ensureWeeklyChallenge();
   const views = { play: playTabMarkup, progress: progressTabMarkup, collection: collectionTabMarkup, appearance: appearanceTabMarkup, settings: settingsTabMarkup };
   hubContent.innerHTML = (views[hubTab] || playTabMarkup)();
@@ -355,6 +368,7 @@ function bindHubHandlers() {
   hubNav.querySelectorAll("[data-hub-tab]").forEach((btn)=>btn.onclick=()=>{hubTab=btn.dataset.hubTab; renderHub();});
   const on=(id,fn)=>{const el=$(id); if(el) el.onclick=fn;};
   on("#smartAction",()=>runSmartHomeAction?.());
+  on("#hubProfileButton",()=>openProfileEditorModal());
   on("#hubContinue",()=>{const next=profile.currentLevel||1; closeHub(); if(!state||state.rewarded||state.mode!=="regular") makeLevel(next,{mode:"regular"});});
   on("#hubDaily",()=>{closeHub(); makeLevel(0,{mode:"daily",seed:`daily:${todayKey()}`});});
   on("#hubMarathon",()=>{closeHub(); const runId=`marathon:${Date.now().toString(36)}`; makeLevel(1,{mode:"marathon",seed:`${runId}:1`,marathonRound:1,marathonId:runId});});
@@ -367,6 +381,8 @@ function bindHubHandlers() {
   hubContent.querySelectorAll("[data-owned-challenge-rematch]").forEach((btn)=>btn.onclick=()=>createChallengeRematch?.(ownedChallengeByCode(btn.dataset.ownedChallengeRematch),"creator"));
   hubContent.querySelectorAll("[data-received-challenge-play]").forEach((btn)=>btn.onclick=()=>playReceivedChallenge?.(btn.dataset.receivedChallengePlay));
   hubContent.querySelectorAll("[data-received-challenge-rematch]").forEach((btn)=>btn.onclick=()=>createChallengeRematch?.(receivedChallengeByCode(btn.dataset.receivedChallengeRematch),"guest"));
+  hubContent.querySelectorAll("[data-owned-challenge-delete]").forEach((btn)=>btn.onclick=()=>deleteOwnedChallenge?.(btn.dataset.ownedChallengeDelete));
+  hubContent.querySelectorAll("[data-received-challenge-delete]").forEach((btn)=>btn.onclick=()=>deleteReceivedChallenge?.(btn.dataset.receivedChallengeDelete));
   on("#hubTutorial",()=>{closeHub(); makeLevel(1,{mode:"tutorial",step:1});});
   on("#chapterPrev",()=>{hubChapterNumber=Math.max(1,(hubChapterNumber||1)-1);renderHub();});
   on("#chapterNext",()=>{hubChapterNumber=Math.min(chapterInfo(profile.currentLevel||1).number,(hubChapterNumber||1)+1);renderHub();});
@@ -386,6 +402,7 @@ function bindHubHandlers() {
   hubContent.querySelectorAll("[data-duel-tab]").forEach((btn)=>btn.onclick=()=>{hubDuelTab=btn.dataset.duelTab==="history"?"history":"active";renderHub();});
   hubContent.querySelectorAll("[data-duel-history-rematch]").forEach((btn)=>btn.onclick=()=>{const found=findDuelHistoryEntry?.(btn.dataset.duelHistoryRematch);if(found)createChallengeRematch?.(found.entry,found.perspective);});
   hubContent.querySelectorAll("[data-card-source-mode]").forEach((btn)=>btn.onclick=()=>{profile.settings.cardSourceMode=normalizeCardSourceMode(btn.dataset.cardSourceMode);saveProfile();showToast(`Расклады: ${btn.textContent.trim()}`);renderHub();});
+  hubContent.querySelectorAll("[data-startup-screen]").forEach((btn)=>btn.onclick=()=>{profile.settings.startupScreen=btn.dataset.startupScreen==="game"?"game":"home";saveProfile();showToast(profile.settings.startupScreen==="game"?"При запуске: сразу в игру":"При запуске: стартовая");renderHub();});
   hubContent.querySelectorAll("[data-association-collection]").forEach((btn)=>btn.onclick=()=>{const id=btn.dataset.associationCollection;closeHub();makeLevel(1,{mode:"collection",collectionId:id,seed:`collection:${id}:${Date.now()}`});});
   hubContent.querySelectorAll("[data-theme-id]").forEach((btn)=>btn.onclick=()=>{const def=THEME_DEFS.find((x)=>x.id===btn.dataset.themeId);if(themeUnlocked(def)){profile.theme=def.id;saveProfile();}renderHub();if(!themeUnlocked(def))showToast(`Откроется за ${themeUnlockLabel(def)}`);});
   hubContent.querySelectorAll("[data-card-back-id]").forEach((btn)=>btn.onclick=()=>{const def=CARD_BACK_DEFS.find((x)=>x.id===btn.dataset.cardBackId);if(cardBackUnlocked(def)){profile.cardBack=def.id;saveProfile();}renderHub();if(!cardBackUnlocked(def))showToast(cardBackUnlockLabel(def));});
@@ -413,5 +430,5 @@ function openHub(tab = null) {
 }
 function closeHub() {
   hub.classList.remove("show");
-  setBackgroundMusic("game");
+  setBackgroundMusic(musicModeForState?.() || "game");
 }
