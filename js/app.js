@@ -145,12 +145,17 @@ function registerPwa() {
   window.addEventListener("load", async () => {
     try {
       const reg = await navigator.serviceWorker.register("./sw.js");
-      const banner = $("#updateBanner"), updateBtn = $("#updateNow");
+      const banner = $("#updateBanner"), updateBtn = $("#updateNow"), updateReloadKey = "solivoc-explicit-update";
       const showUpdate = (worker) => {
         if (!worker || !navigator.serviceWorker.controller) return;
         banner?.classList.add("show");
         banner?.setAttribute("aria-hidden", "false");
-        if (updateBtn) updateBtn.onclick = () => worker.postMessage({ type: "SKIP_WAITING" });
+        if (updateBtn) updateBtn.onclick = () => {
+          try { sessionStorage.setItem(updateReloadKey, "1"); } catch {}
+          updateBtn.disabled = true;
+          updateBtn.textContent = "Обновляю…";
+          worker.postMessage({ type: "SKIP_WAITING" });
+        };
       };
       if (reg.waiting) showUpdate(reg.waiting);
       reg.addEventListener("updatefound", () => {
@@ -162,7 +167,15 @@ function registerPwa() {
       let refreshing = false;
       navigator.serviceWorker.addEventListener("controllerchange", () => {
         if (refreshing) return;
+        let explicit = false;
+        try { explicit = sessionStorage.getItem(updateReloadKey) === "1"; } catch {}
+        // A newly installed service worker can take control on first launch.
+        // Never reload the game for that event: on iOS/PWA it can briefly leave
+        // a white screen or restart an active session. Reload only when the
+        // player explicitly pressed the update button.
+        if (!explicit) return;
         refreshing = true;
+        try { sessionStorage.removeItem(updateReloadKey); } catch {}
         location.reload();
       });
     } catch (err) {

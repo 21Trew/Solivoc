@@ -272,6 +272,46 @@ function avatarEmojiMarkup(selectedEmoji = profile.avatarEmoji) {
 function titlePillsMarkup(selectedTitle = profile.titleId) {
   return `<div class="title-pill-grid">${availableTitleDefs(profile).map((t)=>`<button type="button" class="title-pill ${selectedTitle===t.id?"selected":""}" data-profile-title="${t.id}"><i>${escapeHtml(t.icon)}</i><span>${escapeHtml(t.name)}</span></button>`).join("")}</div>`;
 }
+function developerMailUnreadCount() {
+  const seen = new Set(profile.developerMailSeen || []);
+  return (typeof DEVELOPER_MESSAGES !== "undefined" ? DEVELOPER_MESSAGES : []).filter((message) => !seen.has(message.id)).length;
+}
+function updateProfileMailBadge() {
+  const badge = $("#profileDeveloperMailBadge"), count = developerMailUnreadCount();
+  if (!badge) return;
+  badge.textContent = count > 9 ? "9+" : count ? String(count) : "";
+  badge.hidden = !count;
+  $("#profileDeveloperMail")?.classList.toggle("has-unread", count > 0);
+}
+function closeDeveloperMailModal() {
+  const modal = $("#developerMailModal");
+  if (!modal) return;
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden", "true");
+}
+function openDeveloperMailModal() {
+  const modal = $("#developerMailModal"), list = $("#developerMailList");
+  if (!modal || !list) return;
+  const messages = typeof DEVELOPER_MESSAGES !== "undefined" ? DEVELOPER_MESSAGES : [];
+  list.innerHTML = messages.length ? messages.map((message, index) => `<article class="developer-message ${index === 0 ? "latest" : ""}">
+      <div class="developer-message-meta"><span>${escapeHtml(message.date || "")}</span>${index === 0 ? "<b>НОВОЕ</b>" : ""}</div>
+      <h3>${escapeHtml(message.title || "Обновление")}</h3>
+      <p>${escapeHtml(message.intro || "")}</p>
+      <ul>${(message.items || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+    </article>`).join("") : `<div class="empty-state">Писем пока нет</div>`;
+  profile.developerMailSeen = [...new Set([...(profile.developerMailSeen || []), ...messages.map((message) => message.id)])];
+  saveProfile();
+  updateProfileMailBadge();
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+  $("#developerMailClose").onclick = closeDeveloperMailModal;
+  modal.onclick = (event) => { if (event.target === modal) closeDeveloperMailModal(); };
+  if (!openDeveloperMailModal.escapeBound) {
+    document.addEventListener("keydown", (event) => { if (event.key === "Escape" && $("#developerMailModal")?.classList.contains("show")) closeDeveloperMailModal(); });
+    openDeveloperMailModal.escapeBound = true;
+  }
+}
+
 function closeProfileEditorModal() {
   const modal = $("#profileEditorModal");
   if (!modal) return;
@@ -324,10 +364,13 @@ function openProfileEditorModal(edit = false) {
   if (!modal || !content) return;
   const frame = FRAME_DEFS.find((f) => f.id === profile.frame) || FRAME_DEFS[0], xp=xpLevelProgress(profile), rank=playerRank(profile), duels=duelHistorySummary(), featured=(profile.featuredAchievements||[]).map((id)=>ACHIEVEMENTS.find((a)=>a.id===id)).filter(Boolean).slice(0,3);
   if (edit) renderProfileEditorForm(modal, content);
-  else content.innerHTML = `<div class="profile-card-view"><div class="profile-card-identity"><span class="profile-card-avatar" data-frame="${frame.id}" style="--frame-h:${frame.hue||250}">${escapeHtml(profile.avatarEmoji||"🙂")}</span><div><small>ВИЗИТКА ИГРОКА</small><h2>${escapeHtml(profile.playerName||"Игрок")}</h2><p>Ранг ${xp.level} · ${escapeHtml(rank.name)} · ещё ${Math.max(0,xp.goal-xp.value)} XP</p></div></div><div class="profile-card-xp"><i style="width:${xp.ratio*100}%"></i></div><div class="profile-showcase-grid"><div><span>Любимая категория</span><b>${profile.favoriteCategory?`${categoryDisplayIcon(profile.favoriteCategory)} ${escapeHtml(profileFavoriteLabel())}`:"—"}</b></div><div><span>Ежедневная серия</span><b>🔥 ${profile.daily.currentStreak||0}</b></div><div><span>Дуэли</span><b>${duels.wins}:${duels.losses}</b></div></div><div class="featured-achievements">${featured.length?featured.map((a)=>`<span><i>${escapeHtml(a.icon)}</i><b>${escapeHtml(a.title)}</b></span>`).join(""):`<small>Избранные достижения пока не выбраны</small>`}</div><button type="button" class="profile-card-edit" id="profileCardEdit">Редактировать профиль</button></div>`;
+  else content.innerHTML = `<div class="profile-card-view"><div class="profile-card-identity"><span class="profile-card-avatar" data-frame="${frame.id}" style="--frame-h:${frame.hue||250}">${escapeHtml(profile.avatarEmoji||"🙂")}</span><div><small>ВИЗИТКА ИГРОКА</small><h2>${escapeHtml(profile.playerName||"Игрок")}</h2><p>Ранг ${xp.level} · ${escapeHtml(rank.name)} · ещё ${Math.max(0,xp.goal-xp.value)} XP</p></div></div><div class="profile-card-xp"><i style="width:${xp.ratio*100}%"></i></div><div class="profile-showcase-grid"><div><span>Любимая категория</span><b>${profile.favoriteCategory?`${categoryDisplayIcon(profile.favoriteCategory)} ${escapeHtml(profileFavoriteLabel())}`:"—"}</b></div><div><span>Ежедневная серия</span><b>🔥 ${profile.daily.currentStreak||0}</b></div><div><span>Дуэли</span><b>${duels.wins}:${duels.losses}</b></div></div><div class="featured-achievements">${featured.length?featured.map((a)=>`<span><i>${escapeHtml(a.icon)}</i><b>${escapeHtml(a.title)}</b></span>`).join(""):`<small>Избранные достижения пока не выбраны</small>`}</div><div class="profile-card-actions"><button type="button" class="profile-card-settings" id="profileCardSettings">Настройки</button><button type="button" class="profile-card-edit" id="profileCardEdit">Редактировать профиль</button></div></div>`;
   modal.classList.add("show"); modal.setAttribute("aria-hidden","false");
   modal.onclick=(event)=>{if(event.target===modal)closeProfileEditorModal();};
   $("#profileEditorClose").onclick=closeProfileEditorModal;
+  $("#profileDeveloperMail").onclick=openDeveloperMailModal;
+  updateProfileMailBadge();
+  $("#profileCardSettings")?.addEventListener("click",()=>{ closeProfileEditorModal(); openHub("settings"); });
   $("#profileCardEdit")?.addEventListener("click",()=>openProfileEditorModal(true));
   if (!openProfileEditorModal.escapeBound) { document.addEventListener("keydown",(event)=>{if(event.key==="Escape"&&$("#profileEditorModal")?.classList.contains("show"))closeProfileEditorModal();}); openProfileEditorModal.escapeBound=true; }
 }

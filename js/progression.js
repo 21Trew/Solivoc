@@ -16,6 +16,49 @@ function awardLevelXpWithCombo(baseXp, reason) {
   return awardXp(total, reason, { notifyRank: false });
 }
 
+let specialIntroStartCallback = null;
+function specialLevelRuleText(special) {
+  if (!special) return "";
+  if (special.noHints && special.maxRecycles === 1) return "Подсказки отключены · колоду можно вернуть только 1 раз";
+  if (special.noHints) return "Подсказки отключены на весь уровень";
+  if (Number.isFinite(special.maxUndos)) return `Доступно отмен: ${special.maxUndos}`;
+  if (Number.isFinite(special.maxRecycles)) return `Колоду можно вернуть ${special.maxRecycles} раз`;
+  if (special.lockedSlot) return "Один слот откроется только после первой собранной категории";
+  if (special.mysteryCategories) return "Названия категорий будут открываться по ходу решения";
+  if (special.bigMix) return "Больше категорий и слов, чем в обычном раскладе";
+  return special.desc || "Особое правило действует до конца уровня";
+}
+function closeSpecialLevelIntro({ start = false } = {}) {
+  const modal = $("#specialLevelModal");
+  if (!modal) return;
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden", "true");
+  const callback = specialIntroStartCallback;
+  specialIntroStartCallback = null;
+  if (start && callback) callback();
+}
+function showSpecialLevelIntro(special, onStart) {
+  const modal = $("#specialLevelModal");
+  if (!modal || !special) { onStart?.(); return; }
+  specialIntroStartCallback = typeof onStart === "function" ? onStart : null;
+  $("#specialLevelIcon").textContent = special.icon || "◆";
+  $("#specialLevelEyebrow").textContent = special.boss ? "ФИНАЛ ГЛАВЫ" : "ОСОБЫЙ УРОВЕНЬ";
+  $("#specialLevelTitle").textContent = special.title || "Испытание";
+  $("#specialLevelDesc").textContent = special.desc || "В этом раскладе действует особое правило.";
+  $("#specialLevelRule").textContent = specialLevelRuleText(special);
+  $("#specialLevelStart").textContent = special.boss ? "Начать финал →" : "Начать испытание →";
+  $("#specialLevelStart").onclick = () => closeSpecialLevelIntro({ start: true });
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+  playSfx?.("combo", 0.45);
+  haptic?.(8);
+}
+function specialWinPraise(special, perfect = false) {
+  if (!special) return "";
+  if (special.boss) return perfect ? "Финал главы пройден идеально — сложное правило не помешало взять ★★★!" : "Финал главы пройден. Особое правило успешно преодолено!";
+  return perfect ? `Испытание «${special.title}» пройдено идеально — отличная работа!` : `Испытание «${special.title}» пройдено. Сильная партия!`;
+}
+
 function calculateStars() {
   return Math.min(3, 1 + (state.run.hints === 0 ? 1 : 0) + (state.run.undos === 0 ? 1 : 0));
 }
@@ -194,6 +237,9 @@ function finishLevel() {
   resetCombo();
 }
 function showWin(stars, newAchievements = [], record = null, bonusDone = false) {
+  const winKey = `${state?.seed || ""}:${state?.mode || ""}:${state?.level || 0}:${state?.run?.moves || 0}`;
+  if (modal?.classList.contains("show") && modal.dataset.winKey === winKey) return;
+  if (modal) modal.dataset.winKey = winKey;
   clearWinRevealTimers();
   const noHints = state.run.hints === 0,
     noUndos = state.run.undos === 0,
@@ -211,7 +257,9 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
     state.mode === "tutorial" ? `Обучение ${state.tutorialStep}/3` : titles[state.mode] || `Уровень ${state.level} пройден`;
 
   $("#winText").textContent =
-    state.mode === "daily"
+    state.mode === "regular" && state.special
+      ? specialWinPraise(state.special, perfect)
+      : state.mode === "daily"
       ? `Серия: ${profile.daily.currentStreak} дн.`
       : state.mode === "challenge"
         ? perfect ? "Идеальная дуэль!" : "Расклад решён. Можно улучшить результат."
@@ -265,12 +313,14 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
   const shareBtn = $("#winShare");
   if (shareBtn) {
     shareBtn.hidden = state.mode === "tutorial";
-    shareBtn.textContent = state.mode === "challenge" ? "⚔ Поделиться дуэлью" : "⇄ Поделиться результатом";
+    shareBtn.textContent = state.mode === "challenge" ? "⚔ Поделиться дуэлью" : "↗ Поделиться уровнем";
   }
 
   const nt = nextTheme();
   $("#winUnlock").textContent =
-    state.mode === "calm"
+    state.mode === "regular" && state.special
+      ? `Усложнение пройдено: ${state.special.desc}`
+      : state.mode === "calm"
       ? "Дзен не влияет на кампанию и звёзды"
       : state.mode === "marathon"
         ? `Лучший марафон: ${profile.stats.bestMarathon || 0}`
@@ -296,10 +346,9 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
 
   const winIcon = modal.querySelector(".win-icon");
   if (winIcon) winIcon.textContent = state.mode === "challenge" ? "⚔" : state.mode === "daily" ? "☀" : perfect ? "🏆" : "★";
-  modal.classList.remove("show", "perfect", "perfect-burst");
+  modal.classList.remove("perfect", "perfect-burst");
   if (perfect) modal.classList.add("perfect");
   modal.setAttribute("aria-hidden", "false");
-  void modal.offsetWidth;
   modal.classList.add("show");
 
   playVictoryJingle?.(perfect);
@@ -318,9 +367,7 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
         haptic(i === 2 && perfect ? [10, 20, 16] : 9);
       }
       if (i === 2 && perfect) {
-        modal.classList.add("perfect-burst");
         burst(true);
-        setTimeout(() => modal.classList.remove("perfect-burst"), 720);
       }
     }, 760 + i * 460);
     winRevealTimers.push(timer);

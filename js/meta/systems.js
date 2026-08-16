@@ -779,6 +779,63 @@ function migrateLastGuestChallengeHistory() {
 migrateLastGuestChallengeHistory();
 
 
+function appShareLink() {
+  const origin = /^https?:$/.test(location.protocol) ? location.origin : "https://solivoc.vercel.app";
+  return `${origin.replace(/\/$/, "")}/`;
+}
+function resultShareTitle(s = state) {
+  if (!s) return "Словасьянс";
+  if (s.mode === "daily") return `Ежедневный · ${todayKey()}`;
+  if (s.mode === "challenge") return "Дуэль";
+  if (s.mode === "collection") return `Картинки · ${associationCollectionById(s.collectionId).name}`;
+  if (s.mode === "calm") return "Дзен";
+  if (s.mode === "marathon") return `Марафон · раунд ${s.marathonRound || 1}`;
+  return `Уровень ${s.level}`;
+}
+async function resultShareFile(s = state) {
+  const stars = Math.max(1, Math.min(3, +(s?.lastStars || calculateStars?.() || 1))),
+    canvas = document.createElement("canvas");
+  canvas.width = 1200;
+  canvas.height = 630;
+  const ctx = canvas.getContext("2d"), title = resultShareTitle(s), link = appShareLink();
+  const bg = ctx.createLinearGradient(0, 0, 1200, 630);
+  bg.addColorStop(0, "#11162f"); bg.addColorStop(.55, "#29255f"); bg.addColorStop(1, "#173d62");
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, 1200, 630);
+  const glow = ctx.createRadialGradient(1000, 90, 30, 1000, 90, 440);
+  glow.addColorStop(0, "rgba(102,217,255,.34)"); glow.addColorStop(1, "rgba(102,217,255,0)");
+  ctx.fillStyle = glow; ctx.fillRect(0,0,1200,630);
+  ctx.fillStyle = "rgba(255,255,255,.085)"; roundRect(ctx, 62, 58, 1076, 514, 44); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,.17)"; ctx.lineWidth = 2; ctx.stroke();
+
+  ctx.fillStyle = "#fff"; ctx.font = "900 50px system-ui, sans-serif"; ctx.textAlign = "left";
+  ctx.fillText("Словасьянс", 100, 132);
+  ctx.fillStyle = "rgba(255,255,255,.68)"; ctx.font = "800 25px system-ui, sans-serif";
+  ctx.fillText(title, 100, 176);
+
+  ctx.font = "900 78px system-ui, sans-serif"; ctx.fillStyle = "#ffd86a";
+  ctx.fillText(`${"★".repeat(stars)}${"☆".repeat(3-stars)}`, 96, 286);
+
+  const stats = [
+    [s?.run?.moves || 0, "ходов"],
+    [s?.run?.errors || 0, "ошибок"],
+    [s?.run?.hints || 0, "подсказок"],
+    [s?.run?.undos || 0, "отмен"],
+  ];
+  stats.forEach(([value,label],i)=>{
+    const x=100+i*248;
+    ctx.fillStyle="rgba(255,255,255,.08)"; roundRect(ctx,x,332,220,112,24); ctx.fill();
+    ctx.fillStyle="#fff"; ctx.font="900 42px system-ui, sans-serif"; ctx.fillText(String(value),x+22,384);
+    ctx.fillStyle="rgba(255,255,255,.62)"; ctx.font="750 19px system-ui, sans-serif"; ctx.fillText(label,x+22,418);
+  });
+
+  ctx.fillStyle="#fff"; ctx.font="900 31px system-ui, sans-serif"; ctx.fillText("Сможешь пройти лучше?",100,510);
+  ctx.fillStyle="rgba(255,255,255,.60)"; ctx.font="750 21px system-ui, sans-serif"; ctx.fillText(link.replace(/^https?:\/\//,""),100,548);
+  ctx.textAlign="right"; ctx.font="900 44px system-ui, sans-serif"; ctx.fillStyle="#fff"; ctx.fillText(profile.avatarEmoji || "🙂",1090,126);
+
+  const blob = await new Promise((resolve)=>canvas.toBlob(resolve,"image/png",.96));
+  if (!blob) throw new Error("image unavailable");
+  return new File([blob], `slovasyans-result-${Date.now()}.png`, { type:"image/png" });
+}
 async function shareCurrentResult() {
   if (!state || state.mode === "tutorial") return;
   const stars = Math.max(1, Math.min(3, +(state.lastStars || calculateStars?.() || 1))),
@@ -786,23 +843,24 @@ async function shareCurrentResult() {
     moves = state.run?.moves || 0,
     hints = state.run?.hints || 0,
     errors = state.run?.errors || 0,
-    undos = state.run?.undos || 0;
-  let title = `Словасьянс · Уровень ${state.level}`,
-    extra = "";
-  if (state.mode === "daily") title = `Словасьянс · Ежедневный ${todayKey()}`;
-  if (state.mode === "challenge") {
-    title = "Словасьянс · Дуэль";
-    const code = normalizeChallengeCode(state.challengeCode || "");
-    if (code) extra = ` · код ${code}`;
-  }
-  const text = `${title}\n${starText} · ${moves} ходов · ${hints} подсказок · ${errors} ошибок · ${undos} отмен${extra}`;
+    undos = state.run?.undos || 0,
+    link = appShareLink(),
+    title = `Словасьянс · ${resultShareTitle(state)}`,
+    text = `${title}\n${starText} · ${moves} ходов · ${errors} ошибок · ${hints} подсказок · ${undos} отмен\nПопробуй сыграть: ${link}`;
   try {
-    if (navigator.share && /^https?:$/.test(location.protocol)) await navigator.share({ title, text });
-    else if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
-    else throw new Error("share unavailable");
-    showToast("Результат готов к отправке");
-  } catch {
-    window.prompt("Скопируй результат", text);
+    const file = await resultShareFile(state);
+    if (navigator.share && navigator.canShare?.({ files:[file] })) await navigator.share({ text, files:[file] });
+    else if (navigator.share && /^https?:$/.test(location.protocol)) await navigator.share({ title, text });
+    else if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      const a=document.createElement("a"); a.href=URL.createObjectURL(file); a.download=file.name; document.body.appendChild(a); a.click();
+      setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1200);
+    } else throw new Error("share unavailable");
+    showToast("Карточка результата готова");
+    track("result_shared", { mode: state.mode, level: state.level, stars });
+  } catch (err) {
+    if (err?.name === "AbortError") return;
+    window.prompt("Скопируй результат и ссылку", text);
   }
 }
 

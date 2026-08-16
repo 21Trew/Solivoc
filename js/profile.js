@@ -27,6 +27,7 @@ function defaultProfile() {
     onboardingVersion: 1,
     favoriteCategory: "",
     featuredAchievements: [],
+    developerMailSeen: [],
     adaptive: { bias: 0, history: [], restartsSinceWin: 0 },
     weeklyDigest: { key: "", baseline: null, pending: null, seenKey: "" },
     analyticsClientId: "",
@@ -77,6 +78,7 @@ function loadProfile() {
         weekly: { ...defaultProfile().weekly, ...(p.weekly || {}) },
         onboardingComplete: typeof p.onboardingComplete === "boolean" ? p.onboardingComplete : !!p.tutorialComplete,
         featuredAchievements: Array.isArray(p.featuredAchievements) ? p.featuredAchievements : [],
+        developerMailSeen: Array.isArray(p.developerMailSeen) ? p.developerMailSeen : [],
         adaptive: { ...defaultProfile().adaptive, ...(p.adaptive || {}), history: Array.isArray(p.adaptive?.history) ? p.adaptive.history : [] },
         weeklyDigest: { ...defaultProfile().weeklyDigest, ...(p.weeklyDigest || {}) },
       };
@@ -165,6 +167,7 @@ function migrateMetaProfile() {
   profile.adaptive.history = Array.isArray(profile.adaptive.history) ? profile.adaptive.history.slice(-12) : [];
   profile.weeklyDigest = { ...defaultProfile().weeklyDigest, ...(profile.weeklyDigest || {}) };
   profile.featuredAchievements = Array.isArray(profile.featuredAchievements) ? profile.featuredAchievements.filter((id) => profile.achievements.includes(id)).slice(0, 3) : [];
+  profile.developerMailSeen = Array.isArray(profile.developerMailSeen) ? [...new Set(profile.developerMailSeen.map(String))] : [];
   profile.favoriteCategory = String(profile.favoriteCategory || "");
   profile.playerId = String(profile.playerId || "");
   if (!profile.playerId) profile.playerId = `p_${Math.random().toString(36).slice(2,10)}${Date.now().toString(36).slice(-6)}`;

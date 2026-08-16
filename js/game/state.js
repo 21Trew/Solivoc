@@ -10,18 +10,22 @@ function makeLevel(level = 1, opts = {}) {
   if (typeof assignBonusObjective === "function") assignBonusObjective(state);
   history = [];
   if (typeof recordLevelKnowledge === "function") recordLevelKnowledge(state);
-  initialDealPending = true;
+  const needsSpecialIntro = state.mode === "regular" && !!state.special && opts.specialIntro !== false;
+  initialDealPending = !needsSpecialIntro;
   if (state.mode === "regular") rememberCategories(state.categoryIds);
-  track("level_started", { level: state.level, mode: state.mode, seed: state.seed });
+  track("level_started", { level: state.level, mode: state.mode, seed: state.seed, special: state.special?.id || "" });
   render();
   updateCoach();
   setBackgroundMusic?.(musicModeForState?.(state) || "game");
-  if (state.mode === "regular" && state.special)
-    setTimeout(() => {
-      showToast(`${state.special.icon} ${state.special.title}: ${state.special.desc}`);
-      playSfx("combo", 0.65);
-    }, 850);
-  setTimeout(() => scheduleDeadlockCheck(900), 250);
+  if (needsSpecialIntro && typeof showSpecialLevelIntro === "function") {
+    showSpecialLevelIntro(state.special, () => {
+      initialDealPending = true;
+      render();
+      setTimeout(() => scheduleDeadlockCheck(900), 250);
+    });
+  } else {
+    setTimeout(() => scheduleDeadlockCheck(900), 250);
+  }
 }
 function restartCurrentLevel() {
   if (!state) return;
@@ -30,7 +34,7 @@ function restartCurrentLevel() {
   if (state.mode === "marathon") return makeLevel(state.level, { mode: "marathon", seed: state.seed, marathonRound: state.marathonRound, marathonId: state.marathonId, cardSourceMode: state.cardSourceMode });
   if (state.mode === "calm") return makeLevel(state.level || 1, { mode: "calm", seed: state.seed, cardSourceMode: state.cardSourceMode });
   if (state.mode === "collection") return makeLevel(state.level || 1, { mode: "collection", seed: state.seed, collectionId: state.collectionId });
-  return makeLevel(state.level, { mode: state.mode, seed: state.seed, cardSourceMode: state.cardSourceMode, categoryCooldownIds: state.categoryCooldownIds });
+  return makeLevel(state.level, { mode: state.mode, seed: state.seed, cardSourceMode: state.cardSourceMode, categoryCooldownIds: state.categoryCooldownIds, specialIntro: false });
 }
 function snapshot() {
   return structuredClone(state);

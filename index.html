@@ -208,9 +208,27 @@
       </div>
     </div>
     <div class="profile-editor-modal" id="profileEditorModal" aria-hidden="true">
-      <div class="profile-editor-card" role="dialog" aria-modal="true" aria-label="Редактирование профиля">
+      <div class="profile-editor-card" role="dialog" aria-modal="true" aria-label="Профиль игрока">
+        <button class="profile-editor-mail" id="profileDeveloperMail" aria-label="Почта разработчика">✉<span id="profileDeveloperMailBadge"></span></button>
         <button class="profile-editor-close" id="profileEditorClose" aria-label="Закрыть">×</button>
         <div class="profile-editor-content" id="profileEditorContent"></div>
+      </div>
+    </div>
+    <div class="developer-mail-modal" id="developerMailModal" aria-hidden="true">
+      <div class="developer-mail-card" role="dialog" aria-modal="true" aria-label="Почта разработчика">
+        <button class="developer-mail-close" id="developerMailClose" aria-label="Закрыть">×</button>
+        <div class="developer-mail-head"><span>✉</span><div><small>ПОЧТА РАЗРАБОТЧИКА</small><h2>Новости Словасьянса</h2></div></div>
+        <div class="developer-mail-list" id="developerMailList"></div>
+      </div>
+    </div>
+    <div class="special-level-modal" id="specialLevelModal" aria-hidden="true">
+      <div class="special-level-card" role="dialog" aria-modal="true" aria-label="Особый уровень">
+        <div class="special-level-icon" id="specialLevelIcon">◆</div>
+        <small id="specialLevelEyebrow">ОСОБЫЙ УРОВЕНЬ</small>
+        <h2 id="specialLevelTitle">Испытание</h2>
+        <p id="specialLevelDesc"></p>
+        <div class="special-level-rule" id="specialLevelRule"></div>
+        <button id="specialLevelStart">Начать испытание →</button>
       </div>
     </div>
     <div class="onboarding-modal" id="onboardingModal" aria-hidden="true">

@@ -1,4 +1,4 @@
-const CACHE = "worditaire-v28";
+const CACHE = "worditaire-v29";
 const CORE = [
   "./",
   "./index.html",
@@ -60,38 +60,42 @@ function shouldCache(request, url, response) {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) return;
+  if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
 
-  event.respondWith(
-    (async () => {
+  event.respondWith((async () => {
+    // Keep HTML and JS from the same cache generation. Serving a fresh HTML
+    // document together with old cached scripts can break the app between
+    // deployments. SW update discovery still happens through register(), and
+    // the player switches generations explicitly via the update banner.
+    if (event.request.mode === "navigate") {
+      const shell = (await caches.match(event.request)) || (await caches.match("./index.html")) || (await caches.match("./"));
+      if (shell) return shell;
       try {
         const response = await fetch(event.request);
-        if (shouldCache(event.request, url, response)) {
-          // Some browsers can return a Response whose stream has already been
-          // locked/consumed. Caching must never break the actual page request.
-          let copy = null;
-          try {
-            if (!response.bodyUsed) copy = response.clone();
-          } catch {}
-          if (copy) {
-            await caches
-              .open(CACHE)
-              .then((cache) => cache.put(event.request, copy))
-              .catch(() => undefined);
-          }
+        if (response?.ok) {
+          try { await caches.open(CACHE).then((cache) => cache.put("./index.html", response.clone())); } catch {}
         }
         return response;
       } catch {
-        const cached = await caches.match(event.request);
-        if (cached) return cached;
-        if (event.request.mode === "navigate") {
-          const shell = await caches.match("./index.html");
-          if (shell) return shell;
-        }
         return Response.error();
       }
-    })(),
-  );
+    }
+
+    // Static game assets are immutable for the lifetime of a SW cache version.
+    // Cache-first avoids dozens of network/cache stream operations on every
+    // launch, which is notably more stable in iOS standalone mode.
+    const cached = await caches.match(event.request);
+    if (cached) return cached;
+    try {
+      const response = await fetch(event.request);
+      if (shouldCache(event.request, url, response)) {
+        try { await caches.open(CACHE).then((cache) => cache.put(event.request, response.clone())); } catch {}
+      }
+      return response;
+    } catch {
+      return Response.error();
+    }
+  })());
 });
 
 self.addEventListener("push", (event) => {
