@@ -26,6 +26,27 @@ function xpLevelProgress(p = profile) {
     value = xp - base;
   return { level, value, goal: XP_PER_LEVEL, ratio: Math.min(1, value / XP_PER_LEVEL) };
 }
+function rankLevelReward(level, p = profile) {
+  const avatar = rankRewardAvatar?.(level) || null,
+    levelXp = Math.max(0, (level - 1) * XP_PER_LEVEL),
+    prevXp = Math.max(0, (level - 2) * XP_PER_LEVEL),
+    title = TITLE_DEFS.find((x) => x.minXp && x.minXp > prevXp && x.minXp <= levelXp) || null;
+  return { level, avatar, title };
+}
+function rankRewardsRoadmapMarkup(limit = 5) {
+  const xp = xpLevelProgress(profile), start = xp.level + 1, rows = [];
+  for (let level = start; level < start + limit; level++) {
+    const reward = rankLevelReward(level), icons = [reward.avatar, reward.title?.icon].filter(Boolean);
+    rows.push(`<div class="rank-roadmap-item"><span class="rank-roadmap-level">${level}</span><span class="rank-roadmap-icons">${icons.length ? icons.map((x)=>`<i>${escapeHtml(x)}</i>`).join("") : `<i>✦</i>`}</span><span><b>${reward.title ? `Титул «${escapeHtml(reward.title.name)}»` : reward.avatar ? "Новый аватар" : "Новый ранг"}</b><small>${level === start ? `через ${xp.goal - xp.value} XP` : `${(level - start) * XP_PER_LEVEL + (xp.goal - xp.value)} XP`}</small></span></div>`);
+  }
+  return `<section class="hub-section rank-roadmap"><div class="hub-section-head"><div><h3>Награды за ранг</h3><small>что откроется дальше</small></div><strong>Ранг ${xp.level}</strong></div><div class="rank-roadmap-list">${rows.join("")}</div></section>`;
+}
+function loginRewardsMarkup() {
+  const days = profile.retention?.totalOpenDays || 0;
+  const next = LOGIN_REWARD_DEFS.find((reward) => days < reward.days);
+  return `<section class="hub-section login-rewards"><div class="hub-section-head"><div><h3>Награды за входы</h3><small>считаются разные дни, а не серия подряд</small></div><strong>${days} дн.</strong></div><div class="login-reward-grid">${LOGIN_REWARD_DEFS.map((reward)=>{const done=days>=reward.days;return `<div class="login-reward ${done?"done":""}"><i>${reward.emoji}</i><span><b>${reward.title}</b><small>${done?`Аватар ${reward.emoji} получен ✓`:`Аватар ${reward.emoji} · ещё ${reward.days-days} дн.`}</small></span></div>`;}).join("")}</div>${next?`<p class="login-next">Следующая награда через <b>${next.days-days}</b> дн.</p>`:`<p class="login-next complete">Все награды за входы открыты ✓</p>`}</section>`;
+}
+
 function awardXp(amount, reason = "", { notifyRank = true } = {}) {
   amount = Math.max(0, Math.round(+amount || 0));
   if (!amount) return 0;
@@ -102,12 +123,16 @@ function retentionSessionStart() {
     if (age === 1 && !profile.retention.d1Tracked) { profile.retention.d1Tracked = true; track("retention_d1"); }
     if (age >= 7 && !profile.retention.d7Tracked) { profile.retention.d7Tracked = true; track("retention_d7"); }
   }
-  if (!profile.retention.openDays.includes(today)) profile.retention.openDays.push(today);
-  if (profile.retention.openDays.length > 90) profile.retention.openDays = profile.retention.openDays.slice(-90);
+  const firstOpenToday = !profile.retention.openDays.includes(today);
+  if (firstOpenToday) {
+    profile.retention.openDays.push(today);
+    profile.retention.totalOpenDays = Math.max(+profile.retention.totalOpenDays || 0, profile.retention.openDays.length - 1) + 1;
+  }
+  if (profile.retention.openDays.length > 120) profile.retention.openDays = profile.retention.openDays.slice(-120);
   const returning = !!profile.retention.lastOpenDate && profile.retention.lastOpenDate !== today;
   profile.retention.lastOpenDate = today;
   profile.retention.lastSessionAt = Date.now();
-  track("session_started", { returning, openDays: profile.retention.openDays.length });
+  track("session_started", { returning, openDays: profile.retention.totalOpenDays || profile.retention.openDays.length });
   saveProfile();
 }
 
@@ -132,7 +157,7 @@ function currentDailyWeek() {
 function dailyCalendarMarkup() {
   const labels = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"], today = todayKey(), week = currentDailyWeek(), completed = new Set(profile.daily?.completedDates || []);
   const rewards = profile.daily?.weekRewards?.[week.key] || [];
-  return `<section class="daily-calendar"><div class="daily-calendar-head"><div><small>DAILY НЕДЕЛИ</small><b>${week.count}/7 дней</b></div><span>🔥 ${profile.daily.currentStreak || 0}</span></div>
+  return `<section class="daily-calendar"><div class="daily-calendar-head"><div><small>ЕЖЕДНЕВНАЯ СЕРИЯ</small><b>${week.count}/7 дней</b></div><span>🔥 ${profile.daily.currentStreak || 0}</span></div>
     <div class="daily-days">${week.days.map((key,i)=>`<div class="daily-day ${completed.has(key)?"done":""} ${key===today?"today":""}"><span>${labels[i]}</span><i>${completed.has(key)?"✓":key===today?"•":""}</i></div>`).join("")}</div>
     <div class="daily-milestones">${[[3,50],[5,100],[7,180]].map(([n,xp])=>`<span class="${week.count>=n?"reached":""} ${rewards.includes(n)?"claimed":""}"><b>${n}/7</b><small>+${xp} XP</small></span>`).join("")}</div>
   </section>`;
@@ -144,8 +169,8 @@ function awardDailyWeekMilestones() {
   for (const [goal, xp] of [[3,50],[5,100],[7,180]]) {
     if (week.count >= goal && !claimed.includes(goal)) {
       claimed.push(goal);
-      awardXp(xp, `Daily ${goal}/7`, { notifyRank: false });
-      fresh.push({ icon: "☀", title: `Daily ${goal}/7`, desc: `Недельная награда: +${xp} XP` });
+      awardXp(xp, `Ежедневный ${goal}/7`, { notifyRank: false });
+      fresh.push({ icon: "☀", title: `Ежедневный ${goal}/7`, desc: `Недельная награда: +${xp} XP` });
     }
   }
   if (fresh.length && typeof queueAchievementNotifications === "function") queueAchievementNotifications(fresh);
@@ -269,9 +294,9 @@ function unseenDuelEntry() {
 }
 function smartHomeAction() {
   const duel = unseenDuelEntry();
-  if (duel) return { kind:"duel", icon:"⚔", eyebrow:"ДРУГ ОТВЕТИЛ", title:`${duel.guestResult.playerName || "Друг"} сыграл вызов`, desc:`${duel.code} · результат готов к раскрытию`, button:"Посмотреть результат", code:duel.code };
+  if (duel) return { kind:"duel", icon:"⚔", eyebrow:"ДРУГ ОТВЕТИЛ", title:`${duel.guestResult.playerName || "Друг"} завершил дуэль`, desc:`${duel.code} · результат дуэли готов`, button:"Посмотреть результат", code:duel.code };
   const dailyDone = profile.daily.completedDates.includes(todayKey());
-  if (!dailyDone) return { kind:"daily", icon:"☀", eyebrow:"СЕГОДНЯ", title:"Daily ждёт тебя", desc:"Один расклад для всех игроков · поддержи серию", button:"Играть Daily" };
+  if (!dailyDone) return { kind:"daily", icon:"☀", eyebrow:"СЕГОДНЯ", title:"Ежедневный расклад ждёт", desc:"Один расклад для всех игроков · поддержи серию", button:"Играть" };
   const w = weeklyProgress();
   if (!w.completed && w.ratio >= .65) return { kind:"weekly", icon:w.def.icon, eyebrow:"ПОЧТИ ГОТОВО", title:w.def.title, desc:`${w.value}/${w.goal} · осталось ${w.goal-w.value}`, button:"Продолжить" };
   const next = profile.currentLevel || 1, inChapter = ((next-1)%CHAPTER_SIZE)+1;
@@ -328,7 +353,7 @@ function finalizeSeriesForEntry(entry, perspective = "creator") {
   entry.seriesAwarded = true;
   if (mine >= 2) {
     profile.stats.seriesWins = (profile.stats.seriesWins || 0) + 1;
-    awardXp(120,"Победа в серии",{notifyRank:false});
+    awardXp(120,"Победа в серии дуэлей",{notifyRank:false});
   }
   saveProfile();
   checkAchievements?.();

@@ -6,10 +6,10 @@ function categoryStat(id) {
 function levelRefLabel(s = state) {
   if (!s) return null;
   if (s.mode === "regular") return `Ур. ${s.level}`;
-  if (s.mode === "daily") return `Daily ${todayKey()}`;
-  if (s.mode === "challenge") return "Испытание";
+  if (s.mode === "daily") return `Ежедневный ${todayKey()}`;
+  if (s.mode === "challenge") return "Дуэль";
   if (s.mode === "marathon") return `Марафон ${s.marathonRound || 1}`;
-  if (s.mode === "calm") return "Спокойный режим";
+  if (s.mode === "calm") return "Дзен";
   if (s.mode === "collection") return `Картинки · ${associationCollectionById(s.collectionId).name}`;
   return null;
 }
@@ -74,6 +74,7 @@ function ensureWeeklyChallenge() {
     id: def.id,
     baseline: { [def.metric]: metricValue(def.metric) },
     completed: false,
+    rewarded: false,
     completedCount: profile.weekly.completedCount || profile.stats.weeklyCompleted || 0,
   };
   saveProfile();
@@ -94,9 +95,13 @@ function updateWeeklyChallenge() {
   profile.weekly.completed = true;
   profile.weekly.completedCount = (profile.weekly.completedCount || 0) + 1;
   profile.stats.weeklyCompleted = Math.max(profile.stats.weeklyCompleted || 0, profile.weekly.completedCount);
+  if (!profile.weekly.rewarded && progress.def.rewardXp) {
+    profile.weekly.rewarded = true;
+    awardXp?.(progress.def.rewardXp, "Недельное испытание", { notifyRank: false });
+  }
   saveProfile();
   if (typeof queueAchievementNotifications === "function") {
-    queueAchievementNotifications([{ icon: "W", title: "Недельное испытание выполнено", desc: progress.def.title }]);
+    queueAchievementNotifications([{ icon: "W", title: "Недельное испытание выполнено", desc: `${progress.def.title} · +${progress.def.rewardXp || 0} XP` }]);
   }
   return true;
 }
@@ -296,7 +301,7 @@ function ownedChallengeCardMarkup(entry, { compact = false } = {}) {
       ${!me || !friend ? `<button data-owned-challenge-play="${entry.code}">▶ ${me ? "Переиграть" : "Сыграть"}</button>` : ""}
       ${!friend && entry.status !== "expired" ? `<button data-owned-challenge-share="${entry.code}">⇄ Отправить</button>` : ""}
       ${friend && me ? `<button data-owned-challenge-rematch="${entry.code}">⚔ Реванш</button>` : ""}
-      <button class="challenge-delete" data-owned-challenge-delete="${entry.code}" title="Удалить вызов">✕ Удалить</button>
+      <button class="challenge-delete" data-owned-challenge-delete="${entry.code}" title="Удалить дуэль">✕ Удалить</button>
     </div>
   </article>`;
 }
@@ -315,7 +320,7 @@ function receivedChallengeCardMarkup(entry, { compact = false } = {}) {
     <div class="owned-challenge-actions">
       ${!result ? `<button data-received-challenge-play="${entry.code}">▶ Сыграть</button>` : ""}
       ${result && creatorResult ? `<button data-received-challenge-rematch="${entry.code}">⚔ Реванш</button>` : ""}
-      <button class="challenge-delete" data-received-challenge-delete="${entry.code}" title="Удалить вызов">✕ Удалить</button>
+      <button class="challenge-delete" data-received-challenge-delete="${entry.code}" title="Удалить дуэль">✕ Удалить</button>
     </div>
   </article>`;
 }
@@ -323,36 +328,36 @@ async function deleteOwnedChallenge(code) {
   const entry = ownedChallengeByCode(code);
   if (!entry) return;
   const pending = !(entry.creatorResult && entry.guestResult) && entry.status !== "expired";
-  if (!confirm(pending ? "Удалить и отменить этот вызов? Друг больше не сможет открыть код." : "Удалить этот вызов из истории?")) return;
+  if (!confirm(pending ? "Удалить и отменить эту дуэль? Друг больше не сможет открыть код." : "Удалить эту дуэль из истории?")) return;
   if (pending && entry.ownerToken) {
     try { await challengeApi("POST", "", { action: "cancel", code: entry.code, ownerToken: entry.ownerToken }); }
     catch (error) { if (![404, 410].includes(error?.status)) console.warn("Challenge cancel", error); }
   }
   profile.sentChallenges = (profile.sentChallenges || []).filter((x) => x.code !== entry.code);
   saveProfile();
-  showToast(pending ? "Вызов удалён" : "Матч удалён из истории");
+  showToast(pending ? "Дуэль удалена" : "Матч удалён из истории");
   renderHub?.();
 }
 function deleteReceivedChallenge(code) {
   const entry = receivedChallengeByCode(code);
   if (!entry) return;
-  if (!confirm("Удалить этот вызов с устройства?")) return;
+  if (!confirm("Удалить эту дуэль с устройства?")) return;
   profile.receivedChallenges = (profile.receivedChallenges || []).filter((x) => x.code !== entry.code);
   saveProfile();
-  showToast("Вызов удалён");
+  showToast("Дуэль удалена");
   renderHub?.();
 }
 function ownedChallengesMarkup() {
   pruneSentChallenges();
   const items = (profile.sentChallenges || []).slice(0, 6);
   if (!items.length) return "";
-  return `<section class="hub-section owned-challenges"><div class="hub-section-head"><h3>Мои вызовы</h3><small>${items.length}</small></div><div class="owned-challenge-list">${items.map((entry)=>ownedChallengeCardMarkup(entry)).join("")}</div></section>`;
+  return `<section class="hub-section owned-challenges"><div class="hub-section-head"><h3>Мои дуэли</h3><small>${items.length}</small></div><div class="owned-challenge-list">${items.map((entry)=>ownedChallengeCardMarkup(entry)).join("")}</div></section>`;
 }
 function receivedChallengesMarkup() {
   pruneReceivedChallenges();
   const items = (profile.receivedChallenges || []).slice(0, 6);
   if (!items.length) return "";
-  return `<section class="hub-section owned-challenges received-challenges"><div class="hub-section-head"><h3>Полученные вызовы</h3><small>${items.length}</small></div><div class="owned-challenge-list">${items.map((entry)=>receivedChallengeCardMarkup(entry)).join("")}</div></section>`;
+  return `<section class="hub-section owned-challenges received-challenges"><div class="hub-section-head"><h3>Полученные дуэли</h3><small>${items.length}</small></div><div class="owned-challenge-list">${items.map((entry)=>receivedChallengeCardMarkup(entry)).join("")}</div></section>`;
 }
 
 async function createRemoteChallenge(meta = {}) {
@@ -444,7 +449,7 @@ async function challengeInviteFile(entry) {
   ctx.fillText("Словасьянс", 234, 139);
   ctx.fillStyle = "rgba(255,255,255,.72)";
   ctx.font = "700 25px system-ui, sans-serif";
-  ctx.fillText(`Вызов от ${entry.creatorName || "Игрок"}`, 234, 183);
+  ctx.fillText(`Дуэль от ${entry.creatorName || "Игрок"}`, 234, 183);
 
   ctx.fillStyle = "rgba(255,255,255,.72)";
   ctx.font = "800 25px system-ui, sans-serif";
@@ -476,7 +481,7 @@ function roundRect(ctx, x, y, w, h, r) {
 async function shareChallengeEntry(entry) {
   if (!entry) return false;
   const link = challengeShortLink(entry),
-    text = `Словасьянс — вызов\nКод: ${entry.code}\n${link}`;
+    text = `Словасьянс — дуэль\nКод: ${entry.code}\n${link}`;
   try {
     const file = await challengeInviteFile(entry);
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
@@ -494,7 +499,7 @@ async function shareChallengeEntry(entry) {
       a.click();
       setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1200);
     } else throw new Error("share unavailable");
-    showToast(`Вызов ${entry.code} готов`);
+    showToast(`Дуэль ${entry.code} готова`);
     track("challenge_shared");
     return true;
   } catch (err) {
@@ -505,7 +510,7 @@ async function shareChallengeEntry(entry) {
 }
 async function shareNewChallenge() {
   try {
-    showToast("Создаю вызов…");
+    showToast("Создаю дуэль…");
     const entry = await createRemoteChallenge();
     if (hub?.classList.contains("show") && typeof renderHub === "function") renderHub();
     await shareChallengeEntry(entry);
@@ -513,7 +518,7 @@ async function shareNewChallenge() {
     return entry.code;
   } catch (err) {
     console.error("Challenge create:", err);
-    showToast(err?.status === 503 ? "Подключи Redis для сетевых вызовов" : "Не удалось создать вызов");
+    showToast(err?.status === 503 ? "Подключи Redis для сетевых дуэлей" : "Не удалось создать дуэль");
     return null;
   }
 }
@@ -578,7 +583,7 @@ async function startChallengeCode(value) {
       return true;
     } catch (err) {
       console.error("Challenge start:", err);
-      showToast(err?.status === 410 || err?.status === 404 ? "Этот код уже сыгран или истёк" : "Не удалось загрузить вызов");
+      showToast(err?.status === 410 || err?.status === 404 ? "Этот код уже сыгран или истёк" : "Не удалось загрузить дуэль");
       return false;
     }
   }
@@ -688,8 +693,8 @@ async function refreshOwnedChallenges({ notify = true } = {}) {
         if (typeof finalizeSeriesForEntry === "function") finalizeSeriesForEntry(entry,"creator");
         if (wasNew && typeof queueDuelReveal === "function") queueDuelReveal(entry);
         if (wasNew && notify && typeof queueAchievementNotifications === "function") {
-          queueAchievementNotifications([{ icon: "⇄", title: "Друг завершил вызов", desc: `${entry.code} · ${challengeStarsText(entry.guestResult.stars)} · ${entry.guestResult.moves} ход. · ошибок ${entry.guestResult.errors || 0}` }]);
-          if (typeof showSystemNotification === "function") showSystemNotification("Друг завершил вызов", `${entry.guestResult.playerName || "Друг"}: ${challengeStarsText(entry.guestResult.stars)} · ${entry.guestResult.moves} ходов`, { tag:`challenge-${entry.code}` });
+          queueAchievementNotifications([{ icon: "⇄", title: "Друг завершил дуэль", desc: `${entry.code} · ${challengeStarsText(entry.guestResult.stars)} · ${entry.guestResult.moves} ход. · ошибок ${entry.guestResult.errors || 0}` }]);
+          if (typeof showSystemNotification === "function") showSystemNotification("Друг завершил дуэль", `${entry.guestResult.playerName || "Друг"}: ${challengeStarsText(entry.guestResult.stars)} · ${entry.guestResult.moves} ходов`, { tag:`challenge-${entry.code}` });
         }
       } else if (data.status === "pending") entry.status = "pending";
     } catch (err) {
@@ -700,8 +705,10 @@ async function refreshOwnedChallenges({ notify = true } = {}) {
     }
   }
   if (changed) {
+    syncDuelStats?.();
+    checkAchievements?.();
     saveProfile();
-    if (hub?.classList.contains("show") && typeof renderHub === "function" && typeof hubTab !== "undefined" && hubTab === "play") renderHub();
+    if (hub?.classList.contains("show") && typeof renderHub === "function" && typeof hubTab !== "undefined" && hubTab === "modes") renderHub();
   }
   return changed;
 }
@@ -721,8 +728,10 @@ async function refreshReceivedChallenges() {
     } catch(err) { if(err?.status===404||err?.status===410) entry.synced=true; }
   }
   if(changed) {
+    syncDuelStats?.();
+    checkAchievements?.();
     saveProfile();
-    if (hub?.classList.contains("show") && typeof renderHub === "function" && typeof hubTab !== "undefined" && hubTab === "play") renderHub();
+    if (hub?.classList.contains("show") && typeof renderHub === "function" && typeof hubTab !== "undefined" && hubTab === "modes") renderHub();
   }
   return changed;
 }
@@ -777,9 +786,9 @@ async function shareCurrentResult() {
     undos = state.run?.undos || 0;
   let title = `Словасьянс · Уровень ${state.level}`,
     extra = "";
-  if (state.mode === "daily") title = `Словасьянс · Daily ${todayKey()}`;
+  if (state.mode === "daily") title = `Словасьянс · Ежедневный ${todayKey()}`;
   if (state.mode === "challenge") {
-    title = "Словасьянс · Вызов";
+    title = "Словасьянс · Дуэль";
     const code = normalizeChallengeCode(state.challengeCode || "");
     if (code) extra = ` · код ${code}`;
   }

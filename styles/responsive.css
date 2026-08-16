@@ -885,3 +885,55 @@ html[data-stack-fit="tight"] .card.category.open-under .name { padding-top: 1px;
   .game-profile-button .global-profile-copy b { font-size:11px; }
   .game-profile-button .global-profile-copy small { font-size:7px; }
 }
+
+/* ===== Readability pass v15 ===== */
+@media (max-width: 420px) {
+  .hub-scroll { padding-inline: 11px; }
+  .hub-section { padding: 12px; }
+  .hub-section h3 { font-size: 15px; }
+  .hub-section small, .hub-subhead small { font-size: 9px; }
+  .hub-tabs button span { font-size: 8px; }
+  .hub-tabs button i { font-size: 17px; }
+  .global-profile-copy b { font-size: 15px; }
+  .hub-profile-button .global-profile-copy b { font-size: 15px; }
+  .hub-profile-button .global-profile-copy small { font-size: 9px; }
+  .game-profile-button .global-profile-copy b { font-size: 12.5px; }
+  .game-profile-button .global-profile-copy small { font-size: 8px; }
+  .mode-card b { font-size: 12px; }
+  .mode-card span { font-size: 9px; }
+  .mode-card em { font-size: 8px; }
+  .weekly-copy b { font-size: 13px; }
+  .weekly-copy span { font-size: 9.5px; }
+  .weekly-copy small { font-size: 8px; }
+  .weekly-copy em { font-size: 9px; }
+  .achievement b { font-size: 11px; }
+  .achievement p { font-size: 9px; }
+  .achievement-copy small { font-size: 8px; }
+  .stat-box span { font-size: 8.5px; }
+  .profile-editor-identity { grid-template-columns: 1fr; }
+  .profile-compact-section .title-pill-grid { grid-template-columns: 1fr 1fr; }
+  .login-reward-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .login-reward b { font-size: 8.5px; }
+}
+@media (max-width: 370px) {
+  .hub-tabs button span { font-size: 7.5px; }
+  .global-profile-copy small { font-size: 8.5px; }
+  .hub-profile-button .global-profile-copy small { font-size: 8.5px; }
+  .mode-grid { grid-template-columns: 1fr 1fr; }
+  .mode-card { min-height: 98px; padding: 10px; }
+  .weekly-card { grid-template-columns: 48px minmax(0,1fr); padding: 12px; }
+  .weekly-icon { width: 48px; height: 48px; font-size: 16px; }
+  .rank-roadmap-item { grid-template-columns: 30px 48px minmax(0,1fr); gap:7px; }
+  .login-reward-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+
+/* Six-item bottom navigation. */
+@media (max-width: 420px) {
+  .hub-tabs { gap:4px; }
+  .hub-tabs button { min-height:53px; padding-inline:1px; }
+  .hub-tabs button i { font-size:17px; }
+  .hub-tabs button span { font-size:7.8px; letter-spacing:-.01em; }
+}
+@media (max-width: 350px) {
+  .hub-tabs button span { font-size:7.2px; }
+}

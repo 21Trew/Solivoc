@@ -21,7 +21,7 @@ function defaultProfile() {
     xpMigrated: false,
     masteryMigrated: false,
     pushClientId: "",
-    retention: { lastOpenDate: null, openDays: [], lastSessionAt: 0, firstOpenAt: 0, d1Tracked: false, d7Tracked: false },
+    retention: { lastOpenDate: null, openDays: [], totalOpenDays: 0, lastSessionAt: 0, firstOpenAt: 0, d1Tracked: false, d7Tracked: false },
     onboardingComplete: false,
     onboardingVersion: 1,
     favoriteCategory: "",
@@ -38,7 +38,7 @@ function defaultProfile() {
     sentChallenges: [],
     receivedChallenges: [],
     pendingChallengeSubmissions: [],
-    weekly: { key: null, id: null, baseline: {}, completed: false, completedCount: 0 },
+    weekly: { key: null, id: null, baseline: {}, completed: false, rewarded: false, completedCount: 0 },
     tutorialComplete: false,
     legacyStarsMigrated: false,
     categoryAchievementModelMigrated: false,
@@ -159,6 +159,7 @@ function migrateMetaProfile() {
   profile.daily.weekRewards = profile.daily.weekRewards && typeof profile.daily.weekRewards === "object" ? profile.daily.weekRewards : {};
   profile.retention = { ...defaultProfile().retention, ...(profile.retention || {}) };
   profile.retention.openDays = Array.isArray(profile.retention.openDays) ? profile.retention.openDays : [];
+  profile.retention.totalOpenDays = Math.max(+profile.retention.totalOpenDays || 0, profile.retention.openDays.length);
   profile.adaptive = { ...defaultProfile().adaptive, ...(profile.adaptive || {}) };
   profile.adaptive.history = Array.isArray(profile.adaptive.history) ? profile.adaptive.history.slice(-12) : [];
   profile.weeklyDigest = { ...defaultProfile().weeklyDigest, ...(profile.weeklyDigest || {}) };

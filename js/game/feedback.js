@@ -100,12 +100,40 @@ const MUSIC_PATTERNS = {
     volume: 0.0078,
     type: "sine",
   },
-  challenge: {
-    notes: [220, 261.63, 329.63, 293.66, 246.94, 311.13, 369.99, 329.63],
-    interval: 470,
-    duration: 0.42,
-    volume: 0.0072,
+  daily: {
+    notes: [329.63, 392, 493.88, 440, 392, 523.25, 493.88, 392],
+    interval: 560,
+    duration: 0.5,
+    volume: 0.0068,
+    type: "sine",
+  },
+  marathon: {
+    notes: [164.81, 196, 220, 246.94, 220, 261.63, 293.66, 246.94],
+    interval: 430,
+    duration: 0.4,
+    volume: 0.0074,
     type: "triangle",
+  },
+  zen: {
+    notes: [174.61, 220, 261.63, 220, 196, 246.94, 293.66, 246.94],
+    interval: 980,
+    duration: 1.12,
+    volume: 0.0058,
+    type: "sine",
+  },
+  duel: {
+    notes: [220, 277.18, 329.63, 246.94, 293.66, 369.99, 311.13, 415.3],
+    interval: 455,
+    duration: 0.4,
+    volume: 0.0076,
+    type: "triangle",
+  },
+  collection: {
+    notes: [293.66, 349.23, 440, 392, 349.23, 466.16, 523.25, 440],
+    interval: 650,
+    duration: 0.62,
+    volume: 0.0064,
+    type: "sine",
   },
   victory: {
     notes: [523.25, 659.25, 783.99, 1046.5, 783.99, 987.77, 1174.66, 1046.5],
@@ -150,10 +178,16 @@ function scheduleMusicStep(generation) {
   musicTimer = setTimeout(() => scheduleMusicStep(generation), pattern.interval);
 }
 function musicModeForState(s = state) {
-  return s?.mode === "challenge" ? "challenge" : "game";
+  if (!s) return "game";
+  if (s.mode === "daily") return "daily";
+  if (s.mode === "marathon") return "marathon";
+  if (s.mode === "calm") return "zen";
+  if (s.mode === "challenge") return "duel";
+  if (s.mode === "collection") return "collection";
+  return "game";
 }
 function setBackgroundMusic(mode = "game") {
-  musicMode = ["menu", "game", "challenge", "victory"].includes(mode) ? mode : "game";
+  musicMode = ["menu", "game", "daily", "marathon", "zen", "duel", "collection", "victory"].includes(mode) ? mode : "game";
   stopBackgroundMusic();
   musicStep = 0;
   if (!musicEnabled() || document.hidden) return;

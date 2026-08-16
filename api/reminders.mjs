@@ -43,13 +43,13 @@ export async function GET(request) {
       let payload = null, noticeKind = "";
 
       if (weeklyMissing && dailyMissing && record.lastWeeklyNotice !== (record.weeklyKey || local.key)) {
-        payload = { title: "Финал недели в Словасьянсе", body: "Daily ещё не сыгран, а недельное испытание всё ещё можно закрыть.", tag: "weekly-reminder", url: "/" };
+        payload = { title: "Финал недели в Словасьянсе", body: "Ежедневный расклад ещё не сыгран, а недельное испытание всё ещё можно закрыть.", tag: "weekly-reminder", url: "/" };
         noticeKind = "weekly";
       } else if (weeklyMissing && record.lastWeeklyNotice !== (record.weeklyKey || local.key)) {
         payload = { title: "Неделя почти закончилась", body: "Недельное испытание ещё можно успеть завершить сегодня.", tag: "weekly-reminder", url: "/" };
         noticeKind = "weekly";
       } else if (dailyMissing && record.lastDailyNotice !== local.key) {
-        payload = { title: "Сегодняшний Daily ждёт", body: "Один короткий расклад — и серия продолжится.", tag: "daily-reminder", url: "/" };
+        payload = { title: "Ежедневный расклад ждёт", body: "Один короткий расклад — и серия продолжится.", tag: "daily-reminder", url: "/" };
         noticeKind = "daily";
       }
 

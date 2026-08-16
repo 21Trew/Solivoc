@@ -87,7 +87,7 @@ function showPendingWeeklyDigest() {
   const grid = $("#weeklyDigestGrid");
   if (grid) grid.innerHTML = [
     ["🎮", data.games, "партий"], ["★", data.levels, "уровней"], ["▦", data.categories, "новых категорий"],
-    ["🏆", data.achievements, "достижений"], ["⚔", data.seriesWins, "серий выиграно"], ["☀", data.daily, "Daily"],
+    ["🏆", data.achievements, "достижений"], ["⚔", data.seriesWins, "серий выиграно"], ["☀", data.daily, "ежедневных"],
   ].map(([i,v,l])=>`<div><i>${i}</i><b>${v}</b><span>${l}</span></div>`).join("");
   $("#weeklyDigestXp").textContent = `+${data.xp} XP за неделю`;
   modal.classList.add("show");
@@ -190,7 +190,7 @@ function profileShowcaseMarkup() {
   const featured=(profile.featuredAchievements||[]).map((id)=>ACHIEVEMENTS.find((a)=>a.id===id)).filter(Boolean).slice(0,3),
     rank=playerRank(profile), duels=duelHistorySummary();
   return `<section class="profile-showcase hub-section"><div class="hub-section-head"><h3>Визитка игрока</h3><small>${escapeHtml(rank.name)}</small></div>
-    <div class="profile-showcase-grid"><div><span>Любимая категория</span><b>${profile.favoriteCategory?`${categoryDisplayIcon(profile.favoriteCategory)} ${escapeHtml(profileFavoriteLabel())}`:"—"}</b></div><div><span>Daily-серия</span><b>🔥 ${profile.daily.currentStreak||0}</b></div><div><span>Дуэли</span><b>${duels.wins}:${duels.losses}</b></div></div>
+    <div class="profile-showcase-grid"><div><span>Любимая категория</span><b>${profile.favoriteCategory?`${categoryDisplayIcon(profile.favoriteCategory)} ${escapeHtml(profileFavoriteLabel())}`:"—"}</b></div><div><span>Ежедневная серия</span><b>🔥 ${profile.daily.currentStreak||0}</b></div><div><span>Дуэли</span><b>${duels.wins}:${duels.losses}</b></div></div>
     <div class="featured-achievements">${featured.length?featured.map((a)=>`<span title="${escapeHtml(a.title)}"><i>${a.icon}</i><b>${escapeHtml(a.title)}</b></span>`).join(""):`<small>Выбери до 3 достижений в редакторе профиля</small>`}</div>
   </section>`;
 }
@@ -208,6 +208,16 @@ function duelHistorySummary() {
     if(r>0)wins++; else if(r<0)losses++; else draws++;
   }
   return {wins,losses,draws,total:wins+losses+draws};
+}
+function syncDuelStats() {
+  const summary = duelHistorySummary(), stats = profile.stats || (profile.stats = {}),
+    changed = stats.duelMatches !== summary.total || stats.duelWins !== summary.wins || stats.duelLosses !== summary.losses || stats.duelDraws !== summary.draws;
+  stats.duelMatches = summary.total;
+  stats.duelWins = summary.wins;
+  stats.duelLosses = summary.losses;
+  stats.duelDraws = summary.draws;
+  if (changed) saveProfile?.();
+  return summary;
 }
 function duelHistoryGroups() {
   const groups=new Map();
@@ -234,14 +244,14 @@ function activeDuelEntries() {
 function duelHistoryContentMarkup() {
   const groups=duelHistoryGroups();
   return groups.length
-    ? `<div class="duel-history-list">${groups.map(g=>`<article><span class="duel-history-avatar">${g.avatar}</span><div><b>${escapeHtml(g.name)}</b><small>${g.matches} игр · ${g.wins}:${g.losses}${g.draws?` · ничьи ${g.draws}`:""}</small><em>Ø ${Math.round(g.moves/Math.max(1,g.matches))} ход. · Ø ${(g.errors/Math.max(1,g.matches)).toFixed(1)} ошибок</em></div><button data-duel-history-rematch="${g.last.entry.code}" data-duel-perspective="${g.last.perspective}">Вызов</button></article>`).join("")}</div>`
+    ? `<div class="duel-history-list">${groups.map(g=>`<article><span class="duel-history-avatar">${g.avatar}</span><div><b>${escapeHtml(g.name)}</b><small>${g.matches} игр · ${g.wins}:${g.losses}${g.draws?` · ничьи ${g.draws}`:""}</small><em>Ø ${Math.round(g.moves/Math.max(1,g.matches))} ход. · Ø ${(g.errors/Math.max(1,g.matches)).toFixed(1)} ошибок</em></div><button data-duel-history-rematch="${g.last.entry.code}" data-duel-perspective="${g.last.perspective}">Дуэль</button></article>`).join("")}</div>`
     : `<div class="empty-state">Полностью завершённые матчи появятся здесь</div>`;
 }
 function duelsHubMarkup(view="active") {
   const active=activeDuelEntries(), completed=completedDuelEntries(), current=view==="history"?"history":"active";
   const activeMarkup=active.length
     ? `<div class="owned-challenge-list duel-active-list">${active.map(x=>x.perspective==="guest"?receivedChallengeCardMarkup(x.entry,{compact:true}):ownedChallengeCardMarkup(x.entry,{compact:true})).join("")}</div>`
-    : `<div class="empty-state">Активных вызовов сейчас нет</div>`;
+    : `<div class="empty-state">Активных дуэлей сейчас нет</div>`;
   return `<section class="hub-section duels-hub">
     <div class="hub-section-head"><h3>Дуэли</h3><small>${active.length} активных · ${completed.length} матчей</small></div>
     <div class="duel-tabs">
@@ -251,10 +261,6 @@ function duelsHubMarkup(view="active") {
     <div class="duel-tab-content">${current==="active"?activeMarkup:duelHistoryContentMarkup()}</div>
   </section>`;
 }
-function duelHistoryMarkup() {
-  return `<section class="hub-section duel-history"><div class="hub-section-head"><h3>История дуэлей</h3><small>${completedDuelEntries().length} матчей</small></div>${duelHistoryContentMarkup()}</section>`;
-}
-
 function findDuelHistoryEntry(code) {
   const normalized=normalizeChallengeCode(code); return completedDuelEntries().find((x)=>x.entry.code===normalized)||null;
 }
@@ -422,10 +428,10 @@ function runFirstRunOnboarding() {
   return new Promise((resolve)=>{
     let step=0, avatar=profile.avatarEmoji||"🙂", name=profile.playerName==="Игрок"?"":profile.playerName;
     const pages=[
-      ()=>`<div class="onboarding-step"><small>ДОБРО ПОЖАЛОВАТЬ</small><h2>Давай знакомиться!</h2><p>Имя и аватар будут видны друзьям в вызовах.</p><label><span>Твоё имя</span><input id="onboardingName" maxlength="20" value="${escapeHtml(name)}" placeholder="Например, Альберт Эйнштейн" autocomplete="off"></label><div class="onboarding-avatar-picker"><button type="button" class="onboarding-avatar-scroll prev" data-avatar-scroll="prev" aria-label="Предыдущие аватары">‹</button><div class="onboarding-avatar-grid">${onboardingAvatarButtons(avatar)}</div><button type="button" class="onboarding-avatar-scroll next" data-avatar-scroll="next" aria-label="Следующие аватары">›</button></div><div class="onboarding-dots avatar-page-dots" data-avatar-dots></div></div>`,
+      ()=>`<div class="onboarding-step"><small>ДОБРО ПОЖАЛОВАТЬ</small><h2>Давай знакомиться!</h2><p>Имя и аватар будут видны друзьям в дуэлях.</p><label><span>Твоё имя</span><input id="onboardingName" maxlength="20" value="${escapeHtml(name)}" placeholder="Например, Альберт Эйнштейн" autocomplete="off"></label><div class="onboarding-avatar-picker"><button type="button" class="onboarding-avatar-scroll prev" data-avatar-scroll="prev" aria-label="Предыдущие аватары">‹</button><div class="onboarding-avatar-grid">${onboardingAvatarButtons(avatar)}</div><button type="button" class="onboarding-avatar-scroll next" data-avatar-scroll="next" aria-label="Следующие аватары">›</button></div><div class="onboarding-dots avatar-page-dots" data-avatar-dots></div></div>`,
       ()=>`<div class="onboarding-step"><small>КАК ИГРАТЬ · 1/2</small><h2>Ищи смысловые связи</h2><p>Открытые карты одной категории складываются вместе. Можно тащить всю открытую стопку.</p><div class="onboarding-demo"><span>МОРЕ</span><b>ВОЛНА</b><b>ПРИБОЙ</b><b>ОКЕАН</b></div></div>`,
       ()=>`<div class="onboarding-step"><small>КАК ИГРАТЬ · 2/2</small><h2>Собирай категории сверху</h2><p>Карточку категории отправь в свободный слот, затем собирай туда все связанные слова или картинки.</p><div class="onboarding-demo picture"><span>КИНО</span><b>🎬</b><b>🍿</b><b>🎟️</b><b>📽️</b></div></div>`,
-      ()=>`<div class="onboarding-step"><small>ГОТОВО</small><h2>Начнём с короткого обучения</h2><p>Три простых расклада покажут перенос категории, сбор стопок и работу колоды. Потом откроется весь Словасьянс.</p><div class="onboarding-ready"><i>✦</i><span>Слова</span><i>🖼️</i><span>Картинки</span><i>⚔</i><span>Вызовы</span></div></div>`,
+      ()=>`<div class="onboarding-step"><small>ГОТОВО</small><h2>Начнём с короткого обучения</h2><p>Три простых расклада покажут перенос категории, сбор стопок и работу колоды. Потом откроется весь Словасьянс.</p><div class="onboarding-ready"><i>✦</i><span>Слова</span><i>🖼️</i><span>Картинки</span><i>⚔</i><span>Дуэли</span></div></div>`,
     ];
     const render=()=>{
       content.innerHTML=`${pages[step]()}${step===0?"":`<div class="onboarding-dots onboarding-step-dots">${pages.map((_,i)=>`<i class="${i===step?"active":""}"></i>`).join("")}</div>`}<div class="onboarding-actions">${step?`<button class="secondary" id="onboardingBack">Назад</button>`:""}<button class="primary" id="onboardingNext">${step===pages.length-1?"Начать обучение →":"Дальше →"}</button></div>`;

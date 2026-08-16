@@ -106,6 +106,15 @@ function daysBetween(a, b) {
 }
 function weekKey(dateStr) {
   const d = new Date(dateStr + "T12:00:00");
-  const onejan = new Date(d.getFullYear(), 0, 1);
-  return `${d.getFullYear()}-${Math.ceil(((d - onejan) / 86400000 + onejan.getDay() + 1) / 7)}`;
+  const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const offset = (monday.getDay() + 6) % 7;
+  monday.setDate(monday.getDate() - offset);
+  return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
+}
+function daysUntilWeekEnd(date = new Date()) {
+  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return Math.max(0, Math.ceil((sunday - new Date(date.getFullYear(), date.getMonth(), date.getDate())) / 86400000));
 }

@@ -24,7 +24,6 @@ function bindAppEvents() {
 
   $("#gameProfileButton")?.addEventListener("click", openProfileEditorModal);
   $("#menuButton").onclick = openHub;
-  $("#hubClose").onclick = closeHub;
 
   $("#undo").onclick = () => {
     if (autoMoveBusy || categoryAnimating || !history.length) return;
@@ -97,7 +96,7 @@ function bindAppEvents() {
         makeLevel(state.tutorialStep + 1, { mode: "tutorial", step: state.tutorialStep + 1 });
       else makeLevel(profile.currentLevel || 1);
     } else if (state.mode === "daily") makeLevel(profile.currentLevel || 1);
-    else if (state.mode === "challenge") openHub("play");
+    else if (state.mode === "challenge") openHub("modes");
     else if (state.mode === "collection") makeLevel(1, { mode: "collection", collectionId: state.collectionId, seed: `collection:${state.collectionId}:${Date.now()}` });
     else if (state.mode === "calm") makeLevel(1, { mode: "calm", seed: `calm:${Date.now()}:${Math.random()}` });
     else if (state.mode === "marathon") {
@@ -217,7 +216,7 @@ async function boot() {
     const challenge = challengeCodeFromUrl();
     let startedChallenge = false;
     if (challenge) {
-      setSplashProgress?.(72,"Открываю вызов…");
+      setSplashProgress?.(72,"Открываю дуэль…");
       startedChallenge = await startChallengeCode(challenge);
     }
 
@@ -231,6 +230,7 @@ async function boot() {
     }
 
     setSplashProgress?.(82,"Проверяю награды…");
+    syncDuelStats?.();
     checkAchievements();
     saveProfile();
     startChallengeSyncLoop();
@@ -240,7 +240,7 @@ async function boot() {
       await hideSplash?.();
     }
 
-    if (openHomeAfterLoad && !startedChallenge) openHub("play");
+    if (openHomeAfterLoad && !startedChallenge) openHub("progress");
     else setBackgroundMusic(musicModeForState?.() || "game");
     renderGlobalProfileHeaders?.();
     setTimeout(() => showPendingRankUp?.(), 500);

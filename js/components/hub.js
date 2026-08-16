@@ -1,6 +1,6 @@
 /* Game hub: play, progression, encyclopedia, appearance and settings. */
 let hubChapterNumber = null,
-  hubTab = "play",
+  hubTab = "progress",
   hubCategoryId = null,
   hubVisualCategoryId = null,
   hubEncyclopediaType = "words",
@@ -17,9 +17,6 @@ function isStandalonePwa() {
 function levelStarsMarkup(stars) {
   return stars ? `${"★".repeat(stars)}${"☆".repeat(3 - stars)}` : "···";
 }
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
-}
 function titleCurrent() {
   return titleDefById(profile.titleId) || TITLE_DEFS[0];
 }
@@ -30,38 +27,18 @@ function themeUnlockLabel(def) {
   return def.stars ? `${def.stars} ★` : "Базовая";
 }
 function hubTabsMarkup() {
-  const tabs = [
-    ["settings", "⚙", "Ещё"],
-    ["progress", "★", "Прогресс"],
-    ["collection", "▦", "Энциклопедия"],
-    ["appearance", "✦", "Стиль"],
-    ["play", "▶", "Играть"],
-  ];
-  return `<nav class="hub-tabs">${tabs
-    .map(([id, icon, label]) => `<button class="${hubTab === id ? "active" : ""}" data-hub-tab="${id}"><i>${icon}</i><span>${label}</span></button>`)
-    .join("")}</nav>`;
-}
-function profileHeroMarkup() {
-  const title = titleCurrent(),
-    rank = typeof playerRank === "function" ? playerRank(profile) : { name: "Игрок", icon: title.icon },
-    xp = typeof xpLevelProgress === "function" ? xpLevelProgress(profile) : { level: 1, ratio: 0, value: 0, goal: 250 },
-    frame = FRAME_DEFS.find((f) => f.id === profile.frame) || FRAME_DEFS[0];
-  return `<section class="profile-hero" data-frame="${frame.id}" style="--frame-h:${frame.hue}">
-    <button type="button" class="profile-avatar profile-edit-trigger" data-open-profile-editor aria-label="Редактировать профиль">${escapeHtml(profile.avatarEmoji || "🙂")}</button>
-    <button type="button" class="profile-copy profile-edit-trigger" data-open-profile-editor aria-label="Редактировать профиль">
-      <b>${escapeHtml(profile.playerName || "Игрок")}</b>
-      <span>${escapeHtml(title.name)}</span>
-      <span class="profile-xp"><i style="width:${xp.ratio * 100}%"></i></span>
-    </button>
-    <div class="profile-meta"><b>Ранг ${xp.level}</b><strong>${escapeHtml(rank.name)}</strong><span>${xp.value}/${xp.goal} XP · ★ ${profile.totalStars}</span></div>
-  </section>`;
+  const level = profile.currentLevel || 1,
+    tabs = HUB_TAB_DEFS.map((item) => `<button class="${hubTab === item.id ? "active" : ""}" data-hub-tab="${item.id}"><i>${item.icon}</i><span>${item.label}</span></button>`).join("");
+  return `<nav class="hub-tabs">${tabs}<button class="hub-play" data-hub-resume aria-label="Продолжить уровень ${level}"><i>▶</i><span>Играть</span></button></nav>`;
 }
 function renderGlobalProfileHeaders() {
   const rank = typeof playerRank === "function" ? playerRank(profile) : { name: "Новичок" },
-    xp = typeof xpLevelProgress === "function" ? xpLevelProgress(profile) : { level: 1, ratio: 0 };
+    xp = typeof xpLevelProgress === "function" ? xpLevelProgress(profile) : { level: 1, ratio: 0, value: 0, goal: 250 },
+    left = Math.max(0, xp.goal - xp.value),
+    meta = `Ранг ${xp.level} · ${rank.name} · ещё ${left} XP`;
   const values = [
-    ["#gameProfileAvatar", profile.avatarEmoji || "🙂"], ["#gameProfileName", profile.playerName || "Игрок"], ["#gameProfileMeta", `Ранг ${xp.level} · ${rank.name}`],
-    ["#hubProfileAvatar", profile.avatarEmoji || "🙂"], ["#hubProfileName", profile.playerName || "Игрок"], ["#hubProfileMeta", `Ранг ${xp.level} · ${rank.name}`],
+    ["#gameProfileAvatar", profile.avatarEmoji || "🙂"], ["#gameProfileName", profile.playerName || "Игрок"], ["#gameProfileMeta", meta],
+    ["#hubProfileAvatar", profile.avatarEmoji || "🙂"], ["#hubProfileName", profile.playerName || "Игрок"], ["#hubProfileMeta", meta],
   ];
   for (const [selector, value] of values) { const el = $(selector); if (el) el.textContent = value; }
   const bar = $("#hubProfileXpBar"); if (bar) bar.style.width = `${Math.max(0, Math.min(1, xp.ratio || 0)) * 100}%`;
@@ -93,33 +70,30 @@ function chapterMarkup(number) {
   </section>`;
 }
 function weeklyMarkup() {
-  const w = weeklyProgress();
+  const w = weeklyProgress(), daysLeft = typeof daysUntilWeekEnd === "function" ? daysUntilWeekEnd() : 0;
   return `<section class="weekly-card ${w.completed ? "done" : ""}">
     <div class="weekly-icon">${w.def.icon}</div>
-    <div class="weekly-copy"><small>НЕДЕЛЬНОЕ ИСПЫТАНИЕ</small><b>${w.def.title}</b><span>${w.def.desc}</span><div class="weekly-progress"><i style="width:${w.ratio * 100}%"></i></div><em>${w.value}/${w.goal}${w.completed ? " · выполнено ✓" : ""}</em></div>
+    <div class="weekly-copy"><small>НЕДЕЛЬНОЕ ИСПЫТАНИЕ · ПН–ВС</small><b>${w.def.title}</b><span>${w.def.desc}</span><div class="weekly-progress"><i style="width:${w.ratio * 100}%"></i></div><em>${w.value}/${w.goal}${w.completed ? ` · выполнено ✓ · +${w.def.rewardXp || 0} XP` : ` · ${daysLeft ? `осталось ${daysLeft} дн.` : "последний день"}`}</em></div>
   </section>`;
 }
-function playTabMarkup() {
-  const dailyDone = profile.daily.completedDates.includes(todayKey()), currentChapter = chapterInfo(profile.currentLevel || 1);
-  if (!hubChapterNumber) hubChapterNumber = currentChapter.number;
-  hubChapterNumber = Math.max(1, Math.min(hubChapterNumber, currentChapter.number));
-  return `${typeof smartHomeMarkup === "function" ? smartHomeMarkup() : ""}
-    ${typeof dailyCalendarMarkup === "function" ? dailyCalendarMarkup() : ""}
-    <div class="mode-grid">
-      <button class="mode-card daily" id="hubDaily"><i>☀</i><b>Daily</b><span>${dailyDone ? "Сегодня пройдено ✓" : "Один расклад для всех"}</span></button>
-      <button class="mode-card marathon" id="hubMarathon"><i>∞</i><b>Марафон</b><span>Рекорд: ${profile.stats.bestMarathon || 0}</span></button>
-      <button class="mode-card calm" id="hubCalm"><i>☁</i><b>Спокойно</b><span>Лёгкие бесконечные расклады</span></button>
-      <button class="mode-card challenge" id="hubShareChallenge"><i>⇄</i><b>Вызов другу</b><span>Матч + серия до 2 побед</span></button>
-    </div>
+function modesTabMarkup() {
+  const dailyDone = profile.daily.completedDates.includes(todayKey());
+  const copy = {
+    daily: { description: dailyDone ? "Сегодня пройдено ✓" : "Один расклад для всех", meta: "Новый каждый день" },
+    marathon: { description: "Только идеальные расклады продолжают серию", meta: `Рекорд: ${profile.stats.bestMarathon || 0}` },
+    zen: { description: "Бесконечные расклады без давления", meta: "Для спокойной игры" },
+    duel: { description: "Одинаковый расклад для двух игроков", meta: "Серия до 2 побед" },
+  };
+  const cards = GAME_MODE_DEFS.map((def) => modeCardMarkup({ ...def, ...(copy[def.id] || {}) })).join("");
+  return `<section class="hub-section modes-intro"><div class="hub-section-head"><div><h3>Режимы игры</h3><small>у каждого режима свой темп и музыка</small></div></div><div class="mode-grid">${cards}</div></section>
     ${typeof duelsHubMarkup === "function" ? duelsHubMarkup(hubDuelTab) : `${ownedChallengesMarkup()}${receivedChallengesMarkup()}`}
-    ${weeklyMarkup()}
-    ${typeof nearGoalsMarkup === "function" ? nearGoalsMarkup(2) : ""}
-    <section class="hub-section challenge-enter"><div class="hub-section-head"><h3>Код испытания</h3><small>6 символов</small></div><div class="challenge-input-row"><input id="challengeInput" inputmode="text" autocomplete="off" autocapitalize="characters" maxlength="6" placeholder="ABC123"><button id="challengeStart">Играть</button></div></section>
-    ${chapterMarkup(hubChapterNumber)}`;
+    <section class="hub-section challenge-enter"><div class="hub-section-head"><h3>Код дуэли</h3><small>6 символов</small></div><div class="challenge-input-row"><input id="challengeInput" inputmode="text" autocomplete="off" autocapitalize="characters" maxlength="6" placeholder="ABC123"><button id="challengeStart">Открыть</button></div></section>`;
 }
+
 function achievementCardMarkup(a) {
-  const done = profile.achievements.includes(a.id), progress = achievementProgressData(a, profile), ratio = progress ? progress.value / progress.goal : done ? 1 : 0;
-  return `<div class="achievement ${done ? "done-achievement" : "locked"} ${a.rare ? "rare" : ""}"><div class="ico">${a.icon}</div><div class="achievement-copy"><b>${a.title}</b><p>${a.desc}${a.rare ? " · редкое" : ""}</p>${progress ? `<div class="achievement-progress"><i style="width:${Math.min(1, ratio) * 100}%"></i></div><small>${progress.value}/${progress.goal}</small>` : ""}</div><span class="done">${done ? "✓" : ""}</span></div>`;
+  const done = profile.achievements.includes(a.id), progress = achievementProgressData(a, profile), ratio = progress ? progress.value / progress.goal : done ? 1 : 0,
+    icon = String(a.icon || "🏆"), iconClass = [...icon].length > 3 ? "icon-long" : [...icon].length > 2 ? "icon-medium" : "";
+  return `<div class="achievement ${done ? "done-achievement" : "locked"} ${a.rare ? "rare" : ""}"><div class="ico ${iconClass}" title="${escapeHtml(a.title)}">${escapeHtml(icon)}</div><div class="achievement-copy"><b>${escapeHtml(a.title)}</b><p>${escapeHtml(a.desc)}${a.rare ? " · редкое" : ""}</p>${progress ? `<div class="achievement-progress"><i style="width:${Math.min(1, ratio) * 100}%"></i></div><small>${progress.value}/${progress.goal}</small>` : ""}</div><span class="done">${done ? "✓" : ""}</span></div>`;
 }
 function progressTabMarkup() {
   const chaptersDone = completedChapterCount(profile), perfectChapters = perfectChapterCount(profile), discoveredCount = discoveredCategoryCount(profile);
@@ -130,16 +104,29 @@ function progressTabMarkup() {
     if (achievementFilter === "rare") return !!a.rare;
     return true;
   });
-  const statsContent = `<div class="stats-grid expanded">
-      <div class="stat-box"><b>${profile.stats.levelsCompleted}</b><span>уровней</span></div><div class="stat-box"><b>${profile.stats.gamesPlayed || 0}</b><span>партий</span></div>
-      <div class="stat-box"><b>${discoveredCount}</b><span>категорий</span></div><div class="stat-box"><b>${profile.stats.tripleStarWins}</b><span>★★★</span></div>
-      <div class="stat-box"><b>${profile.stats.totalMoves || 0}</b><span>ходов</span></div><div class="stat-box"><b>${profile.stats.personalRecords || 0}</b><span>рекордов</span></div>
-      <div class="stat-box"><b>×${profile.stats.maxDragCombo || 0}</b><span>комбо</span></div><div class="stat-box"><b>${profile.stats.bestMarathon || 0}</b><span>марафон</span></div>
-      <div class="stat-box"><b>${chaptersDone}</b><span>глав</span></div><div class="stat-box"><b>${perfectChapters}</b><span>идеальных глав</span></div>
-      <div class="stat-box"><b>${typeof playerXpLevel === "function" ? playerXpLevel(profile) : 1}</b><span>ранг</span></div><div class="stat-box"><b>${profile.xp || 0}</b><span>XP</span></div>
-      <div class="stat-box"><b>${profile.stats.masteredCategories || 0}</b><span>освоено</span></div><div class="stat-box"><b>${profile.stats.bonusObjectivesCompleted || 0}</b><span>бонусов</span></div>
-    </div>`;
-  return `${typeof profileShowcaseMarkup === "function" ? profileShowcaseMarkup() : ""}
+  const duelStats = typeof syncDuelStats === "function" ? syncDuelStats() : { total: profile.stats.duelMatches || 0, wins: profile.stats.duelWins || 0 };
+  const statsItems = [
+    [profile.stats.levelsCompleted, "уровней"], [profile.stats.gamesPlayed || 0, "партий"],
+    [discoveredCount, "категорий"], [profile.stats.tripleStarWins, "★★★"],
+    [profile.stats.totalMoves || 0, "ходов"], [profile.stats.personalRecords || 0, "рекордов"],
+    [`×${profile.stats.maxDragCombo || 0}`, "комбо"], [profile.stats.bestMarathon || 0, "марафон"],
+    [chaptersDone, "глав"], [perfectChapters, "идеальных глав"],
+    [typeof playerXpLevel === "function" ? playerXpLevel(profile) : 1, "ранг"], [profile.xp || 0, "XP"],
+    [profile.stats.masteredCategories || 0, "освоено"], [profile.stats.bonusObjectivesCompleted || 0, "бонусов"],
+    [duelStats.total || 0, "дуэлей"], [duelStats.wins || 0, "побед в дуэлях"],
+  ];
+  const statsContent = `<div class="stats-grid expanded">${statsItems.map(([value,label])=>statBoxMarkup(value,label)).join("")}</div>`;
+  const currentChapter = chapterInfo(profile.currentLevel || 1);
+  if (!hubChapterNumber) hubChapterNumber = currentChapter.number;
+  hubChapterNumber = Math.max(1, Math.min(hubChapterNumber, currentChapter.number));
+  return `${typeof smartHomeMarkup === "function" ? smartHomeMarkup() : ""}
+    ${typeof dailyCalendarMarkup === "function" ? dailyCalendarMarkup() : ""}
+    ${weeklyMarkup()}
+    ${typeof nearGoalsMarkup === "function" ? nearGoalsMarkup(2) : ""}
+    ${typeof rankRewardsRoadmapMarkup === "function" ? rankRewardsRoadmapMarkup(5) : ""}
+    ${typeof loginRewardsMarkup === "function" ? loginRewardsMarkup() : ""}
+    ${chapterMarkup(hubChapterNumber)}
+    ${typeof profileShowcaseMarkup === "function" ? profileShowcaseMarkup() : ""}
     ${collapsibleSectionMarkup("statistics", "Статистика", "твоя история", statsContent)}
     <section class="hub-section"><div class="hub-section-head"><h3>Достижения</h3><small>${profile.achievements.length}/${ACHIEVEMENTS.length}</small></div>
       <div class="achievement-filters">${[["all","Все"],["near","Почти"],["done","Получены"],["rare","Редкие"]].map(([id,label])=>`<button class="${achievementFilter===id?"active":""}" data-ach-filter="${id}">${label}</button>`).join("")}</div>
@@ -257,12 +244,11 @@ function openProfileEditorModal() {
   modal.dataset.avatar = profile.avatarEmoji || "🙂";
   modal.dataset.title = profile.titleId || "player";
   modal.dataset.featured = (profile.featuredAchievements || []).join(",");
-  content.innerHTML = `<div class="profile-editor-head"><div class="profile-editor-avatar-preview">${escapeHtml(profile.avatarEmoji || "🙂")}</div><div><small>ПРОФИЛЬ ИГРОКА</small><h2>Редактирование</h2></div></div>
-    <label class="profile-field"><span>Имя игрока</span><input id="profileEditorName" maxlength="20" value="${escapeHtml(profile.playerName || "Игрок")}" autocomplete="off" spellcheck="false"></label>
-    <div class="profile-field"><span>Аватар</span>${avatarEmojiMarkup(profile.avatarEmoji)}</div>
-    <div class="profile-field"><span>Титул</span>${titlePillsMarkup(profile.titleId)}</div>
-    <label class="profile-field"><span>Любимая категория</span><select id="profileFavoriteCategory"><option value="">Не выбрана</option>${discoveredAllCategoryIds?.().map((id)=>`<option value="${id}" ${profile.favoriteCategory===id?"selected":""}>${categoryDisplayIcon?.(id)||"✦"} ${escapeHtml(categoryDisplayName?.(id)||id)}</option>`).join("")||""}</select></label>
-    <div class="profile-field"><span>Избранные достижения · до 3</span><div class="featured-picker">${(profile.achievements||[]).map((id)=>ACHIEVEMENTS.find((a)=>a.id===id)).filter(Boolean).map((a)=>`<button type="button" class="featured-pick ${(profile.featuredAchievements||[]).includes(a.id)?"selected":""}" data-featured-achievement="${a.id}"><i>${a.icon}</i><span>${escapeHtml(a.title)}</span></button>`).join("")||`<small>Сначала получи достижение</small>`}</div></div>
+  content.innerHTML = `<div class="profile-editor-head compact"><div class="profile-editor-avatar-preview">${escapeHtml(profile.avatarEmoji || "🙂")}</div><div><small>ПРОФИЛЬ ИГРОКА</small><h2>${escapeHtml(profile.playerName || "Игрок")}</h2></div></div>
+    <div class="profile-editor-identity"><label class="profile-field"><span>Имя</span><input id="profileEditorName" maxlength="20" value="${escapeHtml(profile.playerName || "Игрок")}" autocomplete="off" spellcheck="false"></label><label class="profile-field"><span>Любимая категория</span><select id="profileFavoriteCategory"><option value="">Не выбрана</option>${discoveredAllCategoryIds?.().map((id)=>`<option value="${id}" ${profile.favoriteCategory===id?"selected":""}>${categoryDisplayIcon?.(id)||"✦"} ${escapeHtml(categoryDisplayName?.(id)||id)}</option>`).join("")||""}</select></label></div>
+    <details class="profile-compact-section"><summary><span>Аватар</span><small>${escapeHtml(profile.avatarEmoji || "🙂")} · нажми, чтобы выбрать</small></summary>${avatarEmojiMarkup(profile.avatarEmoji)}</details>
+    <details class="profile-compact-section"><summary><span>Титул</span><small>${escapeHtml(titleCurrent().name)}</small></summary>${titlePillsMarkup(profile.titleId)}</details>
+    <details class="profile-compact-section"><summary><span>Избранные достижения</span><small>до 3</small></summary><div class="featured-picker">${(profile.achievements||[]).map((id)=>ACHIEVEMENTS.find((a)=>a.id===id)).filter(Boolean).map((a)=>`<button type="button" class="featured-pick ${(profile.featuredAchievements||[]).includes(a.id)?"selected":""}" data-featured-achievement="${a.id}"><i>${escapeHtml(a.icon)}</i><span>${escapeHtml(a.title)}</span></button>`).join("")||`<small>Сначала получи достижение</small>`}</div></details>
     <div class="profile-editor-actions"><button type="button" class="secondary" id="profileEditorCancel">Отмена</button><button type="button" class="primary" id="profileEditorSave">Сохранить</button></div>`;
   modal.classList.add("show");
   modal.setAttribute("aria-hidden", "false");
@@ -333,34 +319,35 @@ function settingsTabMarkup() {
       <button class="setting-toggle ${profile.settings.sound?"on":""}" id="soundToggle"><b>♪ Эффекты</b><span>${profile.settings.sound?"Включены":"Выключены"}</span></button>
       <button class="setting-toggle ${profile.settings.music?"on":""}" id="musicToggle"><b>♫ Музыка</b><span>${profile.settings.music?"Включена":"Выключена"}</span></button>
       <button class="setting-toggle ${profile.settings.haptics?"on":""}" id="hapticsToggle"><b>⌁ Вибрация</b><span>${profile.settings.haptics?"Включена":"Выключена"}</span></button>
-      <button class="setting-toggle install" id="installPwa" ${standalone?"disabled":""}><b>${installLabel}</b><span>${standalone?"Standalone-режим":"Работает офлайн после установки"}</span></button>
+      <button class="setting-toggle install" id="installPwa" ${standalone?"disabled":""}><b>${installLabel}</b><span>${standalone?"Установлено как приложение":"Работает офлайн после установки"}</span></button>
     </div>`;
   const notificationsContent = `<div class="notification-state ${notificationStatus.cls}"><i></i><span>${notificationStatus.text}</span></div>
       <div class="settings-grid notification-grid">
-        <button class="setting-toggle ${profile.settings.notifications?"on":""}" id="notificationToggle"><b>🔔 Все Push</b><span>${profile.settings.notifications?"Включены":"Выключены"}</span></button>
-        <button class="setting-toggle ${profile.settings.challengeReminders!==false?"on":""}" id="challengeReminderToggle"><b>⚔ Вызовы</b><span>${profile.settings.challengeReminders!==false?"Ответы друзей":"Не уведомлять"}</span></button>
-        <button class="setting-toggle ${profile.settings.dailyReminders!==false?"on":""}" id="dailyReminderToggle"><b>☀ Daily</b><span>${profile.settings.dailyReminders!==false?"Напоминать":"Не напоминать"}</span></button>
-        <button class="setting-toggle ${profile.settings.weeklyReminders!==false?"on":""}" id="weeklyReminderToggle"><b>W Неделя</b><span>${profile.settings.weeklyReminders!==false?"Напоминать":"Не напоминать"}</span></button>
+        <button class="setting-toggle ${profile.settings.notifications?"on":""}" id="notificationToggle"><b>🔔 Все уведомления</b><span>${profile.settings.notifications?"Включены":"Выключены"}</span></button>
+        <button class="setting-toggle ${profile.settings.challengeReminders!==false?"on":""}" id="challengeReminderToggle"><b>⚔ Дуэли</b><span>${profile.settings.challengeReminders!==false?"Ответы друзей":"Не уведомлять"}</span></button>
+        <button class="setting-toggle ${profile.settings.dailyReminders!==false?"on":""}" id="dailyReminderToggle"><b>☀ Ежедневный</b><span>${profile.settings.dailyReminders!==false?"Напоминать":"Не напоминать"}</span></button>
+        <button class="setting-toggle ${profile.settings.weeklyReminders!==false?"on":""}" id="weeklyReminderToggle"><b>📅 Недельное</b><span>${profile.settings.weeklyReminders!==false?"Напоминать":"Не напоминать"}</span></button>
       </div>
       <button class="notification-test" id="notificationTest" ${profile.settings.notifications && typeof Notification!=="undefined" && Notification.permission==="granted"?"":"disabled"}>Проверить уведомление</button>
-      <p class="settings-note">Главный переключатель отключает все системные Push. Остальные настройки позволяют отдельно выбрать ответы на вызовы, Daily и финал недели.</p>`;
+      <p class="settings-note">Главный переключатель отключает все системные уведомления. Остальные настройки позволяют отдельно выбрать ответы на дуэли, ежедневный режим и финал недели.</p>`;
   const saveContent = `<div class="save-tools"><button id="exportSave">⇩ Экспорт прогресса</button><button id="importSave">⇧ Импорт прогресса</button></div>`;
   const bankContent = `<div class="bank-health-grid"><span><b>${report.categories||BANK.length}</b> категорий</span><span><b>${report.words||0}</b> слов</span><span><b>${report.ambiguousWords?.length||0}</b> пересечений</span><span><b>${report.warnings?.length||0}</b> предупреждений</span></div><p>Пересечения автоматически не попадают в один расклад; генератор также проверяет проходимость seed.</p>`;
   const tutorialContent = `<button class="wide-secondary" id="hubTutorial">◇ Запустить обучение заново</button>`;
   const diagnosticsContent = `${typeof qualityAuditMarkup==="function"?qualityAuditMarkup():""}<div class="analytics-health"><b>Аналитика</b><span>Локальные события: ${(()=>{try{return JSON.parse(localStorage.getItem(ANALYTICS_KEY))?.events?.length||0}catch{return 0}})()}</span><small>Анонимные агрегаты отправляются в /api/analytics без имён и текста раскладов.</small></div>`;
-  return `${collapsibleSectionMarkup("settings-main", "Настройки", "звук и ощущения", settingsContent)}
+  return `${collapsibleSectionMarkup("settings-main", "Настройки", "звук, запуск и карты", settingsContent)}
     ${collapsibleSectionMarkup("notifications", "Уведомления", "управление по типам", notificationsContent, "notification-settings")}
     ${collapsibleSectionMarkup("save", "Сохранение", "не потеряй прогресс", saveContent)}
     ${collapsibleSectionMarkup("bank", "База слов", "внутренняя проверка", bankContent, "bank-health")}
-    ${collapsibleSectionMarkup("diagnostics", "Диагностика", "QA и аналитика", diagnosticsContent, "diagnostics-health")}
+    ${collapsibleSectionMarkup("diagnostics", "Диагностика", "проверка и аналитика", diagnosticsContent, "diagnostics-health")}
     ${collapsibleSectionMarkup("tutorial", "Обучение", "повторить механику", tutorialContent)}`;
 }
 function renderHub() {
   recomputeStars();
+  syncDuelStats?.();
   renderGlobalProfileHeaders();
   ensureWeeklyChallenge();
-  const views = { play: playTabMarkup, progress: progressTabMarkup, collection: collectionTabMarkup, appearance: appearanceTabMarkup, settings: settingsTabMarkup };
-  hubContent.innerHTML = (views[hubTab] || playTabMarkup)();
+  const views = { progress: progressTabMarkup, collection: collectionTabMarkup, appearance: appearanceTabMarkup, settings: settingsTabMarkup, modes: modesTabMarkup };
+  hubContent.innerHTML = (views[hubTab] || progressTabMarkup)();
   hubNav.innerHTML = hubTabsMarkup();
   bindHubHandlers();
 }
@@ -369,11 +356,19 @@ function bindHubHandlers() {
   const on=(id,fn)=>{const el=$(id); if(el) el.onclick=fn;};
   on("#smartAction",()=>runSmartHomeAction?.());
   on("#hubProfileButton",()=>openProfileEditorModal());
-  on("#hubContinue",()=>{const next=profile.currentLevel||1; closeHub(); if(!state||state.rewarded||state.mode!=="regular") makeLevel(next,{mode:"regular"});});
-  on("#hubDaily",()=>{closeHub(); makeLevel(0,{mode:"daily",seed:`daily:${todayKey()}`});});
-  on("#hubMarathon",()=>{closeHub(); const runId=`marathon:${Date.now().toString(36)}`; makeLevel(1,{mode:"marathon",seed:`${runId}:1`,marathonRound:1,marathonId:runId});});
-  on("#hubCalm",()=>{closeHub(); makeLevel(1,{mode:"calm",seed:`calm:${Date.now()}:${Math.random()}`});});
-  on("#hubShareChallenge",()=>shareNewChallenge());
+  const resume = hubNav.querySelector("[data-hub-resume]");
+  if (resume) resume.onclick = () => {
+    const next = profile.currentLevel || 1;
+    closeHub();
+    if (!state || state.rewarded || state.mode !== "regular") makeLevel(next, { mode:"regular" });
+  };
+  hubContent.querySelectorAll("[data-game-mode]").forEach((btn)=>btn.onclick=()=>{
+    const mode=btn.dataset.gameMode;
+    if(mode==="daily"){closeHub();makeLevel(0,{mode:"daily",seed:`daily:${todayKey()}`});return;}
+    if(mode==="marathon"){closeHub();const runId=`marathon:${Date.now().toString(36)}`;makeLevel(1,{mode:"marathon",seed:`${runId}:1`,marathonRound:1,marathonId:runId});return;}
+    if(mode==="zen"){closeHub();makeLevel(1,{mode:"calm",seed:`zen:${Date.now()}:${Math.random()}`});return;}
+    if(mode==="duel") shareNewChallenge();
+  });
   on("#challengeStart",()=>startChallengeCode($("#challengeInput")?.value));
   const challengeInput=$("#challengeInput"); if(challengeInput) challengeInput.oninput=()=>{challengeInput.value=normalizeChallengeCode(challengeInput.value);};
   hubContent.querySelectorAll("[data-owned-challenge-play]").forEach((btn)=>btn.onclick=()=>playOwnedChallenge(btn.dataset.ownedChallengePlay));
@@ -411,7 +406,7 @@ function bindHubHandlers() {
   on("#soundToggle",()=>{profile.settings.sound=!profile.settings.sound;saveProfile();if(profile.settings.sound)playSfx("combo",.65);renderHub();});
   on("#musicToggle",()=>{profile.settings.music=!profile.settings.music;saveProfile();if(profile.settings.music)setBackgroundMusic("menu");else stopBackgroundMusic();renderHub();});
   on("#hapticsToggle",()=>{profile.settings.haptics=!profile.settings.haptics;saveProfile();if(profile.settings.haptics)haptic([8,20,8]);renderHub();});
-  on("#notificationToggle",async()=>{if(profile.settings.notifications){await disablePushNotifications?.();renderHub();}else{try{await registerPushNotifications?.();}catch(err){console.error(err);showToast("Push пока не настроен на сервере");}renderHub();}});
+  on("#notificationToggle",async()=>{if(profile.settings.notifications){await disablePushNotifications?.();renderHub();}else{try{await registerPushNotifications?.();}catch(err){console.error(err);showToast("Уведомления пока не настроены на сервере");}renderHub();}});
   on("#challengeReminderToggle",async()=>{profile.settings.challengeReminders=profile.settings.challengeReminders===false;saveProfile();await syncChallengePushPreference?.();syncPushState?.();renderHub();});
   on("#dailyReminderToggle",()=>{profile.settings.dailyReminders=profile.settings.dailyReminders===false;saveProfile();syncPushState?.();renderHub();});
   on("#weeklyReminderToggle",()=>{profile.settings.weeklyReminders=profile.settings.weeklyReminders===false;saveProfile();syncPushState?.();renderHub();});
@@ -426,7 +421,7 @@ function openHub(tab = null) {
   hub.classList.add("show");
   setBackgroundMusic("menu");
   track("hub_opened", { tab: hubTab });
-  if (hubTab === "play") { refreshOwnedChallenges({ notify: true }); refreshReceivedChallenges?.(); }
+  if (hubTab === "modes") { refreshOwnedChallenges({ notify: true }); refreshReceivedChallenges?.(); }
 }
 function closeHub() {
   hub.classList.remove("show");

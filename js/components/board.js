@@ -124,13 +124,13 @@ function render() {
     : state.mode === "daily"
       ? "daily"
       : state.mode === "challenge"
-        ? "вызов"
+        ? "дуэль"
         : state.mode === "marathon"
           ? `марафон ${state.marathonRound || 1}`
           : state.mode === "collection"
             ? associationCollectionById(state.collectionId).name.toLowerCase()
           : state.mode === "calm"
-            ? "спокойно"
+            ? "дзен"
             : "прогресс";
   const specialBadge = $("#specialBadge");
   if (state.mode === "regular" && state.special) {
@@ -139,7 +139,7 @@ function render() {
     specialBadge.title = state.special.desc;
   } else if (state.mode === "challenge") {
     specialBadge.hidden = false;
-    specialBadge.textContent = "⇄ Вызов";
+    specialBadge.textContent = "⚔ Дуэль";
     specialBadge.title = "Одинаковый расклад можно отправить другу";
   } else if (state.mode === "marathon") {
     specialBadge.hidden = false;
@@ -152,7 +152,7 @@ function render() {
     specialBadge.title = "Картинки: собирай карточки по ассоциациям";
   } else if (state.mode === "calm") {
     specialBadge.hidden = false;
-    specialBadge.textContent = "☁ Спокойный режим";
+    specialBadge.textContent = "☁ Дзен";
     specialBadge.title = "Лёгкие расклады без комбо и особых ограничений";
   } else {
     specialBadge.hidden = true;

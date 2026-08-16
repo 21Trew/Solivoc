@@ -17,13 +17,27 @@ const AVATAR_EMOJIS = [
   "🎯", "🎮", "🧩", "🏆", "🚀", "💎", "🎧", "🍕"
 ];
 
-const RANK_AVATAR_REWARDS = ["🧠","🕵️","🧙","🧑‍🚀","🤖","👑","🦁","🐲","🦅","🦋","🌋","🌌","🪐","🧿","🎭","🗿","🦖","🐉","🛸","⚜️"];
+const RANK_AVATAR_REWARDS = [
+  "🧠","🕵️","🧙","🧑‍🚀","🤖","👑","🦁","🐲","🦅","🦋","🌋","🌌","🪐","🧿","🎭","🗿","🦖","🐉","🛸","⚜️",
+  "🐺","🦝","🦥","🦦","🦚","🦜","🦩","🐬","🦈","🐋","🐘","🦒","🦏","🐆","🐻‍❄️","🦬","🦌","🐏","🦘","🦡",
+  "🪄","🔮","🧪","⚗️","🧬","🛰️","🔭","🧭","🗺️","🏛️","🏰","🗼","🌉","⛩️","🎡","🎢","🎪","🎨","🎬","🎻",
+  "🎷","🥁","🎸","🎹","🪕","🏹","🤺","🏄","🧗","🚴","⛷️","🏂","🏎️","⛵","🚁","🚂","🚜","🛶","🏕️","🌠",
+  "☄️","🌊","🏔️","🌲","🌵","🪴","🍄","🪸","🦪","🐚","🪶","🪬","🧶","🪡","🧵","🧱","🪵","⚙️","🧲","💡"
+];
 function rankRewardAvatar(level) {
   return level >= 2 ? (RANK_AVATAR_REWARDS[level - 2] || null) : null;
 }
+const LOGIN_REWARD_DEFS = [
+  { days: 30, id: "visits30", emoji: "📅", title: "30 дней" },
+  { days: 50, id: "visits50", emoji: "🧭", title: "50 дней" },
+  { days: 100, id: "visits100", emoji: "🏛️", title: "100 дней" },
+  { days: 180, id: "visits180", emoji: "🌳", title: "Полгода" },
+  { days: 365, id: "visits365", emoji: "🏅", title: "Год вместе" },
+];
 function availableAvatarEmojis(p = typeof profile !== "undefined" ? profile : null) {
-  const level = Math.max(1, Math.floor((+p?.xp || 0) / 250) + 1);
-  return [...AVATAR_EMOJIS, ...RANK_AVATAR_REWARDS.slice(0, Math.max(0, level - 1))];
+  const level = Math.max(1, Math.floor((+p?.xp || 0) / 250) + 1),
+    loginRewards = LOGIN_REWARD_DEFS.filter((r) => (p?.retention?.totalOpenDays || 0) >= r.days).map((r) => r.emoji);
+  return [...new Set([...AVATAR_EMOJIS, ...RANK_AVATAR_REWARDS.slice(0, Math.max(0, level - 1)), ...loginRewards])];
 }
 
 const ASSOCIATION_COLLECTION_DEFS = [
@@ -414,17 +428,17 @@ const SPECIAL_LEVELS = [
 ];
 
 const THEME_DEFS = [
-  { id: "violet", name: "Violet", stars: 0 },
-  { id: "ocean", name: "Ocean", stars: 30 },
-  { id: "sunset", name: "Sunset", stars: 75 },
-  { id: "paper", name: "Paper", stars: 100 },
-  { id: "aurora", name: "Aurora", stars: 150 },
-  { id: "neon", name: "Neon", stars: 225 },
-  { id: "forest", name: "Forest", stars: 300 },
-  { id: "frost", name: "Frost", stars: 375 },
-  { id: "candy", name: "Candy", stars: 450 },
-  { id: "midnight", name: "Midnight", stars: 550 },
-  { id: "gold", name: "Gold", stars: 700 },
+  { id: "violet", name: "Фиолетовая", stars: 0 },
+  { id: "ocean", name: "Океан", stars: 30 },
+  { id: "sunset", name: "Закат", stars: 75 },
+  { id: "paper", name: "Бумага", stars: 100 },
+  { id: "aurora", name: "Сияние", stars: 150 },
+  { id: "neon", name: "Неон", stars: 225 },
+  { id: "forest", name: "Лес", stars: 300 },
+  { id: "frost", name: "Иней", stars: 375 },
+  { id: "candy", name: "Конфетная", stars: 450 },
+  { id: "midnight", name: "Полночь", stars: 550 },
+  { id: "gold", name: "Золото", stars: 700 },
 ];
 const CARD_BACK_DEFS = [
   { id: "classic", name: "Классика", desc: "Базовая рубашка", minAchievements: 0 },
@@ -434,12 +448,14 @@ const CARD_BACK_DEFS = [
   { id: "mosaic", name: "Мозаика", desc: "За 16 достижений", minAchievements: 16 },
   { id: "velvet", name: "Бархат", desc: "За 20 достижений", minAchievements: 20 },
   { id: "glacier", name: "Ледник", desc: "За 24 достижения", minAchievements: 24 },
-  { id: "lotus", name: "Лотос", desc: "За 28 достижений", minAchievements: 28 },
+  { id: "lotus", name: "Бамбук", desc: "За 28 достижений", minAchievements: 28 },
+  { id: "duelist", name: "Дуэлянт", desc: "За 10 побед в дуэлях", achievement: "duelWins10", rare: true },
+  { id: "anniversary", name: "Годовщина", desc: "За 365 дней в игре", achievement: "visits365", rare: true },
   { id: "crown", name: "Корона", desc: "За идеальную главу", achievement: "chapterPerfect1", rare: true },
   { id: "ember", name: "Пламя", desc: "За серию 30 дней", achievement: "streak30", rare: true },
   { id: "master", name: "Мастер", desc: "За комбо ×10", achievement: "combo10", rare: true },
   { id: "atlas", name: "Атлас", desc: "За всю коллекцию категорий", achievement: "collectorAll", rare: true },
-  { id: "chronicle", name: "Хроника", desc: "За 100 Daily", achievement: "daily100", rare: true },
+  { id: "chronicle", name: "Хроника", desc: "За 100 ежедневных раскладов", achievement: "daily100", rare: true },
   { id: "phoenix", name: "Феникс", desc: "За 25 особых уровней", achievement: "special25", rare: true },
   { id: "legend", name: "Легенда", desc: "За 3 идеальные главы", achievement: "chapterPerfect3", rare: true },
   { id: "obsidian", name: "Обсидиан", desc: "За 5 идеальных глав", achievement: "chapterPerfect5", rare: true },
@@ -522,7 +538,7 @@ const ACHIEVEMENTS = [
     id: "daily",
     icon: "☀",
     title: "Доброе утро",
-    desc: "Пройти Daily",
+    desc: "Пройти ежедневный расклад",
     test: (p) => p.stats.dailyCompleted >= 1,
   },
   { id: "combo5", icon: "×5", title: "На волне", desc: "Сделать комбо ×5", test: (p) => (p.stats.maxDragCombo || 0) >= 5 },
@@ -553,9 +569,9 @@ const ACHIEVEMENTS = [
   { id: "noundo100", icon: "↶100", title: "Только вперёд", desc: "100 побед без отмен", rare: true, test: (p) => p.stats.noUndoWins >= 100 },
   { id: "collectorAll", icon: "▦✓", title: "Полная коллекция", desc: "Открыть все категории", rare: true, test: (p) => hasDiscoveredAllCategories(p) },
   { id: "games100", icon: "100", title: "Сотня партий", desc: "Сыграть 100 партий", test: (p) => (p.stats.gamesPlayed || 0) >= 100 },
-  { id: "daily7", icon: "☀7", title: "Неделя Daily", desc: "Пройти 7 Daily", test: (p) => p.stats.dailyCompleted >= 7 },
-  { id: "daily30", icon: "☀30", title: "Месяц Daily", desc: "Пройти 30 Daily", test: (p) => p.stats.dailyCompleted >= 30 },
-  { id: "daily100", icon: "☀100", title: "Ритуал", desc: "Пройти 100 Daily", rare: true, test: (p) => p.stats.dailyCompleted >= 100 },
+  { id: "daily7", icon: "☀7", title: "Ежедневная неделя", desc: "Пройти 7 ежедневных раскладов", test: (p) => p.stats.dailyCompleted >= 7 },
+  { id: "daily30", icon: "☀30", title: "Ежедневный месяц", desc: "Пройти 30 ежедневных раскладов", test: (p) => p.stats.dailyCompleted >= 30 },
+  { id: "daily100", icon: "☀100", title: "Ритуал", desc: "Пройти 100 ежедневных раскладов", rare: true, test: (p) => p.stats.dailyCompleted >= 100 },
   { id: "combo3", icon: "×3", title: "Точная рука", desc: "Сделать ручное комбо ×3", test: (p) => (p.stats.maxDragCombo || 0) >= 3 },
   { id: "combo10", icon: "×10", title: "Мастер движений", desc: "Сделать ручное комбо ×10", rare: true, test: (p) => (p.stats.maxDragCombo || 0) >= 10 },
   { id: "special10", icon: "◆10", title: "Любитель испытаний", desc: "Пройти 10 особых уровней", test: (p) => (p.stats.specialCompleted || 0) >= 10 },
@@ -590,13 +606,17 @@ const DEFAULT_STATS = {
   chapterFinalsCompleted: 0,
   bonusObjectivesCompleted: 0,
   seriesWins: 0,
+  duelMatches: 0,
+  duelWins: 0,
+  duelLosses: 0,
+  duelDraws: 0,
 };
 
 const WEEKLY_DEFS = [
-  { id: "stars", icon: "★", title: "Звёздная неделя", desc: "Заработать 12 звёзд за неделю", metric: "stars", goal: 12 },
-  { id: "noHints", icon: "?", title: "Своя голова", desc: "Пройти 5 партий без подсказок", metric: "noHintWins", goal: 5 },
-  { id: "perfect", icon: "★★★", title: "Идеальная неделя", desc: "Закрыть 4 расклада на 3 звезды", metric: "tripleStarWins", goal: 4 },
-  { id: "categories", icon: "▦", title: "Собиратель", desc: "Собрать 30 категорий за неделю", metric: "categoriesCompleted", goal: 30 },
+  { id: "stars", icon: "★", title: "Звёздная неделя", desc: "Заработать 30 звёзд с понедельника по воскресенье", metric: "stars", goal: 30, rewardXp: 300 },
+  { id: "noHints", icon: "?", title: "Своя голова", desc: "Пройти 10 партий без подсказок за неделю", metric: "noHintWins", goal: 10, rewardXp: 320 },
+  { id: "perfect", icon: "★★★", title: "Идеальная неделя", desc: "Закрыть 8 раскладов на 3 звезды", metric: "tripleStarWins", goal: 8, rewardXp: 350 },
+  { id: "categories", icon: "▦", title: "Собиратель", desc: "Собрать 60 категорий за неделю", metric: "categoriesCompleted", goal: 60, rewardXp: 300 },
 ];
 
 const EFFECT_DEFS = [
@@ -606,6 +626,7 @@ const EFFECT_DEFS = [
   { id: "comet", name: "Кометы", desc: "За ручное комбо ×10", achievement: "combo10", rare: true },
   { id: "aurora", name: "Сияние", desc: "За 3 недельных испытания", minWeekly: 3, rare: true },
   { id: "legend", name: "Легенда", desc: "За 5 идеальных глав", achievement: "chapterPerfect5", rare: true },
+  { id: "duel", name: "Искры дуэли", desc: "За 25 побед в дуэлях", achievement: "duelWins25", rare: true },
 ];
 
 const FRAME_DEFS = [
@@ -666,9 +687,9 @@ ACHIEVEMENTS.push(
   { id: "weekly10", icon: "W10", title: "Десять недель", desc: "Выполнить 10 недельных испытаний", rare: true, test: (p) => (p.stats.weeklyCompleted || 0) >= 10 },
   { id: "moves1000", icon: "↯", title: "Тысяча ходов", desc: "Сделать 1000 ходов", test: (p) => (p.stats.totalMoves || 0) >= 1000 },
   { id: "records10", icon: "↯10", title: "Лучше себя", desc: "Установить 10 личных рекордов", test: (p) => (p.stats.personalRecords || 0) >= 10 },
-  { id: "challenge1", icon: "⇄", title: "Вызов принят", desc: "Пройти испытание по коду", test: (p) => (p.stats.challengesCompleted || 0) >= 1 },
-  { id: "challenge25", icon: "⇄25", title: "Дуэлянт", desc: "Пройти 25 испытаний по коду", rare: true, test: (p) => (p.stats.challengesCompleted || 0) >= 25 },
-  { id: "calm10", icon: "☁", title: "Спокойствие", desc: "Пройти 10 спокойных раскладов", test: (p) => (p.stats.calmCompleted || 0) >= 10 },
+  { id: "challenge1", icon: "⚔", title: "Дуэль принята", desc: "Завершить дуэль по коду", test: (p) => (p.stats.challengesCompleted || 0) >= 1 },
+  { id: "challenge25", icon: "⚔25", title: "Опытный соперник", desc: "Завершить 25 дуэлей по коду", rare: true, test: (p) => (p.stats.challengesCompleted || 0) >= 25 },
+  { id: "calm10", icon: "☁", title: "Внутренний дзен", desc: "Пройти 10 раскладов в режиме «Дзен»", test: (p) => (p.stats.calmCompleted || 0) >= 10 },
   { id: "marathon5", icon: "∞5", title: "На дистанции", desc: "Пройти 5 идеальных раскладов подряд в марафоне", test: (p) => (p.stats.bestMarathon || 0) >= 5 },
   { id: "marathon15", icon: "∞15", title: "Марафонец", desc: "Пройти 15 идеальных раскладов подряд", rare: true, test: (p) => (p.stats.bestMarathon || 0) >= 15 },
 );
@@ -679,7 +700,20 @@ ACHIEVEMENTS.push(
   { id: "final1", icon: "◆Ⅰ", title: "Финалист", desc: "Пройти финал главы", test: (p) => (p.stats.chapterFinalsCompleted || 0) >= 1 },
   { id: "final6", icon: "◆Ⅵ", title: "Покоритель глав", desc: "Пройти 6 финалов глав", rare: true, test: (p) => (p.stats.chapterFinalsCompleted || 0) >= 6 },
   { id: "bonus10", icon: "+10", title: "Сверх плана", desc: "Выполнить 10 бонусных целей", test: (p) => (p.stats.bonusObjectivesCompleted || 0) >= 10 },
-  { id: "series3", icon: "⚔3", title: "Серийный победитель", desc: "Выиграть 3 серии вызовов", rare: true, test: (p) => (p.stats.seriesWins || 0) >= 3 },
+  { id: "series3", icon: "⚔3", title: "Серийный победитель", desc: "Выиграть 3 серии дуэлей", rare: true, test: (p) => (p.stats.seriesWins || 0) >= 3 },
+);
+
+ACHIEVEMENTS.push(
+  { id: "visits30", icon: "📅", title: "Месяц вместе", desc: "Заходить в игру в 30 разных дней", test: (p) => (p.retention?.totalOpenDays || 0) >= 30 },
+  { id: "visits50", icon: "🧭", title: "Частый гость", desc: "Заходить в игру в 50 разных дней", test: (p) => (p.retention?.totalOpenDays || 0) >= 50 },
+  { id: "visits100", icon: "💯", title: "Сто дней", desc: "Заходить в игру в 100 разных дней", rare: true, test: (p) => (p.retention?.totalOpenDays || 0) >= 100 },
+  { id: "visits180", icon: "🌳", title: "Полгода вместе", desc: "Заходить в игру в 180 разных дней", rare: true, test: (p) => (p.retention?.totalOpenDays || 0) >= 180 },
+  { id: "visits365", icon: "🏅", title: "Год Словасьянса", desc: "Заходить в игру в 365 разных дней", rare: true, test: (p) => (p.retention?.totalOpenDays || 0) >= 365 },
+  { id: "duel1", icon: "⚔", title: "Первая дуэль", desc: "Завершить первую дуэль", test: (p) => (p.stats.duelMatches || 0) >= 1 },
+  { id: "duelWin1", icon: "🥇", title: "Первая победа", desc: "Победить в дуэли", test: (p) => (p.stats.duelWins || 0) >= 1 },
+  { id: "duelWins5", icon: "⚔5", title: "На хорошем счету", desc: "Победить в 5 дуэлях", test: (p) => (p.stats.duelWins || 0) >= 5 },
+  { id: "duelWins10", icon: "⚔10", title: "Дуэлянт", desc: "Победить в 10 дуэлях", rare: true, test: (p) => (p.stats.duelWins || 0) >= 10 },
+  { id: "duelWins25", icon: "👑", title: "Чемпион дуэлей", desc: "Победить в 25 дуэлях", rare: true, test: (p) => (p.stats.duelWins || 0) >= 25 },
 );
 
 function achievementProgressData(a, p = profile) {
@@ -698,6 +732,8 @@ function achievementProgressData(a, p = profile) {
     weekly1:[p.stats.weeklyCompleted||0,1], weekly10:[p.stats.weeklyCompleted||0,10], moves1000:[p.stats.totalMoves||0,1000], records10:[p.stats.personalRecords||0,10],
     challenge1:[p.stats.challengesCompleted||0,1], challenge25:[p.stats.challengesCompleted||0,25], calm10:[p.stats.calmCompleted||0,10], marathon5:[p.stats.bestMarathon||0,5], marathon15:[p.stats.bestMarathon||0,15],
     mastery10:[p.stats.masteredCategories||0,10], mastery50:[p.stats.masteredCategories||0,50], final1:[p.stats.chapterFinalsCompleted||0,1], final6:[p.stats.chapterFinalsCompleted||0,6], bonus10:[p.stats.bonusObjectivesCompleted||0,10], series3:[p.stats.seriesWins||0,3],
+    visits30:[p.retention?.totalOpenDays||0,30], visits50:[p.retention?.totalOpenDays||0,50], visits100:[p.retention?.totalOpenDays||0,100], visits180:[p.retention?.totalOpenDays||0,180], visits365:[p.retention?.totalOpenDays||0,365],
+    duel1:[p.stats.duelMatches||0,1], duelWin1:[p.stats.duelWins||0,1], duelWins5:[p.stats.duelWins||0,5], duelWins10:[p.stats.duelWins||0,10], duelWins25:[p.stats.duelWins||0,25],
   };
   const pair = map[a.id];
   if (!pair) return null;

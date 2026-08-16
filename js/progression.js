@@ -128,13 +128,13 @@ function finishLevel() {
     if (firstDailyClear) profile.stats.dailyCompleted++;
     updateDailyStreak(date);
     track("daily_completed", { date, stars, moves: state.run.moves });
-    if (typeof awardXp === "function") awardXp((firstDailyClear ? 70 : 25) + stars * 10, firstDailyClear ? "Daily" : "Повтор Daily", { notifyRank: false });
+    if (typeof awardXp === "function") awardXp((firstDailyClear ? 70 : 25) + stars * 10, firstDailyClear ? "Ежедневный" : "Повтор ежедневного", { notifyRank: false });
   } else if (state.mode === "challenge") {
     profile.stats.challengesCompleted = (profile.stats.challengesCompleted || 0) + 1;
     if (state.challengeRole === "creator") recordCreatorChallengeResult(state, stars);
     else if (state.challengeRole === "guest") enqueueGuestChallengeSubmission(state, stars);
     track("challenge_completed", { seed: state.seed, stars, moves: state.run.moves, role: state.challengeRole || "legacy" });
-    if (typeof awardXp === "function") awardXp(55 + stars * 10, "Вызов", { notifyRank: false });
+    if (typeof awardXp === "function") awardXp(55 + stars * 10, "Дуэль", { notifyRank: false });
   } else if (state.mode === "collection") {
     const collection = associationCollectionById(state.collectionId);
     profile.associationCollections ||= {};
@@ -148,7 +148,7 @@ function finishLevel() {
   } else if (state.mode === "calm") {
     profile.stats.calmCompleted = (profile.stats.calmCompleted || 0) + 1;
     track("calm_completed", { stars, moves: state.run.moves });
-    if (typeof awardXp === "function") awardXp(20 + stars * 5, "Спокойный расклад", { notifyRank: false });
+    if (typeof awardXp === "function") awardXp(20 + stars * 5, "Дзен", { notifyRank: false });
   } else if (state.mode === "marathon") {
     state.marathonSuccess = stars === 3;
     if (state.marathonSuccess) {
@@ -182,10 +182,10 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
     moves = state.run.moves || 0;
 
   const titles = {
-    daily: "Daily пройден!",
-    challenge: "Вызов пройден!",
+    daily: "Ежедневный расклад пройден!",
+    challenge: "Дуэль завершена!",
     collection: `${associationCollectionById(state.collectionId).name}: собрано!`,
-    calm: "Спокойный расклад завершён",
+    calm: "Дзен завершён",
     marathon: state.marathonSuccess ? `Марафон · раунд ${state.marathonRound}` : "Марафон окончен",
   };
   $("#winTitle").textContent =
@@ -195,7 +195,7 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
     state.mode === "daily"
       ? `Серия: ${profile.daily.currentStreak} дн.`
       : state.mode === "challenge"
-        ? perfect ? "Идеальный ответ на вызов!" : "Расклад решён. Можно улучшить результат."
+        ? perfect ? "Идеальная дуэль!" : "Расклад решён. Можно улучшить результат."
         : state.mode === "collection"
           ? (() => { const p = associationCollectionProgress(state.collectionId); return `Освоено ${p.completed}/${p.total} ассоциаций в коллекции`; })()
         : state.mode === "calm"
@@ -243,17 +243,17 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
   const shareBtn = $("#winShare");
   if (shareBtn) {
     shareBtn.hidden = state.mode === "tutorial";
-    shareBtn.textContent = state.mode === "challenge" ? "⇄ Поделиться вызовом" : "⇄ Поделиться результатом";
+    shareBtn.textContent = state.mode === "challenge" ? "⚔ Поделиться дуэлью" : "⇄ Поделиться результатом";
   }
 
   const nt = nextTheme();
   $("#winUnlock").textContent =
     state.mode === "calm"
-      ? "Спокойный режим не расходует и не требует наград"
+      ? "Дзен не влияет на кампанию и звёзды"
       : state.mode === "marathon"
         ? `Лучший марафон: ${profile.stats.bestMarathon || 0}`
         : state.mode === "challenge"
-          ? state.challengeRole === "guest" ? "Результат отправляется автору вызова" : state.challengeRole === "creator" ? "Твой результат сохранён. Ждём друга." : "Результат сохранён для этого кода"
+          ? state.challengeRole === "guest" ? "Результат отправляется сопернику" : state.challengeRole === "creator" ? "Твой результат сохранён. Ждём соперника." : "Результат сохранён для этой дуэли"
           : nt
             ? `До темы ${nt.name}: ${nt.stars - profile.totalStars} ★`
             : "Все темы за звёзды открыты";
@@ -267,7 +267,7 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
         : state.mode === "calm"
           ? "Ещё расклад →"
           : state.mode === "challenge"
-            ? "К вызовам →"
+            ? "К дуэлям →"
             : state.mode === "marathon"
               ? state.marathonSuccess ? "Продолжить марафон →" : "Новый марафон →"
               : "Следующий уровень →";

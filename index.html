@@ -178,7 +178,7 @@
       <div class="duel-result-card">
         <button class="duel-close" id="duelClose" aria-label="Закрыть">×</button>
         <div class="duel-result-icon" id="duelResultIcon">⚔</div>
-        <small class="duel-kicker">ВЫЗОВ ЗАВЕРШЁН</small>
+        <small class="duel-kicker">ДУЭЛЬ ЗАВЕРШЕНА</small>
         <h2 id="duelResultTitle">Результат готов</h2>
         <p id="duelResultSeries">Серия до 2 побед</p>
         <div class="duel-score" id="duelScore">0 : 0</div>
@@ -189,7 +189,7 @@
     <div class="notification-prompt" id="notificationPrompt" aria-live="polite">
       <div class="notification-prompt-card">
         <div class="notification-prompt-icon">🔔</div>
-        <div><b>Узнать, когда друг сыграет?</b><span>Разреши только полезные уведомления: ответы на вызовы, Daily и финал недели.</span></div>
+        <div><b>Узнать, когда друг сыграет?</b><span>Разреши только полезные уведомления: ответы на дуэли, ежедневный расклад и финал недели.</span></div>
         <div class="notification-prompt-actions"><button id="notificationAllow">Разрешить</button><button id="notificationLater">Не сейчас</button></div>
       </div>
     </div>
@@ -231,7 +231,6 @@
             </span>
             <span class="hub-profile-xp"><i id="hubProfileXpBar"></i></span>
           </button>
-          <button class="hub-close" id="hubClose">×</button>
         </div>
         <div class="hub-scroll" id="hubContent"></div>
         <div class="hub-nav" id="hubNav"></div>
@@ -242,6 +241,8 @@
     <script src="./js/profile.js"></script>
     <script src="./js/data.js"></script>
     <script src="./js/runtime.js"></script>
+    <script src="./js/ui/constants.js"></script>
+    <script src="./js/components/ui.js"></script>
     <script src="./js/generator.js"></script>
     <script src="./js/meta/systems.js"></script>
     <script src="./js/retention.js"></script>
