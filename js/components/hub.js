@@ -81,6 +81,13 @@ function weeklyMarkup() {
     <div class="weekly-copy"><small>НЕДЕЛЬНОЕ ИСПЫТАНИЕ · ПН–ВС</small><b>${w.def.title}</b><span>${w.def.desc}</span><div class="weekly-progress"><i style="width:${w.ratio * 100}%"></i></div><em>${w.value}/${w.goal}${w.completed ? ` · выполнено ✓ · +${w.def.rewardXp || 0} XP` : ` · ${daysLeft ? `осталось ${daysLeft} дн.` : "последний день"}`}</em></div>
   </section>`;
 }
+function monthlyMarkup() {
+  const m = monthlyProgress(), daysLeft = typeof daysUntilMonthEnd === "function" ? daysUntilMonthEnd() : 0;
+  return `<section class="weekly-card monthly-card ${m.completed ? "done" : ""}">
+    <div class="weekly-icon monthly-icon">${m.def.icon}</div>
+    <div class="weekly-copy"><small>МЕСЯЧНОЕ ИСПЫТАНИЕ</small><b>${m.def.title}</b><span>${m.def.desc}</span><div class="weekly-progress"><i style="width:${m.ratio * 100}%"></i></div><em>${m.value}/${m.goal}${m.completed ? ` · выполнено ✓ · +${m.def.rewardXp || 0} XP` : ` · осталось ${daysLeft} дн.`}</em></div>
+  </section>`;
+}
 function modesTabMarkup() {
   const dailyDone = profile.daily.completedDates.includes(todayKey());
   const copy = {
@@ -100,7 +107,8 @@ function homeTabMarkup() {
   return `<section class="home-welcome"><div class="home-welcome-copy"><small>ГЛАВНАЯ</small><h2>Продолжим?</h2><p>Серия, недельная цель и следующий лучший ход — на одном экране.</p></div></section>
     ${typeof smartHomeMarkup === "function" ? smartHomeMarkup() : ""}
     ${typeof dailyCalendarMarkup === "function" ? dailyCalendarMarkup() : ""}
-    ${weeklyMarkup()}`;
+    ${weeklyMarkup()}
+    ${monthlyMarkup()}`;
 }
 
 function achievementCardMarkup(a) {
@@ -272,9 +280,16 @@ function avatarEmojiMarkup(selectedEmoji = profile.avatarEmoji) {
 function titlePillsMarkup(selectedTitle = profile.titleId) {
   return `<div class="title-pill-grid">${availableTitleDefs(profile).map((t)=>`<button type="button" class="title-pill ${selectedTitle===t.id?"selected":""}" data-profile-title="${t.id}"><i>${escapeHtml(t.icon)}</i><span>${escapeHtml(t.name)}</span></button>`).join("")}</div>`;
 }
+function currentDeveloperMessages() {
+  const remote = Array.isArray(window.SERVER_BOOTSTRAP?.developerMessages) ? window.SERVER_BOOTSTRAP.developerMessages : [];
+  const local = typeof DEVELOPER_MESSAGES !== "undefined" ? DEVELOPER_MESSAGES : [];
+  const byId = new Map();
+  [...remote, ...local].forEach((message) => { if (message?.id && !byId.has(message.id)) byId.set(message.id, message); });
+  return [...byId.values()];
+}
 function developerMailUnreadCount() {
   const seen = new Set(profile.developerMailSeen || []);
-  return (typeof DEVELOPER_MESSAGES !== "undefined" ? DEVELOPER_MESSAGES : []).filter((message) => !seen.has(message.id)).length;
+  return currentDeveloperMessages().filter((message) => !seen.has(message.id)).length;
 }
 function updateProfileMailBadge() {
   const badge = $("#profileDeveloperMailBadge"), count = developerMailUnreadCount();
@@ -292,7 +307,7 @@ function closeDeveloperMailModal() {
 function openDeveloperMailModal() {
   const modal = $("#developerMailModal"), list = $("#developerMailList");
   if (!modal || !list) return;
-  const messages = typeof DEVELOPER_MESSAGES !== "undefined" ? DEVELOPER_MESSAGES : [];
+  const messages = currentDeveloperMessages();
   list.innerHTML = messages.length ? messages.map((message, index) => `<article class="developer-message ${index === 0 ? "latest" : ""}">
       <div class="developer-message-meta"><span>${escapeHtml(message.date || "")}</span>${index === 0 ? "<b>НОВОЕ</b>" : ""}</div>
       <h3>${escapeHtml(message.title || "Обновление")}</h3>
@@ -432,6 +447,7 @@ function renderHub() {
   syncDuelStats?.();
   renderGlobalProfileHeaders();
   ensureWeeklyChallenge();
+  ensureMonthlyChallenge?.();
   const views = { home: homeTabMarkup, progress: progressTabMarkup, collection: collectionTabMarkup, appearance: appearanceTabMarkup, settings: settingsTabMarkup, modes: modesTabMarkup };
   hubContent.innerHTML = (views[hubTab] || homeTabMarkup)();
   hubNav.innerHTML = hubTabsMarkup();
@@ -447,6 +463,7 @@ function bindHubHandlers() {
     const next = profile.currentLevel || 1;
     closeHub();
     if (!state || state.rewarded || state.mode !== "regular") makeLevel(next, { mode:"regular" });
+    else { render(); updateCoach(); setBackgroundMusic?.(musicModeForState?.(state) || "game"); }
   };
   hubContent.querySelectorAll("[data-game-mode]").forEach((btn)=>btn.onclick=()=>{
     const mode=btn.dataset.gameMode;

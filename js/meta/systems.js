@@ -106,6 +106,47 @@ function updateWeeklyChallenge() {
   return true;
 }
 
+function ensureMonthlyChallenge() {
+  const key = monthKey(todayKey());
+  profile.monthly ||= { key: null, id: null, baseline: {}, completed: false, rewarded: false, completedCount: 0 };
+  if (profile.monthly.key === key && profile.monthly.id) return profile.monthly;
+  const def = MONTHLY_DEFS[hashSeed(`monthly:${key}`) % MONTHLY_DEFS.length];
+  profile.monthly = {
+    key,
+    id: def.id,
+    baseline: { [def.metric]: metricValue(def.metric) },
+    completed: false,
+    rewarded: false,
+    completedCount: profile.monthly.completedCount || profile.stats.monthlyCompleted || 0,
+  };
+  saveProfile();
+  return profile.monthly;
+}
+function monthlyDefinition() {
+  const m = ensureMonthlyChallenge();
+  return MONTHLY_DEFS.find((x) => x.id === m.id) || MONTHLY_DEFS[0];
+}
+function monthlyProgress() {
+  const m = ensureMonthlyChallenge(), def = monthlyDefinition();
+  const value = Math.max(0, metricValue(def.metric) - +(m.baseline?.[def.metric] || 0));
+  return { value: Math.min(def.goal, value), goal: def.goal, ratio: Math.min(1, value / def.goal), def, completed: !!m.completed };
+}
+function updateMonthlyChallenge() {
+  const progress = monthlyProgress();
+  if (progress.completed || progress.value < progress.goal) return false;
+  const firstMonthly = !(profile.monthly.completedCount || 0);
+  profile.monthly.completed = true;
+  profile.monthly.completedCount = (profile.monthly.completedCount || 0) + 1;
+  profile.stats.monthlyCompleted = Math.max(profile.stats.monthlyCompleted || 0, profile.monthly.completedCount);
+  if (!profile.monthly.rewarded && progress.def.rewardXp) {
+    profile.monthly.rewarded = true;
+    awardXp?.(progress.def.rewardXp, "Месячное испытание", { notifyRank: false });
+  }
+  saveProfile();
+  queueAchievementNotifications?.([{ icon: "M", title: "Месячное испытание выполнено", desc: `${progress.def.title} · +${progress.def.rewardXp || 0} XP${firstMonthly ? " · открыт эффект «Лунное сияние»" : ""}` }]);
+  return true;
+}
+
 function recordKeyForState(s = state) {
   if (!s) return null;
   if (s.mode === "regular") return { bucket: "levelRecords", key: String(s.level) };

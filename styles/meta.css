@@ -2788,3 +2788,13 @@ body[data-theme="galaxy"] .card.face-down { background:radial-gradient(circle at
 .developer-message p { margin:0 0 9px; color:#c6c4d8; font-size:11px; line-height:1.45; }
 .developer-message ul { margin:0; padding-left:18px; color:#e4e3ef; font-size:10.5px; line-height:1.5; }
 .developer-message li + li { margin-top:4px; }
+
+
+/* ===== v19 launch sync, full-width nav and monthly challenge ===== */
+.hub-nav { padding-left: max(5px, env(safe-area-inset-left)) !important; padding-right: max(5px, env(safe-area-inset-right)) !important; }
+.hub-tabs { width: 100%; grid-template-columns: repeat(6, minmax(0, 1fr)) !important; gap: 4px; box-sizing: border-box; }
+.hub-tabs button { width: 100%; }
+.monthly-card { border-color:#8dc9ff33; background:linear-gradient(145deg,#173052aa,#221b4baa); }
+.monthly-card .monthly-icon { background:linear-gradient(145deg,#5d8fff33,#9c69ff22); color:#d6e7ff; }
+.monthly-card .weekly-progress i { background:linear-gradient(90deg,#68d8ff,#8d8cff 52%,#d17cff); }
+.monthly-card.done { border-color:#92d8ff66; box-shadow:inset 0 0 0 1px #8ddcff15; }

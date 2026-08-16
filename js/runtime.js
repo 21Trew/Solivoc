@@ -118,3 +118,12 @@ function daysUntilWeekEnd(date = new Date()) {
   sunday.setDate(monday.getDate() + 6);
   return Math.max(0, Math.ceil((sunday - new Date(date.getFullYear(), date.getMonth(), date.getDate())) / 86400000));
 }
+function monthKey(dateStr = todayKey()) {
+  const d = new Date(dateStr + "T12:00:00");
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+function daysUntilMonthEnd(date = new Date()) {
+  const today = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const last = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  return Math.max(0, Math.ceil((last - today) / 86400000));
+}

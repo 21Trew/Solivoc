@@ -34,6 +34,7 @@ function restartCurrentLevel() {
   if (state.mode === "marathon") return makeLevel(state.level, { mode: "marathon", seed: state.seed, marathonRound: state.marathonRound, marathonId: state.marathonId, cardSourceMode: state.cardSourceMode });
   if (state.mode === "calm") return makeLevel(state.level || 1, { mode: "calm", seed: state.seed, cardSourceMode: state.cardSourceMode });
   if (state.mode === "collection") return makeLevel(state.level || 1, { mode: "collection", seed: state.seed, collectionId: state.collectionId });
+  if (state.mode === "regular" && state.riskDeal) return makeLevel(state.level, { mode: "regular", seed: `level:${state.level}:retry:${Date.now()}`, cardSourceMode: state.cardSourceMode, categoryCooldownIds: state.categoryCooldownIds, specialIntro: false, forceSolvable: true });
   return makeLevel(state.level, { mode: state.mode, seed: state.seed, cardSourceMode: state.cardSourceMode, categoryCooldownIds: state.categoryCooldownIds, specialIntro: false });
 }
 function snapshot() {
@@ -47,16 +48,15 @@ function save() {
   if (state) localStorage.setItem(SAVE_KEY, JSON.stringify(state));
   saveProfile();
 }
-function load() {
+function load({ render: shouldRender = true } = {}) {
   try {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
     if (s?.columns) {
       const restored = normalizeLoadedLayout(s);
       state = restored.state;
       if (typeof assignBonusObjective === "function") assignBonusObjective(state);
-      render();
-      updateCoach();
-      if (restored.migrated) setTimeout(() => showToast("Расклад адаптирован под 5 колонок"), 120);
+      if (shouldRender) { render(); updateCoach(); }
+      if (shouldRender && restored.migrated) setTimeout(() => showToast("Расклад адаптирован под 5 колонок"), 120);
       return;
     }
   } catch {}
@@ -68,12 +68,12 @@ function load() {
       state = restored.state;
       if (typeof assignBonusObjective === "function") assignBonusObjective(state);
       saveProfile();
-      render();
-      updateCoach();
-      if (restored.migrated) setTimeout(() => showToast("Расклад адаптирован под 5 колонок"), 120);
+      if (shouldRender) { render(); updateCoach(); }
+      if (shouldRender && restored.migrated) setTimeout(() => showToast("Расклад адаптирован под 5 колонок"), 120);
       return;
     }
   } catch {}
+  if (!shouldRender) { state = null; return false; }
   if (!profile.tutorialComplete) makeLevel(1, { mode: "tutorial", step: 1 });
   else makeLevel(profile.currentLevel || 1);
 }

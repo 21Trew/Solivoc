@@ -41,6 +41,7 @@ function defaultProfile() {
     receivedChallenges: [],
     pendingChallengeSubmissions: [],
     weekly: { key: null, id: null, baseline: {}, completed: false, rewarded: false, completedCount: 0 },
+    monthly: { key: null, id: null, baseline: {}, completed: false, rewarded: false, completedCount: 0 },
     tutorialComplete: false,
     legacyStarsMigrated: false,
     categoryAchievementModelMigrated: false,
@@ -76,6 +77,7 @@ function loadProfile() {
         receivedChallenges: Array.isArray(p.receivedChallenges) ? p.receivedChallenges : [],
         pendingChallengeSubmissions: Array.isArray(p.pendingChallengeSubmissions) ? p.pendingChallengeSubmissions : [],
         weekly: { ...defaultProfile().weekly, ...(p.weekly || {}) },
+        monthly: { ...defaultProfile().monthly, ...(p.monthly || {}) },
         onboardingComplete: typeof p.onboardingComplete === "boolean" ? p.onboardingComplete : !!p.tutorialComplete,
         featuredAchievements: Array.isArray(p.featuredAchievements) ? p.featuredAchievements : [],
         developerMailSeen: Array.isArray(p.developerMailSeen) ? p.developerMailSeen : [],
@@ -158,6 +160,7 @@ function migrateMetaProfile() {
   profile.receivedChallenges = Array.isArray(profile.receivedChallenges) ? profile.receivedChallenges : [];
   profile.pendingChallengeSubmissions = Array.isArray(profile.pendingChallengeSubmissions) ? profile.pendingChallengeSubmissions : [];
   profile.weekly = { ...defaultProfile().weekly, ...(profile.weekly || {}) };
+  profile.monthly = { ...defaultProfile().monthly, ...(profile.monthly || {}) };
   profile.effectUnlocksSeen = Array.isArray(profile.effectUnlocksSeen) ? profile.effectUnlocksSeen : ["spark"];
   profile.daily.weekRewards = profile.daily.weekRewards && typeof profile.daily.weekRewards === "object" ? profile.daily.weekRewards : {};
   profile.retention = { ...defaultProfile().retention, ...(profile.retention || {}) };
@@ -220,6 +223,7 @@ function effectUnlocked(def, p = profile) {
   if (!def) return false;
   if (def.achievement) return p.achievements.includes(def.achievement);
   if (def.minWeekly) return (p.stats.weeklyCompleted || 0) >= def.minWeekly;
+  if (def.minMonthly) return (p.stats.monthlyCompleted || 0) >= def.minMonthly;
   return p.achievements.length >= (def.minAchievements || 0);
 }
 function effectUnlockLabel(def) {
@@ -228,6 +232,7 @@ function effectUnlockLabel(def) {
     return a ? `Достижение: ${a.title}` : def.desc;
   }
   if (def.minWeekly) return `${def.minWeekly} недельных испытания`;
+  if (def.minMonthly) return `${def.minMonthly} месячное испытание`;
   return def.minAchievements ? `${def.minAchievements} достижений` : "Базовый";
 }
 function titleUnlocked(def, p = profile) {

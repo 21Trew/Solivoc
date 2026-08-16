@@ -230,6 +230,7 @@ function finishLevel() {
   const bonusDone = typeof awardBonusObjective === "function" ? awardBonusObjective(state) : false;
   const record = typeof updatePersonalRecord === "function" ? updatePersonalRecord(stars, state) : null;
   if (typeof updateWeeklyChallenge === "function") updateWeeklyChallenge();
+  if (typeof updateMonthlyChallenge === "function") updateMonthlyChallenge();
   newAchievements = checkAchievements();
   save();
   if (typeof syncPushState === "function") syncPushState();

@@ -145,6 +145,7 @@ function registerPwa() {
   window.addEventListener("load", async () => {
     try {
       const reg = await navigator.serviceWorker.register("./sw.js");
+      reg.update().catch(()=>{});
       const banner = $("#updateBanner"), updateBtn = $("#updateNow"), updateReloadKey = "solivoc-explicit-update";
       const showUpdate = (worker) => {
         if (!worker || !navigator.serviceWorker.controller) return;
@@ -203,6 +204,30 @@ function startChallengeSyncLoop() {
   });
 }
 
+async function fetchServerBootstrap() {
+  if (!/^https?:$/.test(location.protocol)) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 1800);
+  try {
+    const response = await fetch("/api/bootstrap", { cache: "no-store", signal: controller.signal });
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (data && typeof data === "object") window.SERVER_BOOTSTRAP = data;
+    return data;
+  } catch { return null; } finally { clearTimeout(timer); }
+}
+async function syncServerDataOnBoot() {
+  const tasks = [
+    fetchServerBootstrap(),
+    Promise.resolve(flushPendingChallengeSubmissions?.()),
+    Promise.resolve(refreshOwnedChallenges?.({ notify: false })),
+    Promise.resolve(refreshReceivedChallenges?.()),
+    Promise.resolve(syncPushState?.()),
+  ];
+  const timeout = new Promise((resolve) => setTimeout(resolve, 1900));
+  await Promise.race([Promise.allSettled(tasks), timeout]);
+}
+
 async function boot() {
   try {
     bindFeedbackEvents();
@@ -218,6 +243,9 @@ async function boot() {
     setSplashProgress?.(55,"Собираю прогресс…");
     migrateCategoryMasteryProgress?.();
     ensureWeeklyChallenge();
+    ensureMonthlyChallenge?.();
+    setSplashProgress?.(64,"Синхронизирую с сервером…");
+    await syncServerDataOnBoot();
     runQualityAudit?.();
 
     // First-run onboarding is interactive. The splash must be fully removed
@@ -241,8 +269,8 @@ async function boot() {
     if (!startedChallenge) {
       if (onboardingRan) makeLevel(1,{mode:"tutorial",step:1});
       else {
-        load();
         openHomeAfterLoad = profile.settings?.startupScreen !== "game";
+        load({ render: !openHomeAfterLoad });
       }
     }
 
@@ -252,14 +280,18 @@ async function boot() {
     saveProfile();
     startChallengeSyncLoop();
 
+    // Prepare the home hub while the splash is still covering the app. This
+    // prevents a one-frame flash of the underlying game board on launch.
+    if (openHomeAfterLoad && !startedChallenge) openHub("home");
+
     if (!onboardingRan) {
       setSplashProgress?.(94,"Почти готово…");
       await hideSplash?.();
     }
 
-    if (openHomeAfterLoad && !startedChallenge) openHub("home");
-    else setBackgroundMusic(musicModeForState?.() || "game");
+    if (!openHomeAfterLoad || startedChallenge) setBackgroundMusic(musicModeForState?.() || "game");
     renderGlobalProfileHeaders?.();
+    updateProfileMailBadge?.();
 
     // Network synchronization must never keep the loading screen open.
     // Redis/Push/analytics can finish after the local game is already ready.

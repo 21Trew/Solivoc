@@ -624,6 +624,7 @@ const DEFAULT_STATS = {
   deadlocks: 0,
   specialCompleted: 0,
   weeklyCompleted: 0,
+  monthlyCompleted: 0,
   challengesCompleted: 0,
   calmCompleted: 0,
   collectionGamesCompleted: 0,
@@ -649,6 +650,14 @@ const WEEKLY_DEFS = [
   { id: "categories", icon: "▦", title: "Большой собиратель", desc: "Собрать 320 категорий за неделю", metric: "categoriesCompleted", goal: 320, rewardXp: 1450 },
 ];
 
+const MONTHLY_DEFS = [
+  { id: "levels", icon: "▶", title: "Большой месяц", desc: "Пройти 225 уровней за календарный месяц", metric: "levelsCompleted", goal: 225, rewardXp: 4500 },
+  { id: "stars", icon: "★", title: "Созвездие месяца", desc: "Заработать 575 звёзд за месяц", metric: "stars", goal: 575, rewardXp: 4650 },
+  { id: "noHints", icon: "?", title: "Месяц без подсказок", desc: "Пройти 175 партий без подсказок", metric: "noHintWins", goal: 175, rewardXp: 4800 },
+  { id: "perfect", icon: "★★★", title: "Идеальный месяц", desc: "Закрыть 130 раскладов на 3 звезды", metric: "tripleStarWins", goal: 130, rewardXp: 5000 },
+  { id: "categories", icon: "▦", title: "Архив месяца", desc: "Собрать 1025 категорий за месяц", metric: "categoriesCompleted", goal: 1025, rewardXp: 4650 },
+];
+
 const EFFECT_DEFS = [
   { id: "spark", name: "Искры", desc: "Базовый эффект", minAchievements: 0 },
   { id: "confetti", name: "Конфетти", desc: "За 8 достижений", minAchievements: 8 },
@@ -657,6 +666,7 @@ const EFFECT_DEFS = [
   { id: "aurora", name: "Сияние", desc: "За 3 недельных испытания", minWeekly: 3, rare: true },
   { id: "legend", name: "Легенда", desc: "За 5 идеальных глав", achievement: "chapterPerfect5", rare: true },
   { id: "duel", name: "Искры дуэли", desc: "За 25 побед в дуэлях", achievement: "duelWins25", rare: true },
+  { id: "moon", name: "Лунное сияние", desc: "За первое месячное испытание", minMonthly: 1, rare: true },
 ];
 
 const FRAME_DEFS = [

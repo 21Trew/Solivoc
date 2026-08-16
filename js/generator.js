@@ -265,14 +265,30 @@ function isLikelySolvable(s) {
   }
   return completed === target;
 }
-function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCode = null, challengeRole = null, challengeCreatorName = null, challengeCreatorAvatar = null, challengeCreatorResult = null, challengeGuestToken = null, seriesId = null, seriesRound = 1, seriesScoreCreator = 0, seriesScoreGuest = 0, marathonRound = 1, marathonId = null, collectionId = null, cardSourceMode = null, categoryCooldownIds = null } = {}) {
+function imperfectDealChance(cfg, mode = "regular") {
+  if (mode !== "regular") return 0;
+  const difficulty = Math.max(1, Math.min(5, +(cfg?.difficulty || 1)));
+  const games = Math.max(0, +(profile?.stats?.gamesPlayed || 0));
+  const difficultyFactor = (difficulty - 1) / 4;
+  const experienceFactor = Math.min(1, games / 300);
+  return Math.min(0.08, 0.02 + 0.035 * difficultyFactor + 0.025 * experienceFactor);
+}
+function riskDealRoll(seed, cfg, mode, forceSolvable = false) {
+  if (forceSolvable || mode !== "regular") return { risk: false, chance: 0 };
+  const chance = imperfectDealChance(cfg, mode);
+  const rng = makeRng(`${seed}:natural-risk`);
+  return { risk: rng() < chance, chance };
+}
+
+function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCode = null, challengeRole = null, challengeCreatorName = null, challengeCreatorAvatar = null, challengeCreatorResult = null, challengeGuestToken = null, seriesId = null, seriesRound = 1, seriesScoreCreator = 0, seriesScoreGuest = 0, marathonRound = 1, marathonId = null, collectionId = null, cardSourceMode = null, categoryCooldownIds = null, forceSolvable = false } = {}) {
   const baseSeed = seed || (mode === "daily" ? `daily:${todayKey()}` : mode === "collection" ? `collection:${collectionId || "animals"}:${Date.now()}` : `level:${level}`);
   const sourceMode = mode === "collection" ? "pictures" : normalizeCardSourceMode(cardSourceMode || profile?.settings?.cardSourceMode);
   const cooldownIds = mode === "regular" ? (Array.isArray(categoryCooldownIds) ? [...categoryCooldownIds] : getRecentCategories().slice(0, 40)) : [];
   for (let attempt = 0; attempt < 45; attempt++) {
     const rng = makeRng(baseSeed + ":" + attempt);
     const special = mode === "regular" ? specialForLevel(level) : null,
-      cfg = configForMode(level, mode, rng, special, { marathonRound });
+      cfg = configForMode(level, mode, rng, special, { marathonRound }),
+      riskRoll = riskDealRoll(baseSeed, cfg, mode, forceSolvable);
     const chosen = mode === "collection"
       ? chooseCompatibleFromPool(associationCollectionCategories(collectionId), cfg.cats, 2, rng)
       : categoriesForSourceMode(cfg.cats, cfg.difficulty, rng, sourceMode, cooldownIds);
@@ -328,8 +344,10 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
       marathonId: mode === "marathon" ? marathonId || seed : null,
       rewarded: false,
       generationAttempt: attempt,
+      riskDeal: !!riskRoll.risk,
+      riskDealChance: Math.round(riskRoll.chance * 1000) / 10,
     };
-    if (isLikelySolvable(structuredClone(candidate))) return candidate;
+    if (riskRoll.risk || isLikelySolvable(structuredClone(candidate))) return candidate;
   }
   console.warn("Solver fallback: используем последний корректно сформированный расклад");
   const rng = makeRng(baseSeed + ":fallback"),
@@ -384,6 +402,8 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
     marathonId: mode === "marathon" ? marathonId || seed : null,
     rewarded: false,
     generationAttempt: "fallback",
+    riskDeal: false,
+    riskDealChance: 0,
   };
 }
 function findCat(title) {
