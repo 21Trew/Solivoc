@@ -186,6 +186,14 @@
         <button class="duel-rematch" id="duelRematch">Реванш ⇄</button>
       </div>
     </div>
+    <div class="duel-history-modal" id="duelHistoryModal" aria-hidden="true">
+      <div class="duel-history-card" role="dialog" aria-modal="true" aria-label="История дуэлей с игроком">
+        <button class="duel-history-close" id="duelHistoryClose" aria-label="Закрыть">×</button>
+        <div class="duel-history-profile"><span id="duelHistoryAvatar">🙂</span><div><small>ИСТОРИЯ ДУЭЛЕЙ</small><h2 id="duelHistoryName">Друг</h2><p id="duelHistorySummary"></p></div></div>
+        <div class="duel-history-matches" id="duelHistoryMatches"></div>
+        <button class="duel-history-rematch" id="duelHistoryRematch">Новая дуэль →</button>
+      </div>
+    </div>
     <div class="notification-prompt" id="notificationPrompt" aria-live="polite">
       <div class="notification-prompt-card">
         <div class="notification-prompt-icon">🔔</div>

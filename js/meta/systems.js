@@ -180,6 +180,7 @@ function cleanChallengeResult(result = {}) {
     errors: Math.max(0, +result.errors || 0),
     undos: Math.max(0, +result.undos || 0),
     playerName: String(result.playerName || "Игрок").trim().slice(0, 20) || "Игрок",
+    playerId: String(result.playerId || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64),
     avatarEmoji: String(result.avatarEmoji || "🙂").slice(0, 8) || "🙂",
     title: String(result.title || "").trim().slice(0, 32),
     rank: String(result.rank || "").trim().slice(0, 32),
@@ -195,6 +196,7 @@ function resultForCurrentChallenge(s = state, stars = null) {
     errors: s?.run?.errors || 0,
     undos: s?.run?.undos || 0,
     playerName: profile.playerName || "Игрок",
+    playerId: profile.playerId || "",
     avatarEmoji: profile.avatarEmoji || "🙂",
     title: titleDefById(profile.titleId)?.name || "",
     rank: playerRank?.(profile)?.name || "",
@@ -213,11 +215,9 @@ function challengeResultMarkup(label, result) {
 function challengeComparison(entry) {
   const me = entry?.creatorResult, friend = entry?.guestResult;
   if (!me || !friend) return "";
-  if (me.stars !== friend.stars) return me.stars > friend.stars ? "Ты взял больше звёзд" : "Друг взял больше звёзд";
-  if (me.moves !== friend.moves) return me.moves < friend.moves ? `Ты быстрее на ${friend.moves - me.moves} ход.` : `Друг быстрее на ${me.moves - friend.moves} ход.`;
-  if ((me.errors || 0) !== (friend.errors || 0)) return (me.errors || 0) < (friend.errors || 0) ? "У тебя меньше ошибок" : "У друга меньше ошибок";
-  if (me.hints !== friend.hints) return me.hints < friend.hints ? "Ты использовал меньше подсказок" : "Друг использовал меньше подсказок";
-  if (me.undos !== friend.undos) return me.undos < friend.undos ? "Ты использовал меньше отмен" : "Друг использовал меньше отмен";
+  const outcome = challengeOutcome?.(me, friend) || 0, mine = challengePerformanceScore?.(me), theirs = challengePerformanceScore?.(friend);
+  if (outcome > 0) return `Ты победил · качество ${mine} против ${theirs}`;
+  if (outcome < 0) return `Друг победил · качество ${theirs} против ${mine}`;
   return "Результаты равны";
 }
 function pruneSentChallenges() {
@@ -251,6 +251,7 @@ function rememberReceivedChallenge(data) {
       level: data.level,
       creatorName: data.creatorName || "Друг",
       creatorAvatar: data.creatorAvatar || "🙂",
+      creatorPlayerId: data.creatorPlayerId || data.creatorResult?.playerId || "",
       sourceMode: normalizeCardSourceMode(data.sourceMode),
       creatorResult: data.creatorResult ? cleanChallengeResult(data.creatorResult) : null,
       guestToken: data.guestToken || null,
@@ -269,6 +270,7 @@ function rememberReceivedChallenge(data) {
     entry.level = data.level || entry.level;
     entry.creatorName = data.creatorName || entry.creatorName || "Друг";
     entry.creatorAvatar = data.creatorAvatar || entry.creatorAvatar || "🙂";
+    entry.creatorPlayerId = data.creatorPlayerId || data.creatorResult?.playerId || entry.creatorPlayerId || "";
     entry.sourceMode = normalizeCardSourceMode(data.sourceMode || entry.sourceMode);
     if (data.creatorResult) entry.creatorResult = cleanChallengeResult(data.creatorResult);
     if (data.guestToken) entry.guestToken = data.guestToken;
@@ -368,7 +370,7 @@ async function createRemoteChallenge(meta = {}) {
     seriesRound = Math.max(1, +meta.seriesRound || 1),
     seriesScoreCreator = Math.max(0, +meta.seriesScoreCreator || 0),
     seriesScoreGuest = Math.max(0, +meta.seriesScoreGuest || 0);
-  const data = await challengeApi("POST", "", { action: "create", seed, level, sourceMode, creatorName: profile.playerName || "Игрок", creatorAvatar: profile.avatarEmoji || "🙂", seriesId, seriesRound, seriesScoreCreator, seriesScoreGuest, pushClientId: profile.settings?.notifications && profile.settings?.challengeReminders !== false ? profile.pushClientId : "" });
+  const data = await challengeApi("POST", "", { action: "create", seed, level, sourceMode, creatorName: profile.playerName || "Игрок", creatorAvatar: profile.avatarEmoji || "🙂", creatorPlayerId: profile.playerId || "", seriesId, seriesRound, seriesScoreCreator, seriesScoreGuest, pushClientId: profile.settings?.notifications && profile.settings?.challengeReminders !== false ? profile.pushClientId : "" });
   const entry = {
     code: data.code,
     ownerToken: data.ownerToken,
@@ -377,6 +379,7 @@ async function createRemoteChallenge(meta = {}) {
     sourceMode,
     creatorName: profile.playerName || "Игрок",
     creatorAvatar: profile.avatarEmoji || "🙂",
+    creatorPlayerId: profile.playerId || "",
     createdAt: Date.now(),
     expiresAt: data.expiresAt || Date.now() + 7 * 86400000,
     status: "pending",

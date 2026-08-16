@@ -76,9 +76,8 @@ function colY(col, index, step = stackStep()) {
   return y;
 }
 
-/* Keep every tableau stack inside the fixed game viewport.
-   CSS defines the preferred card size; this only shrinks geometry when a real
-   column would otherwise cross the lower board edge. */
+/* Card geometry is deliberately stable for the whole round.
+   Long columns use the fixed cascade step instead of resizing the cards at runtime. */
 function resetTableauGeometryFit() {
   const root = document.documentElement;
   root.style.removeProperty("--ch");
@@ -90,38 +89,5 @@ function visualUnitsInColumn(col) {
 }
 function fitTableauGeometry() {
   resetTableauGeometryFit();
-  if (!state?.columns?.length || !tableau) return;
-
-  const root = document.documentElement,
-    cs = getComputedStyle(root),
-    baseCw = parseFloat(cs.getPropertyValue("--cw")) || 64,
-    baseCh = parseFloat(cs.getPropertyValue("--ch")) || baseCw * 1.42,
-    baseStep = parseFloat(cs.getPropertyValue("--stack-step")) || 24,
-    available = Math.max(120, tableau.clientHeight - 6),
-    units = Math.max(...state.columns.map(visualUnitsInColumn)),
-    required = baseCh + Math.max(0, units - 1) * baseStep;
-
-  if (required <= available) return;
-
-  // Keep card WIDTH stable for the whole level. Vertical compression is much
-  // less jarring and keeps four/five-column rounds readable.
-  const minRatioByCols = { 3: 1.28, 4: 1.20, 5: 1.14 },
-    minStepByCols = { 3: 14, 4: 13, 5: 12 },
-    minCh = baseCw * (minRatioByCols[state.cols] || 1.18),
-    minStep = minStepByCols[state.cols] || 12;
-  let ch = baseCh,
-    step = baseStep;
-
-  if (units > 1) step = Math.max(minStep, Math.min(baseStep, (available - ch) / (units - 1)));
-  if (ch + Math.max(0, units - 1) * step > available) {
-    ch = Math.max(minCh, available - Math.max(0, units - 1) * step);
-  }
-  if (ch + Math.max(0, units - 1) * step > available && units > 1) {
-    step = Math.max(10, (available - ch) / (units - 1));
-  }
-
-  root.style.setProperty("--ch", `${Math.max(minCh, ch).toFixed(2)}px`);
-  root.style.setProperty("--stack-step", `${Math.max(10, step).toFixed(2)}px`);
-  root.dataset.stackFit = step < 16 ? "tight" : "compact";
 }
 

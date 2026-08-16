@@ -17,6 +17,34 @@ const AVATAR_EMOJIS = [
   "🎯", "🎮", "🧩", "🏆", "🚀", "💎", "🎧", "🍕"
 ];
 
+const RANK_XP_BASE = 100;
+const RANK_XP_GROWTH = 1.1;
+// Exact economy: rank 1→2 costs 100 XP, every next promotion costs
+// 10% more than the PREVIOUS rounded promotion cost.
+const RANK_XP_COSTS = [RANK_XP_BASE];
+const RANK_XP_THRESHOLDS = [0];
+function xpNeededForRankUp(rank) {
+  rank = Math.max(1, Math.floor(+rank || 1));
+  while (RANK_XP_COSTS.length < rank) {
+    RANK_XP_COSTS.push(Math.max(RANK_XP_BASE, Math.round(RANK_XP_COSTS.at(-1) * RANK_XP_GROWTH)));
+  }
+  return RANK_XP_COSTS[rank - 1];
+}
+function xpThresholdForRank(rank) {
+  rank = Math.max(1, Math.floor(+rank || 1));
+  while (RANK_XP_THRESHOLDS.length < rank) {
+    const currentRank = RANK_XP_THRESHOLDS.length;
+    RANK_XP_THRESHOLDS.push(RANK_XP_THRESHOLDS.at(-1) + xpNeededForRankUp(currentRank));
+  }
+  return RANK_XP_THRESHOLDS[rank - 1];
+}
+function rankLevelFromXp(value) {
+  const xp = Math.max(0, +value || 0);
+  let rank = 1;
+  while (xp >= xpThresholdForRank(rank + 1) && rank < 500) rank++;
+  return rank;
+}
+
 const RANK_AVATAR_REWARDS = [
   "🧠","🕵️","🧙","🧑‍🚀","🤖","👑","🦁","🐲","🦅","🦋","🌋","🌌","🪐","🧿","🎭","🗿","🦖","🐉","🛸","⚜️",
   "🐺","🦝","🦥","🦦","🦚","🦜","🦩","🐬","🦈","🐋","🐘","🦒","🦏","🐆","🐻‍❄️","🦬","🦌","🐏","🦘","🦡",
@@ -35,7 +63,7 @@ const LOGIN_REWARD_DEFS = [
   { days: 365, id: "visits365", emoji: "🏅", title: "Год вместе" },
 ];
 function availableAvatarEmojis(p = typeof profile !== "undefined" ? profile : null) {
-  const level = Math.max(1, Math.floor((+p?.xp || 0) / 250) + 1),
+  const level = rankLevelFromXp(+p?.xp || 0),
     loginRewards = LOGIN_REWARD_DEFS.filter((r) => (p?.retention?.totalOpenDays || 0) >= r.days).map((r) => r.emoji);
   return [...new Set([...AVATAR_EMOJIS, ...RANK_AVATAR_REWARDS.slice(0, Math.max(0, level - 1)), ...loginRewards])];
 }
@@ -439,6 +467,7 @@ const THEME_DEFS = [
   { id: "candy", name: "Конфетная", stars: 450 },
   { id: "midnight", name: "Полночь", stars: 550 },
   { id: "gold", name: "Золото", stars: 700 },
+  { id: "galaxy", name: "Галактика", stars: 1000 },
 ];
 const CARD_BACK_DEFS = [
   { id: "classic", name: "Классика", desc: "Базовая рубашка", minAchievements: 0 },
@@ -613,10 +642,10 @@ const DEFAULT_STATS = {
 };
 
 const WEEKLY_DEFS = [
-  { id: "stars", icon: "★", title: "Звёздная неделя", desc: "Заработать 30 звёзд с понедельника по воскресенье", metric: "stars", goal: 30, rewardXp: 300 },
-  { id: "noHints", icon: "?", title: "Своя голова", desc: "Пройти 10 партий без подсказок за неделю", metric: "noHintWins", goal: 10, rewardXp: 320 },
-  { id: "perfect", icon: "★★★", title: "Идеальная неделя", desc: "Закрыть 8 раскладов на 3 звезды", metric: "tripleStarWins", goal: 8, rewardXp: 350 },
-  { id: "categories", icon: "▦", title: "Собиратель", desc: "Собрать 60 категорий за неделю", metric: "categoriesCompleted", goal: 60, rewardXp: 300 },
+  { id: "stars", icon: "★", title: "Звёздная неделя", desc: "Заработать 45 звёзд с понедельника по воскресенье", metric: "stars", goal: 45, rewardXp: 450 },
+  { id: "noHints", icon: "?", title: "Своя голова", desc: "Пройти 15 партий без подсказок за неделю", metric: "noHintWins", goal: 15, rewardXp: 480 },
+  { id: "perfect", icon: "★★★", title: "Идеальная неделя", desc: "Закрыть 12 раскладов на 3 звезды", metric: "tripleStarWins", goal: 12, rewardXp: 520 },
+  { id: "categories", icon: "▦", title: "Собиратель", desc: "Собрать 90 категорий за неделю", metric: "categoriesCompleted", goal: 90, rewardXp: 460 },
 ];
 
 const EFFECT_DEFS = [
@@ -647,13 +676,13 @@ const FRAME_DEFS = [
 
 const TITLE_DEFS = [
   { id: "player", name: "Игрок", icon: "◇" },
-  { id: "rank-linker", name: "Связист", icon: "⌁", minXp: 500 },
-  { id: "rank-associator", name: "Ассоциатор", icon: "✦", minXp: 1250 },
-  { id: "rank-researcher", name: "Исследователь", icon: "◎", minXp: 2500 },
-  { id: "rank-erudite", name: "Эрудит", icon: "▦", minXp: 4500 },
-  { id: "rank-master", name: "Мастер", icon: "★", minXp: 7500 },
-  { id: "rank-archivist", name: "Архивариус", icon: "♜", minXp: 11500 },
-  { id: "rank-legend", name: "Легенда", icon: "♛", minXp: 17000 },
+  { id: "rank-linker", name: "Связист", icon: "⌁", minXp: xpThresholdForRank(5) },
+  { id: "rank-associator", name: "Ассоциатор", icon: "✦", minXp: xpThresholdForRank(10) },
+  { id: "rank-researcher", name: "Исследователь", icon: "◎", minXp: xpThresholdForRank(20) },
+  { id: "rank-erudite", name: "Эрудит", icon: "▦", minXp: xpThresholdForRank(30) },
+  { id: "rank-master", name: "Мастер", icon: "★", minXp: xpThresholdForRank(40) },
+  { id: "rank-archivist", name: "Архивариус", icon: "♜", minXp: xpThresholdForRank(50) },
+  { id: "rank-legend", name: "Легенда", icon: "♛", minXp: xpThresholdForRank(75) },
   { id: "collector", name: "Коллекционер", icon: "▦", achievement: "collector" },
   { id: "perfectionist", name: "Перфекционист", icon: "★", achievement: "perfect10" },
   { id: "hand", name: "Мастер движений", icon: "×", achievement: "combo10" },

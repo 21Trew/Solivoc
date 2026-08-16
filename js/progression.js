@@ -93,7 +93,6 @@ function closeWinModal() {
   modal.classList.remove("show", "perfect", "perfect-burst");
   modal.setAttribute("aria-hidden", "true");
   setBackgroundMusic?.(musicModeForState?.() || "game");
-  setTimeout(() => showPendingRankUp?.(), 160);
 }
 function finishLevel() {
   state.rewarded = true;
@@ -280,10 +279,10 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
   void modal.offsetWidth;
   modal.classList.add("show");
 
-  setBackgroundMusic?.("victory");
+  playVictoryJingle?.(perfect);
   playSfx("win", perfect ? 0.9 : 0.72, 0.08);
   haptic(perfect ? [14, 24, 20] : [12, 22, 14]);
-  burst(false);
+  // Keep the dialog itself still; celebration lives in the confetti layer.
   confettiRain?.(perfect);
 
   rewards.forEach((reward, i) => {
@@ -300,7 +299,7 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
         burst(true);
         setTimeout(() => modal.classList.remove("perfect-burst"), 720);
       }
-    }, 420 + i * 430);
+    }, 760 + i * 460);
     winRevealTimers.push(timer);
   });
 }

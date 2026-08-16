@@ -197,8 +197,8 @@ function profileShowcaseMarkup() {
 
 function completedDuelEntries() {
   const out=[], seen=new Set();
-  for (const entry of profile.sentChallenges || []) if(entry?.code && entry.creatorResult && entry.guestResult && !seen.has(entry.code)){seen.add(entry.code);out.push({entry,perspective:"creator",opponent:entry.guestResult.playerName||"Друг",opponentAvatar:entry.guestResult.avatarEmoji||"🙂",completedAt:+entry.completedAt||+entry.guestResult.completedAt||0});}
-  for (const entry of profile.receivedChallenges || []) if(entry?.code && entry.creatorResult && entry.guestResult && !seen.has(entry.code)){seen.add(entry.code);out.push({entry,perspective:"guest",opponent:entry.creatorName||entry.creatorResult.playerName||"Друг",opponentAvatar:entry.creatorAvatar||entry.creatorResult.avatarEmoji||"🙂",completedAt:+entry.completedAt||+entry.creatorResult.completedAt||0});}
+  for (const entry of profile.sentChallenges || []) if(entry?.code && entry.creatorResult && entry.guestResult && !seen.has(entry.code)){seen.add(entry.code);out.push({entry,perspective:"creator",opponent:entry.guestResult.playerName||"Друг",opponentAvatar:entry.guestResult.avatarEmoji||"🙂",opponentId:entry.guestResult.playerId||"",completedAt:+entry.completedAt||+entry.guestResult.completedAt||0});}
+  for (const entry of profile.receivedChallenges || []) if(entry?.code && entry.creatorResult && entry.guestResult && !seen.has(entry.code)){seen.add(entry.code);out.push({entry,perspective:"guest",opponent:entry.creatorName||entry.creatorResult.playerName||"Друг",opponentAvatar:entry.creatorAvatar||entry.creatorResult.avatarEmoji||"🙂",opponentId:entry.creatorPlayerId||entry.creatorResult.playerId||"",completedAt:+entry.completedAt||+entry.creatorResult.completedAt||0});}
   return out.sort((a,b)=>b.completedAt-a.completedAt);
 }
 function duelHistorySummary() {
@@ -219,16 +219,21 @@ function syncDuelStats() {
   if (changed) saveProfile?.();
   return summary;
 }
+function duelOpponentKey(x) {
+  if (x?.opponentId) return `id:${x.opponentId}`;
+  return `legacy:${String(x?.opponent || "Друг").trim().toLowerCase()}|${x?.opponentAvatar || "🙂"}`;
+}
 function duelHistoryGroups() {
   const groups=new Map();
   for(const x of completedDuelEntries()){
-    const key=String(x.opponent||"Друг").trim().toLowerCase();
-    if(!groups.has(key)) groups.set(key,{name:x.opponent,avatar:x.opponentAvatar,matches:0,wins:0,losses:0,draws:0,moves:0,errors:0,last:x});
+    const key=duelOpponentKey(x);
+    if(!groups.has(key)) groups.set(key,{key,name:x.opponent,avatar:x.opponentAvatar,playerId:x.opponentId||"",matches:0,wins:0,losses:0,draws:0,moves:0,errors:0,last:x,entries:[]});
     const g=groups.get(key), me=x.perspective==="guest"?x.entry.guestResult:x.entry.creatorResult, fr=x.perspective==="guest"?x.entry.creatorResult:x.entry.guestResult, r=challengeOutcome(me,fr);
-    g.matches++;g.moves+=me.moves||0;g.errors+=me.errors||0;if(r>0)g.wins++;else if(r<0)g.losses++;else g.draws++; if(x.completedAt>(g.last?.completedAt||0))g.last=x;
+    g.matches++;g.moves+=me.moves||0;g.errors+=me.errors||0;g.entries.push(x);if(r>0)g.wins++;else if(r<0)g.losses++;else g.draws++; if(x.completedAt>(g.last?.completedAt||0))g.last=x;
   }
   return [...groups.values()].sort((a,b)=>(b.last?.completedAt||0)-(a.last?.completedAt||0));
 }
+function duelHistoryGroupByKey(key) { return duelHistoryGroups().find((g)=>g.key===key) || null; }
 function activeDuelEntries() {
   const out=[];
   for(const entry of profile.sentChallenges || []) {
@@ -244,19 +249,32 @@ function activeDuelEntries() {
 function duelHistoryContentMarkup() {
   const groups=duelHistoryGroups();
   return groups.length
-    ? `<div class="duel-history-list">${groups.map(g=>`<article><span class="duel-history-avatar">${g.avatar}</span><div><b>${escapeHtml(g.name)}</b><small>${g.matches} игр · ${g.wins}:${g.losses}${g.draws?` · ничьи ${g.draws}`:""}</small><em>Ø ${Math.round(g.moves/Math.max(1,g.matches))} ход. · Ø ${(g.errors/Math.max(1,g.matches)).toFixed(1)} ошибок</em></div><button data-duel-history-rematch="${g.last.entry.code}" data-duel-perspective="${g.last.perspective}">Дуэль</button></article>`).join("")}</div>`
+    ? `<div class="duel-history-list">${groups.map(g=>`<button class="duel-profile-row" data-duel-profile="${escapeHtml(g.key)}"><span class="duel-history-avatar">${g.avatar}</span><span class="duel-profile-copy"><b>${escapeHtml(g.name)}</b><small>${g.matches} матч. · ${g.wins}:${g.losses}${g.draws?` · ничьи ${g.draws}`:""}</small><em>Ø ${Math.round(g.moves/Math.max(1,g.matches))} ход. · Ø ${(g.errors/Math.max(1,g.matches)).toFixed(1)} ошибок</em></span><i>›</i></button>`).join("")}</div>`
     : `<div class="empty-state">Полностью завершённые матчи появятся здесь</div>`;
 }
+function closeDuelProfileHistory() {
+  const modal = $("#duelHistoryModal"); if (!modal) return; modal.classList.remove("show"); modal.setAttribute("aria-hidden","true");
+}
+function showDuelProfileHistory(key) {
+  const group=duelHistoryGroupByKey(key), modal=$("#duelHistoryModal"); if(!group||!modal)return false;
+  $("#duelHistoryAvatar").textContent=group.avatar||"🙂";
+  $("#duelHistoryName").textContent=group.name||"Друг";
+  $("#duelHistorySummary").textContent=`${group.matches} матч. · ${group.wins} побед · ${group.losses} поражений${group.draws?` · ${group.draws} ничьих`:""}`;
+  $("#duelHistoryMatches").innerHTML=group.entries.sort((a,b)=>b.completedAt-a.completedAt).map((x)=>{const me=x.perspective==="guest"?x.entry.guestResult:x.entry.creatorResult,fr=x.perspective==="guest"?x.entry.creatorResult:x.entry.guestResult,r=challengeOutcome(me,fr),label=r>0?"Победа":r<0?"Поражение":"Ничья",score=challengePerformanceScore(me),friendScore=challengePerformanceScore(fr),date=x.completedAt?new Date(x.completedAt).toLocaleDateString("ru-RU",{day:"2-digit",month:"short"}):"—";return `<article class="duel-history-match ${r>0?"win":r<0?"lose":"draw"}"><div><b>${label}</b><span>${date} · ${x.entry.code}</span></div><small>Ты: ${me.moves} ход. · ${me.errors||0} ошиб. · ${score} оч.<br>${escapeHtml(group.name)}: ${fr.moves} ход. · ${fr.errors||0} ошиб. · ${friendScore} оч.</small></article>`;}).join("");
+  const rematch=$("#duelHistoryRematch"); rematch.onclick=()=>{closeDuelProfileHistory();createChallengeRematch?.(group.last.entry,group.last.perspective);};
+  $("#duelHistoryClose").onclick=closeDuelProfileHistory; modal.onclick=(e)=>{if(e.target===modal)closeDuelProfileHistory();};
+  modal.classList.add("show");modal.setAttribute("aria-hidden","false");return true;
+}
 function duelsHubMarkup(view="active") {
-  const active=activeDuelEntries(), completed=completedDuelEntries(), current=view==="history"?"history":"active";
+  const active=activeDuelEntries(), completed=completedDuelEntries(), profiles=duelHistoryGroups(), current=view==="history"?"history":"active";
   const activeMarkup=active.length
     ? `<div class="owned-challenge-list duel-active-list">${active.map(x=>x.perspective==="guest"?receivedChallengeCardMarkup(x.entry,{compact:true}):ownedChallengeCardMarkup(x.entry,{compact:true})).join("")}</div>`
     : `<div class="empty-state">Активных дуэлей сейчас нет</div>`;
   return `<section class="hub-section duels-hub">
-    <div class="hub-section-head"><h3>Дуэли</h3><small>${active.length} активных · ${completed.length} матчей</small></div>
+    <div class="hub-section-head"><h3>Дуэли</h3><small>${active.length} активных · ${profiles.length} соперн. · ${completed.length} матч.</small></div>
     <div class="duel-tabs">
       <button class="${current==="active"?"active":""}" data-duel-tab="active">Активные <span>${active.length}</span></button>
-      <button class="${current==="history"?"active":""}" data-duel-tab="history">История <span>${completed.length}</span></button>
+      <button class="${current==="history"?"active":""}" data-duel-tab="history">История <span>${profiles.length}</span></button>
     </div>
     <div class="duel-tab-content">${current==="active"?activeMarkup:duelHistoryContentMarkup()}</div>
   </section>`;

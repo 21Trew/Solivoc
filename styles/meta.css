@@ -2530,3 +2530,97 @@ body[data-card-back="anniversary"] .card.face-down::after { content:"🏅"; tran
 .near-goal span { font-size: 9px; line-height: 1.3; }
 .profile-showcase-grid span { font-size: 9px; }
 .profile-showcase-grid b { font-size: 11.5px; }
+
+
+/* ===== v16 stability, rank economy and duel profiles ===== */
+.card-source-setting { border: 0; }
+.startup-setting { margin-bottom: 18px; }
+.settings-subgroup { margin-top: 14px; padding-top: 12px; border-top: 1px solid #ffffff0e; }
+.settings-subgroup:first-of-type { margin-top: 8px; }
+.compact-settings.one-column { grid-template-columns: 1fr; }
+.full-setting { width: 100%; min-height: 54px; }
+
+/* Finite, calm victory entrance: no repeated card/icon pumping. */
+@keyframes winBackdropSmooth { from { opacity:0; } to { opacity:1; } }
+@keyframes winCardSmooth { from { opacity:0; transform:translateY(12px) scale(.975); } to { opacity:1; transform:translateY(0) scale(1); } }
+.win-modal.show { animation: winBackdropSmooth .38s ease both !important; }
+.win-modal.show .win-modal-card { animation: winCardSmooth .56s cubic-bezier(.16,.82,.22,1) both !important; }
+.win-modal.perfect .win-modal-card::after { animation:none !important; opacity:.58; }
+.win-modal.perfect .win-icon { animation:none !important; }
+.win-modal.perfect-burst .win-modal-card { animation: winCardSmooth .56s cubic-bezier(.16,.82,.22,1) both !important; }
+.win-star-item { transition: opacity .38s ease, transform .45s cubic-bezier(.18,.82,.22,1); }
+
+/* Bamboo: keep only the striped green pattern, without an emoji/symbol. */
+.cardback-preview.back-lotus::after,
+body[data-card-back="lotus"] .card.face-down::after { content:"" !important; display:none !important; }
+
+/* 1000-star theme. */
+.theme-galaxy { background: radial-gradient(circle at 72% 24%,#dfb2ff 0 4%,transparent 5%),radial-gradient(circle at 25% 32%,#7be9ff 0 3%,transparent 4%),linear-gradient(145deg,#090f2d,#302066 52%,#7b2d7f); }
+body[data-theme="galaxy"] { background:linear-gradient(155deg,#020817,#0b1230 52%,#24103d); }
+body[data-theme="galaxy"] .app, body[data-theme="galaxy"] .hub-shell { background:radial-gradient(circle at 83% 7%,#a657d847,transparent 27%),radial-gradient(circle at 10% 20%,#39d8ff26,transparent 25%),linear-gradient(160deg,#101945,#241d5b 50%,#371744); }
+body[data-theme="galaxy"] .brand-mark, body[data-theme="galaxy"] .controls .primary { background:linear-gradient(145deg,#5ad9ef,#755ce5 52%,#d65ea8); }
+body[data-theme="galaxy"] .card.face-down { background:radial-gradient(circle at 70% 18%,#ffffff38 0 2%,transparent 3%),linear-gradient(145deg,#17255d,#4b347d 54%,#852e72);border-color:#aeeaff; }
+
+/* Duel history is grouped by social profile; details open in a modal. */
+.duel-profile-row { width:100%; display:grid; grid-template-columns:48px minmax(0,1fr) 20px; align-items:center; gap:10px; padding:11px; border:1px solid #ffffff12; border-radius:15px; background:#ffffff08; color:#fff; text-align:left; }
+.duel-profile-row + .duel-profile-row { margin-top:8px; }
+.duel-profile-row > i { font-style:normal; font-size:24px; color:#aaa6c7; text-align:center; }
+.duel-profile-copy { min-width:0; display:grid; gap:3px; }
+.duel-profile-copy b { font-size:14px; }
+.duel-profile-copy small,.duel-profile-copy em { font-size:10px; color:#aaa6c7; font-style:normal; }
+.duel-history-modal { position:fixed; inset:0; z-index:25000; display:grid; place-items:center; padding:18px; background:#050716b8; opacity:0; visibility:hidden; transition:opacity .24s ease; }
+.duel-history-modal.show { opacity:1; visibility:visible; }
+.duel-history-card { position:relative; width:min(420px,100%); max-height:min(78dvh,700px); overflow:auto; padding:20px 16px 16px; border:1px solid #ffffff1b; border-radius:24px; background:linear-gradient(160deg,#25284a,#171a34); box-shadow:0 28px 70px #0008; transform:translateY(12px) scale(.985); transition:transform .3s cubic-bezier(.2,.85,.2,1); }
+.duel-history-modal.show .duel-history-card { transform:none; }
+.duel-history-close { position:absolute; top:10px; right:10px; width:36px; height:36px; border:0; border-radius:12px; background:#ffffff0c; color:#fff; font-size:20px; }
+.duel-history-profile { display:grid; grid-template-columns:54px minmax(0,1fr); align-items:center; gap:12px; padding-right:42px; margin-bottom:14px; }
+.duel-history-profile > span { width:54px; height:54px; display:grid; place-items:center; border-radius:16px; background:#ffffff0d; border:1px solid #ffffff16; font-size:28px; }
+.duel-history-profile small { color:#8eddf1; font-size:9px; font-weight:900; letter-spacing:.12em; }
+.duel-history-profile h2 { margin:3px 0; font-size:20px; }
+.duel-history-profile p { margin:0; color:#aaa6c7; font-size:11px; }
+.duel-history-matches { display:grid; gap:8px; }
+.duel-history-match { padding:10px 11px; border-radius:14px; background:#ffffff07; border:1px solid #ffffff0f; }
+.duel-history-match > div { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px; }
+.duel-history-match b { font-size:12px; }
+.duel-history-match > div span,.duel-history-match small { color:#aaa6c7; font-size:10px; line-height:1.45; }
+.duel-history-match.win b { color:#ffe082; }
+.duel-history-match.lose b { color:#ffadb9; }
+.duel-history-rematch { width:100%; min-height:46px; margin-top:12px; border:1px solid #ffffff1b; border-radius:14px; background:linear-gradient(135deg,#6a58e7,#427ff0); color:#fff; font-weight:900; }
+
+/* v16.1: very calm level-complete motion. The dialog itself never pops twice. */
+@keyframes winCardCalm {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.win-modal.show { animation: winBackdropSmooth .46s ease-out both !important; }
+.win-modal.show .win-modal-card {
+  animation: winCardCalm .68s cubic-bezier(.22,.72,.2,1) both !important;
+  will-change: opacity, transform;
+}
+.win-modal.perfect-burst .win-modal-card { animation: none !important; }
+.win-star-item,
+.win-star-item.revealed {
+  transition: opacity .48s ease-out, transform .52s cubic-bezier(.22,.72,.2,1) !important;
+}
+.win-star-item { transform: translateY(4px) !important; }
+.win-star-item.revealed { transform: translateY(0) !important; }
+.win-star-symbol,
+.win-star-item.revealed .win-star-symbol,
+.win-star-item.earned.revealed .win-star-symbol {
+  animation: none !important;
+  transform: scale(1) rotate(0) !important;
+  transition: color .45s ease, filter .45s ease, text-shadow .45s ease !important;
+}
+
+/* Settings rhythm. */
+.card-source-setting { padding-inline: 0; border: 0 !important; outline: 0 !important; box-shadow: none !important; }
+.startup-setting { margin-bottom: 22px !important; }
+.settings-subgroup { border-top-color: #ffffff12; }
+.feedback-settings { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.feedback-settings .setting-toggle { min-width:0; min-height:58px; padding-inline:7px; }
+.feedback-settings .setting-toggle b { font-size:10px; }
+.feedback-settings .setting-toggle span { font-size:8.5px; }
+@media (max-width:350px) {
+  .feedback-settings { grid-template-columns:1fr; }
+  .feedback-settings .setting-toggle { min-height:50px; }
+}

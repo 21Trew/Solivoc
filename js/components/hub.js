@@ -33,7 +33,7 @@ function hubTabsMarkup() {
 }
 function renderGlobalProfileHeaders() {
   const rank = typeof playerRank === "function" ? playerRank(profile) : { name: "Новичок" },
-    xp = typeof xpLevelProgress === "function" ? xpLevelProgress(profile) : { level: 1, ratio: 0, value: 0, goal: 250 },
+    xp = typeof xpLevelProgress === "function" ? xpLevelProgress(profile) : { level: 1, ratio: 0, value: 0, goal: 100 },
     left = Math.max(0, xp.goal - xp.value),
     meta = `Ранг ${xp.level} · ${rank.name} · ещё ${left} XP`;
   const values = [
@@ -86,6 +86,7 @@ function modesTabMarkup() {
   };
   const cards = GAME_MODE_DEFS.map((def) => modeCardMarkup({ ...def, ...(copy[def.id] || {}) })).join("");
   return `<section class="hub-section modes-intro"><div class="hub-section-head"><div><h3>Режимы игры</h3><small>у каждого режима свой темп и музыка</small></div></div><div class="mode-grid">${cards}</div></section>
+    ${associationCollectionsMarkup()}
     ${typeof duelsHubMarkup === "function" ? duelsHubMarkup(hubDuelTab) : `${ownedChallengesMarkup()}${receivedChallengesMarkup()}`}
     <section class="hub-section challenge-enter"><div class="hub-section-head"><h3>Код дуэли</h3><small>6 символов</small></div><div class="challenge-input-row"><input id="challengeInput" inputmode="text" autocomplete="off" autocapitalize="characters" maxlength="6" placeholder="ABC123"><button id="challengeStart">Открыть</button></div></section>`;
 }
@@ -160,7 +161,7 @@ function visualCategoryDetailMarkup(id) {
 }
 function associationCollectionsMarkup() {
   return `<div class="association-collections-block">
-    <div class="hub-subhead"><h4>Картинки</h4><small>выбери набор для отдельного расклада</small></div>
+    <div class="hub-subhead"><h4>Расклады по картинкам</h4><small>тематические режимы только с emoji-карточками</small></div>
     <div class="association-collection-grid">${ASSOCIATION_COLLECTION_DEFS.map((collection) => {
       const progress = associationCollectionProgress(collection.id), samples = collection.categories.slice(0, 3);
       return `<button class="association-collection-card" data-association-collection="${collection.id}">
@@ -217,7 +218,7 @@ function collectionTabMarkup() {
   if(!hubVisualCategoryId||!pictureDiscovered.has(hubVisualCategoryId))hubVisualCategoryId=allAssociationCategories().find((c)=>pictureDiscovered.has(c.id))?.id||null;
   const cat=BANK.find((c)=>c.id===hubCategoryId),tabs=`<div class="encyclopedia-type-tabs"><button class="${hubEncyclopediaType==="words"?"active":""}" data-encyclopedia-tab="words"><b>Слова</b><span>${wordCount}/${BANK.length}</span></button><button class="${hubEncyclopediaType==="pictures"?"active":""}" data-encyclopedia-tab="pictures"><b>Картинки</b><span>${pictureCount}/${pictureTotal}</span></button></div>`,toolbar=encyclopediaToolbarMarkup();
   const words=`<div class="encyclopedia-pane">${categoryDetailMarkup(cat)}${toolbar}${wordEncyclopediaGridMarkup()}</div>`;
-  const pictures=`<div class="encyclopedia-pane">${associationCollectionsMarkup()}<div class="hub-subhead picture-categories-head"><h4>Категории картинок</h4><small>${pictureCount}/${pictureTotal} открыто</small></div>${visualCategoryDetailMarkup(hubVisualCategoryId)}${toolbar}${pictureEncyclopediaGridMarkup()}</div>`;
+  const pictures=`<div class="encyclopedia-pane"><div class="hub-subhead picture-categories-head"><h4>Категории картинок</h4><small>${pictureCount}/${pictureTotal} открыто</small></div>${visualCategoryDetailMarkup(hubVisualCategoryId)}${toolbar}${pictureEncyclopediaGridMarkup()}</div>`;
   return `<section class="hub-section encyclopedia-shell"><div class="hub-section-head encyclopedia-main-head"><div><h3>Энциклопедия</h3><small>все ассоциации в одном месте</small></div><strong>${totalCount}/${totalCategories}</strong></div>${tabs}${hubEncyclopediaType==="pictures"?pictures:words}</section>`;
 }
 function cardBackMarkup() {
@@ -315,12 +316,13 @@ function settingsTabMarkup() {
     <div class="startup-setting"><div class="hub-subhead"><h4>При запуске</h4><small>куда переходить после загрузки приложения</small></div><div class="startup-options">
       <button class="${startupScreen==="home"?"active":""}" data-startup-screen="home"><i>⌂</i><span><b>Стартовая</b><small>Открывать меню игры</small></span></button>
       <button class="${startupScreen==="game"?"active":""}" data-startup-screen="game"><i>▶</i><span><b>Сразу в игру</b><small>Продолжать последний расклад</small></span></button>
-    </div></div><div class="settings-grid">
+    </div></div>
+    <div class="settings-subgroup"><div class="hub-subhead"><h4>Звук и отклик</h4><small>аудио и тактильные сигналы игры</small></div><div class="settings-grid compact-settings feedback-settings">
       <button class="setting-toggle ${profile.settings.sound?"on":""}" id="soundToggle"><b>♪ Эффекты</b><span>${profile.settings.sound?"Включены":"Выключены"}</span></button>
       <button class="setting-toggle ${profile.settings.music?"on":""}" id="musicToggle"><b>♫ Музыка</b><span>${profile.settings.music?"Включена":"Выключена"}</span></button>
       <button class="setting-toggle ${profile.settings.haptics?"on":""}" id="hapticsToggle"><b>⌁ Вибрация</b><span>${profile.settings.haptics?"Включена":"Выключена"}</span></button>
-      <button class="setting-toggle install" id="installPwa" ${standalone?"disabled":""}><b>${installLabel}</b><span>${standalone?"Установлено как приложение":"Работает офлайн после установки"}</span></button>
-    </div>`;
+    </div></div>
+    <div class="settings-subgroup"><div class="hub-subhead"><h4>Приложение</h4><small>установка и офлайн-режим</small></div><button class="setting-toggle install full-setting" id="installPwa" ${standalone?"disabled":""}><b>${installLabel}</b><span>${standalone?"Установлено как приложение":"Работает офлайн после установки"}</span></button></div>`;
   const notificationsContent = `<div class="notification-state ${notificationStatus.cls}"><i></i><span>${notificationStatus.text}</span></div>
       <div class="settings-grid notification-grid">
         <button class="setting-toggle ${profile.settings.notifications?"on":""}" id="notificationToggle"><b>🔔 Все уведомления</b><span>${profile.settings.notifications?"Включены":"Выключены"}</span></button>
@@ -396,6 +398,7 @@ function bindHubHandlers() {
   const encyclopediaSearch=$("#encyclopediaSearch"); if(encyclopediaSearch){let searchTimer;encyclopediaSearch.oninput=()=>{encyclopediaQuery=encyclopediaSearch.value;clearTimeout(searchTimer);searchTimer=setTimeout(()=>{renderHub();const next=$("#encyclopediaSearch");next?.focus();next?.setSelectionRange(next.value.length,next.value.length);},180);};}
   hubContent.querySelectorAll("[data-duel-tab]").forEach((btn)=>btn.onclick=()=>{hubDuelTab=btn.dataset.duelTab==="history"?"history":"active";renderHub();});
   hubContent.querySelectorAll("[data-duel-history-rematch]").forEach((btn)=>btn.onclick=()=>{const found=findDuelHistoryEntry?.(btn.dataset.duelHistoryRematch);if(found)createChallengeRematch?.(found.entry,found.perspective);});
+  hubContent.querySelectorAll("[data-duel-profile]").forEach((btn)=>btn.onclick=()=>showDuelProfileHistory?.(btn.dataset.duelProfile));
   hubContent.querySelectorAll("[data-card-source-mode]").forEach((btn)=>btn.onclick=()=>{profile.settings.cardSourceMode=normalizeCardSourceMode(btn.dataset.cardSourceMode);saveProfile();showToast(`Расклады: ${btn.textContent.trim()}`);renderHub();});
   hubContent.querySelectorAll("[data-startup-screen]").forEach((btn)=>btn.onclick=()=>{profile.settings.startupScreen=btn.dataset.startupScreen==="game"?"game":"home";saveProfile();showToast(profile.settings.startupScreen==="game"?"При запуске: сразу в игру":"При запуске: стартовая");renderHub();});
   hubContent.querySelectorAll("[data-association-collection]").forEach((btn)=>btn.onclick=()=>{const id=btn.dataset.associationCollection;closeHub();makeLevel(1,{mode:"collection",collectionId:id,seed:`collection:${id}:${Date.now()}`});});

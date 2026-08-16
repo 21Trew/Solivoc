@@ -1,35 +1,35 @@
 /* Retention layer: XP/ranks, daily calendar, category mastery, bonus goals,
    smart home actions, challenge series, result reveal, notifications and splash. */
-const XP_PER_LEVEL = 250;
 const RANK_DEFS = [
-  { xp: 0, name: "Новичок", icon: "◇" },
-  { xp: 500, name: "Связист", icon: "⌁" },
-  { xp: 1250, name: "Ассоциатор", icon: "✦" },
-  { xp: 2500, name: "Исследователь", icon: "◎" },
-  { xp: 4500, name: "Эрудит", icon: "▦" },
-  { xp: 7500, name: "Мастер", icon: "★" },
-  { xp: 11500, name: "Архивариус", icon: "♜" },
-  { xp: 17000, name: "Легенда", icon: "♛" },
+  { level: 1, name: "Новичок", icon: "◇" },
+  { level: 5, name: "Связист", icon: "⌁" },
+  { level: 10, name: "Ассоциатор", icon: "✦" },
+  { level: 20, name: "Исследователь", icon: "◎" },
+  { level: 30, name: "Эрудит", icon: "▦" },
+  { level: 40, name: "Мастер", icon: "★" },
+  { level: 50, name: "Архивариус", icon: "♜" },
+  { level: 75, name: "Легенда", icon: "♛" },
 ];
 
 function playerXpLevel(p = profile) {
-  return Math.max(1, Math.floor((+p.xp || 0) / XP_PER_LEVEL) + 1);
+  return rankLevelFromXp(+p.xp || 0);
 }
 function playerRank(p = profile) {
-  const xp = +p.xp || 0;
-  return [...RANK_DEFS].reverse().find((r) => xp >= r.xp) || RANK_DEFS[0];
+  const level = playerXpLevel(p);
+  return [...RANK_DEFS].reverse().find((r) => level >= r.level) || RANK_DEFS[0];
 }
 function xpLevelProgress(p = profile) {
-  const xp = +p.xp || 0,
+  const xp = Math.max(0, +p.xp || 0),
     level = playerXpLevel(p),
-    base = (level - 1) * XP_PER_LEVEL,
-    value = xp - base;
-  return { level, value, goal: XP_PER_LEVEL, ratio: Math.min(1, value / XP_PER_LEVEL) };
+    base = xpThresholdForRank(level),
+    goal = xpNeededForRankUp(level),
+    value = Math.max(0, xp - base);
+  return { level, value, goal, ratio: Math.min(1, value / Math.max(1, goal)), totalToNext: Math.max(0, base + goal - xp) };
 }
 function rankLevelReward(level, p = profile) {
   const avatar = rankRewardAvatar?.(level) || null,
-    levelXp = Math.max(0, (level - 1) * XP_PER_LEVEL),
-    prevXp = Math.max(0, (level - 2) * XP_PER_LEVEL),
+    levelXp = xpThresholdForRank(level),
+    prevXp = xpThresholdForRank(Math.max(1, level - 1)),
     title = TITLE_DEFS.find((x) => x.minXp && x.minXp > prevXp && x.minXp <= levelXp) || null;
   return { level, avatar, title };
 }
@@ -37,7 +37,7 @@ function rankRewardsRoadmapMarkup(limit = 5) {
   const xp = xpLevelProgress(profile), start = xp.level + 1, rows = [];
   for (let level = start; level < start + limit; level++) {
     const reward = rankLevelReward(level), icons = [reward.avatar, reward.title?.icon].filter(Boolean);
-    rows.push(`<div class="rank-roadmap-item"><span class="rank-roadmap-level">${level}</span><span class="rank-roadmap-icons">${icons.length ? icons.map((x)=>`<i>${escapeHtml(x)}</i>`).join("") : `<i>✦</i>`}</span><span><b>${reward.title ? `Титул «${escapeHtml(reward.title.name)}»` : reward.avatar ? "Новый аватар" : "Новый ранг"}</b><small>${level === start ? `через ${xp.goal - xp.value} XP` : `${(level - start) * XP_PER_LEVEL + (xp.goal - xp.value)} XP`}</small></span></div>`);
+    rows.push(`<div class="rank-roadmap-item"><span class="rank-roadmap-level">${level}</span><span class="rank-roadmap-icons">${icons.length ? icons.map((x)=>`<i>${escapeHtml(x)}</i>`).join("") : `<i>✦</i>`}</span><span><b>${reward.title ? `Титул «${escapeHtml(reward.title.name)}»` : reward.avatar ? "Новый аватар" : "Новый ранг"}</b><small>${level === start ? `через ${xp.goal - xp.value} XP` : `${Math.max(0, xpThresholdForRank(level) - (+profile.xp || 0))} XP`}</small></span></div>`);
   }
   return `<section class="hub-section rank-roadmap"><div class="hub-section-head"><div><h3>Награды за ранг</h3><small>что откроется дальше</small></div><strong>Ранг ${xp.level}</strong></div><div class="rank-roadmap-list">${rows.join("")}</div></section>`;
 }
@@ -56,22 +56,24 @@ function awardXp(amount, reason = "", { notifyRank = true } = {}) {
   if (state?.run) state.run.xpEarned = (state.run.xpEarned || 0) + amount;
   track("xp_awarded", { amount, reason, level: afterLevel });
   if (afterLevel > beforeLevel) {
+    const pendingFrom = Math.min(profile.pendingRankUp?.fromLevel || beforeLevel, beforeLevel);
     const avatars = [];
-    for (let level = beforeLevel + 1; level <= afterLevel; level++) {
+    for (let level = pendingFrom + 1; level <= afterLevel; level++) {
       const reward = rankRewardAvatar?.(level);
       if (reward) avatars.push(reward);
     }
     const rankChanged = afterRankDef.name !== beforeRankDef.name;
-    const titleReward = rankChanged
+    const newlyUnlockedTitle = rankChanged
       ? TITLE_DEFS.find((x) => x.minXp && x.name === afterRankDef.name && profile.xp >= x.minXp)?.id || null
       : null;
+    const previousPending = profile.pendingRankUp || {};
     profile.pendingRankUp = {
-      fromLevel: beforeLevel,
+      fromLevel: pendingFrom,
       level: afterLevel,
       rankName: afterRankDef.name,
       rankIcon: afterRankDef.icon,
-      avatars,
-      titleReward,
+      avatars: [...new Set([...(previousPending.avatars || []), ...avatars])],
+      titleReward: newlyUnlockedTitle || previousPending.titleReward || null,
       reason,
       createdAt: Date.now(),
     };
@@ -79,10 +81,25 @@ function awardXp(amount, reason = "", { notifyRank = true } = {}) {
   }
   saveProfile();
   renderGlobalProfileHeaders?.();
-  if (afterLevel > beforeLevel && !$("#modal")?.classList.contains("show")) setTimeout(() => showPendingRankUp?.(), 260);
   return amount;
 }
 
+let pendingRankContinuation = null;
+function showRankUpThen(action) {
+  if (typeof action !== "function") action = () => {};
+  if (!profile.pendingRankUp) return action();
+  pendingRankContinuation = action;
+  // Rank-up is a post-level reward. Give the victory dialog time to leave,
+  // so this reward can never visually interrupt the board or the win screen.
+  setTimeout(() => {
+    if (!pendingRankContinuation) return;
+    if (!showPendingRankUp()) {
+      const next = pendingRankContinuation;
+      pendingRankContinuation = null;
+      next?.();
+    }
+  }, 240);
+}
 function closeRankUpModal() {
   const modal = $("#rankUpModal");
   if (!modal) return;
@@ -90,6 +107,9 @@ function closeRankUpModal() {
   modal.setAttribute("aria-hidden", "true");
   profile.pendingRankUp = null;
   saveProfile();
+  const next = pendingRankContinuation;
+  pendingRankContinuation = null;
+  if (next) setTimeout(next, 120);
 }
 function showPendingRankUp() {
   const data = profile.pendingRankUp, modal = $("#rankUpModal");
@@ -319,16 +339,30 @@ function runSmartHomeAction() {
   return makeLevel(profile.currentLevel||1,{mode:"regular"});
 }
 
+function challengePerformanceScore(result) {
+  if (!result) return Number.POSITIVE_INFINITY;
+  // Fair duel score: errors matter enough that one careless move cannot beat
+  // a clean solve just because the raw move count is one lower.
+  return (+result.moves || 0)
+    + (+result.errors || 0) * 2
+    + (+result.hints || 0) * 5
+    + (+result.undos || 0) * 3;
+}
 function challengeOutcome(me, friend) {
   if (!me || !friend) return 0;
-  const pairs = [
-    [me.stars, friend.stars, 1],
-    [friend.moves, me.moves, 1],
-    [friend.errors || 0, me.errors || 0, 1],
-    [friend.hints || 0, me.hints || 0, 1],
-    [friend.undos || 0, me.undos || 0, 1],
+  const mine = challengePerformanceScore(me), theirs = challengePerformanceScore(friend);
+  if (mine !== theirs) return mine < theirs ? 1 : -1;
+  const tieBreakers = [
+    [+me.errors || 0, +friend.errors || 0, false],
+    [+me.hints || 0, +friend.hints || 0, false],
+    [+me.undos || 0, +friend.undos || 0, false],
+    [+me.stars || 0, +friend.stars || 0, true],
+    [+me.moves || 0, +friend.moves || 0, false],
   ];
-  for (const [a,b] of pairs) if (a !== b) return a > b ? 1 : -1;
+  for (const [a, b, higherWins] of tieBreakers) {
+    if (a === b) continue;
+    return higherWins ? (a > b ? 1 : -1) : (a < b ? 1 : -1);
+  }
   return 0;
 }
 function resolvedSeriesScore(entry) {

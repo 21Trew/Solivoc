@@ -13,6 +13,7 @@ function defaultProfile() {
     effect: "spark",
     effectUnlocksSeen: ["spark"],
     playerName: "Игрок",
+    playerId: "",
     avatarEmoji: "🙂",
     titleId: "player",
     frame: "none",
@@ -165,6 +166,8 @@ function migrateMetaProfile() {
   profile.weeklyDigest = { ...defaultProfile().weeklyDigest, ...(profile.weeklyDigest || {}) };
   profile.featuredAchievements = Array.isArray(profile.featuredAchievements) ? profile.featuredAchievements.filter((id) => profile.achievements.includes(id)).slice(0, 3) : [];
   profile.favoriteCategory = String(profile.favoriteCategory || "");
+  profile.playerId = String(profile.playerId || "");
+  if (!profile.playerId) profile.playerId = `p_${Math.random().toString(36).slice(2,10)}${Date.now().toString(36).slice(-6)}`;
   profile.analyticsClientId = String(profile.analyticsClientId || "");
   if (!profile.analyticsClientId) profile.analyticsClientId = `a_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-5)}`;
   if (profile.tutorialComplete && profile.onboardingComplete == null) profile.onboardingComplete = true;

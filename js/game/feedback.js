@@ -135,18 +135,11 @@ const MUSIC_PATTERNS = {
     volume: 0.0064,
     type: "sine",
   },
-  victory: {
-    notes: [523.25, 659.25, 783.99, 1046.5, 783.99, 987.77, 1174.66, 1046.5],
-    interval: 390,
-    duration: 0.52,
-    volume: 0.0092,
-    type: "triangle",
-  },
 };
-function musicTone(freq, duration, volume, type = "sine") {
+function musicTone(freq, duration, volume, type = "sine", delay = 0) {
   const ctx = ensureAudioContext();
   if (!ctx || ctx.state !== "running") return;
-  const start = ctx.currentTime,
+  const start = ctx.currentTime + Math.max(0, delay),
     osc = ctx.createOscillator(),
     gain = ctx.createGain();
   osc.type = type;
@@ -158,6 +151,13 @@ function musicTone(freq, duration, volume, type = "sine") {
   osc.connect(gain).connect(ctx.destination);
   osc.start(start);
   osc.stop(start + duration + 0.03);
+}
+
+function playVictoryJingle(perfect = false) {
+  stopBackgroundMusic();
+  if (!musicEnabled()) return;
+  const notes = perfect ? [523.25, 659.25, 783.99, 1046.5, 1318.5] : [523.25, 659.25, 783.99, 987.77];
+  notes.forEach((note, i) => musicTone(note, i === notes.length - 1 ? 0.42 : 0.24, 0.0105, i % 2 ? "sine" : "triangle", i * 0.22));
 }
 function stopBackgroundMusic() {
   musicGeneration++;
@@ -174,7 +174,7 @@ function scheduleMusicStep(generation) {
   musicStep++;
   musicTone(note, pattern.duration, pattern.volume, pattern.type);
   // Very light upper note once per phrase gives the menu/game loops distinct character.
-  if (musicStep % 4 === 0) musicTone(note * (musicMode === "menu" || musicMode === "victory" ? 2 : 1.5), pattern.duration * 0.72, pattern.volume * 0.38, "sine");
+  if (musicStep % 4 === 0) musicTone(note * (musicMode === "menu" ? 2 : 1.5), pattern.duration * 0.72, pattern.volume * 0.38, "sine");
   musicTimer = setTimeout(() => scheduleMusicStep(generation), pattern.interval);
 }
 function musicModeForState(s = state) {
@@ -187,7 +187,7 @@ function musicModeForState(s = state) {
   return "game";
 }
 function setBackgroundMusic(mode = "game") {
-  musicMode = ["menu", "game", "daily", "marathon", "zen", "duel", "collection", "victory"].includes(mode) ? mode : "game";
+  musicMode = ["menu", "game", "daily", "marathon", "zen", "duel", "collection"].includes(mode) ? mode : "game";
   stopBackgroundMusic();
   musicStep = 0;
   if (!musicEnabled() || document.hidden) return;

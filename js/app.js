@@ -91,29 +91,33 @@ function bindAppEvents() {
   $("#next").onclick = () => {
     closeWinModal();
     resetCombo();
-    if (state.mode === "tutorial") {
-      if (state.tutorialStep < 3)
-        makeLevel(state.tutorialStep + 1, { mode: "tutorial", step: state.tutorialStep + 1 });
-      else makeLevel(profile.currentLevel || 1);
-    } else if (state.mode === "daily") makeLevel(profile.currentLevel || 1);
-    else if (state.mode === "challenge") openHub("modes");
-    else if (state.mode === "collection") makeLevel(1, { mode: "collection", collectionId: state.collectionId, seed: `collection:${state.collectionId}:${Date.now()}` });
-    else if (state.mode === "calm") makeLevel(1, { mode: "calm", seed: `calm:${Date.now()}:${Math.random()}` });
-    else if (state.mode === "marathon") {
-      const nextRound = state.marathonSuccess ? (state.marathonRound || 1) + 1 : 1;
-      const runId = state.marathonSuccess ? state.marathonId : `marathon:${Date.now().toString(36)}`;
-      makeLevel(nextRound, { mode: "marathon", seed: `${runId}:${nextRound}`, marathonRound: nextRound, marathonId: runId });
-    } else makeLevel(state.level + 1);
+    const action = () => {
+      if (state.mode === "tutorial") {
+        if (state.tutorialStep < 3) makeLevel(state.tutorialStep + 1, { mode: "tutorial", step: state.tutorialStep + 1 });
+        else makeLevel(profile.currentLevel || 1);
+      } else if (state.mode === "daily") makeLevel(profile.currentLevel || 1);
+      else if (state.mode === "challenge") openHub("modes");
+      else if (state.mode === "collection") makeLevel(1, { mode: "collection", collectionId: state.collectionId, seed: `collection:${state.collectionId}:${Date.now()}` });
+      else if (state.mode === "calm") makeLevel(1, { mode: "calm", seed: `calm:${Date.now()}:${Math.random()}` });
+      else if (state.mode === "marathon") {
+        const nextRound = state.marathonSuccess ? (state.marathonRound || 1) + 1 : 1;
+        const runId = state.marathonSuccess ? state.marathonId : `marathon:${Date.now().toString(36)}`;
+        makeLevel(nextRound, { mode: "marathon", seed: `${runId}:${nextRound}`, marathonRound: nextRound, marathonId: runId });
+      } else makeLevel(state.level + 1);
+    };
+    if (typeof showRankUpThen === "function") showRankUpThen(action); else action();
   };
   $("#winRestart").onclick = () => {
     closeWinModal();
     resetCombo();
-    restartCurrentLevel();
+    const action = () => restartCurrentLevel();
+    if (typeof showRankUpThen === "function") showRankUpThen(action); else action();
   };
   $("#winMenu").onclick = () => {
     closeWinModal();
     resetCombo();
-    openHub();
+    const action = () => openHub();
+    if (typeof showRankUpThen === "function") showRankUpThen(action); else action();
   };
   $("#winShare").onclick = () => {
     if (state?.mode === "challenge" && state.challengeRole === "creator") {
@@ -243,7 +247,6 @@ async function boot() {
     if (openHomeAfterLoad && !startedChallenge) openHub("progress");
     else setBackgroundMusic(musicModeForState?.() || "game");
     renderGlobalProfileHeaders?.();
-    setTimeout(() => showPendingRankUp?.(), 500);
 
     // Network synchronization must never keep the loading screen open.
     // Redis/Push/analytics can finish after the local game is already ready.
