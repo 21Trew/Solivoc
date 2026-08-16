@@ -244,7 +244,7 @@ async function boot() {
       await hideSplash?.();
     }
 
-    if (openHomeAfterLoad && !startedChallenge) openHub("progress");
+    if (openHomeAfterLoad && !startedChallenge) openHub("home");
     else setBackgroundMusic(musicModeForState?.() || "game");
     renderGlobalProfileHeaders?.();
 

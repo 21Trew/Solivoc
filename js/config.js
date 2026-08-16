@@ -642,10 +642,11 @@ const DEFAULT_STATS = {
 };
 
 const WEEKLY_DEFS = [
-  { id: "stars", icon: "★", title: "Звёздная неделя", desc: "Заработать 45 звёзд с понедельника по воскресенье", metric: "stars", goal: 45, rewardXp: 450 },
-  { id: "noHints", icon: "?", title: "Своя голова", desc: "Пройти 15 партий без подсказок за неделю", metric: "noHintWins", goal: 15, rewardXp: 480 },
-  { id: "perfect", icon: "★★★", title: "Идеальная неделя", desc: "Закрыть 12 раскладов на 3 звезды", metric: "tripleStarWins", goal: 12, rewardXp: 520 },
-  { id: "categories", icon: "▦", title: "Собиратель", desc: "Собрать 90 категорий за неделю", metric: "categoriesCompleted", goal: 90, rewardXp: 460 },
+  { id: "levels", icon: "▶", title: "Большая неделя", desc: "Пройти 70 уровней с понедельника по воскресенье", metric: "levelsCompleted", goal: 70, rewardXp: 1400 },
+  { id: "stars", icon: "★", title: "Звёздный марафон", desc: "Заработать 180 звёзд за неделю", metric: "stars", goal: 180, rewardXp: 1450 },
+  { id: "noHints", icon: "?", title: "Своя голова", desc: "Пройти 55 партий без подсказок за неделю", metric: "noHintWins", goal: 55, rewardXp: 1500 },
+  { id: "perfect", icon: "★★★", title: "Идеальная неделя", desc: "Закрыть 40 раскладов на 3 звезды", metric: "tripleStarWins", goal: 40, rewardXp: 1550 },
+  { id: "categories", icon: "▦", title: "Большой собиратель", desc: "Собрать 320 категорий за неделю", metric: "categoriesCompleted", goal: 320, rewardXp: 1450 },
 ];
 
 const EFFECT_DEFS = [

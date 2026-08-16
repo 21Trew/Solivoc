@@ -1,4 +1,21 @@
 /* Level rewards, achievements, win screen and tutorial coach. */
+
+function comboXpBonusInfo(s = state) {
+  const combo = Math.max(0, +(s?.run?.maxDragCombo || 0));
+  if (combo >= 25) return { combo, multiplier: 1.30, percent: 30 };
+  if (combo >= 10) return { combo, multiplier: 1.10, percent: 10 };
+  return { combo, multiplier: 1, percent: 0 };
+}
+function awardLevelXpWithCombo(baseXp, reason) {
+  const bonus = comboXpBonusInfo(state), total = Math.round(baseXp * bonus.multiplier);
+  if (state?.run) {
+    state.run.comboXpBonus = Math.max(0, total - Math.round(baseXp));
+    state.run.comboXpPercent = bonus.percent;
+    state.run.comboXpCombo = bonus.combo;
+  }
+  return awardXp(total, reason, { notifyRank: false });
+}
+
 function calculateStars() {
   return Math.min(3, 1 + (state.run.hints === 0 ? 1 : 0) + (state.run.undos === 0 ? 1 : 0));
 }
@@ -119,7 +136,10 @@ function finishLevel() {
     if (firstClear && state.level === 1) track("funnel_level_1_complete");
     if (firstClear && state.level === 2) track("funnel_level_2_complete");
     if (firstClear && state.level === 5) track("funnel_level_5_complete");
-    if (typeof awardXp === "function") awardXp((firstClear ? 45 : 18) + stars * (firstClear ? 10 : 6), firstClear ? `Уровень ${state.level}` : "Повтор уровня", { notifyRank: false });
+    if (typeof awardXp === "function") {
+      const baseXp = (firstClear ? 45 : 18) + stars * (firstClear ? 10 : 6);
+      awardLevelXpWithCombo(baseXp, firstClear ? `Уровень ${state.level}` : "Повтор уровня");
+    }
   } else if (state.mode === "daily") {
     const date = todayKey();
     firstDailyClear = !profile.daily.completedDates.includes(date);
@@ -235,7 +255,10 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
   }
 
   const xpEl = $("#winXp");
-  if (xpEl) xpEl.innerHTML = `<b>+${state.run?.xpEarned || 0} XP</b><span>${bonusDone ? ` · бонус «${state.bonusObjective?.title || "цель"}» ✓` : ""}</span>`;
+  if (xpEl) {
+    const comboBonus = state.run?.comboXpPercent ? ` · комбо ×${state.run.comboXpCombo}: +${state.run.comboXpPercent}%` : "";
+    xpEl.innerHTML = `<b>+${state.run?.xpEarned || 0} XP</b><span>${comboBonus}${bonusDone ? ` · бонус «${state.bonusObjective?.title || "цель"}» ✓` : ""}</span>`;
+  }
   const goalsEl = $("#winGoals");
   if (goalsEl && typeof nearGoalsMarkup === "function") goalsEl.innerHTML = nearGoalsMarkup(2);
 

@@ -1,6 +1,6 @@
 /* Game hub: play, progression, encyclopedia, appearance and settings. */
 let hubChapterNumber = null,
-  hubTab = "progress",
+  hubTab = "home",
   hubCategoryId = null,
   hubVisualCategoryId = null,
   hubEncyclopediaType = "words",
@@ -41,6 +41,11 @@ function renderGlobalProfileHeaders() {
     ["#hubProfileAvatar", profile.avatarEmoji || "🙂"], ["#hubProfileName", profile.playerName || "Игрок"], ["#hubProfileMeta", meta],
   ];
   for (const [selector, value] of values) { const el = $(selector); if (el) el.textContent = value; }
+  const frame = FRAME_DEFS.find((f) => f.id === profile.frame) || FRAME_DEFS[0];
+  [$("#gameProfileAvatar"), $("#hubProfileAvatar")].filter(Boolean).forEach((avatar) => {
+    avatar.dataset.frame = frame.id;
+    avatar.style.setProperty("--frame-h", frame.hue || 250);
+  });
   const bar = $("#hubProfileXpBar"); if (bar) bar.style.width = `${Math.max(0, Math.min(1, xp.ratio || 0)) * 100}%`;
 }
 function collapsibleSectionMarkup(key, title, subtitle, content, extraClass = "") {
@@ -83,12 +88,19 @@ function modesTabMarkup() {
     marathon: { description: "Только идеальные расклады продолжают серию", meta: `Рекорд: ${profile.stats.bestMarathon || 0}` },
     zen: { description: "Бесконечные расклады без давления", meta: "Для спокойной игры" },
     duel: { description: "Одинаковый расклад для двух игроков", meta: "Серия до 2 побед" },
+    pictures: { description: "Тематические расклады только с картинками", meta: `${ASSOCIATION_COLLECTION_DEFS.length} наборов` },
   };
   const cards = GAME_MODE_DEFS.map((def) => modeCardMarkup({ ...def, ...(copy[def.id] || {}) })).join("");
   return `<section class="hub-section modes-intro"><div class="hub-section-head"><div><h3>Режимы игры</h3><small>у каждого режима свой темп и музыка</small></div></div><div class="mode-grid">${cards}</div></section>
-    ${associationCollectionsMarkup()}
     ${typeof duelsHubMarkup === "function" ? duelsHubMarkup(hubDuelTab) : `${ownedChallengesMarkup()}${receivedChallengesMarkup()}`}
     <section class="hub-section challenge-enter"><div class="hub-section-head"><h3>Код дуэли</h3><small>6 символов</small></div><div class="challenge-input-row"><input id="challengeInput" inputmode="text" autocomplete="off" autocapitalize="characters" maxlength="6" placeholder="ABC123"><button id="challengeStart">Открыть</button></div></section>`;
+}
+
+function homeTabMarkup() {
+  return `<section class="home-welcome"><div class="home-welcome-copy"><small>ГЛАВНАЯ</small><h2>Продолжим?</h2><p>Серия, недельная цель и следующий лучший ход — на одном экране.</p></div></section>
+    ${typeof smartHomeMarkup === "function" ? smartHomeMarkup() : ""}
+    ${typeof dailyCalendarMarkup === "function" ? dailyCalendarMarkup() : ""}
+    ${weeklyMarkup()}`;
 }
 
 function achievementCardMarkup(a) {
@@ -98,13 +110,22 @@ function achievementCardMarkup(a) {
 }
 function progressTabMarkup() {
   const chaptersDone = completedChapterCount(profile), perfectChapters = perfectChapterCount(profile), discoveredCount = discoveredCategoryCount(profile);
-  const filtered = ACHIEVEMENTS.filter((a) => {
-    const done = profile.achievements.includes(a.id), p = achievementProgressData(a, profile), ratio = p ? p.value / p.goal : 0;
+  let filtered = ACHIEVEMENTS.filter((a) => {
+    const done = profile.achievements.includes(a.id), p = achievementProgressData(a, profile);
     if (achievementFilter === "done") return done;
-    if (achievementFilter === "near") return !done && ratio >= 0.5;
+    if (achievementFilter === "near") return !done && !!p;
     if (achievementFilter === "rare") return !!a.rare;
     return true;
   });
+  if (achievementFilter === "near") {
+    filtered = filtered.sort((a, b) => {
+      const ap = achievementProgressData(a, profile), bp = achievementProgressData(b, profile);
+      const ar = ap ? ap.value / Math.max(1, ap.goal) : 0, br = bp ? bp.value / Math.max(1, bp.goal) : 0;
+      if (br !== ar) return br - ar;
+      const aLeft = ap ? ap.goal - ap.value : Infinity, bLeft = bp ? bp.goal - bp.value : Infinity;
+      return aLeft - bLeft;
+    });
+  }
   const duelStats = typeof syncDuelStats === "function" ? syncDuelStats() : { total: profile.stats.duelMatches || 0, wins: profile.stats.duelWins || 0 };
   const statsItems = [
     [profile.stats.levelsCompleted, "уровней"], [profile.stats.gamesPlayed || 0, "партий"],
@@ -120,17 +141,13 @@ function progressTabMarkup() {
   const currentChapter = chapterInfo(profile.currentLevel || 1);
   if (!hubChapterNumber) hubChapterNumber = currentChapter.number;
   hubChapterNumber = Math.max(1, Math.min(hubChapterNumber, currentChapter.number));
-  return `${typeof smartHomeMarkup === "function" ? smartHomeMarkup() : ""}
-    ${typeof dailyCalendarMarkup === "function" ? dailyCalendarMarkup() : ""}
-    ${weeklyMarkup()}
-    ${typeof nearGoalsMarkup === "function" ? nearGoalsMarkup(2) : ""}
+  return `${typeof nearGoalsMarkup === "function" ? nearGoalsMarkup(2) : ""}
     ${typeof rankRewardsRoadmapMarkup === "function" ? rankRewardsRoadmapMarkup(5) : ""}
     ${typeof loginRewardsMarkup === "function" ? loginRewardsMarkup() : ""}
     ${chapterMarkup(hubChapterNumber)}
-    ${typeof profileShowcaseMarkup === "function" ? profileShowcaseMarkup() : ""}
     ${collapsibleSectionMarkup("statistics", "Статистика", "твоя история", statsContent)}
     <section class="hub-section"><div class="hub-section-head"><h3>Достижения</h3><small>${profile.achievements.length}/${ACHIEVEMENTS.length}</small></div>
-      <div class="achievement-filters">${[["all","Все"],["near","Почти"],["done","Получены"],["rare","Редкие"]].map(([id,label])=>`<button class="${achievementFilter===id?"active":""}" data-ach-filter="${id}">${label}</button>`).join("")}</div>
+      <div class="achievement-filters">${[["all","Все"],["near","Ближайшие"],["rare","Редкие"],["done","Получены"]].map(([id,label])=>`<button class="${achievementFilter===id?"active":""}" data-ach-filter="${id}">${label}</button>`).join("")}</div>
       <div class="achievement-list">${filtered.map(achievementCardMarkup).join("") || `<div class="empty-state">Здесь пока пусто</div>`}</div>
     </section>`;
 }
@@ -159,20 +176,42 @@ function visualCategoryDetailMarkup(id) {
     <div class="picture-collection">${info.category.cards.map(([emoji,label])=>`<span class="${known.has(emoji)?"known":"unknown"}" title="${known.has(emoji)?escapeHtml(label):"Не открыто"}">${known.has(emoji)?emoji:"❔"}</span>`).join("")}</div>
   </article>`;
 }
-function associationCollectionsMarkup() {
-  return `<div class="association-collections-block">
-    <div class="hub-subhead"><h4>Расклады по картинкам</h4><small>тематические режимы только с emoji-карточками</small></div>
-    <div class="association-collection-grid">${ASSOCIATION_COLLECTION_DEFS.map((collection) => {
-      const progress = associationCollectionProgress(collection.id), samples = collection.categories.slice(0, 3);
-      return `<button class="association-collection-card" data-association-collection="${collection.id}">
-        <span class="association-collection-preview">${samples.map((cat) => `<i title="${escapeHtml(cat.title)}">${cat.cards[0][0]}</i>`).join("")}</span>
-        <span class="association-collection-copy"><b>${collection.icon} ${collection.name}</b><small>${escapeHtml(collection.desc)}</small></span>
-        <span class="association-collection-progress"><i style="width:${progress.total ? (progress.completed / progress.total) * 100 : 0}%"></i></span>
-        <span class="association-collection-meta">${progress.completed}/${progress.total} категорий${progress.completed === progress.total ? " · освоено ✓" : " · играть →"}</span>
-      </button>`;
-    }).join("")}</div>
-  </div>`;
+function associationCollectionCardsMarkup() {
+  return ASSOCIATION_COLLECTION_DEFS.map((collection) => {
+    const progress = associationCollectionProgress(collection.id), samples = collection.categories.slice(0, 3);
+    return `<button class="association-collection-card" data-association-collection="${collection.id}">
+      <span class="association-collection-preview">${samples.map((cat) => `<i title="${escapeHtml(cat.title)}">${cat.cards[0][0]}</i>`).join("")}</span>
+      <span class="association-collection-copy"><b>${collection.icon} ${collection.name}</b><small>${escapeHtml(collection.desc)}</small></span>
+      <span class="association-collection-progress"><i style="width:${progress.total ? (progress.completed / progress.total) * 100 : 0}%"></i></span>
+      <span class="association-collection-meta">${progress.completed}/${progress.total} категорий${progress.completed === progress.total ? " · освоено ✓" : " · играть →"}</span>
+    </button>`;
+  }).join("");
 }
+function associationCollectionsMarkup() {
+  return `<div class="association-collections-block"><div class="hub-subhead"><h4>Расклады по картинкам</h4><small>тематические режимы только с emoji-карточками</small></div><div class="association-collection-grid">${associationCollectionCardsMarkup()}</div></div>`;
+}
+function closePictureModePicker() {
+  const modal = $("#pictureModeModal");
+  if (!modal) return;
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden", "true");
+}
+function openPictureModePicker() {
+  const modal = $("#pictureModeModal"), content = $("#pictureModeContent");
+  if (!modal || !content) return;
+  content.innerHTML = `<div class="picture-mode-head"><small>РЕЖИМ КАРТИНКИ</small><h2>Выбери набор</h2><p>В раскладе будут только карточки с изображениями.</p></div><div class="association-collection-grid">${associationCollectionCardsMarkup()}</div>`;
+  content.querySelectorAll("[data-association-collection]").forEach((btn) => btn.onclick = () => {
+    const id = btn.dataset.associationCollection;
+    closePictureModePicker();
+    closeHub();
+    makeLevel(1, { mode:"collection", collectionId:id, seed:`collection:${id}:${Date.now()}` });
+  });
+  $("#pictureModeClose").onclick = closePictureModePicker;
+  modal.onclick = (e) => { if (e.target === modal) closePictureModePicker(); };
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+}
+
 function encyclopediaToolbarMarkup() {
   const filters=[["all","Все"],["open","Открытые"],["unfinished","Не завершены"],["mastered","Освоены"],["new","Новые"]];
   return `<div class="encyclopedia-tools"><label class="encyclopedia-search"><i>⌕</i><input id="encyclopediaSearch" value="${escapeHtml(encyclopediaQuery)}" placeholder="Найти категорию"></label><div class="encyclopedia-filters">${filters.map(([id,label])=>`<button class="${encyclopediaFilter===id?"active":""}" data-ency-filter="${id}">${label}</button>`).join("")}</div><div class="encyclopedia-sort"><span>Сортировка</span>${[["progress","Прогресс"],["name","А–Я"],["new","Новые"]].map(([id,label])=>`<button class="${encyclopediaSort===id?"active":""}" data-ency-sort="${id}">${label}</button>`).join("")}</div></div>`;
@@ -239,27 +278,18 @@ function closeProfileEditorModal() {
   modal.classList.remove("show");
   modal.setAttribute("aria-hidden", "true");
 }
-function openProfileEditorModal() {
-  const modal = $("#profileEditorModal"), content = $("#profileEditorContent");
-  if (!modal || !content) return;
+function renderProfileEditorForm(modal, content) {
   modal.dataset.avatar = profile.avatarEmoji || "🙂";
   modal.dataset.title = profile.titleId || "player";
   modal.dataset.featured = (profile.featuredAchievements || []).join(",");
-  content.innerHTML = `<div class="profile-editor-head compact"><div class="profile-editor-avatar-preview">${escapeHtml(profile.avatarEmoji || "🙂")}</div><div><small>ПРОФИЛЬ ИГРОКА</small><h2>${escapeHtml(profile.playerName || "Игрок")}</h2></div></div>
+  const frame = FRAME_DEFS.find((f) => f.id === profile.frame) || FRAME_DEFS[0];
+  content.innerHTML = `<div class="profile-editor-head compact"><div class="profile-editor-avatar-preview" data-frame="${frame.id}" style="--frame-h:${frame.hue || 250}">${escapeHtml(profile.avatarEmoji || "🙂")}</div><div><small>РЕДАКТИРОВАНИЕ</small><h2>${escapeHtml(profile.playerName || "Игрок")}</h2></div></div>
     <div class="profile-editor-identity"><label class="profile-field"><span>Имя</span><input id="profileEditorName" maxlength="20" value="${escapeHtml(profile.playerName || "Игрок")}" autocomplete="off" spellcheck="false"></label><label class="profile-field"><span>Любимая категория</span><select id="profileFavoriteCategory"><option value="">Не выбрана</option>${discoveredAllCategoryIds?.().map((id)=>`<option value="${id}" ${profile.favoriteCategory===id?"selected":""}>${categoryDisplayIcon?.(id)||"✦"} ${escapeHtml(categoryDisplayName?.(id)||id)}</option>`).join("")||""}</select></label></div>
-    <details class="profile-compact-section"><summary><span>Аватар</span><small>${escapeHtml(profile.avatarEmoji || "🙂")} · нажми, чтобы выбрать</small></summary>${avatarEmojiMarkup(profile.avatarEmoji)}</details>
+    <details class="profile-compact-section"><summary><span>Аватар</span><small>${escapeHtml(profile.avatarEmoji || "🙂")} · выбрать</small></summary>${avatarEmojiMarkup(profile.avatarEmoji)}</details>
     <details class="profile-compact-section"><summary><span>Титул</span><small>${escapeHtml(titleCurrent().name)}</small></summary>${titlePillsMarkup(profile.titleId)}</details>
     <details class="profile-compact-section"><summary><span>Избранные достижения</span><small>до 3</small></summary><div class="featured-picker">${(profile.achievements||[]).map((id)=>ACHIEVEMENTS.find((a)=>a.id===id)).filter(Boolean).map((a)=>`<button type="button" class="featured-pick ${(profile.featuredAchievements||[]).includes(a.id)?"selected":""}" data-featured-achievement="${a.id}"><i>${escapeHtml(a.icon)}</i><span>${escapeHtml(a.title)}</span></button>`).join("")||`<small>Сначала получи достижение</small>`}</div></details>
-    <div class="profile-editor-actions"><button type="button" class="secondary" id="profileEditorCancel">Отмена</button><button type="button" class="primary" id="profileEditorSave">Сохранить</button></div>`;
-  modal.classList.add("show");
-  modal.setAttribute("aria-hidden", "false");
-  modal.onclick = (event) => { if (event.target === modal) closeProfileEditorModal(); };
-  if (!openProfileEditorModal.escapeBound) {
-    document.addEventListener("keydown", (event) => { if (event.key === "Escape" && $("#profileEditorModal")?.classList.contains("show")) closeProfileEditorModal(); });
-    openProfileEditorModal.escapeBound = true;
-  }
+    <div class="profile-editor-actions"><button type="button" class="secondary" id="profileEditorCancel">Назад</button><button type="button" class="primary" id="profileEditorSave">Сохранить</button></div>`;
   const nameInput = $("#profileEditorName");
-  setTimeout(() => nameInput?.focus(), 60);
   content.querySelectorAll("[data-profile-avatar]").forEach((btn)=>btn.onclick=()=>{
     modal.dataset.avatar = btn.dataset.profileAvatar;
     content.querySelectorAll("[data-profile-avatar]").forEach((x)=>x.classList.toggle("selected", x===btn));
@@ -274,10 +304,8 @@ function openProfileEditorModal() {
     if(set.has(id))set.delete(id);else if(set.size<3)set.add(id);else{showToast("Можно выбрать до 3 достижений");return;}
     modal.dataset.featured=[...set].join(",");btn.classList.toggle("selected",set.has(id));
   });
-  const close = $("#profileEditorClose"), cancel = $("#profileEditorCancel"), save = $("#profileEditorSave");
-  if (close) close.onclick = closeProfileEditorModal;
-  if (cancel) cancel.onclick = closeProfileEditorModal;
-  if (save) save.onclick = ()=>{
+  $("#profileEditorCancel").onclick = () => openProfileEditorModal(false);
+  $("#profileEditorSave").onclick = ()=>{
     const name=(nameInput?.value||"").trim().replace(/\s+/g," "), avatar=modal.dataset.avatar, title=titleDefById(modal.dataset.title);
     profile.playerName=(name||"Игрок").slice(0,20);
     if(availableAvatarEmojis(profile).includes(avatar)) profile.avatarEmoji=avatar;
@@ -285,12 +313,25 @@ function openProfileEditorModal() {
     profile.favoriteCategory=$("#profileFavoriteCategory")?.value||"";
     profile.featuredAchievements=String(modal.dataset.featured||"").split(",").filter((id)=>profile.achievements.includes(id)).slice(0,3);
     saveProfile();
-    closeProfileEditorModal();
     showToast("Профиль сохранён");
     renderGlobalProfileHeaders();
-    renderHub();
+    openProfileEditorModal(false);
+    if (hub?.classList.contains("show")) renderHub();
   };
 }
+function openProfileEditorModal(edit = false) {
+  const modal = $("#profileEditorModal"), content = $("#profileEditorContent");
+  if (!modal || !content) return;
+  const frame = FRAME_DEFS.find((f) => f.id === profile.frame) || FRAME_DEFS[0], xp=xpLevelProgress(profile), rank=playerRank(profile), duels=duelHistorySummary(), featured=(profile.featuredAchievements||[]).map((id)=>ACHIEVEMENTS.find((a)=>a.id===id)).filter(Boolean).slice(0,3);
+  if (edit) renderProfileEditorForm(modal, content);
+  else content.innerHTML = `<div class="profile-card-view"><div class="profile-card-identity"><span class="profile-card-avatar" data-frame="${frame.id}" style="--frame-h:${frame.hue||250}">${escapeHtml(profile.avatarEmoji||"🙂")}</span><div><small>ВИЗИТКА ИГРОКА</small><h2>${escapeHtml(profile.playerName||"Игрок")}</h2><p>Ранг ${xp.level} · ${escapeHtml(rank.name)} · ещё ${Math.max(0,xp.goal-xp.value)} XP</p></div></div><div class="profile-card-xp"><i style="width:${xp.ratio*100}%"></i></div><div class="profile-showcase-grid"><div><span>Любимая категория</span><b>${profile.favoriteCategory?`${categoryDisplayIcon(profile.favoriteCategory)} ${escapeHtml(profileFavoriteLabel())}`:"—"}</b></div><div><span>Ежедневная серия</span><b>🔥 ${profile.daily.currentStreak||0}</b></div><div><span>Дуэли</span><b>${duels.wins}:${duels.losses}</b></div></div><div class="featured-achievements">${featured.length?featured.map((a)=>`<span><i>${escapeHtml(a.icon)}</i><b>${escapeHtml(a.title)}</b></span>`).join(""):`<small>Избранные достижения пока не выбраны</small>`}</div><button type="button" class="profile-card-edit" id="profileCardEdit">Редактировать профиль</button></div>`;
+  modal.classList.add("show"); modal.setAttribute("aria-hidden","false");
+  modal.onclick=(event)=>{if(event.target===modal)closeProfileEditorModal();};
+  $("#profileEditorClose").onclick=closeProfileEditorModal;
+  $("#profileCardEdit")?.addEventListener("click",()=>openProfileEditorModal(true));
+  if (!openProfileEditorModal.escapeBound) { document.addEventListener("keydown",(event)=>{if(event.key==="Escape"&&$("#profileEditorModal")?.classList.contains("show"))closeProfileEditorModal();}); openProfileEditorModal.escapeBound=true; }
+}
+
 function notificationPermissionLabel() {
   if (!("Notification" in window)) return { cls:"blocked", text:"Не поддерживаются браузером" };
   if (Notification.permission === "granted") return { cls:"ok", text:"Разрешение браузера получено" };
@@ -348,8 +389,8 @@ function renderHub() {
   syncDuelStats?.();
   renderGlobalProfileHeaders();
   ensureWeeklyChallenge();
-  const views = { progress: progressTabMarkup, collection: collectionTabMarkup, appearance: appearanceTabMarkup, settings: settingsTabMarkup, modes: modesTabMarkup };
-  hubContent.innerHTML = (views[hubTab] || progressTabMarkup)();
+  const views = { home: homeTabMarkup, progress: progressTabMarkup, collection: collectionTabMarkup, appearance: appearanceTabMarkup, settings: settingsTabMarkup, modes: modesTabMarkup };
+  hubContent.innerHTML = (views[hubTab] || homeTabMarkup)();
   hubNav.innerHTML = hubTabsMarkup();
   bindHubHandlers();
 }
@@ -369,6 +410,7 @@ function bindHubHandlers() {
     if(mode==="daily"){closeHub();makeLevel(0,{mode:"daily",seed:`daily:${todayKey()}`});return;}
     if(mode==="marathon"){closeHub();const runId=`marathon:${Date.now().toString(36)}`;makeLevel(1,{mode:"marathon",seed:`${runId}:1`,marathonRound:1,marathonId:runId});return;}
     if(mode==="zen"){closeHub();makeLevel(1,{mode:"calm",seed:`zen:${Date.now()}:${Math.random()}`});return;}
+    if(mode==="pictures"){openPictureModePicker();return;}
     if(mode==="duel") shareNewChallenge();
   });
   on("#challengeStart",()=>startChallengeCode($("#challengeInput")?.value));

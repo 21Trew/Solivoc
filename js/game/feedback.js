@@ -218,6 +218,7 @@ function registerCombo(productive = true) {
   if (comboLastAt && now - comboLastAt > 8500) comboCount = 0;
   comboLastAt = now;
   comboCount++;
+  if (state?.run) state.run.maxDragCombo = Math.max(state.run.maxDragCombo || 0, comboCount);
   profile.stats.maxDragCombo = Math.max(profile.stats.maxDragCombo || 0, comboCount);
   // maxCombo is kept only for backward-compatible analytics; UI/achievements use manual drag combo.
   profile.stats.maxCombo = Math.max(profile.stats.maxCombo || 0, comboCount);

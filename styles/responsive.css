@@ -985,3 +985,11 @@ html[data-cols="5"] {
     --gap: 3px;
   }
 }
+
+@media (max-width: 480px) {
+  .hub-tabs { grid-template-columns: repeat(7,minmax(0,1fr)); gap:3px; }
+  .hub-tabs button { min-height:54px; padding-inline:2px; }
+  .hub-tabs button i { font-size:16px; }
+  .hub-tabs button span { font-size:7.2px; }
+  .picture-mode-card { padding:16px 14px; border-radius:21px; }
+}
