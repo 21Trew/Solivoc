@@ -73,7 +73,9 @@ function recordCategoryCompletion(catId) {
 }
 
 function metricValue(metric, p = profile) {
-  if (metric === "stars") return p.totalStars || 0;
+  const challengeMetrics = p.challengeMetrics || {};
+  if (["levels","stars","noHints","perfect","categories","hints","combo","moves"].includes(metric)) return +(challengeMetrics[metric] || 0);
+  if (metric === "totalStars") return p.totalStars || 0;
   return +(p.stats?.[metric] || 0);
 }
 function ensureWeeklyChallenge() {
@@ -911,7 +913,7 @@ async function shareCurrentResult() {
     text = `${fileText}\nПопробуй сыграть: ${link}`;
   try {
     const file = await resultShareFile(state);
-    if (navigator.share && navigator.canShare?.({ files:[file] })) await navigator.share({ text:fileText, files:[file] });
+    if (navigator.share && navigator.canShare?.({ files:[file] })) await navigator.share({ title, text, files:[file] });
     else if (navigator.share && /^https?:$/.test(location.protocol)) await navigator.share({ title, text });
     else if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);

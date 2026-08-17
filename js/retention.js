@@ -242,40 +242,98 @@ function migrateCategoryMasteryProgress() {
   return newlyMastered;
 }
 
-const DAILY_MODE_QUESTS = Object.freeze([
-  ["regular","Обычный"], ["daily","Ежедневный"], ["marathon","Марафон"], ["zen","Дзен"], ["pictures","Картинки"],
-  ["duel","Дуэли"], ["time","На время"], ["moves","На ходы"], ["combo","На комбо"], ["noMistakes","До ошибки"],
-].map(([id,label]) => ({ id, label, target:5, rewardXp:30 })));
+const DAILY_QUEST_POOL = Object.freeze([
+  ["regular","Обычный"], ["marathon","Марафон"], ["zen","Дзен"], ["pictures","Картинки"],
+  ["time","На время"], ["moves","На ходы"], ["combo","На комбо"], ["noMistakes","До ошибки"], ["onePass","1 проход"],
+].map(([id,label]) => ({ id, label, target:5, rewardXp:40 })));
+function dailyQuestDefinitions(date = todayKey()) {
+  const rng = makeRng(`daily-quests:${date}`), pool = shuffle(DAILY_QUEST_POOL, rng);
+  return pool.slice(0, 3);
+}
 function normalizeDailyQuests() {
-  const today=todayKey(); profile.dailyQuests ||= {date:"",progress:{},rewarded:{}};
-  if (profile.dailyQuests.date !== today) profile.dailyQuests={date:today,progress:{},rewarded:{}};
+  const today=todayKey(); profile.dailyQuests ||= {date:"",modes:[],progress:{},rewarded:{}};
+  if (profile.dailyQuests.date !== today) {
+    profile.dailyQuests={date:today,modes:dailyQuestDefinitions(today).map((x)=>x.id),progress:{},rewarded:{}};
+  }
+  const allowed=new Set(DAILY_QUEST_POOL.map((x)=>x.id)), modes=Array.isArray(profile.dailyQuests.modes)?profile.dailyQuests.modes:[];
+  if (modes.length !== 3 || new Set(modes).size !== 3 || modes.some((id)=>!allowed.has(id))) profile.dailyQuests.modes=dailyQuestDefinitions(today).map((x)=>x.id);
   return profile.dailyQuests;
+}
+function activeDailyQuestDefs() {
+  const q=normalizeDailyQuests(), map=new Map(DAILY_QUEST_POOL.map((x)=>[x.id,x]));
+  return q.modes.map((id)=>map.get(id)).filter(Boolean);
 }
 function dailyQuestModeForState(s=state) {
   if (!s) return "regular";
-  if (s.mode === "challenge") return "duel";
   if (s.mode === "collection") return "pictures";
   if (s.mode === "calm") return "zen";
   return s.mode || "regular";
 }
 function recordDailyModeGame(s=state) {
-  const q=normalizeDailyQuests(), id=dailyQuestModeForState(s), def=DAILY_MODE_QUESTS.find(x=>x.id===id); if(!def) return;
+  if (!s || s.failed || s.mode === "challenge" || s.mode === "tutorial") return;
+  const q=normalizeDailyQuests(), id=dailyQuestModeForState(s), def=activeDailyQuestDefs().find(x=>x.id===id); if(!def) return;
   q.progress[id]=Math.min(def.target,(+q.progress[id]||0)+1);
   if(q.progress[id]>=def.target&&!q.rewarded[id]){q.rewarded[id]=true; awardXp(def.rewardXp,`Ежедневное задание: ${def.label}`,{notifyRank:false}); showToast?.(`✓ ${def.label}: +${def.rewardXp} XP`);}
   saveProfile();
 }
 function dailyModeQuestsMarkup() {
-  const q=normalizeDailyQuests();
-  return `<section class="hub-section daily-quests"><div class="hub-section-head"><div><h3>Ежедневные задания</h3><small>сыграй 5 раз в каждый режим</small></div></div><div class="daily-quest-grid">${DAILY_MODE_QUESTS.map(def=>{const v=Math.min(def.target,+q.progress[def.id]||0),done=v>=def.target;return `<div class="daily-quest ${done?"done":""}"><b>${def.label}</b><span>${v}/${def.target}${done?" ✓":` · +${def.rewardXp} XP`}</span><em><i style="width:${v/def.target*100}%"></i></em></div>`;}).join("")}</div></section>`;
+  const q=normalizeDailyQuests(), defs=activeDailyQuestDefs();
+  return `<section class="hub-section daily-quests"><div class="hub-section-head"><div><h3>Ежедневные задания</h3><small>сегодня 3 режима · пройди каждый 5 раз</small></div></div><div class="daily-quest-grid">${defs.map(def=>{const v=Math.min(def.target,+q.progress[def.id]||0),done=v>=def.target;return `<button class="daily-quest ${done?"done":""}" data-daily-quest-mode="${def.id}"><b>${def.label}</b><span>${v}/${def.target}${done?" ✓":` · +${def.rewardXp} XP`}</span><em><i style="width:${v/def.target*100}%"></i></em><small>${done?"Выполнено":"Играть →"}</small></button>`;}).join("")}</div></section>`;
 }
-function activeRuleMode(s=state) { return s?.mode === "challenge" ? normalizeDuelMode(s.duelMode) : (["time","moves","combo","noMistakes"].includes(s?.mode) ? s.mode : "classic"); }
+function challengeEligibleState(s=state) { return !!s && s.mode !== "challenge" && s.mode !== "tutorial"; }
+function recordChallengeEligibleProgress(s=state, stars=0) {
+  if (!challengeEligibleState(s) || s.failed) return false;
+  const m=profile.challengeMetrics ||= {levels:0,stars:0,noHints:0,perfect:0,categories:0,hints:0,combo:0,moves:0};
+  m.levels=(+m.levels||0)+1;
+  m.stars=(+m.stars||0)+Math.max(0,+stars||0);
+  if ((s.run?.hints||0)===0) m.noHints=(+m.noHints||0)+1;
+  if (+stars===3) m.perfect=(+m.perfect||0)+1;
+  m.categories=(+m.categories||0)+Math.max(0,+s.totalCategories||0);
+  m.hints=(+m.hints||0)+Math.max(0,+s.run?.hints||0);
+  m.combo=(+m.combo||0)+Math.max(0,+s.run?.maxCombo||0);
+  m.moves=(+m.moves||0)+Math.max(0,+s.run?.moves||0);
+  const mode=dailyQuestModeForState(s), stats=profile.modeStats ||= {}, ms=stats[mode] ||= {completed:0,bestCombo:0,bestTimeMs:0,bestMoves:0};
+  ms.completed=(+ms.completed||0)+1; ms.bestCombo=Math.max(+ms.bestCombo||0,+s.run?.maxCombo||0);
+  const elapsed=typeof activeRunElapsedMs==="function"?activeRunElapsedMs(s):0;
+  if(elapsed>0)ms.bestTimeMs=!ms.bestTimeMs?elapsed:Math.min(ms.bestTimeMs,elapsed);
+  const moves=+s.run?.moves||0;if(moves>0)ms.bestMoves=!ms.bestMoves?moves:Math.min(ms.bestMoves,moves);
+  return true;
+}
+function activeRuleMode(s=state) { return s?.mode === "challenge" ? normalizeDuelMode(s.duelMode) : (["time","moves","combo","noMistakes","onePass","custom"].includes(s?.mode) ? s.mode : "classic"); }
+function ruleHasNoMistakes(s=state) { return activeRuleMode(s)==="noMistakes" || !!s?.rules?.noMistakes; }
+function activeTimeRemainingMs(s=state) {
+  const limit=+s?.rules?.timeLimitMs||0;if(!limit)return 0;
+  return Math.max(0,limit-(typeof activeRunElapsedMs==="function"?activeRunElapsedMs(s):0));
+}
 function ruleMetricText(s=state) {
   const mode=activeRuleMode(s); if(!s?.run||mode==="classic")return "";
+  const rules=s.rules||{};
+  if(rules.timeLimitMs) return `⏱ ${Math.ceil(activeTimeRemainingMs(s)/1000)} сек.`;
+  if(rules.moveLimit) return `↯ ${s.run.moves||0}/${rules.moveLimit} ход.`;
+  if(rules.comboTarget) return `× ${s.run.maxCombo||0}/${rules.comboTarget}`;
+  if(rules.maxRecycles===0) return `↻ 1 проход · ${s.stock?.length||0} в колоде`;
+  if(ruleHasNoMistakes(s)) return (s.run.errors||0)?"Ошибка — поражение":"◇ Без ошибок";
   if(mode==="time") return `⏱ ${Math.floor((typeof activeRunElapsedMs === "function" ? activeRunElapsedMs(s) : 0)/1000)} сек.`;
   if(mode==="moves") return `↯ ${s.run.moves||0} ход.`;
   if(mode==="combo") return `× ${s.run.maxCombo||0}`;
-  if(mode==="noMistakes") return (s.run.errors||0)?"Ошибка — поражение":"◇ Без ошибок";
   return "";
+}
+function activeRuleFailureReason(s=state, { completion=false }={}) {
+  if(!s?.rules||s.rewarded)return ""; const r=s.rules;
+  if(r.timeLimitMs && activeTimeRemainingMs(s)<=0)return "Время вышло";
+  if(r.moveLimit && (+s.run?.moves||0)>r.moveLimit)return "Лимит ходов исчерпан";
+  if(r.noMistakes && (+s.run?.errors||0)>0)return "Первая ошибка";
+  if(completion && r.comboTarget && (+s.run?.maxCombo||0)<r.comboTarget)return `Нужно комбо ×${r.comboTarget}`;
+  return "";
+}
+function checkActiveRuleFailure() {
+  const reason=activeRuleFailureReason(state); if(reason&&typeof finishFailedRun==="function"){finishFailedRun(reason);return true;} return false;
+}
+function comboXpHudText(s=state) {
+  const combo=Math.max(0,+s?.run?.maxCombo||0),info=typeof comboXpBonusInfo==="function"?comboXpBonusInfo(s):{percent:0};
+  if(combo>=20)return `Комбо ×${combo} · XP +30% · максимум`;
+  if(combo>=10)return `Комбо ×${combo} · XP +${info.percent}% · ×20 = +30%`;
+  return `Комбо ×${combo} · XP +0% · ×10 = +10% · ×20 = +30%`;
 }
 
 function assignBonusObjective(s) {
@@ -327,7 +385,7 @@ function bonusObjectiveMarkup(s = state) {
 }
 
 function nearestAchievementForMode(mode) {
-  const map={regular:["ten","fifty","hundred"],daily:["daily7","daily30","daily100"],marathon:["marathon5","marathon15"],zen:["calm10"],pictures:["allPictures"],duel:["challenge1","challenge25","duelGold10"],time:["special10","special25"],moves:["special10","special25"],combo:["combo3","combo10"],noMistakes:["nohint","nohint50","nohint100"]};
+  const map={regular:["ten","fifty","hundred"],daily:["daily7","daily30","daily100"],marathon:["marathon5","marathon15"],zen:["calm10"],pictures:["allPictures"],duel:["challenge1","challenge25","duelGold10"],time:["special10","special25"],moves:["special10","special25"],combo:["combo3","combo10"],noMistakes:["nohint","nohint50","nohint100"],onePass:["special10","special25"],custom:["special10","special25"]};
   const defs=(map[mode]||[]).map(id=>ACHIEVEMENTS.find(a=>a.id===id)).filter(Boolean).filter(a=>!profile.achievements.includes(a.id));
   return defs.map(a=>({a,p:achievementProgressData(a,profile)})).sort((x,y)=>((y.p?.value||0)/(y.p?.goal||1))-((x.p?.value||0)/(x.p?.goal||1)))[0]?.a||defs[0]||null;
 }

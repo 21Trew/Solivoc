@@ -14,12 +14,6 @@
     <link rel="apple-touch-icon" href="./icons/icon-192.png" />
     <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
     <title>Словасьянс — пасьянс ассоциаций</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700;800&family=Nunito:wght@700;800;900&display=swap"
-      rel="stylesheet"
-    />
     <link rel="stylesheet" href="./styles/base.css" />
     <link rel="stylesheet" href="./styles/meta.css" />
     <link rel="stylesheet" href="./styles/responsive.css" />
@@ -80,6 +74,7 @@
             </span>
             <span id="chapterLabel">прогресс</span>
             <span class="move-counter">↯ <b id="moveCount">0</b></span>
+            <span class="combo-xp-status" id="comboXpStatus">XP за комбо: +0%</span>
           </span>
         </div>
         <div class="bonus-objective-wrap" id="bonusObjective"></div>
@@ -204,6 +199,14 @@
         <div class="notification-prompt-actions"><button id="notificationAllow">Разрешить</button><button id="notificationLater">Не сейчас</button></div>
       </div>
     </div>
+    <div class="leaderboard-modal" id="leaderboardModal" aria-hidden="true">
+      <div class="leaderboard-card" role="dialog" aria-modal="true" aria-label="Лидеры">
+        <button class="leaderboard-close" id="leaderboardClose" aria-label="Закрыть">×</button>
+        <div class="leaderboard-head"><span>🏅</span><div><small>ТАБЛИЦЫ РЕЗУЛЬТАТОВ</small><h2>Лидеры</h2></div></div>
+        <div class="leaderboard-tabs" id="leaderboardTabs"></div>
+        <div class="leaderboard-list" id="leaderboardList"></div>
+      </div>
+    </div>
     <div class="picture-mode-modal" id="pictureModeModal" aria-hidden="true">
       <div class="picture-mode-card" role="dialog" aria-modal="true" aria-label="Расклады по картинкам">
         <button class="picture-mode-close" id="pictureModeClose" aria-label="Закрыть">×</button>
@@ -222,6 +225,12 @@
         <button class="developer-mail-close" id="developerMailClose" aria-label="Закрыть">×</button>
         <div class="developer-mail-head"><span>✉</span><div><small>ПОЧТА РАЗРАБОТЧИКА</small><h2>Новости Словасьянса</h2></div></div>
         <div class="developer-mail-list" id="developerMailList"></div>
+      </div>
+    </div>
+    <div class="patch-notes-modal" id="patchNotesModal" aria-hidden="true">
+      <div class="patch-notes-card" role="dialog" aria-modal="true" aria-label="Что нового">
+        <div class="patch-notes-burst">✦</div>
+        <div id="patchNotesContent"></div>
       </div>
     </div>
     <div class="special-level-modal" id="specialLevelModal" aria-hidden="true">
@@ -263,10 +272,9 @@
             <span class="global-profile-copy">
               <b id="hubProfileName">Игрок</b>
               <small id="hubProfileTitle">◇ Игрок</small>
-              <small id="hubProfileMeta">0/100 XP</small>
+              <span class="hub-profile-xp" aria-label="Прогресс уровня"><i id="hubProfileXpBar"></i></span>
             </span>
-            <span class="global-profile-rank" id="hubProfileRank">Ранг 1 · Новичок</span>
-            <span class="hub-profile-xp"><i id="hubProfileXpBar"></i></span>
+            <span class="global-profile-rank" id="hubProfileRank"><b>Ранг 1</b><small>Новичок</small><small>0/100 XP</small></span>
           </button>
         </div>
         <div class="hub-scroll" id="hubContent"></div>

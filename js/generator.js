@@ -94,11 +94,38 @@ function configForMode(level, mode, rng, special = null, opts = {}) {
     const round = Math.max(1, opts.marathonRound || 1);
     return regularConfig(Math.min(180, 8 + round * 6), rng, null);
   }
-  if (["time", "moves", "combo", "noMistakes"].includes(mode)) {
+  if (["time", "moves", "combo", "noMistakes", "onePass", "custom"].includes(mode)) {
     const cfg = regularConfig(Math.max(18, level || 25), rng, null);
     return { ...cfg, difficulty: Math.max(2, Math.min(4, cfg.difficulty)) };
   }
   return typeof applyAdaptiveConfig === "function" ? applyAdaptiveConfig(regularConfig(level, rng, special), special) : regularConfig(level, rng, special);
+}
+function sanitizeCustomRules(value = {}) {
+  return {
+    timeLimitSec: Math.max(0, Math.min(900, Math.round(+value.timeLimitSec || 0))),
+    moveLimit: Math.max(0, Math.min(400, Math.round(+value.moveLimit || 0))),
+    comboTarget: Math.max(0, Math.min(40, Math.round(+value.comboTarget || 0))),
+    noMistakes: !!value.noMistakes,
+    onePass: !!value.onePass,
+  };
+}
+function modeRulesFor(mode, { cardCount = 36, totalCategories = 5 } = {}, customRules = null) {
+  if (mode === "time") return { timeLimitMs: Math.max(90000, Math.min(300000, Math.round(cardCount * 4300))) };
+  if (mode === "moves") return { moveLimit: Math.max(45, Math.min(180, Math.round(cardCount * 2.15))) };
+  if (mode === "combo") return { comboTarget: Math.max(6, Math.min(20, totalCategories * 2)) };
+  if (mode === "noMistakes") return { noMistakes: true };
+  if (mode === "onePass") return { maxRecycles: 0 };
+  if (mode === "custom") {
+    const c=sanitizeCustomRules(customRules || profile?.customRules || {});
+    return {
+      ...(c.timeLimitSec ? { timeLimitMs: c.timeLimitSec * 1000 } : {}),
+      ...(c.moveLimit ? { moveLimit: c.moveLimit } : {}),
+      ...(c.comboTarget ? { comboTarget: c.comboTarget } : {}),
+      ...(c.noMistakes ? { noMistakes: true } : {}),
+      ...(c.onePass ? { maxRecycles: 0 } : {}),
+    };
+  }
+  return {};
 }
 
 function categoryByAnyId(id) {
@@ -277,7 +304,7 @@ function riskDealRoll(seed, cfg, mode, forceSolvable = false) {
   return { risk: rng() < chance, chance };
 }
 
-function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCode = null, challengeRole = null, challengeCreatorName = null, challengeCreatorAvatar = null, challengeCreatorResult = null, challengeGuestToken = null, duelMode = "classic", duelModeChoice = "creator", seriesId = null, seriesRound = 1, seriesScoreCreator = 0, seriesScoreGuest = 0, marathonRound = 1, marathonId = null, collectionId = null, cardSourceMode = null, categoryCooldownIds = null, forceSolvable = false } = {}) {
+function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCode = null, challengeRole = null, challengeCreatorName = null, challengeCreatorAvatar = null, challengeCreatorResult = null, challengeGuestToken = null, duelMode = "classic", duelModeChoice = "creator", seriesId = null, seriesRound = 1, seriesScoreCreator = 0, seriesScoreGuest = 0, marathonRound = 1, marathonId = null, collectionId = null, cardSourceMode = null, categoryCooldownIds = null, forceSolvable = false, customRules = null } = {}) {
   const baseSeed = seed || (mode === "daily" ? `daily:${todayKey()}` : mode === "collection" ? `collection:${collectionId || "animals"}:${Date.now()}` : `level:${level}`);
   const sourceMode = mode === "collection" ? "pictures" : normalizeCardSourceMode(cardSourceMode || profile?.settings?.cardSourceMode);
   const cooldownIds = mode === "regular" ? (Array.isArray(categoryCooldownIds) ? [...categoryCooldownIds] : getRecentCategories().slice(0, 40)) : [];
@@ -341,12 +368,14 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
       seriesScoreGuest,
       marathonRound: mode === "marathon" ? marathonRound : null,
       marathonId: mode === "marathon" ? marathonId || seed : null,
+      customRules: mode === "custom" ? sanitizeCustomRules(customRules || profile?.customRules || {}) : null,
+      rules: modeRulesFor(mode, { cardCount: cards.length, totalCategories: cfg.cats }, customRules),
       rewarded: false,
       generationAttempt: attempt,
       riskDeal: !!riskRoll.risk,
       riskDealChance: Math.round(riskRoll.chance * 1000) / 10,
     };
-    if (riskRoll.risk || isLikelySolvable(structuredClone(candidate))) return candidate;
+    if (riskRoll.risk || isLikelySolvable(candidate)) return candidate;
   }
   console.warn("Solver fallback: используем последний корректно сформированный расклад");
   const rng = makeRng(baseSeed + ":fallback"),
@@ -401,6 +430,8 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
     seriesScoreGuest,
     marathonRound: mode === "marathon" ? marathonRound : null,
     marathonId: mode === "marathon" ? marathonId || seed : null,
+    customRules: mode === "custom" ? sanitizeCustomRules(customRules || profile?.customRules || {}) : null,
+    rules: modeRulesFor(mode, { cardCount: cards.length, totalCategories: chosen.length }, customRules),
     rewarded: false,
     generationAttempt: "fallback",
     riskDeal: false,

@@ -262,7 +262,7 @@ function feedbackWrongMove(nodes = [], target = null, message = "Сюда пол
     setTimeout(() => target.classList.remove("bad-target"), 330);
   }
   showToast(message);
-  if (typeof activeRuleMode === "function" && activeRuleMode(state) === "noMistakes" && !state?.rewarded) {
+  if (typeof ruleHasNoMistakes === "function" && ruleHasNoMistakes(state) && !state?.rewarded) {
     setTimeout(() => typeof finishFailedRun === "function" && finishFailedRun("Первая ошибка"), 120);
   }
 }
@@ -353,6 +353,7 @@ function scheduleDeadlockCheck(delay = 520) {
 function markStateChanged() {
   lastDeadlockSignature = "";
   hideDeadlock();
+  scheduleSave?.();
   scheduleDeadlockCheck();
 }
 

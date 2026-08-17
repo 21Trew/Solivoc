@@ -42,8 +42,20 @@ function autoTargetForPayload(p) {
   return i >= 0 ? document.querySelector(`.slot[data-index="${i}"]`) : null;
 }
 const nextPaint = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+let autoMoveLifecycleToken = 0;
+function cleanupAutoMoveVisuals() {
+  document.querySelectorAll(".auto-fly").forEach((node) => { try { node.getAnimations?.().forEach((a)=>a.cancel()); } catch {} node.remove(); });
+  document.querySelectorAll(".auto-source").forEach((node)=>node.classList.remove("auto-source"));
+  document.querySelectorAll(".drag-vacated").forEach((node)=>node.classList.remove("drag-vacated"));
+}
+function cancelAutoMoveForLifecycle() {
+  autoMoveLifecycleToken++;
+  cleanupAutoMoveVisuals();
+  autoMoveBusy = false;
+}
 async function animateAutoMove(card, payload, target) {
   if (autoMoveBusy || categoryAnimating) return;
+  const lifecycleToken = ++autoMoveLifecycleToken;
   autoMoveBusy = true;
   const targetCard = target.querySelector(".card"),
     targetRect = (targetCard || target).getBoundingClientRect(),
@@ -73,6 +85,7 @@ async function animateAutoMove(card, payload, target) {
       return { source, fly, rect: r };
     });
   await nextPaint();
+  if (lifecycleToken !== autoMoveLifecycleToken || document.hidden) { cleanupAutoMoveVisuals(); autoMoveBusy = false; return; }
   setSourceVacancy(vacancyNodes, true);
   sources.forEach((n) => n.classList.add("auto-source"));
   playSfx("pickup", 0.8);
@@ -94,6 +107,7 @@ async function animateAutoMove(card, payload, target) {
         .finished.catch(() => {});
     }),
   );
+  if (lifecycleToken !== autoMoveLifecycleToken || document.hidden) { cleanupAutoMoveVisuals(); autoMoveBusy = false; return; }
   state.run.autoMoves++;
   profile.stats.autoMoves++;
   track("auto_move", { mode: state.mode });
@@ -108,6 +122,7 @@ async function animateAutoMove(card, payload, target) {
   }
   setSourceVacancy(vacancyNodes, false);
   await nextPaint();
+  if (lifecycleToken !== autoMoveLifecycleToken || document.hidden) { cleanupAutoMoveVisuals(); autoMoveBusy = false; return; }
   await Promise.all(
     flies.map(({ fly }) =>
       fly
@@ -252,6 +267,16 @@ async function cancelDragWithoutPenalty(d) {
   d.ghost.remove();
   resetDragParallax();
 }
+
+function cancelActiveDragForLifecycle() {
+  if (!drag) return;
+  const d = drag; drag = null;
+  try { d.sourceNodes?.forEach((n) => n?.classList?.remove("drag-source")); } catch {}
+  try { setSourceVacancy(d.vacancyNodes || [], false); } catch {}
+  try { d.ghost?.remove(); } catch {}
+  resetDragParallax();
+}
+
 async function endDrag(e) {
   if (!drag) return;
   const d = drag;

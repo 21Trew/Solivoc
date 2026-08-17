@@ -33,8 +33,10 @@ function hubTabsMarkup() {
 }
 function renderGlobalProfileHeaders() {
   const rank=typeof playerRank==="function"?playerRank(profile):{name:"Новичок"},xp=typeof xpLevelProgress==="function"?xpLevelProgress(profile):{level:1,ratio:0,value:0,goal:100},title=titleCurrent();
-  const values=[["#gameProfileAvatar",profile.avatarEmoji||"🙂"],["#gameProfileName",profile.playerName||"Игрок"],["#gameProfileTitle",`${title.icon||"◇"} ${title.name}`],["#gameProfileMeta",`${xp.value}/${xp.goal} XP`],["#gameProfileRank",`Ранг ${xp.level} · ${rank.name}`],["#hubProfileAvatar",profile.avatarEmoji||"🙂"],["#hubProfileName",profile.playerName||"Игрок"],["#hubProfileTitle",`${title.icon||"◇"} ${title.name}`],["#hubProfileMeta",`${xp.value}/${xp.goal} XP`],["#hubProfileRank",`Ранг ${xp.level} · ${rank.name}`]];
+  const values=[["#gameProfileAvatar",profile.avatarEmoji||"🙂"],["#gameProfileName",profile.playerName||"Игрок"],["#gameProfileTitle",`${title.icon||"◇"} ${title.name}`],["#gameProfileMeta",`${xp.value}/${xp.goal} XP`],["#hubProfileAvatar",profile.avatarEmoji||"🙂"],["#hubProfileName",profile.playerName||"Игрок"],["#hubProfileTitle",`${title.icon||"◇"} ${title.name}`]];
   for(const [selector,value] of values){const el=$(selector);if(el)el.textContent=value;}
+  const gameRank=$("#gameProfileRank");if(gameRank)gameRank.textContent=`Ранг ${xp.level} · ${rank.name}`;
+  const hubRank=$("#hubProfileRank");if(hubRank)hubRank.innerHTML=`<b>Ранг ${xp.level}</b><small>${escapeHtml(rank.name)}</small><small>${xp.value}/${xp.goal} XP</small>`;
   const frame=FRAME_DEFS.find(f=>f.id===profile.frame)||FRAME_DEFS[0]; [$("#gameProfileAvatar"),$("#hubProfileAvatar")].filter(Boolean).forEach(avatar=>{avatar.dataset.frame=frame.id;avatar.style.setProperty("--frame-h",frame.hue||250);});
   const bar=$("#hubProfileXpBar");if(bar)bar.style.width=`${Math.max(0,Math.min(1,xp.ratio||0))*100}%`;
 }
@@ -68,7 +70,7 @@ function weeklyMarkup() {
   const w = weeklyProgress(), daysLeft = typeof daysUntilWeekEnd === "function" ? daysUntilWeekEnd() : 0;
   return `<section class="weekly-card ${w.completed ? "done" : ""}">
     <div class="weekly-icon">${w.def.icon}</div>
-    <div class="weekly-copy"><small>НЕДЕЛЬНОЕ ИСПЫТАНИЕ · ПН–ВС</small><b>${w.def.title}</b><span>${w.def.desc}</span><div class="weekly-progress"><i style="width:${w.ratio * 100}%"></i></div><em>${w.value}/${w.goal}${w.completed ? ` · выполнено ✓ · +${w.def.rewardXp || 0} XP` : ` · ${daysLeft ? `осталось ${daysLeft} дн.` : "последний день"}`}</em></div>
+    <div class="weekly-copy"><small>НЕДЕЛЬНОЕ ИСПЫТАНИЕ</small><b>${w.def.title}</b><span>${w.def.desc}</span><div class="weekly-progress"><i style="width:${w.ratio * 100}%"></i></div><em>${w.value}/${w.goal}${w.completed ? ` · выполнено ✓ · +${w.def.rewardXp || 0} XP` : ` · ${daysLeft ? `осталось ${daysLeft} дн.` : "последний день"}`}</em></div>
   </section>`;
 }
 function monthlyMarkup() {
@@ -86,13 +88,17 @@ function modesTabMarkup() {
     zen: { description: "Бесконечные расклады без давления", meta: "Для спокойной игры" },
     duel: { description: "Одинаковый расклад для двух игроков", meta: "Серия до 2 побед" },
     pictures: { description: "Тематические расклады только с картинками", meta: `${ASSOCIATION_COLLECTION_DEFS.length} наборов` },
-    time: { description: "Заверши расклад как можно быстрее", meta: "Секундомер" },
-    moves: { description: "Реши расклад за минимум ходов", meta: "Точность" },
-    combo: { description: "Собери самое длинное комбо", meta: "Серия ходов" },
+    time: { description: "Успей собрать расклад до конца обратного отсчёта", meta: "Таймер идёт назад" },
+    moves: { description: "Собери расклад, не превысив лимит ходов", meta: "Лимит зависит от расклада" },
+    combo: { description: "Достигни заданного множителя комбо", meta: "Цель показывается в игре" },
     noMistakes: { description: "Первая ошибка завершает партию", meta: "Один шанс" },
+    onePass: { description: "Пройди колоду один раз без возврата сброса", meta: "Без второй прокрутки" },
+    custom: { description: "Сам выбери таймер, ходы, комбо и другие ограничения", meta: "Твои ограничения" },
   };
   const cards = GAME_MODE_DEFS.map((def) => modeCardMarkup({ ...def, ...(copy[def.id] || {}) })).join("");
-  return `<section class="hub-section modes-intro"><div class="hub-section-head"><div><h3>Режимы игры</h3><small>у каждого режима свой темп и музыка</small></div></div><div class="mode-grid">${cards}</div></section>
+  const c=profile.customRules||{};
+  return `<section class="hub-section modes-intro"><div class="hub-section-head"><div><h3>Режимы игры</h3><small>у каждого режима свой темп и правила</small></div><button class="leaders-open" id="leaderboardOpen">Лидеры</button></div><div class="mode-grid">${cards}</div></section>
+    <section class="hub-section custom-rules"><div class="hub-section-head"><div><h3>Мои правила</h3><small>оставь 0, если ограничение не нужно</small></div></div><div class="custom-rules-grid"><label>Время, сек.<input id="customTime" type="number" min="0" max="900" value="${+c.timeLimitSec||0}"></label><label>Ходы<input id="customMoves" type="number" min="0" max="400" value="${+c.moveLimit||0}"></label><label>Комбо ×<input id="customCombo" type="number" min="0" max="40" value="${+c.comboTarget||0}"></label><label class="custom-check"><input id="customNoMistakes" type="checkbox" ${c.noMistakes?"checked":""}> До первой ошибки</label><label class="custom-check"><input id="customOnePass" type="checkbox" ${c.onePass?"checked":""}> Один проход колоды</label><button id="customRulesStart">Играть по моим правилам →</button></div></section>
     ${typeof duelsHubMarkup === "function" ? duelsHubMarkup(hubDuelTab) : `${ownedChallengesMarkup()}${receivedChallengesMarkup()}`}
     <section class="hub-section duel-create"><div class="hub-section-head"><div><h3>Новая дуэль</h3><small>кто выбирает правило</small></div></div><div class="duel-create-controls"><select id="duelModeChoice"><option value="creator">Я выбираю режим</option><option value="guest">Пусть выберет друг</option><option value="random">Случайный режим</option></select><select id="duelCreateMode">${DUEL_MODE_DEFS.map(x=>`<option value="${x.id}">${x.icon} ${x.label}</option>`).join("")}</select><button id="duelCreate">Создать и отправить</button></div></section>
     <section class="hub-section challenge-enter"><div class="hub-section-head"><h3>Код дуэли</h3><small>6 символов</small></div><div class="challenge-input-row"><input id="challengeInput" inputmode="text" autocomplete="off" autocapitalize="characters" maxlength="6" placeholder="ABC123"><button id="challengeStart">Открыть</button></div></section>`;
@@ -119,6 +125,7 @@ function progressTabMarkup() {
     if (achievementFilter === "done") return done;
     if (achievementFilter === "near") return !done && !!p;
     if (achievementFilter === "rare") return !!a.rare;
+    if (achievementFilter === "legendary") return !!a.legendary;
     return true;
   });
   if (achievementFilter === "near") {
@@ -151,7 +158,7 @@ function progressTabMarkup() {
     ${chapterMarkup(hubChapterNumber)}
     ${collapsibleSectionMarkup("statistics", "Статистика", "твоя история", statsContent)}
     <section class="hub-section"><div class="hub-section-head"><h3>Достижения</h3><small>${profile.achievements.length}/${ACHIEVEMENTS.length}</small></div>
-      <div class="achievement-filters">${[["all","Все"],["near","Ближайшие"],["rare","Редкие"],["done","Получены"]].map(([id,label])=>`<button class="${achievementFilter===id?"active":""}" data-ach-filter="${id}">${label}</button>`).join("")}</div>
+      <div class="achievement-filters">${[["all","Все"],["near","Ближайшие"],["rare","Редкие"],["legendary","Легендарные"],["done","Получены"]].map(([id,label])=>`<button class="${achievementFilter===id?"active":""}" data-ach-filter="${id}">${label}</button>`).join("")}</div>
       <div class="achievement-list">${filtered.map(achievementCardMarkup).join("") || `<div class="empty-state">Здесь пока пусто</div>`}</div>
     </section>`;
 }
@@ -276,22 +283,26 @@ function avatarEmojiMarkup(selectedEmoji = profile.avatarEmoji) {
 function titlePillsMarkup(selectedTitle = profile.titleId) {
   return `<div class="title-pill-grid">${availableTitleDefs(profile).map((t)=>`<button type="button" class="title-pill ${selectedTitle===t.id?"selected":""}" data-profile-title="${t.id}"><i>${escapeHtml(t.icon)}</i><span>${escapeHtml(t.name)}</span></button>`).join("")}</div>`;
 }
-function currentDeveloperMessages() {
+function allDeveloperMessages() {
   const remote = Array.isArray(window.SERVER_BOOTSTRAP?.developerMessages) ? window.SERVER_BOOTSTRAP.developerMessages : [];
   const local = typeof DEVELOPER_MESSAGES !== "undefined" ? DEVELOPER_MESSAGES : [];
   const byId = new Map();
-  [...remote, ...local].forEach((message) => { if (message?.id && !byId.has(message.id)) byId.set(message.id, message); });
+  [...remote, ...local].forEach((message) => { if (message?.id && !byId.has(String(message.id))) byId.set(String(message.id), message); });
   return [...byId.values()];
 }
+function currentDeveloperMessages() {
+  const deleted = new Set((profile.developerMailDeleted || []).map(String));
+  return allDeveloperMessages().filter((message) => !deleted.has(String(message.id)));
+}
 function developerMailUnreadCount() {
-  const seen = new Set(profile.developerMailSeen || []);
-  return currentDeveloperMessages().filter((message) => !seen.has(message.id)).length;
+  const seen = new Set((profile.developerMailSeen || []).map(String));
+  return currentDeveloperMessages().filter((message) => !seen.has(String(message.id))).length;
 }
 function updateProfileMailBadge() {
   const badge = $("#profileDeveloperMailBadge"), count = developerMailUnreadCount();
   if (!badge) return;
   badge.textContent = count > 9 ? "9+" : count ? String(count) : "";
-  badge.hidden = !count;
+  badge.hidden = count === 0;
   $("#profileDeveloperMail")?.classList.toggle("has-unread", count > 0);
 }
 function closeDeveloperMailModal() {
@@ -300,27 +311,65 @@ function closeDeveloperMailModal() {
   modal.classList.remove("show");
   modal.setAttribute("aria-hidden", "true");
 }
-function openDeveloperMailModal() {
+function deleteReadDeveloperMail() {
+  const seen = new Set((profile.developerMailSeen || []).map(String));
+  const deleted = new Set((profile.developerMailDeleted || []).map(String));
+  currentDeveloperMessages().forEach((message) => { if (seen.has(String(message.id))) deleted.add(String(message.id)); });
+  profile.developerMailDeleted = [...deleted];
+  saveProfile();
+  updateProfileMailBadge();
+  openDeveloperMailModal({ markRead: false });
+}
+function openDeveloperMailModal({ markRead = true } = {}) {
   const modal = $("#developerMailModal"), list = $("#developerMailList");
   if (!modal || !list) return;
   const messages = currentDeveloperMessages();
-  list.innerHTML = messages.length ? messages.map((message, index) => `<article class="developer-message ${index === 0 ? "latest" : ""}">
-      <div class="developer-message-meta"><span>${escapeHtml(message.date || "")}</span>${index === 0 ? "<b>НОВОЕ</b>" : ""}</div>
+  if (markRead) {
+    profile.developerMailSeen = [...new Set([...(profile.developerMailSeen || []).map(String), ...messages.map((message) => String(message.id))])];
+    saveProfile();
+  }
+  const seen = new Set((profile.developerMailSeen || []).map(String));
+  const hasRead = messages.some((message) => seen.has(String(message.id)));
+  list.innerHTML = `<div class="developer-mail-toolbar"><span>${messages.length ? `${messages.length} писем` : "Почта пуста"}</span><button id="developerMailDeleteRead" type="button" ${hasRead ? "" : "disabled"}>Удалить прочитанные</button></div>` + (messages.length ? messages.map((message, index) => `<article class="developer-message ${index === 0 ? "latest" : ""}">
+      <div class="developer-message-meta"><span>${escapeHtml(message.date || "")}</span>${!seen.has(String(message.id)) ? "<b>НОВОЕ</b>" : ""}</div>
       <h3>${escapeHtml(message.title || "Обновление")}</h3>
       <p>${escapeHtml(message.intro || "")}</p>
       <ul>${(message.items || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
-    </article>`).join("") : `<div class="empty-state">Писем пока нет</div>`;
-  profile.developerMailSeen = [...new Set([...(profile.developerMailSeen || []), ...messages.map((message) => message.id)])];
-  saveProfile();
+    </article>`).join("") : `<div class="empty-state">Прочитанные письма можно удалить — новые обновления появятся здесь.</div>`);
   updateProfileMailBadge();
   modal.classList.add("show");
   modal.setAttribute("aria-hidden", "false");
   $("#developerMailClose").onclick = closeDeveloperMailModal;
+  $("#developerMailDeleteRead") && ($("#developerMailDeleteRead").onclick = deleteReadDeveloperMail);
   modal.onclick = (event) => { if (event.target === modal) closeDeveloperMailModal(); };
   if (!openDeveloperMailModal.escapeBound) {
     document.addEventListener("keydown", (event) => { if (event.key === "Escape" && $("#developerMailModal")?.classList.contains("show")) closeDeveloperMailModal(); });
     openDeveloperMailModal.escapeBound = true;
   }
+}
+function latestMajorPatchMessage() {
+  return allDeveloperMessages().find((message) => message?.major && message?.version) || null;
+}
+function closePatchNotesModal(markSeen = true) {
+  const modal = $("#patchNotesModal");
+  if (!modal) return;
+  if (markSeen && modal.dataset.version) {
+    profile.patchSeenVersion = modal.dataset.version;
+    saveProfile();
+  }
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden", "true");
+}
+function showPatchNotesIfNeeded() {
+  const message = latestMajorPatchMessage(), modal = $("#patchNotesModal"), content = $("#patchNotesContent");
+  if (!message || !modal || !content || String(profile.patchSeenVersion || "") === String(message.version)) return false;
+  modal.dataset.version = String(message.version);
+  content.innerHTML = `<small>ЧТО НОВОГО · ${escapeHtml(message.version)}</small><h2>${escapeHtml(message.title || "Обновление Словасьянса")}</h2><p>${escapeHtml(message.intro || "")}</p><ul>${(message.items || []).map((item)=>`<li>${escapeHtml(item)}</li>`).join("")}</ul><button id="patchNotesDone" type="button">Здорово, играем →</button>`;
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+  $("#patchNotesDone").onclick = () => closePatchNotesModal(true);
+  modal.onclick = (event) => { if (event.target === modal) closePatchNotesModal(true); };
+  return true;
 }
 
 function closeProfileEditorModal() {
@@ -375,7 +424,7 @@ function openProfileEditorModal(edit = false) {
   if (!modal || !content) return;
   const frame = FRAME_DEFS.find((f) => f.id === profile.frame) || FRAME_DEFS[0], xp=xpLevelProgress(profile), rank=playerRank(profile), duels=duelHistorySummary(), featured=(profile.featuredAchievements||[]).map((id)=>ACHIEVEMENTS.find((a)=>a.id===id)).filter(Boolean).slice(0,3);
   if (edit) renderProfileEditorForm(modal, content);
-  else content.innerHTML = `<div class="profile-card-view"><div class="profile-card-identity"><span class="profile-card-avatar" data-frame="${frame.id}" style="--frame-h:${frame.hue||250}">${escapeHtml(profile.avatarEmoji||"🙂")}</span><div><small>ВИЗИТКА ИГРОКА</small><h2>${escapeHtml(profile.playerName||"Игрок")}</h2><p>Ранг ${xp.level} · ${escapeHtml(rank.name)} · ещё ${Math.max(0,xp.goal-xp.value)} XP</p></div></div><div class="profile-card-xp"><i style="width:${xp.ratio*100}%"></i></div><div class="profile-showcase-grid"><div><span>Любимая категория</span><b>${profile.favoriteCategory?`${categoryDisplayIcon(profile.favoriteCategory)} ${escapeHtml(profileFavoriteLabel())}`:"—"}</b></div><div><span>Ежедневная серия</span><b>🔥 ${profile.daily.currentStreak||0}</b></div><div><span>Дуэли</span><b>${duels.wins}:${duels.losses}</b></div></div><div class="featured-achievements">${featured.length?featured.map((a)=>`<span><i>${escapeHtml(a.icon)}</i><b>${escapeHtml(a.title)}</b></span>`).join(""):`<small>Избранные достижения пока не выбраны</small>`}</div><div class="profile-card-actions"><button type="button" class="profile-card-settings" id="profileCardSettings">Настройки</button><button type="button" class="profile-card-edit" id="profileCardEdit">Редактировать профиль</button></div></div>`;
+  else content.innerHTML = `<div class="profile-card-view"><div class="profile-card-identity"><span class="profile-card-avatar" data-frame="${frame.id}" style="--frame-h:${frame.hue||250}">${escapeHtml(profile.avatarEmoji||"🙂")}</span><div><small>ВИЗИТКА ИГРОКА</small><h2>${escapeHtml(profile.playerName||"Игрок")}</h2><p>Ранг ${xp.level} · ${escapeHtml(rank.name)} · ещё ${Math.max(0,xp.goal-xp.value)} XP</p></div></div><div class="profile-card-xp"><i style="width:${xp.ratio*100}%"></i></div><div class="profile-showcase-grid"><div><span>Любимая категория</span><b>${profile.favoriteCategory?`${categoryDisplayIcon(profile.favoriteCategory)} ${escapeHtml(profileFavoriteLabel())}`:"—"}</b></div><div><span>Ежедневная серия</span><b>🔥 ${profile.daily.currentStreak||0}</b></div><div><span>Дуэли</span><b>${duels.wins}:${duels.losses}</b></div><div><span>Всего звёзд</span><b>★ ${profile.totalStars||0}</b></div></div><div class="featured-achievements">${featured.length?featured.map((a)=>`<span><i>${escapeHtml(a.icon)}</i><b>${escapeHtml(a.title)}</b></span>`).join(""):`<small>Избранные достижения пока не выбраны</small>`}</div><div class="profile-card-actions"><button type="button" class="profile-card-settings" id="profileCardSettings">Настройки</button><button type="button" class="profile-card-edit" id="profileCardEdit">Редактировать профиль</button></div></div>`;
   modal.classList.add("show"); modal.setAttribute("aria-hidden","false");
   modal.onclick=(event)=>{if(event.target===modal)closeProfileEditorModal();};
   $("#profileEditorClose").onclick=closeProfileEditorModal;
@@ -460,15 +509,19 @@ function bindHubHandlers() {
     if (!state || state.rewarded || state.mode !== "regular") makeLevel(next, { mode:"regular" });
     else { render(); updateCoach(); setBackgroundMusic?.(musicModeForState?.(state) || "game"); }
   };
-  hubContent.querySelectorAll("[data-game-mode]").forEach((btn)=>btn.onclick=()=>{
-    const mode=btn.dataset.gameMode;
+  const startHubMode=(mode,{quick=false}={})=>{
     if(mode==="daily"){closeHub();makeLevel(0,{mode:"daily",seed:`daily:${todayKey()}`});return;}
     if(mode==="marathon"){closeHub();const runId=`marathon:${Date.now().toString(36)}`;makeLevel(1,{mode:"marathon",seed:`${runId}:1`,marathonRound:1,marathonId:runId});return;}
     if(mode==="zen"){closeHub();makeLevel(1,{mode:"calm",seed:`zen:${Date.now()}:${Math.random()}`});return;}
-    if(mode==="pictures"){openPictureModePicker();return;}
+    if(mode==="pictures"){if(quick){const defs=ASSOCIATION_COLLECTION_DEFS||[],i=defs.length?Math.floor(Math.random()*defs.length):0,id=defs[i]?.id||"animals";closeHub();makeLevel(1,{mode:"collection",collectionId:id,seed:`daily-picture:${todayKey()}:${Date.now()}:${id}`});}else openPictureModePicker();return;}
     if(mode==="duel"){hubContent.querySelector(".duel-create")?.scrollIntoView({behavior:"smooth",block:"center"});return;}
-    if(["time","moves","combo","noMistakes"].includes(mode)){closeHub();makeLevel(25,{mode,seed:`${mode}:${Date.now()}:${Math.random()}`});return;}
-  });
+    if(mode==="custom"){hubContent.querySelector(".custom-rules")?.scrollIntoView({behavior:"smooth",block:"center"});return;}
+    if(["regular","time","moves","combo","noMistakes","onePass"].includes(mode)){closeHub();makeLevel(mode==="regular"?(profile.currentLevel||1):25,{mode,seed:`${mode}:${Date.now()}:${Math.random()}`});return;}
+  };
+  hubContent.querySelectorAll("[data-game-mode]").forEach((btn)=>btn.onclick=()=>startHubMode(btn.dataset.gameMode));
+  hubContent.querySelectorAll("[data-daily-quest-mode]").forEach((btn)=>btn.onclick=()=>startHubMode(btn.dataset.dailyQuestMode,{quick:true}));
+  on("#customRulesStart",()=>{const rules={timeLimitSec:+$("#customTime")?.value||0,moveLimit:+$("#customMoves")?.value||0,comboTarget:+$("#customCombo")?.value||0,noMistakes:!!$("#customNoMistakes")?.checked,onePass:!!$("#customOnePass")?.checked};profile.customRules=sanitizeCustomRules?.(rules)||rules;saveProfile();closeHub();makeLevel(25,{mode:"custom",seed:`custom:${Date.now()}:${Math.random()}`,customRules:profile.customRules});});
+  on("#leaderboardOpen",()=>openLeaderboardModal?.());
   on("#duelCreate",()=>shareNewChallenge());
   on("#challengeStart",()=>startChallengeCode($("#challengeInput")?.value));
   const challengeInput=$("#challengeInput"); if(challengeInput) challengeInput.oninput=()=>{challengeInput.value=normalizeChallengeCode(challengeInput.value);};

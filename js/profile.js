@@ -18,7 +18,7 @@ function defaultProfile() {
     titleId: "player",
     frame: "none",
     soundPack: "classic",
-    dailyQuests: { date: "", progress: {}, rewarded: {} },
+    dailyQuests: { date: "", modes: [], progress: {}, rewarded: {} },
     activeMarathon: null,
     xp: 0,
     pendingRankUp: null,
@@ -31,8 +31,14 @@ function defaultProfile() {
     favoriteCategory: "",
     featuredAchievements: [],
     developerMailSeen: [],
+    developerMailDeleted: [],
+    patchSeenVersion: "",
     adaptive: { bias: 0, history: [], restartsSinceWin: 0 },
     weeklyDigest: { key: "", baseline: null, pending: null, seenKey: "" },
+    challengeMetrics: { levels: 0, stars: 0, noHints: 0, perfect: 0, categories: 0, hints: 0, combo: 0, moves: 0 },
+    challengeMetricsVersion: 2,
+    modeStats: {},
+    customRules: { timeLimitSec: 180, moveLimit: 90, comboTarget: 10, noMistakes: false, onePass: false },
     analyticsClientId: "",
     categoryStats: {},
     associationCollections: {},
@@ -81,13 +87,17 @@ function loadProfile() {
         pendingChallengeSubmissions: Array.isArray(p.pendingChallengeSubmissions) ? p.pendingChallengeSubmissions : [],
         weekly: { ...defaultProfile().weekly, ...(p.weekly || {}) },
         monthly: { ...defaultProfile().monthly, ...(p.monthly || {}) },
-        dailyQuests: { ...defaultProfile().dailyQuests, ...(p.dailyQuests || {}), progress: { ...(p.dailyQuests?.progress || {}) }, rewarded: { ...(p.dailyQuests?.rewarded || {}) } },
+        dailyQuests: { ...defaultProfile().dailyQuests, ...(p.dailyQuests || {}), modes: Array.isArray(p.dailyQuests?.modes) ? p.dailyQuests.modes : [], progress: { ...(p.dailyQuests?.progress || {}) }, rewarded: { ...(p.dailyQuests?.rewarded || {}) } },
         activeMarathon: p.activeMarathon && typeof p.activeMarathon === "object" ? p.activeMarathon : null,
         onboardingComplete: typeof p.onboardingComplete === "boolean" ? p.onboardingComplete : !!p.tutorialComplete,
         featuredAchievements: Array.isArray(p.featuredAchievements) ? p.featuredAchievements : [],
         developerMailSeen: Array.isArray(p.developerMailSeen) ? p.developerMailSeen : [],
+        developerMailDeleted: Array.isArray(p.developerMailDeleted) ? p.developerMailDeleted : [],
         adaptive: { ...defaultProfile().adaptive, ...(p.adaptive || {}), history: Array.isArray(p.adaptive?.history) ? p.adaptive.history : [] },
         weeklyDigest: { ...defaultProfile().weeklyDigest, ...(p.weeklyDigest || {}) },
+        challengeMetrics: { ...defaultProfile().challengeMetrics, ...(p.challengeMetrics || {}) },
+        modeStats: p.modeStats && typeof p.modeStats === "object" ? p.modeStats : {},
+        customRules: { ...defaultProfile().customRules, ...(p.customRules || {}) },
       };
     } catch {}
   }
@@ -166,7 +176,7 @@ function migrateMetaProfile() {
   profile.pendingChallengeSubmissions = Array.isArray(profile.pendingChallengeSubmissions) ? profile.pendingChallengeSubmissions : [];
   profile.weekly = { ...defaultProfile().weekly, ...(profile.weekly || {}) };
   profile.monthly = { ...defaultProfile().monthly, ...(profile.monthly || {}) };
-  profile.dailyQuests = { ...defaultProfile().dailyQuests, ...(profile.dailyQuests || {}), progress: { ...(profile.dailyQuests?.progress || {}) }, rewarded: { ...(profile.dailyQuests?.rewarded || {}) } };
+  profile.dailyQuests = { ...defaultProfile().dailyQuests, ...(profile.dailyQuests || {}), modes: Array.isArray(profile.dailyQuests?.modes) ? profile.dailyQuests.modes : [], progress: { ...(profile.dailyQuests?.progress || {}) }, rewarded: { ...(profile.dailyQuests?.rewarded || {}) } };
   profile.activeMarathon = profile.activeMarathon && typeof profile.activeMarathon === "object" ? profile.activeMarathon : null;
   profile.effectUnlocksSeen = Array.isArray(profile.effectUnlocksSeen) ? profile.effectUnlocksSeen : ["spark"];
   profile.daily.weekRewards = profile.daily.weekRewards && typeof profile.daily.weekRewards === "object" ? profile.daily.weekRewards : {};
@@ -178,6 +188,18 @@ function migrateMetaProfile() {
   profile.weeklyDigest = { ...defaultProfile().weeklyDigest, ...(profile.weeklyDigest || {}) };
   profile.featuredAchievements = Array.isArray(profile.featuredAchievements) ? profile.featuredAchievements.filter((id) => profile.achievements.includes(id)).slice(0, 3) : [];
   profile.developerMailSeen = Array.isArray(profile.developerMailSeen) ? [...new Set(profile.developerMailSeen.map(String))] : [];
+  profile.developerMailDeleted = Array.isArray(profile.developerMailDeleted) ? [...new Set(profile.developerMailDeleted.map(String))] : [];
+  profile.challengeMetrics = { ...defaultProfile().challengeMetrics, ...(profile.challengeMetrics || {}) };
+  if ((+profile.challengeMetricsVersion || 0) < 2) {
+    const weeklyCount = profile.weekly?.completedCount || profile.stats?.weeklyCompleted || 0;
+    const monthlyCount = profile.monthly?.completedCount || profile.stats?.monthlyCompleted || 0;
+    profile.weekly = { ...defaultProfile().weekly, completedCount: weeklyCount };
+    profile.monthly = { ...defaultProfile().monthly, completedCount: monthlyCount };
+    profile.challengeMetrics = { ...defaultProfile().challengeMetrics };
+    profile.challengeMetricsVersion = 2;
+  }
+  profile.modeStats = profile.modeStats && typeof profile.modeStats === "object" ? profile.modeStats : {};
+  profile.customRules = { ...defaultProfile().customRules, ...(profile.customRules || {}) };
   profile.favoriteCategory = String(profile.favoriteCategory || "");
   profile.playerId = String(profile.playerId || "");
   if (!profile.playerId) profile.playerId = `p_${Math.random().toString(36).slice(2,10)}${Date.now().toString(36).slice(-6)}`;
@@ -270,7 +292,11 @@ function applyFrame(id) {
 }
 function saveProfile() {
   recomputeStars();
-  localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  try {
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  } catch (error) {
+    console.warn("Profile save failed", error);
+  }
   applyTheme(profile.theme);
   applyCardBack(profile.cardBack);
   applyEffect(profile.effect);

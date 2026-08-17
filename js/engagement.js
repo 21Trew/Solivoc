@@ -190,9 +190,59 @@ function profileShowcaseMarkup() {
   const featured=(profile.featuredAchievements||[]).map((id)=>ACHIEVEMENTS.find((a)=>a.id===id)).filter(Boolean).slice(0,3),
     rank=playerRank(profile), duels=duelHistorySummary();
   return `<section class="profile-showcase hub-section"><div class="hub-section-head"><h3>Визитка игрока</h3><small>${escapeHtml(rank.name)}</small></div>
-    <div class="profile-showcase-grid"><div><span>Любимая категория</span><b>${profile.favoriteCategory?`${categoryDisplayIcon(profile.favoriteCategory)} ${escapeHtml(profileFavoriteLabel())}`:"—"}</b></div><div><span>Ежедневная серия</span><b>🔥 ${profile.daily.currentStreak||0}</b></div><div><span>Дуэли</span><b>${duels.wins}:${duels.losses}</b></div></div>
+    <div class="profile-showcase-grid"><div><span>Любимая категория</span><b>${profile.favoriteCategory?`${categoryDisplayIcon(profile.favoriteCategory)} ${escapeHtml(profileFavoriteLabel())}`:"—"}</b></div><div><span>Ежедневная серия</span><b>🔥 ${profile.daily.currentStreak||0}</b></div><div><span>Дуэли</span><b>${duels.wins}:${duels.losses}</b></div><div><span>Всего звёзд</span><b>★ ${profile.totalStars||0}</b></div></div>
     <div class="featured-achievements">${featured.length?featured.map((a)=>`<span title="${escapeHtml(a.title)}"><i>${a.icon}</i><b>${escapeHtml(a.title)}</b></span>`).join(""):`<small>Выбери до 3 достижений в редакторе профиля</small>`}</div>
   </section>`;
+}
+
+
+const LEADERBOARD_DEFS = Object.freeze([
+  {id:"stars",label:"Звёзды",icon:"★"},{id:"levels",label:"Уровни",icon:"▦"},{id:"daily",label:"Ежедневные",icon:"☀"},
+  {id:"marathon",label:"Марафон",icon:"∞"},{id:"combo",label:"Комбо",icon:"×"},{id:"duel",label:"Дуэли",icon:"⚔"},
+  {id:"time",label:"На время",icon:"⏱"},{id:"moves",label:"На ходы",icon:"↯"},{id:"onePass",label:"1 проход",icon:"↻"},
+]);
+function leaderboardValues() {
+  const modes=profile.modeStats||{}, stats=profile.stats||{}, challenge=profile.challengeMetrics||{};
+  return {
+    stars:profile.totalStars||0, levels:challenge.levels||0, daily:stats.dailyCompleted||0, marathon:stats.bestMarathon||0,
+    combo:Math.max(stats.maxCombo||0,stats.maxDragCombo||0,...Object.values(modes).map((x)=>+x?.bestCombo||0)), duel:stats.duelRating||0,
+    time:modes.time?.bestTimeMs||0, moves:modes.moves?.bestMoves||0, onePass:modes.onePass?.completed||0,
+  };
+}
+function leaderboardPayload(){return{playerId:profile.playerId||"",name:profile.playerName||"Игрок",avatar:profile.avatarEmoji||"🙂",values:leaderboardValues()};}
+let leaderboardSyncAt=0;
+async function syncLeaderboardNonBlocking(force=false){
+  if(!/^https?:$/.test(location.protocol)||navigator.onLine===false||!profile.playerId)return false;
+  if(!force&&Date.now()-leaderboardSyncAt<30000)return false;leaderboardSyncAt=Date.now();
+  try{const c=new AbortController(),t=setTimeout(()=>c.abort(),1800);const r=await fetch("/api/leaderboard",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(leaderboardPayload()),signal:c.signal,cache:"no-store"});clearTimeout(t);return r.ok;}catch{return false;}
+}
+function leaderboardValueLabel(board,value){
+  if(board==="time")return `${Math.floor(value/60000)}:${String(Math.floor(value/1000)%60).padStart(2,"0")}`;
+  if(board==="moves")return `${value} ход.`;
+  if(board==="duel")return `${value} оч.`;
+  if(board==="stars")return `${value} ★`;
+  if(board==="combo")return `×${value}`;
+  return String(value);
+}
+async function loadLeaderboardBoard(board){
+  const list=$("#leaderboardList");if(!list)return;
+  list.innerHTML=`<div class="empty-state">Загружаю лидеров…</div>`;
+  if(navigator.onLine===false||!/^https?:$/.test(location.protocol)){list.innerHTML=`<div class="empty-state">Лидеры доступны при подключении к интернету. Сама игра продолжает работать офлайн.</div>`;return;}
+  await syncLeaderboardNonBlocking(true);
+  try{
+    const c=new AbortController(),t=setTimeout(()=>c.abort(),2200),r=await fetch(`/api/leaderboard?board=${encodeURIComponent(board)}`,{cache:"no-store",signal:c.signal});clearTimeout(t);
+    if(!r.ok)throw new Error("leaderboard unavailable");const data=await r.json(),entries=Array.isArray(data.entries)?data.entries:[];
+    list.innerHTML=entries.length?entries.map((x)=>`<div class="leaderboard-row ${x.playerId===profile.playerId?"me":""}"><b>${x.rank}</b><span>${escapeHtml(x.avatar||"🙂")}</span><div><strong>${escapeHtml(x.name||"Игрок")}</strong>${x.playerId===profile.playerId?"<small>Это ты</small>":""}</div><em>${escapeHtml(leaderboardValueLabel(board,x.value))}</em></div>`).join(""):`<div class="empty-state">Здесь пока нет результатов. Сыграй первым!</div>`;
+  }catch{list.innerHTML=`<div class="empty-state">Не удалось загрузить лидеров. Игра офлайн остаётся доступна.</div>`;}
+}
+function closeLeaderboardModal(){const m=$("#leaderboardModal");if(!m)return;m.classList.remove("show");m.setAttribute("aria-hidden","true");}
+function openLeaderboardModal(board="stars"){
+  const modal=$("#leaderboardModal"),tabs=$("#leaderboardTabs");if(!modal||!tabs)return false;
+  const select=(id)=>{const valid=LEADERBOARD_DEFS.some((x)=>x.id===id)?id:"stars";tabs.querySelectorAll("[data-leaderboard]").forEach((b)=>b.classList.toggle("active",b.dataset.leaderboard===valid));loadLeaderboardBoard(valid);};
+  tabs.innerHTML=LEADERBOARD_DEFS.map((x)=>`<button type="button" data-leaderboard="${x.id}">${x.icon} ${x.label}</button>`).join("");
+  tabs.querySelectorAll("[data-leaderboard]").forEach((btn)=>btn.onclick=()=>select(btn.dataset.leaderboard));
+  $("#leaderboardClose").onclick=closeLeaderboardModal;modal.onclick=(e)=>{if(e.target===modal)closeLeaderboardModal();};
+  modal.classList.add("show");modal.setAttribute("aria-hidden","false");select(board);return true;
 }
 
 function completedDuelEntries() {
@@ -270,7 +320,8 @@ function duelsHubMarkup(view="active") {
   const medals=syncDuelStats();
   return `<section class="hub-section duels-hub">
     <div class="hub-section-head"><h3>Дуэли</h3><small>${active.length} активных · ${profiles.length} соперн. · ${completed.length} матч.</small></div>
-    <div class="duel-medal-bar"><span>🥇 <b>${medals.gold}</b></span><span>🥈 <b>${medals.silver}</b></span><span>🥉 <b>${medals.bronze}</b></span><span>XP <b>${medals.duelXp}</b></span><span>Рейтинг <b>${medals.duelRating}</b></span></div>
+    <div class="duel-medal-bar"><span>🥇 <b>${medals.gold}</b></span><span>🥈 <b>${medals.silver}</b></span><span>🥉 <b>${medals.bronze}</b></span><span>XP <b>${medals.duelXp}</b></span><span title="Очки дуэльного рейтинга, не место в таблице">Очки рейтинга <b>${medals.duelRating}</b></span></div>
+    <small class="duel-rating-note">Очки рейтинга — твои баллы за медали, а не место среди игроков. Место смотри в «Лидерах».</small>
     <div class="duel-tabs">
       <button class="${current==="active"?"active":""}" data-duel-tab="active">Активные <span>${active.length}</span></button>
       <button class="${current==="history"?"active":""}" data-duel-tab="history">История <span>${profiles.length}</span></button>

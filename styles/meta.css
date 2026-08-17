@@ -2798,3 +2798,101 @@ body[data-theme="galaxy"] .card.face-down { background:radial-gradient(circle at
 .monthly-card .monthly-icon { background:linear-gradient(145deg,#5d8fff33,#9c69ff22); color:#d6e7ff; }
 .monthly-card .weekly-progress i { background:linear-gradient(90deg,#68d8ff,#8d8cff 52%,#d17cff); }
 .monthly-card.done { border-color:#92d8ff66; box-shadow:inset 0 0 0 1px #8ddcff15; }
+
+/* ===== v20 player-facing polish ===== */
+/* The gameplay header stays focused on the board; profile lives in the hub. */
+.game-profile-button { display:none !important; }
+
+/* Three-line profile: avatar spans the stack, identity left, rank data right. */
+.hub-profile-button {
+  grid-template-columns:48px minmax(0,1fr) minmax(92px,auto) !important;
+  grid-template-rows:auto !important;
+  column-gap:11px !important;
+  min-height:62px;
+  padding:6px 2px !important;
+}
+.hub-profile-button .global-profile-avatar { width:48px; height:48px; font-size:26px; align-self:center; }
+.hub-profile-button .global-profile-copy { display:grid; grid-template-rows:auto auto auto; align-content:center; gap:4px; min-width:0; }
+.hub-profile-button .global-profile-copy > b,
+.hub-profile-button .global-profile-copy > small { margin:0 !important; }
+.hub-profile-button .hub-profile-xp { position:relative; inset:auto; width:100%; height:5px; border-radius:99px; background:#ffffff18; overflow:hidden; }
+.global-profile-rank { align-self:center; justify-self:end; display:grid; gap:2px; text-align:right; min-width:92px; }
+.global-profile-rank b { font-size:11px; line-height:1.15; color:#fff; }
+.global-profile-rank small { font-size:8.5px; line-height:1.15; color:#c3c0df; font-weight:850; }
+
+/* Achievement hint takes a complete row instead of squeezing into the text column. */
+.mode-card .mode-nearest { grid-column:1 / -1; grid-row:auto; width:100%; margin:8px 0 0 !important; padding:7px 9px; border-radius:10px; background:#75dfff0e; border:1px solid #75dfff18; color:#a9ebff !important; box-sizing:border-box; }
+
+/* Chapter rows must always contain exactly five level cells. */
+.chapter-grid { grid-template-columns:repeat(5,minmax(0,1fr)) !important; }
+
+/* Brighter, more playful overlays. */
+.win-modal, .developer-mail-modal, .profile-editor-modal, .picture-mode-modal, .special-level-modal,
+.onboarding-modal, .weekly-digest-modal, .duel-result-modal, .duel-history-modal, .rank-up-modal,
+.patch-notes-modal, .leaderboard-modal { background:radial-gradient(circle at 20% 10%,#925dff55,transparent 35%),radial-gradient(circle at 82% 14%,#3fdcff40,transparent 30%),#11152ccc !important; backdrop-filter:blur(11px); }
+.win-modal-card, .developer-mail-card, .profile-editor-card, .picture-mode-card, .special-level-card,
+.onboarding-card, .weekly-digest-card, .duel-result-card, .duel-history-card, .rank-up-card,
+.patch-notes-card, .leaderboard-card { background:linear-gradient(155deg,#343b81 0%,#28255e 48%,#1d2252 100%) !important; border-color:#b9a8ff3d !important; box-shadow:0 28px 80px #090b205f, inset 0 1px #ffffff22 !important; }
+.win-modal-card::before, .special-level-card::before, .patch-notes-card::before, .leaderboard-card::before { content:""; position:absolute; inset:0; pointer-events:none; border-radius:inherit; background:radial-gradient(circle at 15% 2%,#ffd65f22,transparent 28%),radial-gradient(circle at 86% 8%,#54e7ff1b,transparent 28%); }
+
+.developer-mail-toolbar { position:sticky; top:0; z-index:3; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:7px 3px 11px; background:linear-gradient(#25295cf2,#25295ccc,transparent); }
+.developer-mail-toolbar span { color:#bfbcda; font-size:9px; font-weight:800; }
+.developer-mail-toolbar button { border:1px solid #ffabb52f; border-radius:11px; padding:7px 10px; background:#ff778817; color:#ffd1d7; font-size:9px; font-weight:900; }
+.developer-mail-toolbar button:disabled { opacity:.4; }
+
+.patch-notes-modal, .leaderboard-modal { position:fixed; inset:0; z-index:25800; display:grid; place-items:center; padding:18px; opacity:0; visibility:hidden; transition:.24s ease; }
+.patch-notes-modal.show, .leaderboard-modal.show { opacity:1; visibility:visible; }
+.patch-notes-card, .leaderboard-card { position:relative; width:min(440px,94vw); max-height:min(780px,90dvh); overflow:auto; border:1px solid; border-radius:28px; padding:22px; color:#fff; }
+.patch-notes-burst { width:64px; height:64px; display:grid; place-items:center; margin:0 auto 12px; border-radius:22px; background:linear-gradient(145deg,#ffce65,#ff799f 50%,#836dff); font-size:31px; box-shadow:0 10px 30px #ff8ca53d; transform:rotate(-4deg); }
+#patchNotesContent > small { display:block; text-align:center; color:#8deaff; font-size:9px; font-weight:950; letter-spacing:.12em; }
+#patchNotesContent h2 { text-align:center; margin:7px 0 8px; font-size:23px; }
+#patchNotesContent p { text-align:center; margin:0 0 14px; color:#dedcf0; font-size:11px; line-height:1.45; }
+#patchNotesContent ul { margin:0 0 17px; padding:0; list-style:none; display:grid; gap:7px; }
+#patchNotesContent li { padding:9px 11px 9px 31px; border-radius:13px; background:#ffffff0d; font-size:10.5px; line-height:1.4; position:relative; }
+#patchNotesContent li::before { content:"✦"; position:absolute; left:11px; top:9px; color:#ffd873; }
+#patchNotesDone { width:100%; min-height:47px; border:0; border-radius:15px; color:#fff; font-weight:950; background:linear-gradient(135deg,#ff7d9d,#8c69ff 55%,#45cde9); box-shadow:0 9px 24px #11163c55; }
+
+.leaderboard-card { padding:0; overflow:hidden; }
+.leaderboard-close { position:absolute; z-index:3; top:12px; right:12px; width:40px; height:40px; border:1px solid #ffffff20; border-radius:13px; background:#ffffff0d; color:#fff; font-size:22px; }
+.leaderboard-head { display:grid; grid-template-columns:50px 1fr; gap:11px; align-items:center; padding:18px 60px 12px 17px; }
+.leaderboard-head > span { width:50px; height:50px; display:grid; place-items:center; border-radius:17px; background:linear-gradient(145deg,#ffd66d33,#ff80a326); font-size:26px; }
+.leaderboard-head small { color:#8deaff; font-size:8px; letter-spacing:.12em; font-weight:950; }
+.leaderboard-head h2 { margin:3px 0 0; font-size:20px; }
+.leaderboard-tabs { display:flex; gap:6px; overflow:auto; padding:5px 14px 12px; scrollbar-width:none; }
+.leaderboard-tabs button { flex:0 0 auto; border:1px solid #ffffff17; border-radius:99px; padding:7px 10px; background:#ffffff08; color:#c7c4de; font-size:9px; font-weight:900; }
+.leaderboard-tabs button.active { background:#7769ff45; border-color:#b6adff65; color:#fff; }
+.leaderboard-list { padding:0 13px 14px; max-height:60dvh; overflow:auto; }
+.leaderboard-row { display:grid; grid-template-columns:28px 34px minmax(0,1fr) auto; gap:8px; align-items:center; min-height:49px; margin-top:6px; padding:6px 9px; border:1px solid #ffffff0e; border-radius:14px; background:#ffffff08; }
+.leaderboard-row.me { border-color:#75e7ff55; background:linear-gradient(135deg,#64deff18,#8f72ff18); }
+.leaderboard-row > b { text-align:center; color:#a9a6c7; font-size:11px; }
+.leaderboard-row > span { font-size:21px; text-align:center; }
+.leaderboard-row > div strong, .leaderboard-row > div small { display:block; }
+.leaderboard-row > div strong { font-size:11px; }
+.leaderboard-row > div small { margin-top:2px; color:#83e4f9; font-size:7.5px; }
+.leaderboard-row > em { font-style:normal; color:#fff0a9; font-size:10px; font-weight:950; }
+.leaders-open { border:1px solid #ffe07d38; border-radius:11px; padding:7px 10px; background:#ffe07d12; color:#ffeaa0; font-size:9px; font-weight:950; }
+
+/* Large, unmistakable selected cosmetic at the end of every successful level. */
+.victory-cosmetic { position:absolute; left:50%; top:43%; width:min(74vw,330px); aspect-ratio:1; transform:translate(-50%,-50%); display:grid; place-items:center; border-radius:50%; animation:victoryCosmeticIn 2.35s cubic-bezier(.18,.78,.18,1) forwards; }
+.victory-cosmetic::before { content:""; position:absolute; inset:12%; border:3px solid #fff9; border-radius:50%; box-shadow:0 0 34px #fff6, inset 0 0 34px #86e6ff4d; animation:victoryRing 1.35s ease-out both; }
+.victory-cosmetic > b { position:relative; z-index:2; display:grid; place-items:center; width:92px; height:92px; border-radius:30px; background:linear-gradient(145deg,#ffffffee,#ffd96bdd 45%,#ff83addd); color:#39244f; font-size:42px; box-shadow:0 14px 45px #11174266; animation:victoryBadge .85s cubic-bezier(.2,.9,.25,1.25) both; }
+.victory-cosmetic > i { position:absolute; left:50%; top:50%; width:12px; height:28px; border-radius:8px; background:hsl(var(--vh) 95% 70%); transform:translate(-50%,-50%) rotate(var(--vr)) translateY(-110px); box-shadow:0 0 14px currentColor; animation:victoryRay 1.5s ease-out var(--vd) both; }
+.victory-cosmetic.effect-stars > i::after { content:"★"; color:#fff5a5; font-size:18px; }
+.victory-cosmetic.effect-crown-rain > i::after { content:"♛"; color:#fff0a0; font-size:20px; }
+@keyframes victoryCosmeticIn { 0%{opacity:0;filter:blur(4px)} 14%,76%{opacity:1;filter:none} 100%{opacity:0;transform:translate(-50%,-50%) scale(1.08)} }
+@keyframes victoryRing { from{opacity:0;transform:scale(.3)} 55%{opacity:1} to{opacity:0;transform:scale(1.28)} }
+@keyframes victoryBadge { from{opacity:0;transform:scale(.2) rotate(-18deg)} to{opacity:1;transform:scale(1) rotate(0)} }
+@keyframes victoryRay { from{opacity:0;transform:translate(-50%,-50%) rotate(var(--vr)) translateY(-35px) scale(.4)} 30%{opacity:1} to{opacity:0;transform:translate(-50%,-50%) rotate(var(--vr)) translateY(-145px) scale(1)} }
+
+@media (max-width:390px){
+  .hub-profile-button { grid-template-columns:44px minmax(0,1fr) 82px !important; column-gap:8px !important; }
+  .hub-profile-button .global-profile-avatar { width:44px; height:44px; }
+  .global-profile-rank { min-width:82px; }
+  .global-profile-rank b { font-size:10px; }
+  .global-profile-rank small { font-size:7.5px; }
+}
+.combo-xp-status { display:inline-flex; align-items:center; min-height:20px; padding:3px 7px; border-radius:99px; background:linear-gradient(135deg,#ffe26f18,#ff8ba716); border:1px solid #ffe88d25; color:#ffe9a8; font-size:8px; font-weight:900; white-space:nowrap; }
+/* Celebration must sit above the result modal so the chosen cosmetic is actually visible. */
+.celebration { z-index:11100 !important; }
+.profile-editor-mail span[hidden] { display:none !important; }
+.duel-rating-note { display:block; margin:7px 2px 10px; color:#aaa8c7; font-size:8.5px; line-height:1.35; }

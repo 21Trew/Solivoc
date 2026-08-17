@@ -39,25 +39,52 @@ function restartCurrentLevel() {
   if (state.mode === "calm") return makeLevel(state.level || 1, { mode: "calm", seed: state.seed, cardSourceMode: state.cardSourceMode });
   if (state.mode === "collection") return makeLevel(state.level || 1, { mode: "collection", seed: state.seed, collectionId: state.collectionId });
   if (state.mode === "regular" && state.riskDeal) return makeLevel(state.level, { mode: "regular", seed: `level:${state.level}:retry:${Date.now()}`, cardSourceMode: state.cardSourceMode, categoryCooldownIds: state.categoryCooldownIds, specialIntro: false, forceSolvable: true });
-  return makeLevel(state.level, { mode: state.mode, seed: state.seed, cardSourceMode: state.cardSourceMode, categoryCooldownIds: state.categoryCooldownIds, specialIntro: false });
+  return makeLevel(state.level, { mode: state.mode, seed: state.seed, cardSourceMode: state.cardSourceMode, categoryCooldownIds: state.categoryCooldownIds, specialIntro: false, customRules: state.customRules || null });
 }
+const MAX_UNDO_SNAPSHOTS = 24;
+let stateSaveTimer = null, lastPersistedStateJson = "", lastBackupAt = 0;
 function snapshot() {
   return structuredClone(state);
 }
 function pushHistory() {
   history.push(snapshot());
-  if (history.length > 80) history.shift();
+  if (history.length > MAX_UNDO_SNAPSHOTS) history.splice(0, history.length - MAX_UNDO_SNAPSHOTS);
 }
-function save() {
+function persistStateNow() {
+  clearTimeout(stateSaveTimer);
+  stateSaveTimer = null;
   try {
     if (state) {
-      const current = localStorage.getItem(SAVE_KEY);
-      if (current) localStorage.setItem(SAVE_BACKUP_KEY, current);
-      localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+      const json = JSON.stringify(state);
+      if (json !== lastPersistedStateJson) {
+        const now = Date.now();
+        if (lastPersistedStateJson && now - lastBackupAt > 30000) {
+          try { localStorage.setItem(SAVE_BACKUP_KEY, lastPersistedStateJson); lastBackupAt = now; } catch {}
+        }
+        try { localStorage.setItem(SAVE_KEY, json); }
+        catch (error) {
+          try { localStorage.removeItem(SAVE_BACKUP_KEY); localStorage.setItem(SAVE_KEY, json); }
+          catch { throw error; }
+        }
+        lastPersistedStateJson = json;
+      }
     }
     saveProfile();
-  } catch (err) { console.warn("save failed", err); }
+    return true;
+  } catch (err) {
+    console.warn("save failed", err);
+    return false;
+  }
 }
+function save(options = {}) {
+  const immediate = options === true || options?.immediate === true;
+  if (immediate) return persistStateNow();
+  clearTimeout(stateSaveTimer);
+  stateSaveTimer = setTimeout(persistStateNow, 220);
+  return true;
+}
+function scheduleSave() { return save(); }
+function flushSave() { return persistStateNow(); }
 function activeRunElapsedMs(s = state) {
   if (!s?.run?.startedAt) return 0;
   const end = s.run.pausedAt || Date.now();
@@ -72,8 +99,10 @@ function resumeActiveRun() {
 function load({ render: shouldRender = true } = {}) {
   for (const key of [SAVE_KEY, SAVE_BACKUP_KEY]) {
     try {
-      const s = JSON.parse(localStorage.getItem(key));
+      const raw = localStorage.getItem(key);
+      const s = JSON.parse(raw);
       if (s?.columns) {
+        lastPersistedStateJson = key === SAVE_KEY ? raw : "";
         const restored = normalizeLoadedLayout(s); state = restored.state;
         if (state.mode === "marathon" && state.rewarded && state.marathonSuccess) {
           const nextRound = (state.marathonRound || 1) + 1, runId = state.marathonId || `marathon:${Date.now().toString(36)}`;

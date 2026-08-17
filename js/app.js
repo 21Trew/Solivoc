@@ -99,7 +99,7 @@ function bindAppEvents() {
       else if (state.mode === "challenge") openHub("modes");
       else if (state.mode === "collection") makeLevel(1, { mode: "collection", collectionId: state.collectionId, seed: `collection:${state.collectionId}:${Date.now()}` });
       else if (state.mode === "calm") makeLevel(1, { mode: "calm", seed: `calm:${Date.now()}:${Math.random()}` });
-      else if (["time","moves","combo","noMistakes"].includes(state.mode)) makeLevel(1, { mode: state.mode, seed: `${state.mode}:${Date.now()}:${Math.random()}` });
+      else if (["time","moves","combo","noMistakes","onePass","custom"].includes(state.mode)) makeLevel(1, { mode: state.mode, seed: `${state.mode}:${Date.now()}:${Math.random()}`, customRules: state.customRules || null });
       else if (state.mode === "marathon") {
         const nextRound = state.marathonSuccess ? (state.marathonRound || 1) + 1 : 1;
         const runId = state.marathonSuccess ? state.marathonId : `marathon:${Date.now().toString(36)}`;
@@ -188,7 +188,7 @@ function registerPwa() {
 
 let challengeSyncTimer = null, resumeSyncTimer = null, ruleMetricTimer = null;
 function syncChallengesNonBlocking() {
-  if (document.visibilityState !== "visible") return;
+  if (document.visibilityState !== "visible" || navigator.onLine === false) return;
   const run = () => Promise.allSettled([
     Promise.resolve(flushPendingChallengeSubmissions?.()),
     Promise.resolve(refreshOwnedChallenges?.({ notify: true })),
@@ -207,27 +207,39 @@ function startChallengeSyncLoop() {
     const el = $("#ruleMetric");
     if (!el || el.hidden || typeof ruleMetricText !== "function") return;
     el.textContent = ruleMetricText(state);
+    if (typeof checkActiveRuleFailure === "function") checkActiveRuleFailure();
   }, 500);
   document.addEventListener("visibilitychange", () => {
     clearTimeout(resumeSyncTimer);
     if (document.visibilityState === "hidden") {
+      cancelActiveDragForLifecycle?.();
+      cancelAutoMoveForLifecycle?.();
       pauseActiveRun?.();
-      save?.();
-      saveProfile?.();
+      save?.({ immediate: true });
       return;
     }
     resumeActiveRun?.();
     // Let the browser paint the restored board before network/Push work starts.
-    resumeSyncTimer = setTimeout(syncChallengesNonBlocking, 650);
+    if (navigator.onLine !== false) resumeSyncTimer = setTimeout(syncChallengesNonBlocking, 650);
   });
-  window.addEventListener("pagehide", () => { pauseActiveRun?.(); save?.(); saveProfile?.(); });
+  window.addEventListener("pagehide", () => { cancelActiveDragForLifecycle?.(); cancelAutoMoveForLifecycle?.(); pauseActiveRun?.(); save?.({ immediate: true }); });
   window.addEventListener("pageshow", () => { resumeActiveRun?.(); });
-  window.addEventListener("error", () => { try { save?.(); saveProfile?.(); } catch {} });
-  window.addEventListener("unhandledrejection", () => { try { save?.(); saveProfile?.(); } catch {} });
+  window.addEventListener("freeze", () => { cancelActiveDragForLifecycle?.(); cancelAutoMoveForLifecycle?.(); pauseActiveRun?.(); save?.({ immediate: true }); });
+  window.addEventListener("beforeunload", () => { save?.({ immediate: true }); });
+  const recordRuntimeFault = (kind, detail = "") => {
+    try {
+      const key = "solivoc-runtime-faults-v1", list = JSON.parse(localStorage.getItem(key) || "[]");
+      list.push({ kind, detail: String(detail || "").slice(0, 240), at: Date.now(), mode: state?.mode || "", level: state?.level || 0 });
+      localStorage.setItem(key, JSON.stringify(list.slice(-8)));
+      save?.({ immediate: true });
+    } catch {}
+  };
+  window.addEventListener("error", (event) => recordRuntimeFault("error", event?.message || event?.error?.message));
+  window.addEventListener("unhandledrejection", (event) => recordRuntimeFault("promise", event?.reason?.message || event?.reason));
 }
 
 async function fetchServerBootstrap() {
-  if (!/^https?:$/.test(location.protocol)) return null;
+  if (!/^https?:$/.test(location.protocol) || navigator.onLine === false) return null;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 1800);
   try {
@@ -239,6 +251,7 @@ async function fetchServerBootstrap() {
   } catch { return null; } finally { clearTimeout(timer); }
 }
 async function syncServerDataOnBoot() {
+  if (navigator.onLine === false || !/^https?:$/.test(location.protocol)) return [];
   const tasks = [
     fetchServerBootstrap(),
     Promise.resolve(flushPendingChallengeSubmissions?.()),
@@ -314,6 +327,8 @@ async function boot() {
     if (!openHomeAfterLoad || startedChallenge) setBackgroundMusic(musicModeForState?.() || "game");
     renderGlobalProfileHeaders?.();
     updateProfileMailBadge?.();
+    if (onboardingRan) { const currentPatch=latestMajorPatchMessage?.(); if(currentPatch?.version){ profile.patchSeenVersion=String(currentPatch.version); saveProfile(); } }
+    else if (!startedChallenge) setTimeout(() => showPatchNotesIfNeeded?.(), 420);
 
     // Network synchronization must never keep the loading screen open.
     // Redis/Push/analytics can finish after the local game is already ready.
@@ -328,6 +343,7 @@ async function boot() {
     });
 
     flushRemoteAnalytics?.();
+    syncLeaderboardNonBlocking?.();
     setTimeout(() => scheduleDeadlockCheck(1000), 300);
   } catch (err) {
     console.error(err);

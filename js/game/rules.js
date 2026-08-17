@@ -122,6 +122,7 @@ function performDrop(p, target, options = {}) {
     else col.push(moving);
   }
   state.run.moves++;
+  if (typeof checkActiveRuleFailure === "function" && checkActiveRuleFailure()) return true;
   if (options.comboEligible) {
     if (productive) registerCombo(true, options.comboSource || "manual");
     else resetCombo();
@@ -137,8 +138,9 @@ function performDrop(p, target, options = {}) {
 }
 
 function maxStockRecycles() {
-  const limit = state?.special?.maxRecycles;
-  return Number.isFinite(limit) ? limit : Infinity;
+  const specialLimit = state?.special?.maxRecycles, ruleLimit = state?.rules?.maxRecycles;
+  const limits = [specialLimit, ruleLimit].filter(Number.isFinite);
+  return limits.length ? Math.min(...limits) : Infinity;
 }
 function canRecycleStock() {
   return !!state?.waste?.length && (state.run?.recycles || 0) < maxStockRecycles();

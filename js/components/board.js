@@ -107,7 +107,7 @@ function render() {
               ? "▦"
             : state.mode === "calm"
               ? "☁"
-              : ["time","moves","combo","noMistakes"].includes(state.mode)
+              : ["time","moves","combo","noMistakes","onePass","custom"].includes(state.mode)
                 ? (GAME_MODE_DEFS.find((m)=>m.id===state.mode)?.icon || "◆")
                 : state.level;
   $("#left").textContent = left;
@@ -122,6 +122,8 @@ function render() {
     ruleMetricEl.textContent = metric;
     ruleMetricEl.hidden = !metric;
   }
+  const comboXpEl = $("#comboXpStatus");
+  if (comboXpEl) comboXpEl.textContent = typeof comboXpHudText === "function" ? comboXpHudText(state) : "";
   const bonusEl = $("#bonusObjective");
   if (bonusEl) {
     bonusEl.innerHTML = typeof bonusObjectiveMarkup === "function" ? bonusObjectiveMarkup(state) : "";
@@ -139,7 +141,7 @@ function render() {
             ? associationCollectionById(state.collectionId).name.toLowerCase()
           : state.mode === "calm"
             ? "дзен"
-            : ["time","moves","combo","noMistakes"].includes(state.mode)
+            : ["time","moves","combo","noMistakes","onePass","custom"].includes(state.mode)
               ? (GAME_MODE_DEFS.find((m)=>m.id===state.mode)?.label || "испытание").toLowerCase()
               : "прогресс";
   const specialBadge = $("#specialBadge");
@@ -165,7 +167,7 @@ function render() {
     specialBadge.hidden = false;
     specialBadge.textContent = "☁ Дзен";
     specialBadge.title = "Лёгкие расклады без комбо и особых ограничений";
-  } else if (["time","moves","combo","noMistakes"].includes(state.mode)) {
+  } else if (["time","moves","combo","noMistakes","onePass","custom"].includes(state.mode)) {
     const modeDef = GAME_MODE_DEFS.find((m)=>m.id===state.mode);
     specialBadge.hidden = false;
     specialBadge.textContent = `${modeDef?.icon || "◆"} ${modeDef?.label || "Испытание"}`;
@@ -177,7 +179,7 @@ function render() {
   const undoLimit = state.special?.maxUndos;
   $("#undo").disabled = !history.length || (Number.isFinite(undoLimit) && state.run.undos >= undoLimit);
   $("#hint").disabled = !!state.special?.noHints;
-  save();
+  scheduleSave?.();
   queuePostRenderCardAnimations();
   if (state.completed === state.totalCategories && !state.rewarded) finishLevel();
 }
@@ -207,6 +209,7 @@ function drawStock() {
     return;
   }
   state.run.moves++;
+  if (typeof checkActiveRuleFailure === "function" && checkActiveRuleFailure()) return;
   profile.stats.stockDraws++;
   track("stock_draw", { mode: state.mode });
   haptic(7);
