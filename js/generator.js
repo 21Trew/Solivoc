@@ -168,6 +168,23 @@ function chooseCompatibleFromPool(pool, count, difficulty, rng, initial = [], co
 function chooseCompatibleCategories(count, difficulty, rng, cooldownIds = []) {
   return chooseCompatibleFromPool(BANK, count, difficulty, rng, [], cooldownIds);
 }
+function chooseCollectionCategories(collectionId, desiredCount, rng) {
+  const pool = shuffle(associationCollectionCategories(collectionId), rng);
+  const target = Math.max(1, Math.min(desiredCount, pool.length));
+  let best = [];
+  const search = (index, chosen) => {
+    if (chosen.length > best.length) best = [...chosen];
+    if (best.length >= target || index >= pool.length) return;
+    if (chosen.length + (pool.length - index) <= best.length) return;
+    for (let i = index; i < pool.length; i++) {
+      const cat = pool[i];
+      if (chosen.every((other) => !categoriesConflict(cat, other))) search(i + 1, [...chosen, cat]);
+      if (best.length >= target) return;
+    }
+  };
+  search(0, []);
+  return best.slice(0, target);
+}
 function categoriesForSourceMode(count, difficulty, rng, sourceMode = "all", cooldownIds = []) {
   const mode = normalizeCardSourceMode(sourceMode);
   const visuals = allAssociationCategories();
@@ -200,11 +217,35 @@ function randomColumnCounts(total, cols, rng, hardMax = 6) {
 }
 function allCards(s) {
   return [
-    ...s.stock,
-    ...s.waste,
-    ...s.columns.flatMap((c) => c.flatMap((g) => g.cards)),
-    ...s.slots.flatMap((g) => (g ? g.cards : [])),
+    ...(s?.stock || []),
+    ...(s?.waste || []),
+    ...(s?.columns || []).flatMap((c) => (c || []).flatMap((g) => g?.cards || [])),
+    ...(s?.slots || []).flatMap((g) => (g?.cards || [])),
   ];
+}
+function isPlayableGeneratedState(s) {
+  const total = Math.floor(+s?.totalCategories || 0),
+    completed = Math.floor(+s?.completed || 0),
+    ids = Array.isArray(s?.categoryIds) ? s.categoryIds.filter(Boolean) : [];
+  if (total < 1 || completed < 0 || completed > total || ids.length !== total || new Set(ids).size !== total) return false;
+  const cards = allCards(s), counts = new Map(ids.map((id) => [id, { categories: 0, words: 0 }]));
+  for (const card of cards) {
+    const row = counts.get(card?.cat);
+    if (!row) return false;
+    if (card.type === "category") row.categories++;
+    else if (card.type === "word") row.words++;
+    else return false;
+  }
+  let active = 0;
+  for (const row of counts.values()) {
+    const present = row.categories > 0 || row.words > 0;
+    if (!present) continue;
+    active++;
+    if (row.categories !== 1 || row.words < 3) return false;
+  }
+  // A completed category is removed from the board as one atomic group.
+  // Therefore the number of absent category sets must exactly match completed.
+  return total - active === completed;
 }
 function isLikelySolvable(s) {
   const cards = allCards(s),
@@ -314,9 +355,10 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
       cfg = configForMode(level, mode, rng, special, { marathonRound }),
       riskRoll = riskDealRoll(baseSeed, cfg, mode, forceSolvable);
     const chosen = mode === "collection"
-      ? chooseCompatibleFromPool(associationCollectionCategories(collectionId), cfg.cats, 2, rng)
+      ? chooseCollectionCategories(collectionId, cfg.cats, rng)
       : categoriesForSourceMode(cfg.cats, cfg.difficulty, rng, sourceMode, cooldownIds);
-    if (chosen.length < cfg.cats) continue;
+    const minimumCategories = mode === "collection" ? Math.min(3, associationCollectionCategories(collectionId).length) : cfg.cats;
+    if (chosen.length < minimumCategories) continue;
     const cards = [];
     for (const cat of chosen) {
       const maxN = Math.min(cfg.words[1], 7, cat.words.length),
@@ -347,7 +389,7 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
       waste: [],
       slots: Array(cfg.cols).fill(null),
       completed: 0,
-      totalCategories: cfg.cats,
+      totalCategories: chosen.length,
       categoryIds: chosen.map((c) => c.id),
       categoryCooldownIds: cooldownIds,
       collectionId: mode === "collection" ? associationCollectionById(collectionId).id : null,
@@ -369,21 +411,26 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
       marathonRound: mode === "marathon" ? marathonRound : null,
       marathonId: mode === "marathon" ? marathonId || seed : null,
       customRules: mode === "custom" ? sanitizeCustomRules(customRules || profile?.customRules || {}) : null,
-      rules: modeRulesFor(mode, { cardCount: cards.length, totalCategories: cfg.cats }, customRules),
+      rules: modeRulesFor(mode, { cardCount: cards.length, totalCategories: chosen.length }, customRules),
       rewarded: false,
       generationAttempt: attempt,
       riskDeal: !!riskRoll.risk,
       riskDealChance: Math.round(riskRoll.chance * 1000) / 10,
     };
+    if (!isPlayableGeneratedState(candidate)) continue;
     if (riskRoll.risk || isLikelySolvable(candidate)) return candidate;
   }
   console.warn("Solver fallback: используем последний корректно сформированный расклад");
   const rng = makeRng(baseSeed + ":fallback"),
     special = mode === "regular" ? specialForLevel(level) : null,
     cfg = configForMode(level, mode, rng, special, { marathonRound }),
-    chosen = mode === "collection"
-      ? chooseCompatibleFromPool(associationCollectionCategories(collectionId), cfg.cats, 2, rng)
+    compatibleFallback = mode === "collection"
+      ? chooseCollectionCategories(collectionId, cfg.cats, rng)
       : categoriesForSourceMode(cfg.cats, cfg.difficulty, rng, sourceMode, cooldownIds),
+    rawFallbackPool = mode === "collection" ? associationCollectionCategories(collectionId) : [...BANK, ...allAssociationCategories()],
+    chosen = compatibleFallback.length
+      ? compatibleFallback
+      : shuffle(rawFallbackPool, rng).slice(0, Math.max(1, Math.min(cfg.cats, rawFallbackPool.length))),
     cards = [];
   for (const cat of chosen) {
     const n = Math.min(mode === "collection" ? 5 : 4, cat.words.length),
@@ -397,7 +444,7 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
     layout = shuffle(words.slice(0, Math.min(Math.floor(words.length / 2), cfg.cols * 6)), rng),
     counts = randomColumnCounts(layout.length, cfg.cols, rng);
   let k = 0;
-  return {
+  const fallbackState = {
     level,
     mode,
     seed: baseSeed,
@@ -437,6 +484,10 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
     riskDeal: false,
     riskDealChance: 0,
   };
+  if (!isPlayableGeneratedState(fallbackState)) {
+    throw new Error(`Не удалось создать игровой расклад: ${mode}/${collectionId || "default"}`);
+  }
+  return fallbackState;
 }
 function findCat(title) {
   return BANK.find((c) => c.title === title) || BANK[0];
@@ -498,14 +549,19 @@ function normalizeState(s) {
 }
 function normalizeLoadedLayout(s) {
   const normalized = normalizeState(s);
+  const allowedModes = ["daily", "collection", "marathon", "calm", "challenge", "time", "moves", "combo", "noMistakes", "onePass", "custom"];
+  const rebuild = (repairInvalid = false) => {
+    const mode = allowedModes.includes(normalized.mode) ? normalized.mode : "regular";
+    const rebuilt = buildGeneratedLevel(normalized.level || 1, {
+      mode, seed: normalized.seed, collectionId: normalized.collectionId, cardSourceMode: normalized.cardSourceMode,
+      marathonRound: normalized.marathonRound, marathonId: normalized.marathonId, challengeCode: normalized.challengeCode,
+      challengeRole: normalized.challengeRole, challengeCreatorName: normalized.challengeCreatorName, challengeCreatorAvatar: normalized.challengeCreatorAvatar,
+      challengeCreatorResult: normalized.challengeCreatorResult, challengeGuestToken: normalized.challengeGuestToken, duelMode: normalized.duelMode, duelModeChoice: normalized.duelModeChoice,
+      customRules: normalized.customRules || null, forceSolvable: true,
+    });
+    return { state: rebuilt, migrated: true, repairedInvalidState: repairInvalid };
+  };
+  if (normalized.mode !== "tutorial" && !isPlayableGeneratedState(normalized)) return rebuild(true);
   if ((normalized.cols || normalized.columns?.length || 0) <= 5) return { state: normalized, migrated: false };
-  const allowedModes = ["daily", "collection", "marathon", "calm", "challenge", "time", "moves", "combo", "noMistakes"];
-  const mode = allowedModes.includes(normalized.mode) ? normalized.mode : "regular";
-  const rebuilt = buildGeneratedLevel(normalized.level || 1, {
-    mode, seed: normalized.seed, collectionId: normalized.collectionId, cardSourceMode: normalized.cardSourceMode,
-    marathonRound: normalized.marathonRound, marathonId: normalized.marathonId, challengeCode: normalized.challengeCode,
-    challengeRole: normalized.challengeRole, challengeCreatorName: normalized.challengeCreatorName, challengeCreatorAvatar: normalized.challengeCreatorAvatar,
-    challengeCreatorResult: normalized.challengeCreatorResult, challengeGuestToken: normalized.challengeGuestToken, duelMode: normalized.duelMode, duelModeChoice: normalized.duelModeChoice,
-  });
-  return { state: rebuilt, migrated: true };
+  return rebuild(false);
 }

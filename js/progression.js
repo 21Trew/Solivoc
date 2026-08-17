@@ -155,6 +155,12 @@ function closeWinModal() {
   setBackgroundMusic?.(musicModeForState?.() || "game");
 }
 function finishLevel() {
+  const rewardable = !!state && state.totalCategories > 0 && state.completed === state.totalCategories && (state.run?.moves || 0) > 0 && (state.mode === "tutorial" || isPlayableGeneratedState(state));
+  if (!rewardable) {
+    console.error("invalid completion blocked", { mode: state?.mode, seed: state?.seed, completed: state?.completed, totalCategories: state?.totalCategories, moves: state?.run?.moves });
+    track?.("invalid_completion_blocked", { mode: state?.mode || "unknown", completed: state?.completed || 0, totalCategories: state?.totalCategories || 0, moves: state?.run?.moves || 0 });
+    return false;
+  }
   const ruleFailure = typeof activeRuleFailureReason === "function" ? activeRuleFailureReason(state, { completion: true }) : "";
   if (ruleFailure) return finishFailedRun(ruleFailure);
   state.rewarded = true;

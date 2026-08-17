@@ -6,7 +6,20 @@ function makeLevel(level = 1, opts = {}) {
   lastDeadlockSignature = "";
   dealAnimating = false;
   stockEl?.classList.remove("deal-pulse");
-  state = opts.mode === "tutorial" ? makeTutorial(opts.step || 1) : buildGeneratedLevel(level, opts);
+  try {
+    state = opts.mode === "tutorial" ? makeTutorial(opts.step || 1) : buildGeneratedLevel(level, opts);
+  } catch (error) {
+    console.error("level generation failed", error);
+    showToast?.("Не удалось создать расклад. Попробуй ещё раз");
+    openHub?.("modes");
+    return false;
+  }
+  if (state?.mode !== "tutorial" && !isPlayableGeneratedState(state)) {
+    console.error("invalid generated level blocked", { mode: state?.mode, seed: state?.seed, totalCategories: state?.totalCategories });
+    showToast?.("Повреждённый расклад не был засчитан");
+    openHub?.("modes");
+    return false;
+  }
   if (state?.mode === "marathon") {
     profile.activeMarathon = { level: state.level, seed: state.seed, marathonRound: state.marathonRound || 1, marathonId: state.marathonId, cardSourceMode: state.cardSourceMode };
     saveProfile();
@@ -111,7 +124,8 @@ function load({ render: shouldRender = true } = {}) {
         }
         if (typeof assignBonusObjective === "function") assignBonusObjective(state);
         if (shouldRender) { render(); updateCoach(); }
-        if (shouldRender && restored.migrated) setTimeout(() => showToast("Расклад адаптирован под 5 колонок"), 120);
+        if (shouldRender && restored.repairedInvalidState) setTimeout(() => showToast("Сломанный расклад восстановлен без награды"), 120);
+        else if (shouldRender && restored.migrated) setTimeout(() => showToast("Расклад адаптирован под 5 колонок"), 120);
         return true;
       }
     } catch {}
@@ -125,7 +139,8 @@ function load({ render: shouldRender = true } = {}) {
       if (typeof assignBonusObjective === "function") assignBonusObjective(state);
       saveProfile();
       if (shouldRender) { render(); updateCoach(); }
-      if (shouldRender && restored.migrated) setTimeout(() => showToast("Расклад адаптирован под 5 колонок"), 120);
+      if (shouldRender && restored.repairedInvalidState) setTimeout(() => showToast("Сломанный расклад восстановлен без награды"), 120);
+      else if (shouldRender && restored.migrated) setTimeout(() => showToast("Расклад адаптирован под 5 колонок"), 120);
       return;
     }
   } catch {}

@@ -181,7 +181,8 @@ function render() {
   $("#hint").disabled = !!state.special?.noHints;
   scheduleSave?.();
   queuePostRenderCardAnimations();
-  if (state.completed === state.totalCategories && !state.rewarded) finishLevel();
+  const validCompletion = state.totalCategories > 0 && state.completed === state.totalCategories && (state.run?.moves || 0) > 0;
+  if (validCompletion && !state.rewarded) finishLevel();
 }
 function drawStock() {
   if (autoMoveBusy || dealAnimating || categoryAnimating) return;

@@ -39,7 +39,12 @@ function categoriesConflict(a, b) {
       const wordTerms = [normWord(word.title), ...(word.words || []).map(normWord)];
       return wordTerms.some((term) => visualTerms.has(term));
     }
-    if (a.semanticGroup && b.semanticGroup && a.semanticGroup === b.semanticGroup) return true;
+    const sameVisualCollection = !!(a.visual && b.visual && a.visualCollection && a.visualCollection === b.visualCollection);
+    // Categories inside one curated picture collection are intentionally meant to
+    // coexist in a level. Their shared semanticGroup describes the collection,
+    // not an ambiguity between its categories. Exact duplicated cards/labels are
+    // still treated as a conflict below.
+    if (!sameVisualCollection && a.semanticGroup && b.semanticGroup && a.semanticGroup === b.semanticGroup) return true;
     const exact = new Set((a.words || []).map(String));
     if ((b.words || []).some((w) => exact.has(String(w)))) return true;
     const labels = new Set(Object.values(a.visualLabels || {}).map(normWord));
