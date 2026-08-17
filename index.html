@@ -207,6 +207,20 @@
         <div class="leaderboard-list" id="leaderboardList"></div>
       </div>
     </div>
+    <div class="custom-rules-modal" id="customRulesModal" aria-hidden="true">
+      <div class="custom-rules-card" role="dialog" aria-modal="true" aria-labelledby="customRulesTitle">
+        <button class="custom-rules-close" id="customRulesClose" aria-label="Закрыть">×</button>
+        <div class="custom-rules-head"><span>⚙</span><div><small>РЕЖИМ</small><h2 id="customRulesTitle">Мои правила</h2><p>Выбери только нужные ограничения. Значение 0 отключает лимит.</p></div></div>
+        <div class="custom-rules-grid">
+          <label>Время, сек.<input id="customTime" type="number" min="0" max="900" value="0"></label>
+          <label>Ходы<input id="customMoves" type="number" min="0" max="400" value="0"></label>
+          <label>Комбо ×<input id="customCombo" type="number" min="0" max="40" value="0"></label>
+          <label class="custom-check"><input id="customNoMistakes" type="checkbox"> До первой ошибки</label>
+          <label class="custom-check"><input id="customOnePass" type="checkbox"> Один проход колоды</label>
+        </div>
+        <div class="custom-rules-actions"><button class="secondary" id="customRulesCancel">Отмена</button><button class="primary" id="customRulesStart">Начать игру →</button></div>
+      </div>
+    </div>
     <div class="picture-mode-modal" id="pictureModeModal" aria-hidden="true">
       <div class="picture-mode-card" role="dialog" aria-modal="true" aria-label="Расклады по картинкам">
         <button class="picture-mode-close" id="pictureModeClose" aria-label="Закрыть">×</button>

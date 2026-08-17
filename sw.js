@@ -1,4 +1,4 @@
-const CACHE = "worditaire-v33";
+const CACHE = "worditaire-v34";
 const CORE = [
   "./",
   "./index.html",

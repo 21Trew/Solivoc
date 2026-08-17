@@ -2896,3 +2896,253 @@ body[data-theme="galaxy"] .card.face-down { background:radial-gradient(circle at
 .celebration { z-index:11100 !important; }
 .profile-editor-mail span[hidden] { display:none !important; }
 .duel-rating-note { display:block; margin:7px 2px 10px; color:#aaa8c7; font-size:8.5px; line-height:1.35; }
+
+/* ===== v20.1 layout polish ===== */
+/* Progress is vertical-only: no child may widen the hub beyond the viewport. */
+.hub-shell,
+.hub-scroll,
+#hubContent,
+.hub-scroll > *,
+.hub-section,
+.near-goals,
+.login-rewards,
+.chapter-section,
+.collapsible-section {
+  min-width: 0;
+  max-width: 100%;
+}
+.hub-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.achievement-filters {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+.achievement-filters button { min-width: 0; }
+.chapter-path { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+.rank-roadmap-item,
+.near-goal,
+.achievement,
+.stats-grid,
+.login-reward-grid { min-width: 0; }
+.rank-roadmap-item > *,
+.near-goal > *,
+.achievement > * { min-width: 0; }
+
+/* Custom rules now live in a modal opened from the mode card. */
+.custom-rules-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 25850;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: radial-gradient(circle at 18% 8%, #8b6cff45, transparent 35%), #0d1235c7;
+  backdrop-filter: blur(11px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .22s ease, visibility .22s ease;
+}
+.custom-rules-modal.show { opacity: 1; visibility: visible; }
+.custom-rules-card {
+  position: relative;
+  width: min(420px, 94vw);
+  max-height: min(720px, 90dvh);
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid #ffffff28;
+  border-radius: 25px;
+  background: linear-gradient(155deg, #353b80, #28265e 52%, #1e2859);
+  color: #fff;
+  box-shadow: 0 26px 74px #06091f73, inset 0 1px #ffffff20;
+}
+.custom-rules-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #ffffff1a;
+  border-radius: 13px;
+  background: #ffffff0d;
+  color: #fff;
+  font-size: 22px;
+}
+.custom-rules-head {
+  display: grid;
+  grid-template-columns: 48px minmax(0,1fr);
+  gap: 11px;
+  align-items: start;
+  padding-right: 42px;
+  margin-bottom: 15px;
+}
+.custom-rules-head > span {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  background: linear-gradient(145deg,#ffd76d,#ff86ad 55%,#8a74ff);
+  color: #352852;
+  font-size: 24px;
+  box-shadow: 0 8px 24px #1316364a;
+}
+.custom-rules-head small { color:#8deaff; font-size:8px; font-weight:950; letter-spacing:.12em; }
+.custom-rules-head h2 { margin:3px 0 5px; font-size:21px; }
+.custom-rules-head p { margin:0; color:#d2d0e6; font-size:10px; line-height:1.4; }
+.custom-rules-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 8px;
+}
+.custom-rules-grid label {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  color: #c6c3dd;
+  font-size: 9px;
+  font-weight: 850;
+}
+.custom-rules-grid input[type="number"] {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  border: 1px solid #ffffff18;
+  border-radius: 12px;
+  padding: 0 10px;
+  background: #1016339c;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  outline: none;
+}
+.custom-rules-grid .custom-check {
+  grid-column: span 3;
+  min-height: 42px;
+  grid-template-columns: auto minmax(0,1fr);
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  border: 1px solid #ffffff12;
+  border-radius: 12px;
+  background: #ffffff08;
+  color: #fff;
+}
+.custom-rules-grid .custom-check input { width: 18px; height: 18px; margin: 0; }
+.custom-rules-actions { display:grid; grid-template-columns: .72fr 1.28fr; gap:8px; margin-top:14px; }
+.custom-rules-actions button {
+  min-height: 46px;
+  border: 1px solid #ffffff15;
+  border-radius: 14px;
+  color:#fff;
+  font-weight: 900;
+}
+.custom-rules-actions .secondary { background:#ffffff0d; }
+.custom-rules-actions .primary { background:linear-gradient(135deg,#7561ff,#4b86ee); box-shadow:0 8px 22px #1015364d; }
+
+/* Profile: the XP bar and numeric XP are the third row of the same grid. */
+.hub-profile-button .global-profile-copy,
+.hub-profile-button .global-profile-rank {
+  grid-template-rows: minmax(14px,auto) minmax(12px,auto) 10px;
+  align-content: center;
+}
+.hub-profile-button .hub-profile-xp {
+  align-self: center;
+  height: 5px;
+  margin: 0;
+}
+.hub-profile-button .global-profile-rank > small:last-child {
+  align-self: center;
+  line-height: 10px;
+}
+
+/* Gameplay HUD stays inside the board width even on narrow phones. */
+.app,
+.hud,
+.top,
+.stats,
+.progress-wrap,
+.progress-track,
+.progress-label { min-width: 0; max-width: 100%; }
+.progress-wrap {
+  display: grid;
+  grid-template-columns: minmax(56px,1fr) minmax(0,68%);
+  align-items: center;
+  gap: 6px;
+}
+.progress-label {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 3px 5px;
+  white-space: normal;
+  line-height: 1.15;
+}
+.combo-xp-status {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 18px;
+  padding: 2px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 8px;
+}
+.rule-metric { max-width: 34vw; overflow:hidden; text-overflow:ellipsis; }
+
+/* Player card actions use one visual size and baseline. */
+.profile-editor-mail,
+.profile-editor-close {
+  top: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  line-height: 1;
+}
+.profile-editor-close { right: 12px; }
+.profile-editor-mail { right: 60px; }
+
+/* Level completion is bright and light; the selected cosmetic remains around it. */
+.win-modal {
+  background: radial-gradient(circle at 20% 8%, #8b71ff5c, transparent 35%), radial-gradient(circle at 85% 15%, #5ce9ff42, transparent 30%), #5658a77a !important;
+}
+.win-modal-card {
+  background: linear-gradient(155deg, #fffdf7 0%, #f8f4ff 48%, #eef9ff 100%) !important;
+  color: #25243d !important;
+  border-color: #ffffff !important;
+  box-shadow: 0 26px 72px #18205352, inset 0 1px #fff !important;
+}
+.win-modal-card::before {
+  background: radial-gradient(circle at 15% 2%,#ffd95e4d,transparent 31%), radial-gradient(circle at 88% 8%,#5bdff43d,transparent 29%) !important;
+}
+.win-modal-card h2 { color:#24233e; }
+.win-modal-card #winText { color:#716d83; }
+.win-modal-card .win-next-unlock { color:#706c81; }
+.win-modal-card .win-share { color:#5a5570; border-color:#ddd7ee; background:#ffffffc7; }
+.win-modal-card .modal-secondary-actions .secondary { color:#514c69; border-color:#ded8ec; background:#f3f0fa; }
+.win-modal.perfect .win-modal-card {
+  border-color:#ffe18b !important;
+  box-shadow:0 26px 72px #18205352,0 0 0 2px #ffd7655c,0 0 38px #ffd7633b !important;
+}
+/* The transient central badge looked like an unexplained icon; keep only the cosmetic rays/ring. */
+.victory-cosmetic > b { display:none !important; }
+.victory-cosmetic::before { inset:22%; opacity:.78; }
+
+@media (max-width: 370px) {
+  .progress-wrap { grid-template-columns:minmax(44px,1fr) minmax(0,72%); }
+  .progress-label { gap:2px 4px; font-size:8px; }
+  .combo-xp-status { font-size:7.5px; padding-inline:5px; }
+  .custom-rules-grid { grid-template-columns:1fr 1fr; }
+  .custom-rules-grid label:nth-child(3) { grid-column:1 / -1; }
+  .custom-rules-grid .custom-check { grid-column:1 / -1; }
+}

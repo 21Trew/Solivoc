@@ -311,7 +311,7 @@ function ruleMetricText(s=state) {
   if(rules.timeLimitMs) return `⏱ ${Math.ceil(activeTimeRemainingMs(s)/1000)} сек.`;
   if(rules.moveLimit) return `↯ ${s.run.moves||0}/${rules.moveLimit} ход.`;
   if(rules.comboTarget) return `× ${s.run.maxCombo||0}/${rules.comboTarget}`;
-  if(rules.maxRecycles===0) return `↻ 1 проход · ${s.stock?.length||0} в колоде`;
+  if(rules.maxRecycles===0) return `↻ 1 проход · ${s.stock?.length||0}`;
   if(ruleHasNoMistakes(s)) return (s.run.errors||0)?"Ошибка — поражение":"◇ Без ошибок";
   if(mode==="time") return `⏱ ${Math.floor((typeof activeRunElapsedMs === "function" ? activeRunElapsedMs(s) : 0)/1000)} сек.`;
   if(mode==="moves") return `↯ ${s.run.moves||0} ход.`;
@@ -331,9 +331,9 @@ function checkActiveRuleFailure() {
 }
 function comboXpHudText(s=state) {
   const combo=Math.max(0,+s?.run?.maxCombo||0),info=typeof comboXpBonusInfo==="function"?comboXpBonusInfo(s):{percent:0};
-  if(combo>=20)return `Комбо ×${combo} · XP +30% · максимум`;
-  if(combo>=10)return `Комбо ×${combo} · XP +${info.percent}% · ×20 = +30%`;
-  return `Комбо ×${combo} · XP +0% · ×10 = +10% · ×20 = +30%`;
+  if(combo>=20)return `XP +30% · ×${combo} MAX`;
+  if(combo>=10)return `XP +${info.percent}% · ×20 → +30%`;
+  return `XP +0% · ×10 → +10%`;
 }
 
 function assignBonusObjective(s) {

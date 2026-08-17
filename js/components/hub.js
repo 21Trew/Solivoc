@@ -96,9 +96,7 @@ function modesTabMarkup() {
     custom: { description: "Сам выбери таймер, ходы, комбо и другие ограничения", meta: "Твои ограничения" },
   };
   const cards = GAME_MODE_DEFS.map((def) => modeCardMarkup({ ...def, ...(copy[def.id] || {}) })).join("");
-  const c=profile.customRules||{};
   return `<section class="hub-section modes-intro"><div class="hub-section-head"><div><h3>Режимы игры</h3><small>у каждого режима свой темп и правила</small></div><button class="leaders-open" id="leaderboardOpen">Лидеры</button></div><div class="mode-grid">${cards}</div></section>
-    <section class="hub-section custom-rules"><div class="hub-section-head"><div><h3>Мои правила</h3><small>оставь 0, если ограничение не нужно</small></div></div><div class="custom-rules-grid"><label>Время, сек.<input id="customTime" type="number" min="0" max="900" value="${+c.timeLimitSec||0}"></label><label>Ходы<input id="customMoves" type="number" min="0" max="400" value="${+c.moveLimit||0}"></label><label>Комбо ×<input id="customCombo" type="number" min="0" max="40" value="${+c.comboTarget||0}"></label><label class="custom-check"><input id="customNoMistakes" type="checkbox" ${c.noMistakes?"checked":""}> До первой ошибки</label><label class="custom-check"><input id="customOnePass" type="checkbox" ${c.onePass?"checked":""}> Один проход колоды</label><button id="customRulesStart">Играть по моим правилам →</button></div></section>
     ${typeof duelsHubMarkup === "function" ? duelsHubMarkup(hubDuelTab) : `${ownedChallengesMarkup()}${receivedChallengesMarkup()}`}
     <section class="hub-section duel-create"><div class="hub-section-head"><div><h3>Новая дуэль</h3><small>кто выбирает правило</small></div></div><div class="duel-create-controls"><select id="duelModeChoice"><option value="creator">Я выбираю режим</option><option value="guest">Пусть выберет друг</option><option value="random">Случайный режим</option></select><select id="duelCreateMode">${DUEL_MODE_DEFS.map(x=>`<option value="${x.id}">${x.icon} ${x.label}</option>`).join("")}</select><button id="duelCreate">Создать и отправить</button></div></section>
     <section class="hub-section challenge-enter"><div class="hub-section-head"><h3>Код дуэли</h3><small>6 символов</small></div><div class="challenge-input-row"><input id="challengeInput" inputmode="text" autocomplete="off" autocapitalize="characters" maxlength="6" placeholder="ABC123"><button id="challengeStart">Открыть</button></div></section>`;
@@ -201,6 +199,26 @@ function associationCollectionCardsMarkup() {
 function associationCollectionsMarkup() {
   return `<div class="association-collections-block"><div class="hub-subhead"><h4>Расклады по картинкам</h4><small>тематические режимы только с emoji-карточками</small></div><div class="association-collection-grid">${associationCollectionCardsMarkup()}</div></div>`;
 }
+function closeCustomRulesModal() {
+  const modal = $("#customRulesModal");
+  if (!modal) return;
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden", "true");
+}
+function openCustomRulesModal() {
+  const modal = $("#customRulesModal");
+  if (!modal) return;
+  const c = profile.customRules || {};
+  const time = $("#customTime"), moves = $("#customMoves"), combo = $("#customCombo"), noMistakes = $("#customNoMistakes"), onePass = $("#customOnePass");
+  if (time) time.value = +c.timeLimitSec || 0;
+  if (moves) moves.value = +c.moveLimit || 0;
+  if (combo) combo.value = +c.comboTarget || 0;
+  if (noMistakes) noMistakes.checked = !!c.noMistakes;
+  if (onePass) onePass.checked = !!c.onePass;
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+}
+
 function closePictureModePicker() {
   const modal = $("#pictureModeModal");
   if (!modal) return;
@@ -515,12 +533,16 @@ function bindHubHandlers() {
     if(mode==="zen"){closeHub();makeLevel(1,{mode:"calm",seed:`zen:${Date.now()}:${Math.random()}`});return;}
     if(mode==="pictures"){if(quick){const defs=ASSOCIATION_COLLECTION_DEFS||[],i=defs.length?Math.floor(Math.random()*defs.length):0,id=defs[i]?.id||"animals";closeHub();makeLevel(1,{mode:"collection",collectionId:id,seed:`daily-picture:${todayKey()}:${Date.now()}:${id}`});}else openPictureModePicker();return;}
     if(mode==="duel"){hubContent.querySelector(".duel-create")?.scrollIntoView({behavior:"smooth",block:"center"});return;}
-    if(mode==="custom"){hubContent.querySelector(".custom-rules")?.scrollIntoView({behavior:"smooth",block:"center"});return;}
+    if(mode==="custom"){openCustomRulesModal();return;}
     if(["regular","time","moves","combo","noMistakes","onePass"].includes(mode)){closeHub();makeLevel(mode==="regular"?(profile.currentLevel||1):25,{mode,seed:`${mode}:${Date.now()}:${Math.random()}`});return;}
   };
   hubContent.querySelectorAll("[data-game-mode]").forEach((btn)=>btn.onclick=()=>startHubMode(btn.dataset.gameMode));
   hubContent.querySelectorAll("[data-daily-quest-mode]").forEach((btn)=>btn.onclick=()=>startHubMode(btn.dataset.dailyQuestMode,{quick:true}));
-  on("#customRulesStart",()=>{const rules={timeLimitSec:+$("#customTime")?.value||0,moveLimit:+$("#customMoves")?.value||0,comboTarget:+$("#customCombo")?.value||0,noMistakes:!!$("#customNoMistakes")?.checked,onePass:!!$("#customOnePass")?.checked};profile.customRules=sanitizeCustomRules?.(rules)||rules;saveProfile();closeHub();makeLevel(25,{mode:"custom",seed:`custom:${Date.now()}:${Math.random()}`,customRules:profile.customRules});});
+  on("#customRulesClose",closeCustomRulesModal);
+  on("#customRulesCancel",closeCustomRulesModal);
+  const customRulesModal = $("#customRulesModal");
+  if (customRulesModal) customRulesModal.onclick = (e) => { if (e.target === customRulesModal) closeCustomRulesModal(); };
+  on("#customRulesStart",()=>{const rules={timeLimitSec:+$("#customTime")?.value||0,moveLimit:+$("#customMoves")?.value||0,comboTarget:+$("#customCombo")?.value||0,noMistakes:!!$("#customNoMistakes")?.checked,onePass:!!$("#customOnePass")?.checked};profile.customRules=sanitizeCustomRules?.(rules)||rules;saveProfile();closeCustomRulesModal();closeHub();makeLevel(25,{mode:"custom",seed:`custom:${Date.now()}:${Math.random()}`,customRules:profile.customRules});});
   on("#leaderboardOpen",()=>openLeaderboardModal?.());
   on("#duelCreate",()=>shareNewChallenge());
   on("#challengeStart",()=>startChallengeCode($("#challengeInput")?.value));
@@ -581,6 +603,7 @@ function openHub(tab = null) {
   if (hubTab === "modes") { refreshOwnedChallenges({ notify: true }); refreshReceivedChallenges?.(); }
 }
 function closeHub() {
+  closeCustomRulesModal?.();
   hub.classList.remove("show");
   setBackgroundMusic(musicModeForState?.() || "game");
 }
