@@ -1,3 +1,4 @@
+import { currentSession } from "./_auth-lib.mjs";
 const BOARDS = new Set(["stars","levels","daily","marathon","combo","duel","time","moves","onePass"]);
 function firstEnv(...names){for(const name of names){const value=process.env[name];if(value)return value;}return "";}
 function redisConfig(){return{url:firstEnv("UPSTASH_REDIS_REST_URL","KV_REST_API_URL","UPSTASH_REDIS_REST_KV_REST_API_URL").replace(/\/$/,""),token:firstEnv("UPSTASH_REDIS_REST_TOKEN","KV_REST_API_TOKEN","UPSTASH_REDIS_REST_KV_REST_API_TOKEN")};}
@@ -18,12 +19,13 @@ function scoreFor(board,value){if(board==="time")return value>0?1_000_000_000-va
 export function OPTIONS(){return json({ok:true});}
 export async function POST(request){
   try{
-    const body=await request.json().catch(()=>({})),playerId=cleanId(body.playerId);if(!playerId)return json({error:"invalid_player"},400);
-    const values=cleanValues(body.values),record={playerId,name:cleanName(body.name),avatar:cleanAvatar(body.avatar),values,updatedAt:Date.now()};
+    const session=await currentSession(request);if(!session)return json({error:"unauthorized",message:"Для попадания в лидеры нужен аккаунт"},401);
+    const body=await request.json().catch(()=>({})),playerId=cleanId(session.userId);if(!playerId)return json({error:"invalid_player"},400);
+    const values=cleanValues(body.values),record={playerId,name:cleanName(body.name),avatar:cleanAvatar(body.avatar),values,account:true,updatedAt:Date.now()};
     await redis(["SET",playerKey(playerId),JSON.stringify(record),"EX",90*24*60*60]);
     for(const board of BOARDS){const value=values[board];if(value>0)await redis(["ZADD",boardKey(board),scoreFor(board,value),playerId]);}
     return json({ok:true});
-  }catch(error){if(error?.code==="REDIS_NOT_CONFIGURED")return json({error:"redis_not_configured"},503);console.error("leaderboard POST",error);return json({error:"server_error"},500);}
+  }catch(error){if(error?.code==="REDIS_NOT_CONFIGURED"||error?.message==="REDIS_NOT_CONFIGURED")return json({error:"redis_not_configured"},503);console.error("leaderboard POST",error);return json({error:"server_error"},500);}
 }
 export async function GET(request){
   try{

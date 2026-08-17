@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { sendPushToClient } from "./_push-lib.mjs";
+import { currentSession } from "./_auth-lib.mjs";
 
 const ACTIVE_TTL = 7 * 24 * 60 * 60;
 const RESULT_TTL = 7 * 24 * 60 * 60;
@@ -51,8 +52,9 @@ export async function GET(request){
 export async function POST(request){
   try{
     const body=await request.json().catch(()=>({}));
+    const session=await currentSession(request).catch(()=>null);
     if(body.action==="create"){
-      const seed=String(body.seed||"").slice(0,160),level=Math.max(1,Math.min(999,Number(body.level)||25)),sourceMode=cleanSourceMode(body.sourceMode),duelModeChoice=cleanDuelChoice(body.duelModeChoice),duelMode=cleanDuelMode(body.duelMode),creatorName=String(body.creatorName||"Игрок").trim().slice(0,20)||"Игрок",creatorAvatar=String(body.creatorAvatar||"🙂").slice(0,8)||"🙂",creatorPlayerId=String(body.creatorPlayerId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),pushClientId=String(body.pushClientId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),series=seriesFields(body);
+      const seed=String(body.seed||"").slice(0,160),level=Math.max(1,Math.min(999,Number(body.level)||25)),sourceMode=cleanSourceMode(body.sourceMode),duelModeChoice=cleanDuelChoice(body.duelModeChoice),duelMode=cleanDuelMode(body.duelMode),creatorName=String(body.creatorName||"Игрок").trim().slice(0,20)||"Игрок",creatorAvatar=String(body.creatorAvatar||"🙂").slice(0,8)||"🙂",creatorPlayerId=String(session?.userId||body.creatorPlayerId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),pushClientId=String(body.pushClientId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),series=seriesFields(body);
       if(!seed)return json({error:"invalid_seed"},400);
       const ownerToken=token(),createdAt=Date.now(),expiresAt=createdAt+ACTIVE_TTL*1000;
       for(let attempt=0;attempt<14;attempt++){
@@ -103,7 +105,7 @@ export async function POST(request){
     }
 
     if(body.action==="ownerResult"){
-      const ownerToken=String(body.ownerToken||""),creatorResult=cleanResult(body.result);
+      const ownerToken=String(body.ownerToken||""),creatorResult=cleanResult(body.result); if(session?.userId)creatorResult.playerId=session.userId;
       const result=parse(await redis(["GET",resultKey(code)]));
       if(result){
         if(result.ownerToken!==ownerToken)return json({error:"forbidden"},403);
@@ -123,7 +125,7 @@ export async function POST(request){
       const existing=parse(await redis(["GET",resultKey(code)]));
       if(existing){if(existing.submissionId===submissionId)return json({ok:true,duplicate:true,guestToken:existing.guestToken,creatorResult:existing.creatorResult||null,...seriesFields(existing)});return json({error:"used_or_expired",message:"Этот вызов уже сыгран"},410);}
       const raw=await redis(["GETDEL",activeKey(code)]),active=parse(raw);if(!active)return json({error:"used_or_expired",message:"Этот вызов уже сыгран или истёк"},410);
-      const guestResult=cleanResult(body.result),guestToken=token(),guestPushClientId=String(body.pushClientId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),completedAt=Date.now(),record={v:6,code,seed:active.seed,level:active.level,sourceMode:cleanSourceMode(active.sourceMode),duelMode:cleanDuelMode(active.duelMode),duelModeChoice:cleanDuelChoice(active.duelModeChoice),creatorName:active.creatorName,creatorAvatar:active.creatorAvatar||"🙂",creatorPlayerId:active.creatorPlayerId||active.creatorResult?.playerId||"",ownerToken:active.ownerToken,guestToken,guestPushClientId,submissionId,guestResult,creatorResult:active.creatorResult||null,ownerAck:false,guestAck:false,completedAt,...seriesFields(active)};
+      const guestResult=cleanResult(body.result); if(session?.userId)guestResult.playerId=session.userId; const guestToken=token(),guestPushClientId=String(body.pushClientId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),completedAt=Date.now(),record={v:6,code,seed:active.seed,level:active.level,sourceMode:cleanSourceMode(active.sourceMode),duelMode:cleanDuelMode(active.duelMode),duelModeChoice:cleanDuelChoice(active.duelModeChoice),creatorName:active.creatorName,creatorAvatar:active.creatorAvatar||"🙂",creatorPlayerId:active.creatorPlayerId||active.creatorResult?.playerId||"",ownerToken:active.ownerToken,guestToken,guestPushClientId,submissionId,guestResult,creatorResult:active.creatorResult||null,ownerAck:false,guestAck:false,completedAt,...seriesFields(active)};
       await redis(["SET",resultKey(code),JSON.stringify(record),"EX",RESULT_TTL]);
       if(active.pushClientId) sendPushToClient(active.pushClientId,{title:"Друг завершил вызов",body:`${guestResult.playerName}: ${"★".repeat(guestResult.stars)} · ${guestResult.moves} ходов`,tag:`challenge-${code}`,url:"/"}).catch(()=>{});
       return json({ok:true,completedAt,guestToken,creatorResult:record.creatorResult,duelMode:record.duelMode,duelModeChoice:record.duelModeChoice,...seriesFields(record)});

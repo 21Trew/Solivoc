@@ -212,7 +212,7 @@ function leaderboardValues() {
 function leaderboardPayload(){return{playerId:profile.playerId||"",name:profile.playerName||"Игрок",avatar:profile.avatarEmoji||"🙂",values:leaderboardValues()};}
 let leaderboardSyncAt=0;
 async function syncLeaderboardNonBlocking(force=false){
-  if(!/^https?:$/.test(location.protocol)||navigator.onLine===false||!profile.playerId)return false;
+  if(!/^https?:$/.test(location.protocol)||navigator.onLine===false||!profile.playerId||!(typeof accountSignedIn==="function"&&accountSignedIn()))return false;
   if(!force&&Date.now()-leaderboardSyncAt<30000)return false;leaderboardSyncAt=Date.now();
   try{const c=new AbortController(),t=setTimeout(()=>c.abort(),1800);const r=await fetch("/api/leaderboard",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(leaderboardPayload()),signal:c.signal,cache:"no-store"});clearTimeout(t);return r.ok;}catch{return false;}
 }

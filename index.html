@@ -234,6 +234,12 @@
         <div class="profile-editor-content" id="profileEditorContent"></div>
       </div>
     </div>
+    <div class="account-modal" id="accountModal" aria-hidden="true">
+      <div class="account-card" role="dialog" aria-modal="true" aria-label="Аккаунт игрока">
+        <button class="account-close" id="accountClose" aria-label="Закрыть">×</button>
+        <div class="account-content" id="accountContent"></div>
+      </div>
+    </div>
     <div class="developer-mail-modal" id="developerMailModal" aria-hidden="true">
       <div class="developer-mail-card" role="dialog" aria-modal="true" aria-label="Почта разработчика">
         <button class="developer-mail-close" id="developerMailClose" aria-label="Закрыть">×</button>
@@ -298,6 +304,7 @@
     <script src="./data/categories.js"></script>
     <script src="./js/config.js"></script>
     <script src="./js/profile.js"></script>
+    <script src="./js/auth.js"></script>
     <script src="./js/data.js"></script>
     <script src="./js/runtime.js"></script>
     <script src="./js/ui/constants.js"></script>

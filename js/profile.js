@@ -290,7 +290,7 @@ function applyFrame(id) {
   profile.frame = def && frameUnlocked(def) ? def.id : "none";
   document.body.dataset.profileFrame = profile.frame;
 }
-function saveProfile() {
+function saveProfile(options = {}) {
   recomputeStars();
   try {
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
@@ -303,6 +303,7 @@ function saveProfile() {
   applyTitle(profile.titleId);
   applyFrame(profile.frame);
   applySoundPack(profile.soundPack);
+  if (!options.skipCloud && typeof scheduleAccountSync === "function") scheduleAccountSync();
 }
 function track(name, data = {}) {
   try {

@@ -269,12 +269,15 @@ async function boot() {
     bindAppEvents();
     bindRetentionUi?.();
     bindEngagementUi?.();
+    bindAccountUi?.();
     registerPwa();
     retentionSessionStart?.();
     prepareWeeklyDigest?.();
 
     setSplashProgress?.(18,"Загружаю словарь…");
     await loadCategoryBank();
+    setSplashProgress?.(48,"Проверяю аккаунт…");
+    await restoreAccountSessionOnBoot?.();
     setSplashProgress?.(55,"Собираю прогресс…");
     migrateCategoryMasteryProgress?.();
     ensureWeeklyChallenge();

@@ -1,0 +1,237 @@
+import { createHash, randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
+import { promisify } from "node:util";
+import { redis } from "./_push-lib.mjs";
+
+const scrypt = promisify(scryptCb);
+const SESSION_TTL = 60 * 60 * 24 * 30;
+const MAX_PROFILE_BYTES = 420000;
+
+export function json(data, status = 200, extraHeaders = {}) {
+  return Response.json(data, {
+    status,
+    headers: {
+      "Cache-Control": "no-store, max-age=0",
+      "Content-Type": "application/json; charset=utf-8",
+      ...extraHeaders,
+    },
+  });
+}
+
+export function cleanEmail(value) {
+  const email = String(value || "").trim().toLowerCase();
+  if (email.length < 5 || email.length > 160) return "";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/u.test(email)) return "";
+  return email;
+}
+
+export function validPassword(value) {
+  const password = String(value || "");
+  return password.length >= 8 && password.length <= 128;
+}
+
+export function sha256(value) {
+  return createHash("sha256").update(String(value)).digest("hex");
+}
+
+function base64url(buffer) {
+  return Buffer.from(buffer).toString("base64url");
+}
+
+export async function hashSecret(secret) {
+  const salt = randomBytes(16);
+  const derived = await scrypt(String(secret), salt, 64, { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
+  return `s2:${base64url(salt)}:${base64url(derived)}`;
+}
+
+export async function verifySecret(secret, encoded) {
+  try {
+    const [version, saltText, hashText] = String(encoded || "").split(":");
+    if (version !== "s2" || !saltText || !hashText) return false;
+    const salt = Buffer.from(saltText, "base64url");
+    const expected = Buffer.from(hashText, "base64url");
+    const actual = await scrypt(String(secret), salt, expected.length, { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
+    return expected.length === actual.length && timingSafeEqual(expected, actual);
+  } catch {
+    return false;
+  }
+}
+
+export function newUserId() {
+  return `u_${randomBytes(12).toString("hex")}`;
+}
+
+export function newRecoveryCode() {
+  const raw = randomBytes(18).toString("base64url").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 24);
+  return raw.match(/.{1,4}/g)?.join("-") || raw;
+}
+
+export function emailKey(email) { return `worditaire:auth:email:${sha256(cleanEmail(email))}`; }
+export function userKey(userId) { return `worditaire:auth:user:${String(userId || "").slice(0, 64)}`; }
+export function profileKey(userId) { return `worditaire:auth:profile:${String(userId || "").slice(0, 64)}`; }
+export function profileVersionKey(userId) { return `worditaire:auth:profile-version:${String(userId || "").slice(0, 64)}`; }
+export function sessionKey(token) { return `worditaire:auth:session:${sha256(token)}`; }
+
+export async function readJsonKey(key) {
+  const raw = await redis(["GET", key]);
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+export async function writeJsonKey(key, value, ...tail) {
+  return redis(["SET", key, JSON.stringify(value), ...tail]);
+}
+
+export function requestIp(request) {
+  return String(request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown").split(",")[0].trim().slice(0, 80);
+}
+
+export async function checkRateLimit(request, bucket, limit = 12, windowSec = 900) {
+  const key = `worditaire:auth:rate:${bucket}:${sha256(requestIp(request))}`;
+  const count = Number(await redis(["INCR", key])) || 0;
+  if (count === 1) await redis(["EXPIRE", key, windowSec]);
+  return count <= limit;
+}
+
+export function sameOrigin(request) {
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+  try { return origin === new URL(request.url).origin; } catch { return false; }
+}
+
+function parseCookies(request) {
+  const out = {};
+  for (const part of String(request.headers.get("cookie") || "").split(";")) {
+    const index = part.indexOf("=");
+    if (index < 1) continue;
+    const key = part.slice(0, index).trim();
+    const value = part.slice(index + 1).trim();
+    try { out[key] = decodeURIComponent(value); } catch { out[key] = value; }
+  }
+  return out;
+}
+
+export function sessionCookie(token, maxAge = SESSION_TTL) {
+  const secure = (process.env.VERCEL || process.env.NODE_ENV === "production") ? "; Secure" : "";
+  return `solivoc_session=${encodeURIComponent(token || "")}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.max(0, maxAge)}${secure}`;
+}
+
+export async function createSession(userId, sessionVersion = 1) {
+  const token = base64url(randomBytes(32));
+  await redis(["SET", sessionKey(token), JSON.stringify({ userId, sessionVersion: Math.max(1, Number(sessionVersion) || 1) }), "EX", SESSION_TTL]);
+  return token;
+}
+
+export async function deleteSession(request) {
+  const token = parseCookies(request).solivoc_session || "";
+  if (token) await redis(["DEL", sessionKey(token)]).catch(() => {});
+}
+
+export async function currentSession(request) {
+  const token = parseCookies(request).solivoc_session || "";
+  if (!token) return null;
+  const raw = await redis(["GET", sessionKey(token)]);
+  if (!raw) return null;
+  let userId = "", sessionVersion = 1;
+  try { const parsed = JSON.parse(raw); userId = String(parsed?.userId || ""); sessionVersion = Math.max(1, Number(parsed?.sessionVersion) || 1); }
+  catch { userId = String(raw || ""); }
+  if (!userId) return null;
+  const user = await readJsonKey(userKey(userId));
+  if (!user || Math.max(1, Number(user.sessionVersion) || 1) !== sessionVersion) return null;
+  return { token, userId, user };
+}
+
+function jsonClone(value) {
+  try { return JSON.parse(JSON.stringify(value)); } catch { return null; }
+}
+
+export function sanitizeProfile(input, userId) {
+  const profile = input && typeof input === "object" ? jsonClone(input) : {};
+  if (!profile || typeof profile !== "object" || Array.isArray(profile)) return {};
+  const text = JSON.stringify(profile);
+  if (Buffer.byteLength(text, "utf8") > MAX_PROFILE_BYTES) throw new Error("profile_too_large");
+
+  // Device-scoped state must never jump to another phone/browser.
+  delete profile.analyticsClientId;
+  delete profile.pushClientId;
+  delete profile.retention;
+  delete profile.activeMarathon;
+  delete profile.sentChallenges;
+  delete profile.receivedChallenges;
+  delete profile.pendingChallengeSubmissions;
+  if (profile.settings && typeof profile.settings === "object") {
+    profile.settings = { ...profile.settings };
+    delete profile.settings.notifications;
+    delete profile.settings.notificationPrompted;
+  }
+  profile.playerId = String(userId || profile.playerId || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64);
+  return profile;
+}
+
+const PREFERENCE_ROOTS = new Set([
+  "playerName", "avatarEmoji", "titleId", "theme", "cardBack", "effect", "frame", "soundPack",
+  "favoriteCategory", "featuredAchievements", "settings", "customRules", "patchSeenVersion", "onboardingComplete",
+  "onboardingVersion", "tutorialComplete"
+]);
+
+function scalarKey(value) {
+  if (value === null || ["string", "number", "boolean"].includes(typeof value)) return `${typeof value}:${String(value)}`;
+  try { return `json:${JSON.stringify(value)}`; } catch { return `obj:${Math.random()}`; }
+}
+
+function mergeProgress(base, incoming, path = "") {
+  if (incoming == null) return base;
+  if (base == null) return jsonClone(incoming);
+  if (Array.isArray(base) && Array.isArray(incoming)) {
+    const seen = new Set();
+    const out = [];
+    for (const item of [...base, ...incoming]) {
+      const key = scalarKey(item);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(jsonClone(item));
+    }
+    return out.slice(-1000);
+  }
+  if (typeof base === "number" && typeof incoming === "number") return Math.max(base, incoming);
+  if (typeof base === "boolean" && typeof incoming === "boolean") return base || incoming;
+  if (typeof base === "object" && typeof incoming === "object" && !Array.isArray(base) && !Array.isArray(incoming)) {
+    const out = { ...base };
+    for (const [key, value] of Object.entries(incoming)) out[key] = mergeProgress(out[key], value, path ? `${path}.${key}` : key);
+    return out;
+  }
+  return jsonClone(incoming);
+}
+
+export function mergeProfiles(current, incoming, userId, { preferIncomingPreferences = true } = {}) {
+  const a = sanitizeProfile(current || {}, userId);
+  const b = sanitizeProfile(incoming || {}, userId);
+  const merged = mergeProgress(a, b);
+  if (preferIncomingPreferences) {
+    for (const key of PREFERENCE_ROOTS) {
+      if (Object.prototype.hasOwnProperty.call(b, key)) merged[key] = jsonClone(b[key]);
+    }
+  } else {
+    for (const key of PREFERENCE_ROOTS) {
+      if (Object.prototype.hasOwnProperty.call(a, key)) merged[key] = jsonClone(a[key]);
+    }
+  }
+  merged.playerId = userId;
+  return merged;
+}
+
+export async function readCloudProfile(userId) {
+  return (await readJsonKey(profileKey(userId))) || {};
+}
+
+export async function mergeCloudProfile(userId, incoming, { clientVersion = null, preferIncomingPreferences = null } = {}) {
+  const [current, currentVersion] = await Promise.all([readCloudProfile(userId), cloudProfileVersion(userId)]);
+  const prefer = preferIncomingPreferences == null ? (clientVersion == null || Number(clientVersion) >= currentVersion) : !!preferIncomingPreferences;
+  const merged = mergeProfiles(current, incoming, userId, { preferIncomingPreferences: prefer });
+  await writeJsonKey(profileKey(userId), merged);
+  const version = Number(await redis(["INCR", profileVersionKey(userId)])) || Math.max(1, currentVersion + 1);
+  return { profile: merged, version };
+}
+
+export async function cloudProfileVersion(userId) {
+  return Number(await redis(["GET", profileVersionKey(userId)])) || 0;
+}
