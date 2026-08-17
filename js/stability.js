@@ -105,7 +105,7 @@ function stabilityDiagnosticsText() {
     `Платформа: ${navigator.userAgent}`,
     `PWA: ${isStandaloneGame() ? "да" : "нет"} · iOS: ${isIosLikeDevice() ? "да" : "нет"} · режим ресурсов: ${stabilityConstrainedMode() ? "экономный" : "обычный"}`,
     `Навигация: ${nav?.type || "unknown"} · discarded: ${document.wasDiscarded === true ? "да" : "нет"}`,
-    `Текущий сеанс: ${current.stage || "—"} · ${current.mode || "—"} · уровень ${current.level || 0} · ходов ${current.moves || 0}`,
+    `Текущий сеанс: ${current.stage || "—"} · ${current.mode || "—"} · уровень ${current.level || 0} · ${ruCount(current.moves || 0, "ход", "хода", "ходов")}`,
     `События:`,
     ...events.map((event) => `${new Date(event.detectedAt || event.at || 0).toISOString()} · ${event.kind || event.stage || "event"} · ${event.mode || "—"} L${event.level || 0} M${event.moves || 0}${event.detail ? ` · ${event.detail}` : ""}`),
   ];

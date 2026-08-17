@@ -22,6 +22,7 @@ function defaultProfile() {
     activeMarathon: null,
     xp: 0,
     pendingRankUp: null,
+    campaignProgressVersion: 2,
     xpMigrated: false,
     masteryMigrated: false,
     pushClientId: "",
@@ -131,6 +132,58 @@ function migrateLegacyStars() {
 }
 migrateLegacyStars();
 
+function reconcileCampaignProgress(p = profile) {
+  p.starsByLevel = p.starsByLevel && typeof p.starsByLevel === "object" ? p.starsByLevel : {};
+  const cleanStars = {};
+  for (const [rawLevel, rawStars] of Object.entries(p.starsByLevel)) {
+    const level = Math.trunc(Number(rawLevel)), stars = Math.trunc(Number(rawStars));
+    if (!Number.isFinite(level) || level < 1 || level > 10000 || stars < 1) continue;
+    cleanStars[level] = Math.max(1, Math.min(3, stars));
+  }
+  p.starsByLevel = cleanStars;
+
+  // v6 legacy migration used currentLevel as proof and filled every previous level with one star.
+  // If that counter was corrupted, it could manufacture hundreds of fake clears. Repair only the
+  // unmistakable synthetic tail: no recorded clears there, every synthetic star is exactly one,
+  // and chapter-final history says the player was much earlier in the campaign.
+  const rawCurrent = Math.max(1, Math.trunc(Number(p.currentLevel) || 1));
+  const storedFinals = Math.max(0, Math.trunc(Number(p.stats?.chapterFinalsCompleted) || 0));
+  const recordedLevels = new Set(Object.entries(p.levelRecords || {})
+    .filter(([key, record]) => Number(key) >= 1 && (Number(record?.stars) > 0 || Number(record?.moves) > 0))
+    .map(([key]) => Math.trunc(Number(key)))
+    .filter(Number.isFinite));
+  // A single out-of-range record must not legitimize an inflated campaign counter.
+  // Only a contiguous run after the last actually completed chapter is credible.
+  let recordedThrough = storedFinals * CHAPTER_SIZE;
+  while (recordedLevels.has(recordedThrough + 1)) recordedThrough++;
+  const credibleThrough = recordedThrough;
+  if (p.legacyStarsMigrated && credibleThrough >= CHAPTER_SIZE && rawCurrent - 1 > credibleThrough + CHAPTER_SIZE * 3) {
+    const tail = Object.entries(cleanStars)
+      .filter(([level]) => Number(level) > credibleThrough)
+      .map(([, stars]) => Number(stars));
+    if (tail.length >= CHAPTER_SIZE * 2 && tail.every((stars) => stars === 1)) {
+      const removedLevels = Object.keys(cleanStars).filter((level) => Number(level) > credibleThrough).length;
+      for (const level of Object.keys(cleanStars)) if (Number(level) > credibleThrough) delete cleanStars[level];
+      // The old XP migration awarded 45 XP per fabricated completed level. Remove only that
+      // known synthetic contribution, and only once; all XP earned from real play is preserved.
+      if (removedLevels > 0 && p.xpMigrated && !p.campaignRepairXpAdjusted) {
+        p.xp = Math.max(0, (+p.xp || 0) - removedLevels * 45);
+        p.campaignRepairXpAdjusted = true;
+      }
+    }
+  }
+
+  let completedThrough = 0;
+  while (Number(cleanStars[completedThrough + 1]) > 0) completedThrough++;
+  p.currentLevel = completedThrough + 1;
+  p.stats ||= { ...DEFAULT_STATS };
+  p.stats.levelsCompleted = completedThrough;
+  p.stats.chapterFinalsCompleted = Math.floor(completedThrough / CHAPTER_SIZE);
+  p.campaignProgressVersion = 2;
+  return completedThrough;
+}
+reconcileCampaignProgress();
+
 function analyticsCount(name) {
   try {
     const data = JSON.parse(localStorage.getItem(ANALYTICS_KEY));
@@ -211,6 +264,7 @@ function migrateMetaProfile() {
   profile.associationCollections = profile.associationCollections && typeof profile.associationCollections === "object" ? profile.associationCollections : {};
   profile.pushClientId = String(profile.pushClientId || "");
   profile.settings.startupScreen = profile.settings.startupScreen === "game" ? "game" : "home";
+  reconcileCampaignProgress(profile);
   if (!profile.xpMigrated) {
     profile.xp = Math.max(+profile.xp || 0,
       (+profile.stats.levelsCompleted || 0) * 45 +
@@ -240,7 +294,7 @@ function cardBackUnlockLabel(def) {
     const a = ACHIEVEMENTS.find((x) => x.id === def.achievement);
     return a ? `Достижение: ${a.title}` : def.desc;
   }
-  return def.minAchievements ? `${def.minAchievements} достижений` : "Базовая";
+  return def.minAchievements ? ruCount(def.minAchievements, "достижение", "достижения", "достижений") : "Базовая";
 }
 function applyCardBack(id) {
   const def = CARD_BACK_DEFS.find((x) => x.id === id);
@@ -260,9 +314,9 @@ function effectUnlockLabel(def) {
     const a = ACHIEVEMENTS.find((x) => x.id === def.achievement);
     return a ? `Достижение: ${a.title}` : def.desc;
   }
-  if (def.minWeekly) return `${def.minWeekly} недельных испытания`;
-  if (def.minMonthly) return `${def.minMonthly} месячное испытание`;
-  return def.minAchievements ? `${def.minAchievements} достижений` : "Базовый";
+  if (def.minWeekly) return `${ruCount(def.minWeekly, "недельное испытание", "недельных испытания", "недельных испытаний")}`;
+  if (def.minMonthly) return `${ruCount(def.minMonthly, "месячное испытание", "месячных испытания", "месячных испытаний")}`;
+  return def.minAchievements ? ruCount(def.minAchievements, "достижение", "достижения", "достижений") : "Базовый";
 }
 function titleUnlocked(def, p = profile) {
   return !!def && (!def.achievement || p.achievements.includes(def.achievement)) && (!def.minXp || (+p.xp || 0) >= def.minXp);
@@ -290,10 +344,26 @@ function applyFrame(id) {
   profile.frame = def && frameUnlocked(def) ? def.id : "none";
   document.body.dataset.profileFrame = profile.frame;
 }
+function pruneRecordMap(map, limit) {
+  if (!map || typeof map !== "object" || Array.isArray(map)) return {};
+  const entries = Object.entries(map);
+  if (entries.length <= limit) return map;
+  return Object.fromEntries(entries
+    .sort((a, b) => (+b[1]?.at || 0) - (+a[1]?.at || 0))
+    .slice(0, limit));
+}
+function pruneProfileHistories() {
+  // Per-level records are campaign history and stay intact. Daily and one-off
+  // duel records are used only for recent personal-best comparisons; cap them
+  // so a long-lived profile cannot grow without bound.
+  profile.dailyRecords = pruneRecordMap(profile.dailyRecords, 800);
+  profile.challengeRecords = pruneRecordMap(profile.challengeRecords, 200);
+}
 let profileSaveTimer = null;
 function saveProfile(options = {}) {
   clearTimeout(profileSaveTimer);
   profileSaveTimer = null;
+  pruneProfileHistories();
   recomputeStars();
   try {
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));

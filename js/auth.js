@@ -71,12 +71,25 @@ function mergeAccountProfiles(localProfile, cloudProfile) {
   const local = localProfile && typeof localProfile === "object" ? localProfile : {};
   const cloud = cloudProfile && typeof cloudProfile === "object" ? cloudProfile : {};
   const merged = mergeAccountProgress(local, cloud);
+  // Campaign v2 is a corrective migration. When the cloud still contains the old
+  // inflated campaign counters, the repaired local star map must win once instead
+  // of being unioned with the obsolete synthetic tail.
+  if ((+local.campaignProgressVersion || 0) >= 2 && (+cloud.campaignProgressVersion || 0) < 2) {
+    merged.starsByLevel = cloneAccountValue(local.starsByLevel || {});
+    merged.currentLevel = +local.currentLevel || 1;
+    merged.campaignProgressVersion = 2;
+    merged.stats = { ...(merged.stats || {}), levelsCompleted: +(local.stats?.levelsCompleted || 0), chapterFinalsCompleted: +(local.stats?.chapterFinalsCompleted || 0) };
+    if (local.campaignRepairXpAdjusted) {
+      merged.xp = Math.max(0, +local.xp || 0);
+      merged.campaignRepairXpAdjusted = true;
+    }
+  }
   const cloudPreferenceRoots = ["playerName","avatarEmoji","titleId","theme","cardBack","effect","frame","soundPack","favoriteCategory","featuredAchievements","customRules","patchSeenVersion"];
   for (const key of cloudPreferenceRoots) if (Object.prototype.hasOwnProperty.call(cloud, key)) merged[key] = cloneAccountValue(cloud[key]);
   if (cloud.settings && typeof cloud.settings === "object") merged.settings = { ...(local.settings || {}), ...cloud.settings };
 
   // These belong to a concrete browser/device and are intentionally never synchronized.
-  for (const key of ["analyticsClientId","pushClientId","retention","activeMarathon","sentChallenges","receivedChallenges","pendingChallengeSubmissions"]) {
+  for (const key of ["analyticsClientId","pushClientId","retention","activeMarathon","sentChallenges","receivedChallenges","pendingChallengeSubmissions","pendingRankUp"]) {
     if (Object.prototype.hasOwnProperty.call(local, key)) merged[key] = cloneAccountValue(local[key]);
   }
   merged.settings = {
@@ -89,6 +102,7 @@ function mergeAccountProfiles(localProfile, cloudProfile) {
 }
 
 function accountProfileSnapshot() {
+  reconcileCampaignProgress?.(profile);
   const copy = cloneAccountValue(profile || {});
   if (!copy || typeof copy !== "object") return {};
   delete copy.analyticsClientId;
@@ -98,6 +112,7 @@ function accountProfileSnapshot() {
   delete copy.sentChallenges;
   delete copy.receivedChallenges;
   delete copy.pendingChallengeSubmissions;
+  delete copy.pendingRankUp;
   if (copy.settings) {
     copy.settings = { ...copy.settings };
     delete copy.settings.notifications;
@@ -330,7 +345,7 @@ function accountGuestMarkup(mode = "register") {
     <form class="account-form" id="accountForm"><label>Почта<input id="accountEmail" type="email" autocomplete="email" value="${authEsc(accountState.email)}" required></label><label>Код восстановления<input id="accountRecovery" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX" required></label><label>Новый пароль<input id="accountPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label><div class="account-error" id="accountError"></div><button class="account-primary" type="submit">Сменить пароль и войти</button></form><button class="account-link" type="button" data-account-mode="login">← Вернуться ко входу</button>`;
   return `<div class="account-hero"><span>${login ? "↗" : "☁"}</span><div><small>${login ? "ВХОД" : "АККАУНТ"}</small><h2>${login ? "С возвращением" : "Сохрани прогресс"}</h2><p>${login ? "Войди, чтобы вернуть облачный прогресс на это устройство." : "Гостевой прогресс останется на устройстве и будет привязан к аккаунту."}</p></div></div>
     <form class="account-form" id="accountForm"><label>Почта<input id="accountEmail" type="email" autocomplete="email" value="${authEsc(accountState.email)}" placeholder="name@example.com" required></label><label>Пароль<input id="accountPassword" type="password" autocomplete="${login ? "current-password" : "new-password"}" minlength="8" maxlength="128" required></label>${login ? "" : `<small class="account-password-note">Минимум 8 символов. После регистрации покажем резервный код восстановления.</small>`}<div class="account-error" id="accountError"></div><button class="account-primary" type="submit">${login ? "Войти" : "Создать аккаунт"}</button></form>
-    <button class="account-link" type="button" data-account-mode="${login ? "register" : "login"}">${login ? "Нет аккаунта? Создать" : "Уже есть аккаунт? Войти"}</button>${login ? `<button class="account-link subtle" type="button" data-account-mode="recover">Забыл пароль · восстановить по коду</button>` : ""}`;
+    <button class="account-link" type="button" data-account-mode="${login ? "register" : "login"}">${login ? "Нет аккаунта? Создать аккаунт" : "Уже есть аккаунт? Войти"}</button>${login ? `<button class="account-link subtle" type="button" data-account-mode="recover">Забыл пароль · восстановить по коду</button>` : ""}`;
 }
 function accountSignedInMarkup() {
   return `<div class="account-hero signed"><span>✓</span><div><small>АККАУНТ ПОДКЛЮЧЁН</small><h2>${authEsc(accountState.email || "Игрок")}</h2><p>${authEsc(accountStatusHint())}</p></div></div>
@@ -339,7 +354,7 @@ function accountSignedInMarkup() {
     <div class="account-actions"><button class="account-danger" id="accountLogout" type="button">Выйти из аккаунта</button></div>`;
 }
 function accountRecoveryMarkup(code) {
-  return `<div class="account-hero recovery"><span>🔑</span><div><small>ВАЖНО</small><h2>Сохрани резервный код</h2><p>Он понадобится, если забудешь пароль. Мы показываем его только сейчас.</p></div></div><div class="recovery-code" id="accountRecoveryCode">${authEsc(code)}</div><button class="account-primary" id="accountCopyRecovery" type="button">Скопировать код</button><button class="account-link" id="accountRecoveryDone" type="button">Я сохранил код →</button>`;
+  return `<div class="account-hero recovery"><span>🔑</span><div><small>ВАЖНО</small><h2>Сохрани резервный код</h2><p>Он понадобится, если забудешь пароль. Мы показываем его только сейчас.</p></div></div><div class="recovery-code" id="accountRecoveryCode">${authEsc(code)}</div><button class="account-primary" id="accountCopyRecovery" type="button">Скопировать код</button><button class="account-link" id="accountRecoveryDone" type="button">Код сохранён →</button>`;
 }
 
 function openAccountModal(mode = null) {

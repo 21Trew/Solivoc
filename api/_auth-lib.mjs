@@ -5,6 +5,7 @@ import { redis } from "./_push-lib.mjs";
 const scrypt = promisify(scryptCb);
 const SESSION_TTL = 60 * 60 * 24 * 30;
 const MAX_PROFILE_BYTES = 420000;
+const CAMPAIGN_CHAPTER_SIZE = 10;
 
 export function json(data, status = 200, extraHeaders = {}) {
   return Response.json(data, {
@@ -158,11 +159,22 @@ export function sanitizeProfile(input, userId) {
   delete profile.sentChallenges;
   delete profile.receivedChallenges;
   delete profile.pendingChallengeSubmissions;
+  delete profile.pendingRankUp;
   if (profile.settings && typeof profile.settings === "object") {
     profile.settings = { ...profile.settings };
     delete profile.settings.notifications;
     delete profile.settings.notificationPrompted;
   }
+  const pruneRecordMap = (map, limit) => {
+    if (!map || typeof map !== "object" || Array.isArray(map)) return {};
+    const entries = Object.entries(map);
+    if (entries.length <= limit) return map;
+    return Object.fromEntries(entries
+      .sort((a, b) => (+b[1]?.at || 0) - (+a[1]?.at || 0))
+      .slice(0, limit));
+  };
+  profile.dailyRecords = pruneRecordMap(profile.dailyRecords, 800);
+  profile.challengeRecords = pruneRecordMap(profile.challengeRecords, 200);
   profile.playerId = String(userId || profile.playerId || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64);
   return profile;
 }
@@ -202,10 +214,58 @@ function mergeProgress(base, incoming, path = "") {
   return jsonClone(incoming);
 }
 
+function normalizeCampaignProfile(profile) {
+  const stars = {};
+  for (const [rawLevel, rawStars] of Object.entries(profile?.starsByLevel || {})) {
+    const level = Math.trunc(Number(rawLevel)), value = Math.trunc(Number(rawStars));
+    if (!Number.isFinite(level) || level < 1 || level > 10000 || value < 1) continue;
+    stars[level] = Math.max(1, Math.min(3, value));
+  }
+
+  // Old clients could migrate a corrupted currentLevel by manufacturing one-star
+  // clears for every preceding level. Apply the same conservative repair as the
+  // client before deriving canonical campaign counters, so stale cloud data cannot
+  // reintroduce a synthetic tail during account sync.
+  const rawCurrent = Math.max(1, Math.trunc(Number(profile?.currentLevel) || 1));
+  const storedFinals = Math.max(0, Math.trunc(Number(profile?.stats?.chapterFinalsCompleted) || 0));
+  const recordedLevels = new Set(Object.entries(profile?.levelRecords || {})
+    .filter(([key, record]) => Number(key) >= 1 && (Number(record?.stars) > 0 || Number(record?.moves) > 0))
+    .map(([key]) => Math.trunc(Number(key)))
+    .filter(Number.isFinite));
+  let credibleThrough = storedFinals * CAMPAIGN_CHAPTER_SIZE;
+  while (recordedLevels.has(credibleThrough + 1)) credibleThrough++;
+  if (profile?.legacyStarsMigrated && credibleThrough >= CAMPAIGN_CHAPTER_SIZE && rawCurrent - 1 > credibleThrough + CAMPAIGN_CHAPTER_SIZE * 3) {
+    const tailLevels = Object.keys(stars).map(Number).filter((level) => level > credibleThrough);
+    if (tailLevels.length >= CAMPAIGN_CHAPTER_SIZE * 2 && tailLevels.every((level) => stars[level] === 1)) {
+      for (const level of tailLevels) delete stars[level];
+      if (profile.xpMigrated && !profile.campaignRepairXpAdjusted) {
+        profile.xp = Math.max(0, (Number(profile.xp) || 0) - tailLevels.length * 45);
+        profile.campaignRepairXpAdjusted = true;
+      }
+    }
+  }
+
+  let completedThrough = 0;
+  while (Number(stars[completedThrough + 1]) > 0) completedThrough++;
+  profile.starsByLevel = stars;
+  profile.currentLevel = completedThrough + 1;
+  profile.stats = { ...(profile.stats || {}), levelsCompleted: completedThrough, chapterFinalsCompleted: Math.floor(completedThrough / CAMPAIGN_CHAPTER_SIZE) };
+  profile.campaignProgressVersion = Math.max(2, Number(profile.campaignProgressVersion) || 0);
+  return profile;
+}
+
 export function mergeProfiles(current, incoming, userId, { preferIncomingPreferences = true } = {}) {
   const a = sanitizeProfile(current || {}, userId);
   const b = sanitizeProfile(incoming || {}, userId);
+  const aCampaignVersion = Number(a.campaignProgressVersion) || 0, bCampaignVersion = Number(b.campaignProgressVersion) || 0;
   const merged = mergeProgress(a, b);
+  if (bCampaignVersion >= 2 && aCampaignVersion < 2) {
+    merged.starsByLevel = jsonClone(b.starsByLevel || {});
+    if (b.campaignRepairXpAdjusted) { merged.xp = Math.max(0, Number(b.xp) || 0); merged.campaignRepairXpAdjusted = true; }
+  } else if (aCampaignVersion >= 2 && bCampaignVersion < 2) {
+    merged.starsByLevel = jsonClone(a.starsByLevel || {});
+    if (a.campaignRepairXpAdjusted) { merged.xp = Math.max(0, Number(a.xp) || 0); merged.campaignRepairXpAdjusted = true; }
+  }
   if (preferIncomingPreferences) {
     for (const key of PREFERENCE_ROOTS) {
       if (Object.prototype.hasOwnProperty.call(b, key)) merged[key] = jsonClone(b[key]);
@@ -216,7 +276,7 @@ export function mergeProfiles(current, incoming, userId, { preferIncomingPrefere
     }
   }
   merged.playerId = userId;
-  return merged;
+  return normalizeCampaignProfile(merged);
 }
 
 export async function readCloudProfile(userId) {

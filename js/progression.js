@@ -19,10 +19,10 @@ function awardLevelXpWithCombo(baseXp, reason) {
 let specialIntroStartCallback = null;
 function specialLevelRuleText(special) {
   if (!special) return "";
-  if (special.noHints && special.maxRecycles === 1) return "Подсказки отключены · колоду можно вернуть только 1 раз";
+  if (special.noHints && special.maxRecycles === 1) return "Подсказки отключены · колоду можно вернуть только один раз";
   if (special.noHints) return "Подсказки отключены на весь уровень";
-  if (Number.isFinite(special.maxUndos)) return `Доступно отмен: ${special.maxUndos}`;
-  if (Number.isFinite(special.maxRecycles)) return `Колоду можно вернуть ${special.maxRecycles} раз`;
+  if (Number.isFinite(special.maxUndos)) return `${ruPlural(special.maxUndos, "Доступна", "Доступны", "Доступно")} ${ruCount(special.maxUndos, "отмена", "отмены", "отмен")}`;
+  if (Number.isFinite(special.maxRecycles)) return `Колоду можно вернуть ${ruCount(special.maxRecycles, "раз", "раза", "раз")}`;
   if (special.lockedSlot) return "Один слот откроется только после первой собранной категории";
   if (special.mysteryCategories) return "Названия категорий будут открываться по ходу решения";
   if (special.bigMix) return "Больше категорий и слов, чем в обычном раскладе";
@@ -55,7 +55,7 @@ function showSpecialLevelIntro(special, onStart) {
 }
 function specialWinPraise(special, perfect = false) {
   if (!special) return "";
-  if (special.boss) return perfect ? "Вот это финал! Глава закрыта на ★★★ — великолепная партия!" : "Глава готова! Ты прошёл финал — можно смело двигаться дальше ✨";
+  if (special.boss) return perfect ? "Вот это финал! Глава закрыта на ★★★ — великолепная партия!" : "Глава пройдена! Финал позади — можно двигаться дальше ✨";
   return perfect ? `Испытание «${special.title}» пройдено идеально — отличная работа!` : `Испытание «${special.title}» пройдено. Сильная партия!`;
 }
 
@@ -278,10 +278,10 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
   const titles = {
     daily: "Ежедневный расклад пройден!",
     challenge: "Дуэль завершена!",
-    collection: `${associationCollectionById(state.collectionId).name}: собрано!`,
+    collection: `Коллекция «${associationCollectionById(state.collectionId).name}» собрана!`,
     calm: "Дзен завершён",
     marathon: state.marathonSuccess ? `Марафон · раунд ${state.marathonRound}` : "Марафон окончен",
-    time: "Успел вовремя!", moves: "Уложился в ходы!", combo: "Комбо собрано!", noMistakes: "Без ошибки — отлично!", onePass: "Колода пройдена за один круг!", custom: "Твои правила выполнены!",
+    time: "Готово вовремя!", moves: "Лимит ходов соблюдён!", combo: "Комбо собрано!", noMistakes: "Без ошибки — отлично!", onePass: "Колода пройдена за один круг!", custom: "Твои правила выполнены!",
   };
   $("#winTitle").textContent =
     state.failed ? "Почти! Попробуй ещё раз" : state.mode === "tutorial" ? `Обучение ${state.tutorialStep}/3` : titles[state.mode] || `Уровень ${state.level} пройден`;
@@ -291,15 +291,15 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
     state.mode === "regular" && state.special
       ? specialWinPraise(state.special, perfect)
       : state.mode === "daily"
-      ? `Серия: ${profile.daily.currentStreak} дн.`
+      ? `Серия: ${ruCount(profile.daily.currentStreak, "день", "дня", "дней")}`
       : state.mode === "challenge"
         ? perfect ? "Идеальная дуэль!" : "Расклад решён. Можно улучшить результат."
         : state.mode === "collection"
-          ? (() => { const p = associationCollectionProgress(state.collectionId); return `Освоено ${p.completed}/${p.total} ассоциаций в коллекции`; })()
+          ? (() => { const p = associationCollectionProgress(state.collectionId); return `Освоено ассоциаций: ${p.completed}/${p.total}`; })()
         : state.mode === "calm"
           ? "Без спешки. Просто хороший расклад."
           : state.mode === "marathon"
-            ? state.marathonSuccess ? `Серия продолжается: ${state.marathonRound} ★★★ подряд` : `Результат серии: ${Math.max(0, (state.marathonRound || 1) - 1)} идеальных раскладов`
+            ? state.marathonSuccess ? `Серия продолжается: ${state.marathonRound} ★★★ подряд` : `Результат серии: ${ruCount(Math.max(0, (state.marathonRound || 1) - 1), "идеальный расклад", "идеальных расклада", "идеальных раскладов")}`
             : state.mode === "tutorial"
               ? state.tutorialStep < 3
                 ? "Отлично. Переходим к следующей механике."
@@ -326,10 +326,10 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
   if (recordEl) {
     const metric = typeof ruleMetricText === "function" ? ruleMetricText(state) : "";
     const recordText = metric ? `${metric}${record?.isNew?" · Новый личный рекорд!":""}` : record?.isNew
-      ? `↯ ${moves} ходов · Новый личный рекорд!`
+      ? `↯ ${ruCount(moves, "ход", "хода", "ходов")} · Новый личный рекорд!`
       : record?.best
-        ? `↯ ${moves} ходов · Лучший: ${record.best}`
-        : `↯ ${moves} ходов`;
+        ? `↯ ${ruCount(moves, "ход", "хода", "ходов")} · Лучший: ${record.best}`
+        : `↯ ${ruCount(moves, "ход", "хода", "ходов")}`;
     recordEl.textContent = recordText;
     recordEl.classList.toggle("new-record", !!record?.isNew);
   }

@@ -209,13 +209,20 @@ function legacyDecodeChallengeCode(code) {
     return null;
   }
 }
-async function challengeApi(method, path = "", body = null, { keepalive = false, timeout = 6500 } = {}) {
+async function challengeApi(method, path = "", body = null, { keepalive = false, timeout = 6500, ownerToken = "", guestToken = "" } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Math.max(1200, timeout));
   try {
+    const headers = {};
+    if (body) headers["Content-Type"] = "application/json";
+    // Private duel capabilities belong in headers, not query strings that may
+    // be retained in access logs. The public six-character challenge code stays
+    // in the URL because it is intentionally shareable.
+    if (ownerToken) headers["X-Solivoc-Owner-Token"] = String(ownerToken);
+    if (guestToken) headers["X-Solivoc-Guest-Token"] = String(guestToken);
     const response = await fetch(`${CHALLENGE_API}${path}`, {
       method,
-      headers: body ? { "Content-Type": "application/json" } : undefined,
+      headers: Object.keys(headers).length ? headers : undefined,
       body: body ? JSON.stringify(body) : undefined,
       cache: "no-store",
       keepalive,
@@ -282,19 +289,20 @@ function challengeMetricText(result) {
   if(!result)return ""; const mode=normalizeDuelMode(result.duelMode);
   if(mode==="time")return `${Math.round((result.durationMs||0)/100)/10} сек.`;
   if(mode==="combo")return `комбо ×${result.maxCombo||0}`;
-  if(mode==="moves")return `${result.moves||0} ход.`;
+  if(mode==="moves")return ruCount(result.moves||0, "ход", "хода", "ходов");
   if(mode==="noMistakes")return result.failed?"ошибка — поражение":"без ошибок";
-  return `${result.moves||0} ход.`;
+  return ruCount(result.moves||0, "ход", "хода", "ходов");
 }
 function challengeResultMarkup(label, result) {
-  if (!result) return `<div class="challenge-result-row empty"><span class="challenge-avatar">•</span><div><b>${label}</b><span>ещё не сыграно</span></div></div>`;
-  return `<div class="challenge-result-row"><span class="challenge-avatar">${result.avatarEmoji || "🙂"}</span><div><div><b>${label}</b><span>${challengeStarsText(result.stars)} · ${challengeMetricText(result)}</span></div><small>${result.title?`${escapeHtml(result.title)}${result.rank?` · ${escapeHtml(result.rank)}`:""}<br>`:""}Подсказки ${result.hints} · Ошибки ${result.errors || 0} · Авто ${result.autoMoves||0} · Комбо ×${result.maxCombo||0}</small></div></div>`;
+  const safeLabel = escapeHtml(label || "Друг");
+  if (!result) return `<div class="challenge-result-row empty"><span class="challenge-avatar">•</span><div><b>${safeLabel}</b><span>ещё не сыграно</span></div></div>`;
+  return `<div class="challenge-result-row"><span class="challenge-avatar">${escapeHtml(result.avatarEmoji || "🙂")}</span><div><div><b>${safeLabel}</b><span>${challengeStarsText(result.stars)} · ${challengeMetricText(result)}</span></div><small>${result.title?`${escapeHtml(result.title)}${result.rank?` · ${escapeHtml(result.rank)}`:""}<br>`:""}Подсказки: ${result.hints} · Ошибки: ${result.errors || 0} · Автоходы: ${result.autoMoves||0} · Комбо ×${result.maxCombo||0}</small></div></div>`;
 }
 function challengeComparison(entry) {
   const me=entry?.creatorResult,friend=entry?.guestResult;if(!me||!friend)return "";
   const outcome=challengeOutcome?.(me,friend)||0, mine=challengeMetricText(me), theirs=challengeMetricText(friend);
-  if(outcome>0)return `Ты победил · ${mine} против ${theirs}`;
-  if(outcome<0)return `Друг победил · ${theirs} против ${mine}`; return "Результаты равны";
+  if(outcome>0)return `Победа · ${mine} против ${theirs}`;
+  if(outcome<0)return `Поражение · ${theirs} против ${mine}`; return "Результаты равны";
 }
 function pruneSentChallenges() {
   profile.sentChallenges = (profile.sentChallenges || [])
@@ -366,9 +374,9 @@ function rememberReceivedChallenge(data) {
 }
 function ownedChallengeCardMarkup(entry, { compact = false } = {}) {
   if (!entry) return "";
-  const friend = entry.guestResult, me = entry.creatorResult,
+  const friend = entry.guestResult, me = entry.creatorResult, friendName = escapeHtml(friend?.playerName || "Друг"),
     status = friend
-      ? (me ? `Матч завершён · ${friend.playerName || "Друг"}` : `${friend.playerName || "Друг"} сыграл · твой ход`)
+      ? (me ? `Матч завершён · ${friendName}` : `Получен ответ от ${friendName} · твой ход`)
       : entry.status === "expired"
         ? "Код истёк или уже использован"
         : "Ждём, когда друг сыграет",
@@ -377,8 +385,8 @@ function ownedChallengeCardMarkup(entry, { compact = false } = {}) {
   return `<article class="owned-challenge ${friend && me ? "completed" : "pending"} ${compact ? "duel-card" : ""}">
     <div class="owned-challenge-code"><b>${entry.code}</b><span>${status}</span></div>
     <div class="duel-direction">Отправлен</div>
-    ${series ? `<div class="challenge-series-line">⚔ ${series}</div>` : ""}
-    <div class="owned-challenge-results">${challengeResultMarkup("Ты", me)}${challengeResultMarkup(friend?.playerName || "Друг", friend)}${compare && me && friend ? `<strong>${compare}</strong>` : ""}</div>
+    ${series ? `<div class="challenge-series-line">⚔ ${escapeHtml(series)}</div>` : ""}
+    <div class="owned-challenge-results">${challengeResultMarkup("Ты", me)}${challengeResultMarkup(friend?.playerName || "Друг", friend)}${compare && me && friend ? `<strong>${escapeHtml(compare)}</strong>` : ""}</div>
     <div class="owned-challenge-actions">
       ${!me || !friend ? `<button data-owned-challenge-play="${entry.code}">▶ ${me ? "Переиграть" : "Сыграть"}</button>` : ""}
       ${!friend && entry.status !== "expired" ? `<button data-owned-challenge-share="${entry.code}">⇄ Отправить</button>` : ""}
@@ -389,15 +397,15 @@ function ownedChallengeCardMarkup(entry, { compact = false } = {}) {
 }
 function receivedChallengeCardMarkup(entry, { compact = false } = {}) {
   if (!entry) return "";
-  const result = entry.guestResult, creatorResult = entry.creatorResult,
+  const result = entry.guestResult, creatorResult = entry.creatorResult, creatorName = escapeHtml(entry.creatorName || "Друг"),
     status = result
-      ? (creatorResult ? `Матч завершён · ${entry.creatorName || "Друг"}` : `Ты сыграл · ждём ${entry.creatorName || "друга"}`)
-      : `От ${entry.creatorName || "друга"} · твой ход`,
+      ? (creatorResult ? `Матч завершён · ${creatorName}` : `Твой результат отправлен · ждём ${creatorName}`)
+      : `От ${creatorName} · твой ход`,
     series = typeof seriesLabel === "function" ? seriesLabel(entry, "guest") : "";
   return `<article class="owned-challenge ${result && creatorResult ? "completed" : "pending"} ${compact ? "duel-card" : ""}">
     <div class="owned-challenge-code"><b>${entry.code}</b><span>${status}</span></div>
     <div class="duel-direction">Получен</div>
-    ${series ? `<div class="challenge-series-line">⚔ ${series}</div>` : ""}
+    ${series ? `<div class="challenge-series-line">⚔ ${escapeHtml(series)}</div>` : ""}
     <div class="owned-challenge-results">${challengeResultMarkup("Ты", result)}${challengeResultMarkup(entry.creatorName || "Друг", creatorResult)}</div>
     <div class="owned-challenge-actions">
       ${!result ? `<button data-received-challenge-play="${entry.code}">▶ Сыграть</button>` : ""}
@@ -626,8 +634,8 @@ async function resolveIncomingDuelMode(entry) {
 async function playOwnedChallenge(code) {
   const entry=ownedChallengeByCode(code); if(!entry)return false;
   if(entry.duelModeChoice==="guest"&&!entry.duelMode){
-    try{const data=await challengeApi("GET",`?code=${encodeURIComponent(entry.code)}&ownerToken=${encodeURIComponent(entry.ownerToken||"")}`);if(data.duelMode)entry.duelMode=normalizeDuelMode(data.duelMode);}catch{}
-    if(!entry.duelMode){showToast("Друг ещё не выбрал режим дуэли");return false;}
+    try{const data=await challengeApi("GET",`?code=${encodeURIComponent(entry.code)}`,null,{ownerToken:entry.ownerToken||""});if(data.duelMode)entry.duelMode=normalizeDuelMode(data.duelMode);}catch{}
+    if(!entry.duelMode){showToast("Режим дуэли ещё не выбран");return false;}
   }
   closeHub?.(); makeLevel(entry.level,{mode:"challenge",seed:entry.seed,challengeCode:entry.code,challengeRole:"creator",challengeCreatorName:entry.creatorName||profile.playerName||"Игрок",duelMode:entry.duelMode||"classic",duelModeChoice:entry.duelModeChoice,seriesId:entry.seriesId,seriesRound:entry.seriesRound,seriesScoreCreator:entry.seriesScoreCreator,seriesScoreGuest:entry.seriesScoreGuest,cardSourceMode:normalizeCardSourceMode(entry.sourceMode)}); return true;
 }
@@ -750,7 +758,7 @@ async function refreshOwnedChallenges({ notify = true } = {}) {
   let changed = false;
   for (const entry of items) {
     try {
-      const data = await challengeApi("GET", `?code=${encodeURIComponent(entry.code)}&ownerToken=${encodeURIComponent(entry.ownerToken)}`);
+      const data = await challengeApi("GET", `?code=${encodeURIComponent(entry.code)}`, null, { ownerToken: entry.ownerToken });
       if (data.duelMode) entry.duelMode = normalizeDuelMode(data.duelMode);
       if (data.duelModeChoice) entry.duelModeChoice = data.duelModeChoice;
       if (data.status === "completed" && data.guestResult) {
@@ -764,8 +772,8 @@ async function refreshOwnedChallenges({ notify = true } = {}) {
         if (typeof finalizeSeriesForEntry === "function") finalizeSeriesForEntry(entry,"creator");
         if (wasNew && typeof queueDuelReveal === "function") queueDuelReveal(entry);
         if (wasNew && notify && typeof queueAchievementNotifications === "function") {
-          queueAchievementNotifications([{ icon: "⇄", title: "Друг завершил дуэль", desc: `${entry.code} · ${challengeStarsText(entry.guestResult.stars)} · ${entry.guestResult.moves} ход. · ошибок ${entry.guestResult.errors || 0}` }]);
-          if (typeof showSystemNotification === "function") showSystemNotification("Друг завершил дуэль", `${entry.guestResult.playerName || "Друг"}: ${challengeStarsText(entry.guestResult.stars)} · ${entry.guestResult.moves} ходов`, { tag:`challenge-${entry.code}` });
+          queueAchievementNotifications([{ icon: "⇄", title: "Получен результат дуэли", desc: `${entry.code} · ${challengeStarsText(entry.guestResult.stars)} · ${ruCount(entry.guestResult.moves||0, "ход", "хода", "ходов")} · ${ruCount(entry.guestResult.errors||0, "ошибка", "ошибки", "ошибок")}` }]);
+          if (typeof showSystemNotification === "function") showSystemNotification("Получен результат дуэли", `${entry.guestResult.playerName || "Друг"}: ${challengeStarsText(entry.guestResult.stars)} · ${ruCount(entry.guestResult.moves||0, "ход", "хода", "ходов")}`, { tag:`challenge-${entry.code}` });
         }
       } else if (data.status === "pending") entry.status = "pending";
     } catch (err) {
@@ -789,7 +797,7 @@ async function refreshReceivedChallenges() {
   let changed=false;
   for (const entry of items) {
     try {
-      const data=await challengeApi("GET",`?code=${encodeURIComponent(entry.code)}&guestToken=${encodeURIComponent(entry.guestToken)}`);
+      const data=await challengeApi("GET",`?code=${encodeURIComponent(entry.code)}`,null,{guestToken:entry.guestToken});
       if (data.creatorResult) {
         entry.creatorResult=cleanChallengeResult(data.creatorResult); changed=true;
         if (typeof finalizeSeriesForEntry === "function") finalizeSeriesForEntry(entry,"guest");
@@ -884,10 +892,10 @@ async function resultShareFile(s = state) {
   ctx.fillText(`${"★".repeat(stars)}${"☆".repeat(3-stars)}`, 96, 286);
 
   const stats = [
-    [s?.run?.moves || 0, "ходов"],
-    [s?.run?.errors || 0, "ошибок"],
-    [s?.run?.hints || 0, "подсказок"],
-    [s?.run?.undos || 0, "отмен"],
+    [s?.run?.moves || 0, ruPlural(s?.run?.moves || 0, "ход", "хода", "ходов")],
+    [s?.run?.errors || 0, ruPlural(s?.run?.errors || 0, "ошибка", "ошибки", "ошибок")],
+    [s?.run?.hints || 0, ruPlural(s?.run?.hints || 0, "подсказка", "подсказки", "подсказок")],
+    [s?.run?.undos || 0, ruPlural(s?.run?.undos || 0, "отмена", "отмены", "отмен")],
   ];
   stats.forEach(([value,label],i)=>{
     const x=100+i*248;
@@ -914,7 +922,7 @@ async function shareCurrentResult() {
     undos = state.run?.undos || 0,
     link = appShareLink(),
     title = `Словасьянс · ${resultShareTitle(state)}`,
-    fileText = `${title}\n${starText} · ${moves} ходов · ${errors} ошибок · ${hints} подсказок · ${undos} отмен`,
+    fileText = `${title}\n${starText} · ${ruCount(moves, "ход", "хода", "ходов")} · ${ruCount(errors, "ошибка", "ошибки", "ошибок")} · ${ruCount(hints, "подсказка", "подсказки", "подсказок")} · ${ruCount(undos, "отмена", "отмены", "отмен")}`,
     text = `${fileText}\nПопробуй сыграть: ${link}`;
   try {
     const file = await resultShareFile(state);

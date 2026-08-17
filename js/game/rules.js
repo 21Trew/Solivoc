@@ -100,7 +100,7 @@ async function finalizeCompletedSlot(i) {
     track("category_completed", { category: cc.cat, mode: state.mode, collectionId: state.collectionId || null });
     checkAchievements();
   }
-  showToast(`✓ ${cc.label}: собрано!`);
+  showToast(`✓ Категория «${cc.label}» собрана!`);
   categoryAnimating = false;
   render();
   markStateChanged();

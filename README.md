@@ -133,9 +133,10 @@ npx web-push generate-vapid-keys --json
 VAPID_PUBLIC_KEY=...
 VAPID_PRIVATE_KEY=...
 VAPID_SUBJECT=mailto:your-email@example.com
+CRON_SECRET=<длинный случайный секрет>
 ```
 
-`VAPID_SUBJECT` необязателен, но лучше указать свой `mailto:` или HTTPS URL.
+`VAPID_SUBJECT` необязателен, но лучше указать свой `mailto:` или HTTPS URL. `CRON_SECRET` обязателен для `/api/reminders`: без него endpoint намеренно отвечает `503` и не запускает массовую отправку. Endpoint принимает секрет только в заголовке `Authorization: Bearer <CRON_SECRET>`.
 
 После этого сделай redeploy. В `vercel.json` уже добавлен ежедневный cron `/api/reminders` на `16:00 UTC` (19:00 по UTC+3). Он отправляет только незакрытый ежедневный расклад и, по воскресеньям, незавершённое недельное испытание. Ответ друга на дуэль отправляется сервером сразу после завершения партии, если игрок разрешил Push.
 
@@ -171,7 +172,7 @@ VAPID_SUBJECT=mailto:your-email@example.com
 ANALYTICS_ADMIN_TOKEN=<длинный случайный секрет>
 ```
 
-После redeploy статистику за последние 7 дней можно получить запросом `GET /api/analytics?days=7` с `Authorization: Bearer <token>` (или параметром `token`). Без `ANALYTICS_ADMIN_TOKEN` чтение статистики отключено, запись событий продолжает работать.
+После redeploy статистику за последние 7 дней можно получить запросом `GET /api/analytics?days=7` с `Authorization: Bearer <token>`. Без `ANALYTICS_ADMIN_TOKEN` чтение статистики отключено, запись событий продолжает работать.
 
 Основные funnel-события: `first_open`, `onboarding_complete`, `tutorial_all_complete`, `funnel_level_1_complete`, `funnel_level_2_complete`, `funnel_level_5_complete`, `retention_d1`, `retention_d7`, а также создание/принятие/завершение duel.
 

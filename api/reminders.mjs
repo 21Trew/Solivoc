@@ -21,11 +21,11 @@ async function saveRecord(clientId, record) {
 }
 function authorized(request) {
   const secret = process.env.CRON_SECRET || "";
-  if (!secret) return true;
-  return request.headers.get("authorization") === `Bearer ${secret}`;
+  return !!secret && request.headers.get("authorization") === `Bearer ${secret}`;
 }
 
 export async function GET(request) {
+  if (!process.env.CRON_SECRET) return json({ error: "cron_secret_not_configured" }, 503);
   if (!authorized(request)) return json({ error: "unauthorized" }, 401);
   try {
     const clientIds = (await redis(["SMEMBERS", CLIENT_SET])) || [];

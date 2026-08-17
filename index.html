@@ -48,19 +48,9 @@
             <span class="global-profile-rank" id="gameProfileRank">Ранг 1 · Новичок</span>
           </button>
           <div class="stats">
-            <span class="pill">
-              Ур.
-              <b id="level">1</b>
-            </span>
-            <span class="pill progress-pill">
-              ✓
-              <b id="progressText">0/0</b>
-            </span>
-            <span class="pill rule-metric" id="ruleMetric" hidden></span>
-            <span class="pill">
-              <b id="left">0</b>
-              карт
-            </span>
+            <span class="pill level-pill">Ур. <b id="level">1</b></span>
+            <span class="pill progress-pill" aria-label="Собрано категорий">✓ <b id="progressText">0/0</b></span>
+            <span class="pill moves-pill" aria-label="Ходы">↯ <b id="moveCount">0</b></span>
             <span id="cols" hidden>4</span>
           </div>
         </div>
@@ -68,13 +58,8 @@
           <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
           <span class="progress-label">
             <span class="special-badge" id="specialBadge" hidden></span>
-            <span class="progress-stars">
-              ★
-              <b id="starTotal">0</b>
-            </span>
-            <span id="chapterLabel">прогресс</span>
-            <span class="move-counter">↯ <b id="moveCount">0</b></span>
-            <span class="combo-xp-status" id="comboXpStatus">XP за комбо: +0%</span>
+            <span class="rule-metric" id="ruleMetric" hidden></span>
+            <span class="combo-xp-status" id="comboXpStatus" hidden></span>
           </span>
         </div>
         <div class="bonus-objective-wrap" id="bonusObjective"></div>

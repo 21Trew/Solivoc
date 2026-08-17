@@ -23,10 +23,10 @@ const HUB_TAB_DEFS = Object.freeze([
 
 const DUEL_MODE_DEFS = Object.freeze([
   { id: "classic", icon: "⚔", label: "Классика", description: "Лучший общий результат" },
-  { id: "time", icon: "⏱", label: "На время", description: "Побеждает тот, кто закончит быстрее" },
-  { id: "combo", icon: "×", label: "На комбо", description: "Побеждает самое большое комбо" },
-  { id: "moves", icon: "↯", label: "На ходы", description: "Побеждает меньшее количество ходов" },
-  { id: "noMistakes", icon: "◇", label: "До ошибки", description: "Первая ошибка означает поражение" },
+  { id: "time", icon: "⏱", label: "На время", description: "Победа за самое быстрое прохождение" },
+  { id: "combo", icon: "×", label: "На комбо", description: "Победа за самое большое комбо" },
+  { id: "moves", icon: "↯", label: "На ходы", description: "Победа за наименьшее число ходов" },
+  { id: "noMistakes", icon: "◇", label: "Без ошибок", description: "Первая ошибка означает поражение" },
 ]);
 function normalizeDuelMode(value) { return DUEL_MODE_DEFS.some((x) => x.id === value) ? value : "classic"; }
 function duelModeDef(value) { return DUEL_MODE_DEFS.find((x) => x.id === normalizeDuelMode(value)) || DUEL_MODE_DEFS[0]; }
@@ -39,9 +39,9 @@ const GAME_MODE_DEFS = Object.freeze([
   { id: "pictures", icon: "▧", label: "Картинки", className: "pictures", music: "collection" },
   { id: "time", icon: "⏱", label: "На время", className: "time", music: "game" },
   { id: "moves", icon: "↯", label: "На ходы", className: "moves", music: "game" },
-  { id: "combo", icon: "×", label: "Макс. комбо", className: "combo", music: "game" },
-  { id: "noMistakes", icon: "◇", label: "До ошибки", className: "no-mistakes", music: "game" },
-  { id: "onePass", icon: "↻", label: "1 проход", className: "one-pass", music: "game" },
+  { id: "combo", icon: "×", label: "Комбо", className: "combo", music: "game" },
+  { id: "noMistakes", icon: "◇", label: "Без ошибок", className: "no-mistakes", music: "game" },
+  { id: "onePass", icon: "↻", label: "Один проход", className: "one-pass", music: "game" },
   { id: "custom", icon: "⚙", label: "Мои правила", className: "custom", music: "game" },
 ]);
 
@@ -71,7 +71,7 @@ const DEVELOPER_MESSAGES = Object.freeze([
     intro: "В Словасьянсе стало больше способов играть — и заметно удобнее следить за прогрессом.",
     items: [
       "Ежедневно выбираются три разных режима: по 5 прохождений в каждом.",
-      "Режимы «На время», «На ходы» и «Комбо» получили реальные цели, появился «1 проход» и конструктор «Мои правила».",
+      "Режимы «На время», «На ходы» и «Комбо» получили реальные цели; появились «Один проход» и конструктор «Мои правила».",
       "Добавлены таблицы лидеров по разным направлениям.",
       "Недельные и месячные испытания теперь учитывают подходящий прогресс из любых режимов, кроме дуэлей.",
       "Обновлены визитка игрока, достижения, эффекты победы и несколько категорий картинок.",

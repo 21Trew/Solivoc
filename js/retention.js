@@ -44,7 +44,7 @@ function rankRewardsRoadmapMarkup(limit = 5) {
 function loginRewardsMarkup() {
   const days = profile.retention?.totalOpenDays || 0;
   const next = LOGIN_REWARD_DEFS.find((reward) => days < reward.days);
-  return `<section class="hub-section login-rewards"><div class="hub-section-head"><div><h3>Награды за входы</h3><small>считаются разные дни, а не серия подряд</small></div><strong>${days} дн.</strong></div><div class="login-reward-grid">${LOGIN_REWARD_DEFS.map((reward)=>{const done=days>=reward.days;return `<div class="login-reward ${done?"done":""}"><i>${reward.emoji}</i><span><b>${reward.title}</b><small>${done?`Аватар ${reward.emoji} получен ✓`:`Аватар ${reward.emoji} · ещё ${reward.days-days} дн.`}</small></span></div>`;}).join("")}</div>${next?`<p class="login-next">Следующая награда через <b>${next.days-days}</b> дн.</p>`:`<p class="login-next complete">Все награды за входы открыты ✓</p>`}</section>`;
+  return `<section class="hub-section login-rewards"><div class="hub-section-head"><div><h3>Награды за входы</h3><small>считаются разные дни, а не серия подряд</small></div><strong>${ruCount(days, "день", "дня", "дней")}</strong></div><div class="login-reward-grid">${LOGIN_REWARD_DEFS.map((reward)=>{const done=days>=reward.days, left=Math.max(0,reward.days-days);return `<div class="login-reward ${done?"done":""}"><i>${reward.emoji}</i><span><b>${reward.title}</b><small>${done?`Аватар ${reward.emoji} получен ✓`:`Аватар ${reward.emoji} · ещё ${ruCount(left, "день", "дня", "дней")}`}</small></span></div>`;}).join("")}</div>${next?`<p class="login-next">Следующая награда через <b>${ruCount(next.days-days, "день", "дня", "дней")}</b></p>`:`<p class="login-next complete">Все награды за входы открыты ✓</p>`}</section>`;
 }
 
 function awardXp(amount, reason = "", { notifyRank = true } = {}) {
@@ -114,11 +114,17 @@ function closeRankUpModal() {
 function showPendingRankUp() {
   const data = profile.pendingRankUp, modal = $("#rankUpModal");
   if (!data || !modal) return false;
+  const currentLevel = playerXpLevel(profile), age = Math.max(0, Date.now() - (+data.createdAt || 0));
+  if (!(+data.fromLevel >= 1) || !(+data.level > +data.fromLevel) || +data.level !== currentLevel || age > 12 * 60 * 60 * 1000) {
+    profile.pendingRankUp = null;
+    saveProfile();
+    return false;
+  }
   if ($("#modal")?.classList.contains("show") || $("#duelResultModal")?.classList.contains("show") || $("#onboardingModal")?.classList.contains("show")) return false;
   $("#rankUpNumber").textContent = `Ранг ${data.level}`;
   $("#rankUpName").textContent = data.rankName || playerRank(profile).name;
   const rewards = [];
-  if (data.avatars?.length) rewards.push(`<div class="rank-reward"><i>${data.avatars.at(-1)}</i><span><b>Новый аватар</b><small>${data.avatars.length > 1 ? `Открыто ${data.avatars.length} новых аватара` : "Доступен в профиле"}</small></span></div>`);
+  if (data.avatars?.length) rewards.push(`<div class="rank-reward"><i>${data.avatars.at(-1)}</i><span><b>Новый аватар</b><small>${data.avatars.length > 1 ? `Новых аватаров: ${data.avatars.length}` : "Доступен в профиле"}</small></span></div>`);
   if (data.titleReward) {
     const title = titleDefById(data.titleReward);
     if (title) rewards.push(`<div class="rank-reward"><i>${title.icon}</i><span><b>Новый титул «${escapeHtml(title.name)}»</b><small>Можно выбрать в профиле</small></span></div>`);
@@ -212,7 +218,7 @@ function checkCategoryMastery(id, { notify = true } = {}) {
   track("category_mastered", { category: id });
   saveProfile();
   if (notify && typeof queueAchievementNotifications === "function") {
-    queueAchievementNotifications([{ icon: "✦", title: `Освоено: ${data.cat.title}`, desc: `Все ${data.total} слов открыты · +100 XP` }]);
+    queueAchievementNotifications([{ icon: "✦", title: `Освоено: ${data.cat.title}`, desc: `Открыто: ${ruCount(data.total, "слово", "слова", "слов")} · +100 XP` }]);
   }
   return true;
 }
@@ -236,7 +242,7 @@ function migrateCategoryMasteryProgress() {
   profile.masteryMigrated = true;
   if (newlyMastered) {
     awardXp(newlyMastered * 100, `Освоено категорий: ${newlyMastered}`, { notifyRank: false });
-    queueAchievementNotifications?.([{ icon:"▦", title:"Мастерство категорий", desc:`Засчитан прежний прогресс: ${newlyMastered} освоено · +${newlyMastered*100} XP` }]);
+    queueAchievementNotifications?.([{ icon:"▦", title:"Мастерство категорий", desc:`Засчитан прежний прогресс: ${ruCount(newlyMastered, "категория", "категории", "категорий")} · +${newlyMastered*100} XP` }]);
   }
   saveProfile();
   return newlyMastered;
@@ -244,7 +250,7 @@ function migrateCategoryMasteryProgress() {
 
 const DAILY_QUEST_POOL = Object.freeze([
   ["regular","Обычный"], ["marathon","Марафон"], ["zen","Дзен"], ["pictures","Картинки"],
-  ["time","На время"], ["moves","На ходы"], ["combo","На комбо"], ["noMistakes","До ошибки"], ["onePass","1 проход"],
+  ["time","На время"], ["moves","На ходы"], ["combo","На комбо"], ["noMistakes","Без ошибок"], ["onePass","Один проход"],
 ].map(([id,label]) => ({ id, label, target:5, rewardXp:40 })));
 function dailyQuestDefinitions(date = todayKey()) {
   const rng = makeRng(`daily-quests:${date}`), pool = shuffle(DAILY_QUEST_POOL, rng);
@@ -278,7 +284,7 @@ function recordDailyModeGame(s=state) {
 }
 function dailyModeQuestsMarkup() {
   const q=normalizeDailyQuests(), defs=activeDailyQuestDefs();
-  return `<section class="hub-section daily-quests"><div class="hub-section-head"><div><h3>Ежедневные задания</h3><small>сегодня 3 режима · пройди каждый 5 раз</small></div></div><div class="daily-quest-grid">${defs.map(def=>{const v=Math.min(def.target,+q.progress[def.id]||0),done=v>=def.target;return `<button class="daily-quest ${done?"done":""}" data-daily-quest-mode="${def.id}"><b>${def.label}</b><span>${v}/${def.target}${done?" ✓":` · +${def.rewardXp} XP`}</span><em><i style="width:${v/def.target*100}%"></i></em><small>${done?"Выполнено":"Играть →"}</small></button>`;}).join("")}</div></section>`;
+  return `<section class="hub-section daily-quests"><div class="hub-section-head"><div><h3>Ежедневные задания</h3><small>сегодня 3 режима · пройди каждый по 5 раз</small></div></div><div class="daily-quest-grid">${defs.map(def=>{const v=Math.min(def.target,+q.progress[def.id]||0),done=v>=def.target;return `<button class="daily-quest ${done?"done":""}" data-daily-quest-mode="${def.id}"><b>${def.label}</b><span>${v}/${def.target}${done?" ✓":` · +${def.rewardXp} XP`}</span><em><i style="width:${v/def.target*100}%"></i></em><small>${done?"Выполнено":"Играть →"}</small></button>`;}).join("")}</div></section>`;
 }
 function challengeEligibleState(s=state) { return !!s && s.mode !== "challenge" && s.mode !== "tutorial"; }
 function recordChallengeEligibleProgress(s=state, stars=0) {
@@ -309,12 +315,12 @@ function ruleMetricText(s=state) {
   const mode=activeRuleMode(s); if(!s?.run||mode==="classic")return "";
   const rules=s.rules||{};
   if(rules.timeLimitMs) return `⏱ ${Math.ceil(activeTimeRemainingMs(s)/1000)} сек.`;
-  if(rules.moveLimit) return `↯ ${s.run.moves||0}/${rules.moveLimit} ход.`;
+  if(rules.moveLimit) { const n=s.run.moves||0; return `↯ ${n}/${rules.moveLimit} ${ruPlural(n, "ход", "хода", "ходов")}`; }
   if(rules.comboTarget) return `× ${s.run.maxCombo||0}/${rules.comboTarget}`;
-  if(rules.maxRecycles===0) return `↻ 1 проход · ${s.stock?.length||0}`;
+  if(rules.maxRecycles===0) return `↻ Один проход · ${s.stock?.length||0}`;
   if(ruleHasNoMistakes(s)) return (s.run.errors||0)?"Ошибка — поражение":"◇ Без ошибок";
   if(mode==="time") return `⏱ ${Math.floor((typeof activeRunElapsedMs === "function" ? activeRunElapsedMs(s) : 0)/1000)} сек.`;
-  if(mode==="moves") return `↯ ${s.run.moves||0} ход.`;
+  if(mode==="moves") return `↯ ${ruCount(s.run.moves||0, "ход", "хода", "ходов")}`;
   if(mode==="combo") return `× ${s.run.maxCombo||0}`;
   return "";
 }
@@ -345,7 +351,7 @@ function assignBonusObjective(s) {
       { id: "clean", icon: "◎", title: "Без ошибок", desc: "Заверши расклад без неверных ходов" },
       { id: "recycle", icon: "↻", title: "С первого круга", desc: "Не возвращай сброс обратно в колоду" },
       { id: "moves", icon: "↯", title: "Точный маршрут", desc: "Уложись в лимит ходов", target: Math.max(24, Math.ceil(cards * 2.15)) },
-      { id: "lowHints", icon: "✦", title: "Почти самостоятельно", desc: "Используй не больше одной подсказки", target: 1 },
+      { id: "lowHints", icon: "✦", title: "Минимум подсказок", desc: "Пройди расклад, использовав не больше одной подсказки", target: 1 },
     ];
   s.bonusObjective = { ...defs[choice], awarded: false };
   return s.bonusObjective;
@@ -362,10 +368,10 @@ function bonusObjectiveAchieved(s = state) {
 function bonusObjectiveStatus(s = state) {
   const b = s?.bonusObjective;
   if (!b) return "";
-  if (b.id === "moves") return `${s.run?.moves || 0}/${b.target} ходов`;
-  if (b.id === "clean") return `${s.run?.errors || 0} ошибок`;
-  if (b.id === "recycle") return `${s.run?.recycles || 0} прокруток`;
-  if (b.id === "lowHints") return `${s.run?.hints || 0}/1 подсказок`;
+  if (b.id === "moves") { const n=s.run?.moves || 0; return `${n}/${b.target} ${ruPlural(n, "ход", "хода", "ходов")}`; }
+  if (b.id === "clean") return ruCount(s.run?.errors || 0, "ошибка", "ошибки", "ошибок");
+  if (b.id === "recycle") return ruCount(s.run?.recycles || 0, "прокрутка", "прокрутки", "прокруток");
+  if (b.id === "lowHints") { const n=s.run?.hints || 0; return `${n}/1 ${ruPlural(n, "подсказка", "подсказки", "подсказок")}`; }
   return "";
 }
 function awardBonusObjective(s = state) {
@@ -400,7 +406,7 @@ function nearGoalCandidates() {
   const chapter = chapterInfo(profile.currentLevel || 1), stars = chapterStarsForProfile(profile, chapter.number).reduce((a,b)=>a+b,0);
   if (stars < 30) goals.push({ id: "chapter", icon: "◆", title: `Глава ${chapter.number}`, desc: `До идеала: ${30-stars} ★`, ratio: stars/30 });
   const mastery = nearestMasteryGoal();
-  if (mastery) goals.push({ id:`mastery:${mastery.cat.id}`, icon:"▦", title:`Освоить «${mastery.cat.title}»`, desc:`Осталось ${mastery.total-mastery.known} слов`, ratio:mastery.ratio });
+  if (mastery) goals.push({ id:`mastery:${mastery.cat.id}`, icon:"▦", title:`Освоить «${mastery.cat.title}»`, desc:`Осталось ${ruCount(mastery.total-mastery.known, "слово", "слова", "слов")}`, ratio:mastery.ratio });
   return goals.sort((a,b)=>b.ratio-a.ratio);
 }
 function nearGoalsMarkup(limit = 2) {
@@ -417,7 +423,7 @@ function unseenDuelEntry() {
 }
 function smartHomeAction() {
   const duel = unseenDuelEntry();
-  if (duel) return { kind:"duel", icon:"⚔", eyebrow:"ДРУГ ОТВЕТИЛ", title:`${duel.guestResult.playerName || "Друг"} завершил дуэль`, desc:`${duel.code} · результат дуэли готов`, button:"Посмотреть результат", code:duel.code };
+  if (duel) return { kind:"duel", icon:"⚔", eyebrow:"ЕСТЬ ОТВЕТ", title:`Результат от ${duel.guestResult.playerName || "соперника"}`, desc:`${duel.code} · результат дуэли готов`, button:"Посмотреть результат", code:duel.code };
   const dailyDone = profile.daily.completedDates.includes(todayKey());
   if (!dailyDone) return { kind:"daily", icon:"☀", eyebrow:"СЕГОДНЯ", title:"Ежедневный расклад ждёт", desc:"Один расклад для всех игроков · поддержи серию", button:"Играть" };
   const w = weeklyProgress();
@@ -428,7 +434,7 @@ function smartHomeAction() {
 }
 function smartHomeMarkup() {
   const a = smartHomeAction();
-  return `<section class="smart-action smart-${a.kind}" data-smart-kind="${a.kind}" ${a.code?`data-smart-code="${a.code}"`:""}><div class="smart-icon">${a.icon}</div><div class="smart-copy"><small>${a.eyebrow}</small><b>${a.title}</b><span>${a.desc}</span></div><button id="smartAction">${a.button}</button></section>`;
+  return `<section class="smart-action smart-${escapeHtml(a.kind)}" data-smart-kind="${escapeHtml(a.kind)}" ${a.code?`data-smart-code="${escapeHtml(a.code)}"`:""}><div class="smart-icon">${escapeHtml(a.icon)}</div><div class="smart-copy"><small>${escapeHtml(a.eyebrow)}</small><b>${escapeHtml(a.title)}</b><span>${escapeHtml(a.desc)}</span></div><button id="smartAction">${escapeHtml(a.button)}</button></section>`;
 }
 function runSmartHomeAction() {
   const a = smartHomeAction();

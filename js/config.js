@@ -11,6 +11,18 @@ const RECENT_KEY = "assoc-recent-categories-v2";
 const MAX_CARD_WORD_LEN = 10,
   MAX_CARD_TITLE_LEN = 24;
 
+function ruPlural(value, one, few, many = few) {
+  const n = Math.abs(Math.trunc(Number(value) || 0)), mod100 = n % 100, mod10 = n % 10;
+  if (mod100 >= 11 && mod100 <= 14) return many;
+  if (mod10 === 1) return one;
+  if (mod10 >= 2 && mod10 <= 4) return few;
+  return many;
+}
+function ruCount(value, one, few, many = few) {
+  const n = Math.max(0, Math.trunc(Number(value) || 0));
+  return `${n} ${ruPlural(n, one, few, many)}`;
+}
+
 const AVATAR_EMOJIS = [
   "🙂", "😎", "🤩", "🥳", "🤓", "🤠", "🫠", "😈",
   "🦊", "🐼", "🐸", "🦉", "🐙", "🦄", "🐯", "🐧",
@@ -458,7 +470,7 @@ function hasDiscoveredAllCategories(p) {
 
 const SPECIAL_LEVELS = [
   { id: "no-hints", icon: "◈", title: "Без подсказок", desc: "Подсказки отключены", offset: 5, noHints: true },
-  { id: "precise", icon: "◇", title: "Точный расклад", desc: "Доступна только 1 отмена", offset: 10, maxUndos: 1 },
+  { id: "precise", icon: "◇", title: "Точный расклад", desc: "Доступна только одна отмена", offset: 10, maxUndos: 1 },
   { id: "one-recycle", icon: "↻", title: "Одна прокрутка", desc: "Колоду можно вернуть только один раз", offset: 15, maxRecycles: 1 },
   { id: "big-mix", icon: "✦", title: "Большая коллекция", desc: "Больше категорий и слов", offset: 20, bigMix: true },
 ];
@@ -507,7 +519,7 @@ const ACHIEVEMENTS = [
     id: "first",
     icon: "✦",
     title: "Первый расклад",
-    desc: "Пройти 1 уровень",
+    desc: "Пройти один уровень",
     test: (p) => p.stats.levelsCompleted >= 1,
   },
   {
@@ -585,7 +597,7 @@ const ACHIEVEMENTS = [
   },
   { id: "combo5", icon: "×5", title: "На волне", desc: "Сделать комбо ×5", test: (p) => (p.stats.maxDragCombo || 0) >= 5 },
   { id: "special5", icon: "◆", title: "Особый случай", desc: "Пройти 5 особых уровней", test: (p) => (p.stats.specialCompleted || 0) >= 5 },
-  { id: "chapter1", icon: "Ⅰ", title: "Первая глава", desc: "Полностью пройти 1 главу", test: (p) => completedChapterCount(p) >= 1 },
+  { id: "chapter1", icon: "Ⅰ", title: "Первая глава", desc: "Полностью пройти одну главу", test: (p) => completedChapterCount(p) >= 1 },
   { id: "chapter3", icon: "Ⅲ", title: "Книжный червь", desc: "Полностью пройти 3 главы", test: (p) => completedChapterCount(p) >= 3 },
   { id: "chapter5", icon: "Ⅴ", title: "Большая история", desc: "Полностью пройти 5 глав", test: (p) => completedChapterCount(p) >= 5 },
   { id: "chapterPerfect1", icon: "♛", title: "Идеальная глава", desc: "Получить 30/30 ★ в одной главе", rare: true, test: (p) => perfectChapterCount(p) >= 1 },

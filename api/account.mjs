@@ -1,7 +1,8 @@
-import { cloudProfileVersion, currentSession, json, mergeCloudProfile, readCloudProfile, sameOrigin } from "./_auth-lib.mjs";
+import { checkRateLimit, cloudProfileVersion, currentSession, json, mergeCloudProfile, readCloudProfile, sameOrigin } from "./_auth-lib.mjs";
 
 export async function GET(request) {
   try {
+    if (!(await checkRateLimit(request, "account-read", 300, 900))) return json({ error: "rate_limited" }, 429);
     const session = await currentSession(request);
     if (!session) return json({ error: "unauthorized" }, 401);
     const [profile, version] = await Promise.all([readCloudProfile(session.userId), cloudProfileVersion(session.userId)]);
@@ -16,6 +17,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     if (!sameOrigin(request)) return json({ error: "bad_origin" }, 403);
+    if (!(await checkRateLimit(request, "account-sync", 180, 900))) return json({ error: "rate_limited" }, 429);
     const session = await currentSession(request);
     if (!session) return json({ error: "unauthorized" }, 401);
     const body = await request.json().catch(() => ({}));

@@ -70,14 +70,14 @@ function weeklyMarkup() {
   const w = weeklyProgress(), daysLeft = typeof daysUntilWeekEnd === "function" ? daysUntilWeekEnd() : 0;
   return `<section class="weekly-card ${w.completed ? "done" : ""}">
     <div class="weekly-icon">${w.def.icon}</div>
-    <div class="weekly-copy"><small>НЕДЕЛЬНОЕ ИСПЫТАНИЕ</small><b>${w.def.title}</b><span>${w.def.desc}</span><div class="weekly-progress"><i style="width:${w.ratio * 100}%"></i></div><em>${w.value}/${w.goal}${w.completed ? ` · выполнено ✓ · +${w.def.rewardXp || 0} XP` : ` · ${daysLeft ? `осталось ${daysLeft} дн.` : "последний день"}`}</em></div>
+    <div class="weekly-copy"><small>НЕДЕЛЬНОЕ ИСПЫТАНИЕ</small><b>${w.def.title}</b><span>${w.def.desc}</span><div class="weekly-progress"><i style="width:${w.ratio * 100}%"></i></div><em>${w.value}/${w.goal}${w.completed ? ` · выполнено ✓ · +${w.def.rewardXp || 0} XP` : ` · ${daysLeft ? `осталось ${ruCount(daysLeft, "день", "дня", "дней")}` : "последний день"}`}</em></div>
   </section>`;
 }
 function monthlyMarkup() {
   const m = monthlyProgress(), daysLeft = typeof daysUntilMonthEnd === "function" ? daysUntilMonthEnd() : 0;
   return `<section class="weekly-card monthly-card ${m.completed ? "done" : ""}">
     <div class="weekly-icon monthly-icon">${m.def.icon}</div>
-    <div class="weekly-copy"><small>МЕСЯЧНОЕ ИСПЫТАНИЕ</small><b>${m.def.title}</b><span>${m.def.desc}</span><div class="weekly-progress"><i style="width:${m.ratio * 100}%"></i></div><em>${m.value}/${m.goal}${m.completed ? ` · выполнено ✓ · +${m.def.rewardXp || 0} XP` : ` · осталось ${daysLeft} дн.`}</em></div>
+    <div class="weekly-copy"><small>МЕСЯЧНОЕ ИСПЫТАНИЕ</small><b>${m.def.title}</b><span>${m.def.desc}</span><div class="weekly-progress"><i style="width:${m.ratio * 100}%"></i></div><em>${m.value}/${m.goal}${m.completed ? ` · выполнено ✓ · +${m.def.rewardXp || 0} XP` : ` · осталось ${ruCount(daysLeft, "день", "дня", "дней")}`}</em></div>
   </section>`;
 }
 function modesTabMarkup() {
@@ -87,7 +87,7 @@ function modesTabMarkup() {
     marathon: { description: "Только идеальные расклады продолжают серию", meta: `Рекорд: ${profile.stats.bestMarathon || 0}` },
     zen: { description: "Бесконечные расклады без давления", meta: "Для спокойной игры" },
     duel: { description: "Одинаковый расклад для двух игроков", meta: "Серия до 2 побед" },
-    pictures: { description: "Тематические расклады только с картинками", meta: `${ASSOCIATION_COLLECTION_DEFS.length} наборов` },
+    pictures: { description: "Тематические расклады только с картинками", meta: ruCount(ASSOCIATION_COLLECTION_DEFS.length, "набор", "набора", "наборов") },
     time: { description: "Успей собрать расклад до конца обратного отсчёта", meta: "Таймер идёт назад" },
     moves: { description: "Собери расклад, не превысив лимит ходов", meta: "Лимит зависит от расклада" },
     combo: { description: "Достигни заданного множителя комбо", meta: "Цель показывается в игре" },
@@ -137,14 +137,19 @@ function progressTabMarkup() {
   }
   const duelStats = typeof syncDuelStats === "function" ? syncDuelStats() : { total: profile.stats.duelMatches || 0, wins: profile.stats.duelWins || 0 };
   const statsItems = [
-    [profile.stats.levelsCompleted, "уровней"], [profile.stats.gamesPlayed || 0, "партий"],
-    [discoveredCount, "категорий"], [profile.stats.tripleStarWins, "★★★"],
-    [profile.stats.totalMoves || 0, "ходов"], [profile.stats.personalRecords || 0, "рекордов"],
-    [`×${profile.stats.maxDragCombo || 0}`, "комбо"], [profile.stats.bestMarathon || 0, "марафон"],
-    [chaptersDone, "глав"], [perfectChapters, "идеальных глав"],
+    [profile.stats.levelsCompleted, ruPlural(profile.stats.levelsCompleted, "уровень", "уровня", "уровней")],
+    [profile.stats.gamesPlayed || 0, ruPlural(profile.stats.gamesPlayed || 0, "партия", "партии", "партий")],
+    [discoveredCount, ruPlural(discoveredCount, "категория", "категории", "категорий")], [profile.stats.tripleStarWins, "★★★"],
+    [profile.stats.totalMoves || 0, ruPlural(profile.stats.totalMoves || 0, "ход", "хода", "ходов")],
+    [profile.stats.personalRecords || 0, ruPlural(profile.stats.personalRecords || 0, "рекорд", "рекорда", "рекордов")],
+    [`×${profile.stats.maxDragCombo || 0}`, "комбо"], [profile.stats.bestMarathon || 0, ruPlural(profile.stats.bestMarathon || 0, "расклад подряд", "расклада подряд", "раскладов подряд")],
+    [chaptersDone, ruPlural(chaptersDone, "глава", "главы", "глав")],
+    [perfectChapters, `${ruPlural(perfectChapters, "идеальная", "идеальные", "идеальных")} ${ruPlural(perfectChapters, "глава", "главы", "глав")}`],
     [typeof playerXpLevel === "function" ? playerXpLevel(profile) : 1, "ранг"], [profile.xp || 0, "XP"],
-    [profile.stats.masteredCategories || 0, "освоено"], [profile.stats.bonusObjectivesCompleted || 0, "бонусов"],
-    [duelStats.total || 0, "дуэлей"], [duelStats.wins || 0, "побед в дуэлях"],
+    [profile.stats.masteredCategories || 0, ruPlural(profile.stats.masteredCategories || 0, "категория освоена", "категории освоены", "категорий освоено")],
+    [profile.stats.bonusObjectivesCompleted || 0, ruPlural(profile.stats.bonusObjectivesCompleted || 0, "бонус", "бонуса", "бонусов")],
+    [duelStats.total || 0, ruPlural(duelStats.total || 0, "дуэль", "дуэли", "дуэлей")],
+    [duelStats.wins || 0, `${ruPlural(duelStats.wins || 0, "победа", "победы", "побед")} в дуэлях`],
   ];
   const statsContent = `<div class="stats-grid expanded">${statsItems.map(([value,label])=>statBoxMarkup(value,label)).join("")}</div>`;
   const currentChapter = chapterInfo(profile.currentLevel || 1);
@@ -163,7 +168,7 @@ function progressTabMarkup() {
 function categoryDetailMarkup(cat) {
   if (!cat) return `<div class="empty-state">Выбери открытую категорию</div>`;
   const stat = categoryStat(cat.id), known = new Set(stat.words || []), completions = stat.completions || 0, mastery = typeof categoryMasteryData === "function" ? categoryMasteryData(cat.id) : {ratio:known.size/cat.words.length,mastered:false};
-  return `<article class="encyclopedia-detail ${mastery.mastered?"mastered":""}"><div class="encyclopedia-title"><span style="--cat:${catHue(cat.id)}">${mastery.mastered?"★":cat.title.slice(0,1)}</span><div><b>${cat.title}</b><small>${mastery.mastered?"Категория освоена ★":`${known.size}/${cat.words.length} слов встречено`}</small></div></div>
+  return `<article class="encyclopedia-detail ${mastery.mastered?"mastered":""}"><div class="encyclopedia-title"><span style="--cat:${catHue(cat.id)}">${mastery.mastered?"★":cat.title.slice(0,1)}</span><div><b>${cat.title}</b><small>${mastery.mastered?"Категория освоена ★":`Открыто: ${known.size}/${cat.words.length}`}</small></div></div>
     <div class="mastery-progress"><i style="width:${mastery.ratio*100}%"></i><span>${known.size}/${cat.words.length}</span></div>
     <div class="encyclopedia-meta"><span>Встречалась <b>${stat.encounters || 0}</b> раз</span><span>Собрана <b>${completions}</b> раз</span><span>Впервые: <b>${stat.firstLevel || "—"}</b></span></div>
     <div class="word-collection">${cat.words.map((w)=>`<span class="${known.has(w)?"known":"unknown"}">${known.has(w)?w:"???"}</span>`).join("")}</div></article>`;
@@ -179,7 +184,7 @@ function visualCategoryDetailMarkup(id) {
     completions = stat.completions || (legacyCompleted ? 1 : 0);
   if (!discovered) return `<div class="empty-state">Эта категория картинок ещё не встречалась</div>`;
   return `<article class="encyclopedia-detail visual-encyclopedia-detail">
-    <div class="encyclopedia-title"><span class="visual-category-icon">${info.collection.icon}</span><div><b>${escapeHtml(info.category.title)}</b><small>${escapeHtml(info.collection.name)} · ${known.size}/${visual.words.length} картинок встречено</small></div></div>
+    <div class="encyclopedia-title"><span class="visual-category-icon">${info.collection.icon}</span><div><b>${escapeHtml(info.category.title)}</b><small>${escapeHtml(info.collection.name)} · Открыто: ${known.size}/${visual.words.length}</small></div></div>
     <div class="mastery-progress"><i style="width:${Math.min(1, known.size / Math.max(1, visual.words.length)) * 100}%"></i><span>${known.size}/${visual.words.length}</span></div>
     <div class="encyclopedia-meta"><span>Встречалась <b>${stat.encounters || 0}</b> раз</span><span>Собрана <b>${stat.completions || 0}</b> раз</span><span>Впервые: <b>${escapeHtml(stat.firstLevel || "—")}</b></span></div>
     <div class="picture-collection">${info.category.cards.map(([emoji,label])=>`<span class="${known.has(emoji)?"known":"unknown"}" title="${known.has(emoji)?escapeHtml(label):"Не открыто"}">${known.has(emoji)?emoji:"❔"}</span>`).join("")}</div>
@@ -192,7 +197,7 @@ function associationCollectionCardsMarkup() {
       <span class="association-collection-preview">${samples.map((cat) => `<i title="${escapeHtml(cat.title)}">${cat.cards[0][0]}</i>`).join("")}</span>
       <span class="association-collection-copy"><b>${collection.icon} ${collection.name}</b><small>${escapeHtml(collection.desc)}</small></span>
       <span class="association-collection-progress"><i style="width:${progress.total ? (progress.completed / progress.total) * 100 : 0}%"></i></span>
-      <span class="association-collection-meta">${progress.completed}/${progress.total} категорий${progress.completed === progress.total ? " · освоено ✓" : " · играть →"}</span>
+      <span class="association-collection-meta">${progress.completed}/${progress.total} ${ruPlural(progress.total, "категория", "категории", "категорий")}${progress.completed === progress.total ? " · освоено ✓" : " · играть →"}</span>
     </button>`;
   }).join("");
 }
@@ -286,7 +291,7 @@ function collectionTabMarkup() {
   if(!hubVisualCategoryId||!pictureDiscovered.has(hubVisualCategoryId))hubVisualCategoryId=allAssociationCategories().find((c)=>pictureDiscovered.has(c.id))?.id||null;
   const cat=BANK.find((c)=>c.id===hubCategoryId),tabs=`<div class="encyclopedia-type-tabs"><button class="${hubEncyclopediaType==="words"?"active":""}" data-encyclopedia-tab="words"><b>Слова</b><span>${wordCount}/${BANK.length}</span></button><button class="${hubEncyclopediaType==="pictures"?"active":""}" data-encyclopedia-tab="pictures"><b>Картинки</b><span>${pictureCount}/${pictureTotal}</span></button></div>`,toolbar=encyclopediaToolbarMarkup();
   const words=`<div class="encyclopedia-pane">${categoryDetailMarkup(cat)}${toolbar}${wordEncyclopediaGridMarkup()}</div>`;
-  const pictures=`<div class="encyclopedia-pane"><div class="hub-subhead picture-categories-head"><h4>Категории картинок</h4><small>${pictureCount}/${pictureTotal} открыто</small></div>${visualCategoryDetailMarkup(hubVisualCategoryId)}${toolbar}${pictureEncyclopediaGridMarkup()}</div>`;
+  const pictures=`<div class="encyclopedia-pane"><div class="hub-subhead picture-categories-head"><h4>Категории картинок</h4><small>Открыто: ${pictureCount}/${pictureTotal}</small></div>${visualCategoryDetailMarkup(hubVisualCategoryId)}${toolbar}${pictureEncyclopediaGridMarkup()}</div>`;
   return `<section class="hub-section encyclopedia-shell"><div class="hub-section-head encyclopedia-main-head"><div><h3>Энциклопедия</h3><small>все ассоциации в одном месте</small></div><strong>${totalCount}/${totalCategories}</strong></div>${tabs}${hubEncyclopediaType==="pictures"?pictures:words}</section>`;
 }
 function cardBackMarkup() {
@@ -348,7 +353,7 @@ function openDeveloperMailModal({ markRead = true } = {}) {
   }
   const seen = new Set((profile.developerMailSeen || []).map(String));
   const hasRead = messages.some((message) => seen.has(String(message.id)));
-  list.innerHTML = `<div class="developer-mail-toolbar"><span>${messages.length ? `${messages.length} писем` : "Почта пуста"}</span><button id="developerMailDeleteRead" type="button" ${hasRead ? "" : "disabled"}>Удалить прочитанные</button></div>` + (messages.length ? messages.map((message, index) => `<article class="developer-message ${index === 0 ? "latest" : ""}">
+  list.innerHTML = `<div class="developer-mail-toolbar"><span>${messages.length ? ruCount(messages.length, "письмо", "письма", "писем") : "Почта пуста"}</span><button id="developerMailDeleteRead" type="button" ${hasRead ? "" : "disabled"}>Удалить прочитанные</button></div>` + (messages.length ? messages.map((message, index) => `<article class="developer-message ${index === 0 ? "latest" : ""}">
       <div class="developer-message-meta"><span>${escapeHtml(message.date || "")}</span>${!seen.has(String(message.id)) ? "<b>НОВОЕ</b>" : ""}</div>
       <h3>${escapeHtml(message.title || "Обновление")}</h3>
       <p>${escapeHtml(message.intro || "")}</p>
@@ -495,7 +500,7 @@ function settingsTabMarkup() {
       <button class="notification-test" id="notificationTest" ${profile.settings.notifications && typeof Notification!=="undefined" && Notification.permission==="granted"?"":"disabled"}>Проверить уведомление</button>
       <p class="settings-note">Главный переключатель отключает все системные уведомления. Остальные настройки позволяют отдельно выбрать ответы на дуэли, ежедневный режим и финал недели.</p>`;
   const saveContent = `<div class="save-tools"><button id="exportSave">⇩ Экспорт прогресса</button><button id="importSave">⇧ Импорт прогресса</button></div>`;
-  const bankContent = `<div class="bank-health-grid"><span><b>${report.categories||BANK.length}</b> категорий</span><span><b>${report.words||0}</b> слов</span><span><b>${report.ambiguousWords?.length||0}</b> пересечений</span><span><b>${report.warnings?.length||0}</b> предупреждений</span></div><p>Пересечения автоматически не попадают в один расклад; генератор также проверяет проходимость seed.</p>`;
+  const bankContent = `<div class="bank-health-grid"><span>${ruCount(report.categories||BANK.length, "категория", "категории", "категорий")}</span><span>${ruCount(report.words||0, "слово", "слова", "слов")}</span><span>${ruCount(report.ambiguousWords?.length||0, "пересечение", "пересечения", "пересечений")}</span><span>${ruCount(report.warnings?.length||0, "предупреждение", "предупреждения", "предупреждений")}</span></div><p>Пересечения автоматически не попадают в один расклад; генератор также проверяет проходимость seed.</p>`;
   const tutorialContent = `<button class="wide-secondary" id="hubTutorial">◇ Запустить обучение заново</button>`;
   const stabilityStore = typeof readStabilityState === "function" ? readStabilityState() : {events:[]};
   const restartEvents = (stabilityStore.events || []).filter((x)=>["unexpected_restart","restart_after_background","error","promise","boot_error"].includes(x.kind));

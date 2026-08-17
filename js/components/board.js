@@ -87,11 +87,6 @@ function render() {
     });
     tableau.appendChild(el);
   });
-  const left =
-    state.stock.length +
-    state.waste.length +
-    state.columns.reduce((n, c) => n + c.reduce((m, g) => m + g.cards.length, 0), 0) +
-    state.slots.reduce((n, g) => n + (g ? g.cards.length : 0), 0);
   fitAllCardText();
   if (typeof recordVisibleKnowledge === "function") recordVisibleKnowledge(state);
   $("#level").textContent =
@@ -110,10 +105,8 @@ function render() {
               : ["time","moves","combo","noMistakes","onePass","custom"].includes(state.mode)
                 ? (GAME_MODE_DEFS.find((m)=>m.id===state.mode)?.icon || "◆")
                 : state.level;
-  $("#left").textContent = left;
   $("#progressText").textContent = `${state.completed}/${state.totalCategories}`;
   $("#progressBar").style.width = (state.completed / state.totalCategories) * 100 + "%";
-  $("#starTotal").textContent = profile.totalStars;
   const moveEl = $("#moveCount");
   if (moveEl) moveEl.textContent = state.run?.moves || 0;
   const ruleMetricEl = $("#ruleMetric");
@@ -123,27 +116,17 @@ function render() {
     ruleMetricEl.hidden = !metric;
   }
   const comboXpEl = $("#comboXpStatus");
-  if (comboXpEl) comboXpEl.textContent = typeof comboXpHudText === "function" ? comboXpHudText(state) : "";
+  if (comboXpEl) {
+    const combo = Math.max(0, +(state.run?.maxCombo || 0));
+    const text = combo >= 10 && typeof comboXpHudText === "function" ? comboXpHudText(state) : "";
+    comboXpEl.textContent = text;
+    comboXpEl.hidden = !text;
+  }
   const bonusEl = $("#bonusObjective");
   if (bonusEl) {
     bonusEl.innerHTML = typeof bonusObjectiveMarkup === "function" ? bonusObjectiveMarkup(state) : "";
     bonusEl.hidden = !bonusEl.innerHTML;
   }
-  $("#chapterLabel").textContent = chapter
-    ? `глава ${chapter.number}`
-    : state.mode === "daily"
-      ? "daily"
-      : state.mode === "challenge"
-        ? "дуэль"
-        : state.mode === "marathon"
-          ? `марафон ${state.marathonRound || 1}`
-          : state.mode === "collection"
-            ? associationCollectionById(state.collectionId).name.toLowerCase()
-          : state.mode === "calm"
-            ? "дзен"
-            : ["time","moves","combo","noMistakes","onePass","custom"].includes(state.mode)
-              ? (GAME_MODE_DEFS.find((m)=>m.id===state.mode)?.label || "испытание").toLowerCase()
-              : "прогресс";
   const specialBadge = $("#specialBadge");
   if (state.mode === "regular" && state.special) {
     specialBadge.hidden = false;

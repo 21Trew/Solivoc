@@ -89,8 +89,12 @@ function showPendingWeeklyDigest() {
   if (!data || !modal || profile.weeklyDigest.seenKey === data.key) return false;
   const grid = $("#weeklyDigestGrid");
   if (grid) grid.innerHTML = [
-    ["🎮", data.games, "партий"], ["★", data.levels, "уровней"], ["▦", data.categories, "новых категорий"],
-    ["🏆", data.achievements, "достижений"], ["⚔", data.seriesWins, "серий выиграно"], ["☀", data.daily, "ежедневных"],
+    ["🎮", data.games, ruPlural(data.games, "партия", "партии", "партий")],
+    ["★", data.levels, ruPlural(data.levels, "уровень", "уровня", "уровней")],
+    ["▦", data.categories, `${ruPlural(data.categories, "новая", "новые", "новых")} ${ruPlural(data.categories, "категория", "категории", "категорий")}`],
+    ["🏆", data.achievements, ruPlural(data.achievements, "достижение", "достижения", "достижений")],
+    ["⚔", data.seriesWins, ruPlural(data.seriesWins, "серия выиграна", "серии выиграны", "серий выиграно")],
+    ["☀", data.daily, `${ruPlural(data.daily, "ежедневный", "ежедневных", "ежедневных")} ${ruPlural(data.daily, "расклад", "расклада", "раскладов")}`],
   ].map(([i,v,l])=>`<div><i>${i}</i><b>${v}</b><span>${l}</span></div>`).join("");
   $("#weeklyDigestXp").textContent = `+${data.xp} XP за неделю`;
   modal.classList.add("show");
@@ -183,7 +187,7 @@ function checkVisualCategoryMastery(id, { notify = true } = {}) {
   profile.stats.masteredPictureCategories=(profile.stats.masteredPictureCategories||0)+1;
   awardXp?.(80,`Картинки «${info.category.title}»`,{notifyRank:false});
   track("picture_category_mastered");
-  if(notify)queueAchievementNotifications?.([{icon:info.collection.icon,title:`Освоено: ${info.category.title}`,desc:`Все ${total} картинок открыты · +80 XP`}]);
+  if(notify)queueAchievementNotifications?.([{icon:info.collection.icon,title:`Освоено: ${info.category.title}`,desc:`Открыто: ${ruCount(total, "картинка", "картинки", "картинок")} · +80 XP`}]);
   saveProfile();
   return true;
 }
@@ -202,7 +206,7 @@ function profileShowcaseMarkup() {
 const LEADERBOARD_DEFS = Object.freeze([
   {id:"stars",label:"Звёзды",icon:"★"},{id:"levels",label:"Уровни",icon:"▦"},{id:"daily",label:"Ежедневные",icon:"☀"},
   {id:"marathon",label:"Марафон",icon:"∞"},{id:"combo",label:"Комбо",icon:"×"},{id:"duel",label:"Дуэли",icon:"⚔"},
-  {id:"time",label:"На время",icon:"⏱"},{id:"moves",label:"На ходы",icon:"↯"},{id:"onePass",label:"1 проход",icon:"↻"},
+  {id:"time",label:"На время",icon:"⏱"},{id:"moves",label:"На ходы",icon:"↯"},{id:"onePass",label:"Один проход",icon:"↻"},
 ]);
 function leaderboardValues() {
   const modes=profile.modeStats||{}, stats=profile.stats||{}, challenge=profile.challengeMetrics||{};
@@ -221,8 +225,8 @@ async function syncLeaderboardNonBlocking(force=false){
 }
 function leaderboardValueLabel(board,value){
   if(board==="time")return `${Math.floor(value/60000)}:${String(Math.floor(value/1000)%60).padStart(2,"0")}`;
-  if(board==="moves")return `${value} ход.`;
-  if(board==="duel")return `${value} оч.`;
+  if(board==="moves")return ruCount(value, "ход", "хода", "ходов");
+  if(board==="duel")return ruCount(value, "очко", "очка", "очков");
   if(board==="stars")return `${value} ★`;
   if(board==="combo")return `×${value}`;
   return String(value);
@@ -299,7 +303,7 @@ function activeDuelEntries() {
 function duelHistoryContentMarkup() {
   const groups=duelHistoryGroups();
   return groups.length
-    ? `<div class="duel-history-list">${groups.map(g=>`<button class="duel-profile-row" data-duel-profile="${escapeHtml(g.key)}"><span class="duel-history-avatar">${g.avatar}</span><span class="duel-profile-copy"><b>${escapeHtml(g.name)}</b><small>${g.matches} матч. · ${g.wins}:${g.losses}${g.draws?` · ничьи ${g.draws}`:""}</small><em>Ø ${Math.round(g.moves/Math.max(1,g.matches))} ход. · Ø ${(g.errors/Math.max(1,g.matches)).toFixed(1)} ошибок</em></span><i>›</i></button>`).join("")}</div>`
+    ? `<div class="duel-history-list">${groups.map(g=>{const avgMoves=Math.round(g.moves/Math.max(1,g.matches)),avgErrors=(g.errors/Math.max(1,g.matches)).toLocaleString("ru-RU",{minimumFractionDigits:1,maximumFractionDigits:1});return `<button class="duel-profile-row" data-duel-profile="${escapeHtml(g.key)}"><span class="duel-history-avatar">${escapeHtml(g.avatar || "🙂")}</span><span class="duel-profile-copy"><b>${escapeHtml(g.name)}</b><small>${ruCount(g.matches,"матч","матча","матчей")} · ${g.wins}:${g.losses}${g.draws?` · ${ruCount(g.draws,"ничья","ничьи","ничьих")}`:""}</small><em>В среднем ${ruCount(avgMoves,"ход","хода","ходов")} · ${avgErrors} ошибки</em></span><i>›</i></button>`;}).join("")}</div>`
     : `<div class="empty-state">Полностью завершённые матчи появятся здесь</div>`;
 }
 function closeDuelProfileHistory() {
@@ -309,8 +313,8 @@ function showDuelProfileHistory(key) {
   const group=duelHistoryGroupByKey(key), modal=$("#duelHistoryModal"); if(!group||!modal)return false;
   $("#duelHistoryAvatar").textContent=group.avatar||"🙂";
   $("#duelHistoryName").textContent=group.name||"Друг";
-  $("#duelHistorySummary").textContent=`${group.matches} матч. · ${group.wins} побед · ${group.losses} поражений${group.draws?` · ${group.draws} ничьих`:""}`;
-  $("#duelHistoryMatches").innerHTML=group.entries.sort((a,b)=>b.completedAt-a.completedAt).map((x)=>{const me=x.perspective==="guest"?x.entry.guestResult:x.entry.creatorResult,fr=x.perspective==="guest"?x.entry.creatorResult:x.entry.guestResult,r=challengeOutcome(me,fr),label=r>0?"Победа":r<0?"Поражение":"Ничья",score=challengePerformanceScore(me),friendScore=challengePerformanceScore(fr),date=x.completedAt?new Date(x.completedAt).toLocaleDateString("ru-RU",{day:"2-digit",month:"short"}):"—";return `<article class="duel-history-match ${r>0?"win":r<0?"lose":"draw"}"><div><b>${label}</b><span>${date} · ${x.entry.code}</span></div><small>Ты: ${me.moves} ход. · ${me.errors||0} ошиб. · ${score} оч.<br>${escapeHtml(group.name)}: ${fr.moves} ход. · ${fr.errors||0} ошиб. · ${friendScore} оч.</small></article>`;}).join("");
+  $("#duelHistorySummary").textContent=`${ruCount(group.matches,"матч","матча","матчей")} · ${ruCount(group.wins,"победа","победы","побед")} · ${ruCount(group.losses,"поражение","поражения","поражений")}${group.draws?` · ${ruCount(group.draws,"ничья","ничьи","ничьих")}`:""}`;
+  $("#duelHistoryMatches").innerHTML=group.entries.sort((a,b)=>b.completedAt-a.completedAt).map((x)=>{const me=x.perspective==="guest"?x.entry.guestResult:x.entry.creatorResult,fr=x.perspective==="guest"?x.entry.creatorResult:x.entry.guestResult,r=challengeOutcome(me,fr),label=r>0?"Победа":r<0?"Поражение":"Ничья",score=challengePerformanceScore(me),friendScore=challengePerformanceScore(fr),date=x.completedAt?new Date(x.completedAt).toLocaleDateString("ru-RU",{day:"2-digit",month:"short"}):"—";return `<article class="duel-history-match ${r>0?"win":r<0?"lose":"draw"}"><div><b>${label}</b><span>${date} · ${x.entry.code}</span></div><small>Ты: ${ruCount(me.moves||0,"ход","хода","ходов")} · ${ruCount(me.errors||0,"ошибка","ошибки","ошибок")} · ${ruCount(score,"очко","очка","очков")}<br>${escapeHtml(group.name)}: ${ruCount(fr.moves||0,"ход","хода","ходов")} · ${ruCount(fr.errors||0,"ошибка","ошибки","ошибок")} · ${ruCount(friendScore,"очко","очка","очков")}</small></article>`;}).join("");
   const rematch=$("#duelHistoryRematch"); rematch.onclick=()=>{closeDuelProfileHistory();createChallengeRematch?.(group.last.entry,group.last.perspective);};
   $("#duelHistoryClose").onclick=closeDuelProfileHistory; modal.onclick=(e)=>{if(e.target===modal)closeDuelProfileHistory();};
   modal.classList.add("show");modal.setAttribute("aria-hidden","false");return true;
@@ -322,7 +326,7 @@ function duelsHubMarkup(view="active") {
     : `<div class="empty-state">Активных дуэлей сейчас нет</div>`;
   const medals=syncDuelStats();
   return `<section class="hub-section duels-hub">
-    <div class="hub-section-head"><h3>Дуэли</h3><small>${active.length} активных · ${profiles.length} соперн. · ${completed.length} матч.</small></div>
+    <div class="hub-section-head"><h3>Дуэли</h3><small>${ruCount(active.length,"активная дуэль","активные дуэли","активных дуэлей")} · ${ruCount(profiles.length,"соперник","соперника","соперников")} · ${ruCount(completed.length,"матч","матча","матчей")}</small></div>
     <div class="duel-medal-bar"><span>🥇 <b>${medals.gold}</b></span><span>🥈 <b>${medals.silver}</b></span><span>🥉 <b>${medals.bronze}</b></span><span>XP <b>${medals.duelXp}</b></span><span title="Очки дуэльного рейтинга, не место в таблице">Очки рейтинга <b>${medals.duelRating}</b></span></div>
     <small class="duel-rating-note">Очки рейтинга — твои баллы за медали, а не место среди игроков. Место смотри в «Лидерах».</small>
     <div class="duel-tabs">
@@ -345,13 +349,19 @@ function categoryFilterState(id, type="words") {
 function runQualityAudit() {
   const warnings=[],checks=[];
   const add=(name,ok,detail="")=>{checks.push({name,ok,detail});if(!ok)warnings.push(`${name}${detail?`: ${detail}`:""}`);};
-  add("Словесная база загружена",BANK.length>=100,`${BANK.length} категорий`);
-  add("Картинки расширены",totalVisualCategoryCount()>=150,`${totalVisualCategoryCount()} категорий`);
-  const ids=allAssociationCategories().map((x)=>x.id), unique=new Set(ids); add("ID картинок уникальны",unique.size===ids.length,`${ids.length-unique.size} дублей`);
+  add("Словесная база загружена",BANK.length>=100,ruCount(BANK.length,"категория","категории","категорий"));
+  add("Картинки расширены",totalVisualCategoryCount()>=150,ruCount(totalVisualCategoryCount(),"категория","категории","категорий"));
+  const ids=allAssociationCategories().map((x)=>x.id), unique=new Set(ids); add("ID картинок уникальны",unique.size===ids.length,ruCount(ids.length-unique.size,"дубль","дубля","дублей"));
   const broken=[]; for(const c of ASSOCIATION_COLLECTION_DEFS) for(const cat of c.categories) if(!Array.isArray(cat.cards)||cat.cards.length<5||cat.cards.some((x)=>!x?.[0])) broken.push(`${c.id}/${cat.id}`);
   add("Категории картинок валидны",broken.length===0,broken.slice(0,3).join(", "));
   const domIds=["tableau","slotsAnchor","stock","waste","hub","hubContent","hubNav","modal","profileEditorModal","onboardingModal","weeklyDigestModal"]; const missing=domIds.filter((id)=>!document.getElementById(id)); add("Ключевой UI найден",missing.length===0,missing.join(", "));
   add("Профиль читается",!!profile && !!profile.settings,"profile/settings");
+  const allDomIds=[...document.querySelectorAll("[id]")].map((el)=>el.id), duplicates=[...new Set(allDomIds.filter((id,index)=>allDomIds.indexOf(id)!==index))];
+  add("ID интерфейса уникальны",duplicates.length===0,duplicates.slice(0,5).join(", "));
+  let contiguous=0; while(Number(profile.starsByLevel?.[contiguous+1])>0)contiguous++;
+  add("Прогресс кампании согласован",(+profile.currentLevel||1)===contiguous+1 && (+profile.stats?.levelsCompleted||0)===contiguous && (+profile.stats?.chapterFinalsCompleted||0)===Math.floor(contiguous/CHAPTER_SIZE),`текущий уровень: ${profile.currentLevel} · уровней пройдено: ${profile.stats?.levelsCompleted||0} · глав пройдено: ${profile.stats?.chapterFinalsCompleted||0}`);
+  const pending=profile.pendingRankUp, pendingValid=!pending || ((+pending.level||0)>(+pending.fromLevel||0) && (+pending.level||0)===(typeof playerXpLevel==="function"?playerXpLevel(profile):(+pending.level||0)));
+  add("Ожидающее повышение ранга валидно",pendingValid,pending?`из ${pending.fromLevel} в ${pending.level}`:"");
   add("Генератор доступен",typeof buildGeneratedLevel==="function");
   qualityAuditReport={ok:warnings.length===0,checks,warnings,at:Date.now()};
   window.worditaireQa=qualityAuditReport;
@@ -359,7 +369,7 @@ function runQualityAudit() {
 }
 function qualityAuditMarkup() {
   const r=qualityAuditReport?.checks?.length?qualityAuditReport:runQualityAudit();
-  return `<div class="qa-summary ${r.ok?"ok":"warn"}"><b>${r.ok?"✓ Проверка пройдена":`⚠ ${r.warnings.length} предупреждений`}</b><span>${r.checks.filter(x=>x.ok).length}/${r.checks.length} проверок</span></div><div class="qa-checks">${r.checks.map(x=>`<span class="${x.ok?"ok":"warn"}"><i>${x.ok?"✓":"!"}</i>${escapeHtml(x.name)}${x.detail?`<small>${escapeHtml(x.detail)}</small>`:""}</span>`).join("")}</div>`;
+  return `<div class="qa-summary ${r.ok?"ok":"warn"}"><b>${r.ok?"✓ Проверка пройдена":`⚠ ${ruCount(r.warnings.length,"предупреждение","предупреждения","предупреждений")}`}</b><span>Успешно: ${r.checks.filter(x=>x.ok).length}/${r.checks.length}</span></div><div class="qa-checks">${r.checks.map(x=>`<span class="${x.ok?"ok":"warn"}"><i>${x.ok?"✓":"!"}</i>${escapeHtml(x.name)}${x.detail?`<small>${escapeHtml(x.detail)}</small>`:""}</span>`).join("")}</div>`;
 }
 
 function onboardingAvatarButtons(selected) {
@@ -376,7 +386,10 @@ function onboardingAvatarButtons(selected) {
 function onboardingAvatarPageCount() {
   return Math.max(1, Math.ceil(AVATAR_EMOJIS.length / 8));
 }
+let onboardingAvatarResizeObserver = null;
 function bindOnboardingAvatarScroller(root) {
+  onboardingAvatarResizeObserver?.disconnect?.();
+  onboardingAvatarResizeObserver = null;
   const rail = root?.querySelector?.(".onboarding-avatar-grid"),
     prev = root?.querySelector?.("[data-avatar-scroll=prev]"),
     next = root?.querySelector?.("[data-avatar-scroll=next]"),
@@ -489,8 +502,8 @@ function bindOnboardingAvatarScroller(root) {
   renderDots();
   requestAnimationFrame(()=>setPage(page, false));
   if (window.ResizeObserver) {
-    const ro = new ResizeObserver(()=>setPage(page, false));
-    ro.observe(rail);
+    onboardingAvatarResizeObserver = new ResizeObserver(()=>setPage(page, false));
+    onboardingAvatarResizeObserver.observe(rail);
   }
 }
 function runFirstRunOnboarding() {

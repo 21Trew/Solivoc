@@ -1,4 +1,5 @@
 import { pushKey, redis } from "./_push-lib.mjs";
+import { checkRateLimit, sameOrigin } from "./_auth-lib.mjs";
 
 const PUSH_TTL = 60 * 24 * 60 * 60;
 const CLIENT_SET = "worditaire:push:clients";
@@ -8,9 +9,6 @@ function json(data, status = 200) {
     status,
     headers: {
       "Cache-Control": "no-store, max-age=0",
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "Content-Type",
-      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     },
   });
 }
@@ -65,6 +63,8 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    if (!sameOrigin(request)) return json({ error: "forbidden_origin" }, 403);
+    if (!(await checkRateLimit(request, "push-write", 80, 900))) return json({ error: "rate_limited" }, 429);
     const body = await request.json().catch(() => ({})), action = String(body.action || "");
     const clientId = cleanClientId(body.clientId);
     if (!clientId) return json({ error: "invalid_client" }, 400);

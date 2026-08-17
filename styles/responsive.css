@@ -1123,3 +1123,42 @@ body[data-resource-mode="constrained"] .win-modal-card {
 body[data-resource-mode="constrained"] .card {
   transition-property: transform, opacity !important;
 }
+
+/* ===== v21.3 gameplay HUD cleanup (final cascade) ===== */
+.hud [hidden] { display: none !important; }
+.app .hud { gap: 6px; }
+.app .top { min-height: 34px; }
+.app .stats { width: 100%; justify-content: space-between; align-items: center; gap: 8px; overflow: hidden; }
+.app .stats .pill { height: 34px; padding: 0 12px; font-size: 12px; flex: 0 0 auto; }
+.app .stats .pill b { font-size: 13px; }
+.app .progress-wrap { grid-template-columns: minmax(72px, 1fr) auto; gap: 8px; padding-inline: 1px; }
+.app .progress-label { justify-content: flex-end; flex-wrap: nowrap; max-width: min(66vw, 360px); }
+.app .progress-label:not(:has(> :not([hidden]))) { display: none; }
+.app .special-badge,
+.app .rule-metric,
+.app .combo-xp-status {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 1.15;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app .rule-metric { max-width: min(34vw, 180px); color: #d9d5ff; background: #ffffff0a; border: 1px solid #ffffff14; font-weight: 800; }
+.app .bonus-objective-wrap { justify-content: flex-start; }
+.app .bonus-objective-chip { min-height: 30px; padding: 6px 10px; font-size: 11px; white-space: normal; line-height: 1.2; }
+.app .bonus-objective-chip small { display: inline; font-size: 10px; line-height: 1.2; }
+
+@media (max-width: 390px) {
+  .app .stats { gap: 4px; }
+  .app .stats .pill { height: 32px; padding-inline: 9px; font-size: 11px; }
+  .app .stats .pill b { font-size: 12px; }
+  .app .progress-label { max-width: 70vw; }
+  .app .special-badge, .app .rule-metric, .app .combo-xp-status { font-size: 9px; }
+}

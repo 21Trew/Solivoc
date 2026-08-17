@@ -29,7 +29,7 @@ function bindAppEvents() {
     if (autoMoveBusy || categoryAnimating || !history.length) return;
     const limit = state.special?.maxUndos;
     if (Number.isFinite(limit) && state.run.undos >= limit) {
-      feedbackWrongMove([$("#undo")], $("#undo"), `В этом уровне доступно только ${limit} отмена`);
+      feedbackWrongMove([$("#undo")], $("#undo"), `На этом уровне ${ruPlural(limit, "доступна", "доступны", "доступно")} только ${ruCount(limit, "отмена", "отмены", "отмен")}`);
       return;
     }
     const previous = history.pop(),
@@ -190,7 +190,7 @@ function registerPwa() {
   });
 }
 
-let challengeSyncTimer = null, resumeSyncTimer = null, ruleMetricTimer = null, challengeSyncBusy = false;
+let challengeSyncTimer = null, resumeSyncTimer = null, ruleMetricTimer = null, challengeSyncBusy = false, lifecycleHandlersBound = false;
 function activelyPlayingRound() {
   return !!(state && !state.rewarded && !hub?.classList.contains("show"));
 }
@@ -230,43 +230,48 @@ function startChallengeSyncLoop() {
     el.textContent = ruleMetricText(state);
     if (typeof checkActiveRuleFailure === "function") checkActiveRuleFailure();
   }, 500);
-  document.addEventListener("visibilitychange", () => {
-    clearTimeout(resumeSyncTimer);
-    if (document.visibilityState === "hidden") {
-      markStabilityStage?.("hidden");
-      cancelActiveDragForLifecycle?.();
-      cancelAutoMoveForLifecycle?.();
-      pauseActiveRun?.();
-      compactTransientRuntimeForBackground?.();
-      save?.({ immediate: true });
-      flushProfileSave?.({ skipCloud: true });
-      return;
-    }
-    markStabilityStage?.("active");
-    resumeActiveRun?.();
-    resumeAudioForLifecycle?.();
-    scheduleAccountSync?.(1800);
-    // Let WebKit paint the restored board before any optional network work.
-    if (navigator.onLine !== false) resumeSyncTimer = setTimeout(() => syncChallengesNonBlocking(), 1200);
-  });
-  window.addEventListener("pagehide", () => {
-    const priorStage = readStabilityState?.()?.current?.stage;
-    if (priorStage !== "closed") markStabilityStage?.("hidden", { pagehide: true });
-    cancelActiveDragForLifecycle?.(); cancelAutoMoveForLifecycle?.(); pauseActiveRun?.(); compactTransientRuntimeForBackground?.();
-    save?.({ immediate: true }); flushProfileSave?.({ skipCloud: true });
-  });
-  window.addEventListener("pageshow", (event) => {
-    markStabilityStage?.("active", { persisted: !!event.persisted });
-    resumeActiveRun?.(); resumeAudioForLifecycle?.(); scheduleAccountSync?.(1800);
-  });
-  window.addEventListener("freeze", () => {
-    markStabilityStage?.("hidden", { freeze: true });
-    cancelActiveDragForLifecycle?.(); cancelAutoMoveForLifecycle?.(); pauseActiveRun?.(); compactTransientRuntimeForBackground?.();
-    save?.({ immediate: true }); flushProfileSave?.({ skipCloud: true });
-  });
-  window.addEventListener("beforeunload", () => { markStabilityStage?.("closed", { beforeunload: true }); save?.({ immediate: true }); flushProfileSave?.({ skipCloud: true }); });
-  window.addEventListener("error", (event) => markStabilityFault?.("error", event?.message || event?.error?.message));
-  window.addEventListener("unhandledrejection", (event) => markStabilityFault?.("promise", event?.reason?.message || event?.reason));
+  // startChallengeSyncLoop can be called again after a soft re-initialization.
+  // Timers are replaceable; lifecycle listeners are not, so bind them once.
+  if (!lifecycleHandlersBound) {
+    lifecycleHandlersBound = true;
+    document.addEventListener("visibilitychange", () => {
+      clearTimeout(resumeSyncTimer);
+      if (document.visibilityState === "hidden") {
+        markStabilityStage?.("hidden");
+        cancelActiveDragForLifecycle?.();
+        cancelAutoMoveForLifecycle?.();
+        pauseActiveRun?.();
+        compactTransientRuntimeForBackground?.();
+        save?.({ immediate: true });
+        flushProfileSave?.({ skipCloud: true });
+        return;
+      }
+      markStabilityStage?.("active");
+      resumeActiveRun?.();
+      resumeAudioForLifecycle?.();
+      scheduleAccountSync?.(1800);
+      // Let WebKit paint the restored board before any optional network work.
+      if (navigator.onLine !== false) resumeSyncTimer = setTimeout(() => syncChallengesNonBlocking(), 1200);
+    });
+    window.addEventListener("pagehide", () => {
+      const priorStage = readStabilityState?.()?.current?.stage;
+      if (priorStage !== "closed") markStabilityStage?.("hidden", { pagehide: true });
+      cancelActiveDragForLifecycle?.(); cancelAutoMoveForLifecycle?.(); pauseActiveRun?.(); compactTransientRuntimeForBackground?.();
+      save?.({ immediate: true }); flushProfileSave?.({ skipCloud: true });
+    });
+    window.addEventListener("pageshow", (event) => {
+      markStabilityStage?.("active", { persisted: !!event.persisted });
+      resumeActiveRun?.(); resumeAudioForLifecycle?.(); scheduleAccountSync?.(1800);
+    });
+    window.addEventListener("freeze", () => {
+      markStabilityStage?.("hidden", { freeze: true });
+      cancelActiveDragForLifecycle?.(); cancelAutoMoveForLifecycle?.(); pauseActiveRun?.(); compactTransientRuntimeForBackground?.();
+      save?.({ immediate: true }); flushProfileSave?.({ skipCloud: true });
+    });
+    window.addEventListener("beforeunload", () => { markStabilityStage?.("closed", { beforeunload: true }); save?.({ immediate: true }); flushProfileSave?.({ skipCloud: true }); });
+    window.addEventListener("error", (event) => markStabilityFault?.("error", event?.message || event?.error?.message));
+    window.addEventListener("unhandledrejection", (event) => markStabilityFault?.("promise", event?.reason?.message || event?.reason));
+  }
 }
 
 async function fetchServerBootstrap() {

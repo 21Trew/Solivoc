@@ -1,7 +1,7 @@
 import {
   checkRateLimit, cleanEmail, cloudProfileVersion, createSession, currentSession, deleteSession,
   emailKey, hashSecret, json, mergeCloudProfile, newRecoveryCode, newUserId, readCloudProfile, readJsonKey,
-  sameOrigin, sessionCookie, userKey, validPassword, verifySecret, writeJsonKey
+  profileKey, profileVersionKey, sameOrigin, sessionCookie, userKey, validPassword, verifySecret, writeJsonKey
 } from "./_auth-lib.mjs";
 import { redis } from "./_push-lib.mjs";
 
@@ -11,6 +11,7 @@ function publicUser(user) {
 
 export async function GET(request) {
   try {
+    if (!(await checkRateLimit(request, "auth-read", 300, 900))) return json({ error: "rate_limited" }, 429);
     const session = await currentSession(request);
     if (!session) return json({ authenticated: false }, 401);
     const [profile, version] = await Promise.all([readCloudProfile(session.userId), cloudProfileVersion(session.userId)]);
@@ -62,7 +63,14 @@ export async function POST(request) {
         const token = await createSession(userId, user.sessionVersion);
         return json({ ok: true, user: publicUser(user), profile: merged.profile, version: merged.version, recoveryCode }, 201, { "Set-Cookie": sessionCookie(token) });
       } catch (error) {
-        await redis(["DEL", emailKey(email)]).catch(() => {});
+        // Registration spans several Redis keys. If any later step fails,
+        // remove the reservation and any partially-created account/profile.
+        await Promise.allSettled([
+          redis(["DEL", emailKey(email)]),
+          redis(["DEL", userKey(userId)]),
+          redis(["DEL", profileKey(userId)]),
+          redis(["DEL", profileVersionKey(userId)]),
+        ]);
         throw error;
       }
     }
