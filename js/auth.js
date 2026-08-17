@@ -255,13 +255,18 @@ async function completePendingServerLogout() {
   } catch { return false; }
 }
 
-function scheduleAccountSync(delay = 2600) {
-  if (accountApplyingCloud || !accountSignedIn() || !accountCanUseServer()) return;
+function scheduleAccountSync(delay = 5000) {
+  if (accountApplyingCloud || !accountSignedIn() || !accountCanUseServer() || document.visibilityState === "hidden") return;
   clearTimeout(accountSyncTimer);
-  accountSyncTimer = setTimeout(() => flushAccountSync(), delay);
+  const playing = typeof activelyPlayingRound === "function" && activelyPlayingRound();
+  accountSyncTimer = setTimeout(() => flushAccountSync(), Math.max(delay, playing ? 12000 : 1800));
 }
 async function flushAccountSync({ keepalive = false } = {}) {
-  if (accountSyncBusy || !accountSignedIn() || !accountCanUseServer()) return false;
+  if (accountSyncBusy || !accountSignedIn() || !accountCanUseServer() || document.visibilityState === "hidden") return false;
+  if (!keepalive && typeof activelyPlayingRound === "function" && activelyPlayingRound()) {
+    scheduleAccountSync(12000);
+    return false;
+  }
   accountSyncBusy = true;
   clearTimeout(accountSyncTimer);
   try {
@@ -397,6 +402,9 @@ function bindAccountUi() {
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && modal?.classList.contains("show")) closeAccountModal(); });
   window.addEventListener("online", async () => { if (accountState.pendingLogout) await completePendingServerLogout(); if (accountSignedIn()) scheduleAccountSync(350); updateAccountModalIfOpen(); });
   window.addEventListener("offline", updateAccountModalIfOpen);
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushAccountSync({ keepalive: true }); });
-  window.addEventListener("pagehide", () => flushAccountSync({ keepalive: true }));
+  document.addEventListener("visibilitychange", () => {
+    // Do not start a cloud request while iOS is suspending the PWA. The local
+    // save is authoritative offline; upload it after the app becomes visible.
+    if (document.visibilityState === "visible") scheduleAccountSync(1800);
+  });
 }

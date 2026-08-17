@@ -209,23 +209,28 @@ function legacyDecodeChallengeCode(code) {
     return null;
   }
 }
-async function challengeApi(method, path = "", body = null, { keepalive = false } = {}) {
-  const response = await fetch(`${CHALLENGE_API}${path}`, {
-    method,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-    cache: "no-store",
-    keepalive,
-  });
-  let data = null;
-  try { data = await response.json(); } catch {}
-  if (!response.ok) {
-    const error = new Error(data?.message || data?.error || `Challenge API ${response.status}`);
-    error.status = response.status;
-    error.code = data?.code;
-    throw error;
-  }
-  return data || {};
+async function challengeApi(method, path = "", body = null, { keepalive = false, timeout = 6500 } = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Math.max(1200, timeout));
+  try {
+    const response = await fetch(`${CHALLENGE_API}${path}`, {
+      method,
+      headers: body ? { "Content-Type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+      cache: "no-store",
+      keepalive,
+      signal: controller.signal,
+    });
+    let data = null;
+    try { data = await response.json(); } catch {}
+    if (!response.ok) {
+      const error = new Error(data?.message || data?.error || `Challenge API ${response.status}`);
+      error.status = response.status;
+      error.code = data?.code;
+      throw error;
+    }
+    return data || {};
+  } finally { clearTimeout(timer); }
 }
 function cleanChallengeResult(result = {}) {
   return {
@@ -964,6 +969,7 @@ function importProgress() {
       if (data.state?.columns) localStorage.setItem(SAVE_KEY, JSON.stringify(data.state));
       if (data.analytics) localStorage.setItem(ANALYTICS_KEY, JSON.stringify(data.analytics));
       showToast("Прогресс импортирован. Перезапускаю…");
+      markStabilityStage?.("importing");
       setTimeout(() => location.reload(), 550);
     } catch {
       showToast("Не удалось импортировать сохранение");

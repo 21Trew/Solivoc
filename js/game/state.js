@@ -54,13 +54,21 @@ function restartCurrentLevel() {
   if (state.mode === "regular" && state.riskDeal) return makeLevel(state.level, { mode: "regular", seed: `level:${state.level}:retry:${Date.now()}`, cardSourceMode: state.cardSourceMode, categoryCooldownIds: state.categoryCooldownIds, specialIntro: false, forceSolvable: true });
   return makeLevel(state.level, { mode: state.mode, seed: state.seed, cardSourceMode: state.cardSourceMode, categoryCooldownIds: state.categoryCooldownIds, specialIntro: false, customRules: state.customRules || null });
 }
-const MAX_UNDO_SNAPSHOTS = 24;
+const MAX_UNDO_SNAPSHOTS = 10;
 let stateSaveTimer = null, lastPersistedStateJson = "", lastBackupAt = 0;
 function snapshot() {
-  return structuredClone(state);
+  try { return JSON.stringify(state); } catch { return null; }
+}
+function restoreHistorySnapshot(value) {
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    return normalizeState(parsed);
+  } catch { return null; }
 }
 function pushHistory() {
-  history.push(snapshot());
+  const snap = snapshot();
+  if (!snap) return;
+  history.push(snap);
   if (history.length > MAX_UNDO_SNAPSHOTS) history.splice(0, history.length - MAX_UNDO_SNAPSHOTS);
 }
 function persistStateNow() {
@@ -80,9 +88,9 @@ function persistStateNow() {
           catch { throw error; }
         }
         lastPersistedStateJson = json;
+        checkpointStabilityRuntime?.();
       }
     }
-    saveProfile();
     return true;
   } catch (err) {
     console.warn("save failed", err);
@@ -93,7 +101,7 @@ function save(options = {}) {
   const immediate = options === true || options?.immediate === true;
   if (immediate) return persistStateNow();
   clearTimeout(stateSaveTimer);
-  stateSaveTimer = setTimeout(persistStateNow, 220);
+  stateSaveTimer = setTimeout(persistStateNow, 480);
   return true;
 }
 function scheduleSave() { return save(); }

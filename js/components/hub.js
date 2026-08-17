@@ -497,7 +497,9 @@ function settingsTabMarkup() {
   const saveContent = `<div class="save-tools"><button id="exportSave">⇩ Экспорт прогресса</button><button id="importSave">⇧ Импорт прогресса</button></div>`;
   const bankContent = `<div class="bank-health-grid"><span><b>${report.categories||BANK.length}</b> категорий</span><span><b>${report.words||0}</b> слов</span><span><b>${report.ambiguousWords?.length||0}</b> пересечений</span><span><b>${report.warnings?.length||0}</b> предупреждений</span></div><p>Пересечения автоматически не попадают в один расклад; генератор также проверяет проходимость seed.</p>`;
   const tutorialContent = `<button class="wide-secondary" id="hubTutorial">◇ Запустить обучение заново</button>`;
-  const diagnosticsContent = `${typeof qualityAuditMarkup==="function"?qualityAuditMarkup():""}<div class="analytics-health"><b>Аналитика</b><span>Локальные события: ${(()=>{try{return JSON.parse(localStorage.getItem(ANALYTICS_KEY))?.events?.length||0}catch{return 0}})()}</span><small>Анонимные агрегаты отправляются в /api/analytics без имён и текста раскладов.</small></div>`;
+  const stabilityStore = typeof readStabilityState === "function" ? readStabilityState() : {events:[]};
+  const restartEvents = (stabilityStore.events || []).filter((x)=>["unexpected_restart","restart_after_background","error","promise","boot_error"].includes(x.kind));
+  const diagnosticsContent = `${typeof qualityAuditMarkup==="function"?qualityAuditMarkup():""}<div class="analytics-health"><b>Стабильность</b><span>Зафиксировано событий: ${restartEvents.length}</span><small>Если приложение снова перезапустится, диагностика сохранит, произошло ли это в активной игре, после фона или из-за JS-ошибки.</small><button class="wide-secondary" id="copyStabilityDiagnostics" type="button">Скопировать диагностику</button></div><div class="analytics-health"><b>Аналитика</b><span>Локальные события: ${(()=>{try{return JSON.parse(localStorage.getItem(ANALYTICS_KEY))?.events?.length||0}catch{return 0}})()}</span><small>Анонимные агрегаты отправляются в /api/analytics без имён и текста раскладов.</small></div>`;
   return `${collapsibleSectionMarkup("settings-main", "Настройки", "звук, запуск и карты", settingsContent)}
     ${collapsibleSectionMarkup("notifications", "Уведомления", "управление по типам", notificationsContent, "notification-settings")}
     ${collapsibleSectionMarkup("save", "Сохранение", "не потеряй прогресс", saveContent)}
@@ -592,6 +594,7 @@ function bindHubHandlers() {
   on("#weeklyReminderToggle",()=>{profile.settings.weeklyReminders=profile.settings.weeklyReminders===false;saveProfile();syncPushState?.();renderHub();});
   on("#notificationTest",async()=>{const ok=await showSystemNotification?.("Словасьянс", "Тестовое уведомление работает ✓", {tag:"worditaire-test"}); if(!ok) showToast("Не удалось показать уведомление");});
   on("#exportSave",exportProgress); on("#importSave",importProgress);
+  on("#copyStabilityDiagnostics",()=>copyStabilityDiagnostics?.());
   on("#installPwa",async()=>{if(isStandalonePwa())return;if(deferredInstallPrompt){const prompt=deferredInstallPrompt;deferredInstallPrompt=null;await prompt.prompt();const result=await prompt.userChoice.catch(()=>null);track("pwa_prompt",{outcome:result?.outcome||"unknown"});renderHub();}else{const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);showToast(ios?'iPhone: Поделиться → На экран «Домой»':'Открой меню браузера → Установить приложение');}});
 }
 function openHub(tab = null) {
@@ -601,7 +604,7 @@ function openHub(tab = null) {
   hub.classList.add("show");
   setBackgroundMusic("menu");
   track("hub_opened", { tab: hubTab });
-  if (hubTab === "modes") { refreshOwnedChallenges({ notify: true }); refreshReceivedChallenges?.(); }
+  if (hubTab === "modes") syncChallengesNonBlocking?.({ force: true });
 }
 function closeHub() {
   closeCustomRulesModal?.();

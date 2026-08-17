@@ -44,6 +44,7 @@ function tone(freq, duration = 0.08, opts = {}) {
   gain.gain.exponentialRampToValueAtTime(volume, start + Math.min(0.012, duration * 0.25));
   gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
   osc.connect(gain).connect(ctx.destination);
+  osc.onended = () => { try { osc.disconnect(); gain.disconnect(); } catch {} };
   osc.start(start);
   osc.stop(start + duration + 0.025);
 }
@@ -151,6 +152,7 @@ function musicTone(freq, duration, volume, type = "sine", delay = 0) {
   gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, volume * 0.55), start + duration * 0.68);
   gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
   osc.connect(gain).connect(ctx.destination);
+  osc.onended = () => { try { osc.disconnect(); gain.disconnect(); } catch {} };
   osc.start(start);
   osc.stop(start + duration + 0.03);
 }
@@ -204,6 +206,17 @@ function syncBackgroundMusic() {
     return;
   }
   setBackgroundMusic(hub?.classList.contains("show") ? "menu" : musicModeForState());
+}
+
+
+function suspendAudioForLifecycle() {
+  stopBackgroundMusic();
+  try { if (audioCtx?.state === "running") audioCtx.suspend().catch(()=>{}); } catch {}
+}
+function resumeAudioForLifecycle() {
+  try {
+    if (audioCtx?.state === "suspended") audioCtx.resume().then(()=>{ if (musicEnabled() && !document.hidden) syncBackgroundMusic(); }).catch(()=>{});
+  } catch {}
 }
 
 function resetCombo() {
@@ -354,6 +367,7 @@ function markStateChanged() {
   lastDeadlockSignature = "";
   hideDeadlock();
   scheduleSave?.();
+  scheduleProfileSave?.();
   scheduleDeadlockCheck();
 }
 
@@ -376,7 +390,8 @@ function bindFeedbackEvents() {
     hideDeadlock();
     const previous = history.pop(),
       undoCount = (state.run?.undos || 0) + 1;
-    state = normalizeState(previous);
+    state = restoreHistorySnapshot(previous);
+    if (!state) return;
     state.run.undos = undoCount;
     profile.stats.undos++;
     resetCombo();

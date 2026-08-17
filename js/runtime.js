@@ -58,7 +58,8 @@ function haptic(pattern = 10) {
 }
 function burst(strong = false) {
   if (!celebration) return;
-  const n = strong ? 42 : 16;
+  const constrained = typeof stabilityConstrainedMode === "function" && stabilityConstrainedMode();
+  const n = constrained ? (strong ? 18 : 8) : (strong ? 42 : 16);
   for (let i = 0; i < n; i++) {
     const el = document.createElement("i");
     const effect = profile?.effect || "spark";
@@ -78,13 +79,15 @@ function showVictoryCosmeticEffect() {
   if (!celebration || !state || state.failed || state.mode === "tutorial") return;
   const effect = profile?.effect || "spark", icons = {spark:"✦",confetti:"🎉",petals:"🌸",comet:"☄",aurora:"◈",legend:"◆",duel:"⚔",moon:"☾",fireworks:"🎆",ribbons:"🎀",stars:"★","crown-rain":"♛"};
   const wrap=document.createElement("div");wrap.className=`victory-cosmetic effect-${effect}`;wrap.innerHTML=`<b>${icons[effect]||"✦"}</b>`;
-  for(let i=0;i<18;i++){const ray=document.createElement("i");ray.style.setProperty("--vr",`${i*20}deg`);ray.style.setProperty("--vh",String((i*41+35)%360));ray.style.setProperty("--vd",`${(i%6)*.045}s`);wrap.appendChild(ray);}
+  const rayCount = typeof stabilityConstrainedMode === "function" && stabilityConstrainedMode() ? 8 : 18;
+  for(let i=0;i<rayCount;i++){const ray=document.createElement("i");ray.style.setProperty("--vr",`${i*(360/rayCount)}deg`);ray.style.setProperty("--vh",String((i*41+35)%360));ray.style.setProperty("--vd",`${(i%6)*.045}s`);wrap.appendChild(ray);}
   celebration.appendChild(wrap);setTimeout(()=>wrap.remove(),2500);
 }
 
 function confettiRain(strong = false) {
   if (!celebration || motionReduced?.()) return;
-  const n = strong ? 58 : 34;
+  const constrained = typeof stabilityConstrainedMode === "function" && stabilityConstrainedMode();
+  const n = constrained ? (strong ? 20 : 12) : (strong ? 58 : 34);
   for (let i = 0; i < n; i++) {
     const el = document.createElement("i");
     el.className = "confetti-piece";

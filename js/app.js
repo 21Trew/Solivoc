@@ -34,7 +34,8 @@ function bindAppEvents() {
     }
     const previous = history.pop(),
       undoCount = (state.run?.undos || 0) + 1;
-    state = normalizeState(previous);
+    state = restoreHistorySnapshot(previous);
+    if (!state) return;
     state.run.undos = undoCount;
     profile.stats.undos++;
     track("undo", { mode: state.mode });
@@ -47,6 +48,7 @@ function bindAppEvents() {
   $("#restart").onclick = () => {
     if (autoMoveBusy || categoryAnimating) return;
     profile.stats.restarts++;
+    scheduleProfileSave?.();
     noteAdaptiveRestart?.();
     track("level_restarted", { level: state.level, mode: state.mode });
     resetCombo();
@@ -61,6 +63,7 @@ function bindAppEvents() {
     }
     state.run.hints++;
     profile.stats.hints++;
+    scheduleProfileSave?.();
     track("hint_used", { mode: state.mode });
     resetCombo();
     const hint = findHintMove();
@@ -178,6 +181,7 @@ function registerPwa() {
         if (!explicit) return;
         refreshing = true;
         try { sessionStorage.removeItem(updateReloadKey); } catch {}
+        markStabilityStage?.("updating");
         location.reload();
       });
     } catch (err) {
@@ -186,22 +190,39 @@ function registerPwa() {
   });
 }
 
-let challengeSyncTimer = null, resumeSyncTimer = null, ruleMetricTimer = null;
-function syncChallengesNonBlocking() {
-  if (document.visibilityState !== "visible" || navigator.onLine === false) return;
-  const run = () => Promise.allSettled([
-    Promise.resolve(flushPendingChallengeSubmissions?.()),
-    Promise.resolve(refreshOwnedChallenges?.({ notify: true })),
-    Promise.resolve(refreshReceivedChallenges?.()),
-    Promise.resolve(syncPushState?.()),
-  ]);
-  if ("requestIdleCallback" in window) requestIdleCallback(run, { timeout: 1600 });
-  else setTimeout(run, 80);
+let challengeSyncTimer = null, resumeSyncTimer = null, ruleMetricTimer = null, challengeSyncBusy = false;
+function activelyPlayingRound() {
+  return !!(state && !state.rewarded && !hub?.classList.contains("show"));
+}
+function syncChallengesNonBlocking({ force = false } = {}) {
+  if (challengeSyncBusy || document.visibilityState !== "visible" || navigator.onLine === false) return Promise.resolve(false);
+  // Do not poll Redis/Push in the middle of a solitaire round. Results are
+  // refreshed in the hub, after a round and when the app becomes visible.
+  if (!force && activelyPlayingRound()) return Promise.resolve(false);
+  challengeSyncBusy = true;
+  const run = async () => {
+    try {
+      await Promise.allSettled([
+        Promise.resolve(flushPendingChallengeSubmissions?.()),
+        Promise.resolve(refreshOwnedChallenges?.({ notify: true })),
+        Promise.resolve(refreshReceivedChallenges?.()),
+        Promise.resolve(syncPushState?.()),
+      ]);
+      return true;
+    } finally {
+      challengeSyncBusy = false;
+    }
+  };
+  return new Promise((resolve) => {
+    const invoke = () => run().then(resolve, () => resolve(false));
+    if ("requestIdleCallback" in window) requestIdleCallback(invoke, { timeout: 1400 });
+    else setTimeout(invoke, 100);
+  });
 }
 function startChallengeSyncLoop() {
   clearInterval(challengeSyncTimer);
   clearInterval(ruleMetricTimer);
-  challengeSyncTimer = setInterval(syncChallengesNonBlocking, 20000);
+  challengeSyncTimer = setInterval(() => syncChallengesNonBlocking(), 60000);
   ruleMetricTimer = setInterval(() => {
     if (document.visibilityState !== "visible" || !state) return;
     const el = $("#ruleMetric");
@@ -212,30 +233,40 @@ function startChallengeSyncLoop() {
   document.addEventListener("visibilitychange", () => {
     clearTimeout(resumeSyncTimer);
     if (document.visibilityState === "hidden") {
+      markStabilityStage?.("hidden");
       cancelActiveDragForLifecycle?.();
       cancelAutoMoveForLifecycle?.();
       pauseActiveRun?.();
+      compactTransientRuntimeForBackground?.();
       save?.({ immediate: true });
+      flushProfileSave?.({ skipCloud: true });
       return;
     }
+    markStabilityStage?.("active");
     resumeActiveRun?.();
-    // Let the browser paint the restored board before network/Push work starts.
-    if (navigator.onLine !== false) resumeSyncTimer = setTimeout(syncChallengesNonBlocking, 650);
+    resumeAudioForLifecycle?.();
+    scheduleAccountSync?.(1800);
+    // Let WebKit paint the restored board before any optional network work.
+    if (navigator.onLine !== false) resumeSyncTimer = setTimeout(() => syncChallengesNonBlocking(), 1200);
   });
-  window.addEventListener("pagehide", () => { cancelActiveDragForLifecycle?.(); cancelAutoMoveForLifecycle?.(); pauseActiveRun?.(); save?.({ immediate: true }); });
-  window.addEventListener("pageshow", () => { resumeActiveRun?.(); });
-  window.addEventListener("freeze", () => { cancelActiveDragForLifecycle?.(); cancelAutoMoveForLifecycle?.(); pauseActiveRun?.(); save?.({ immediate: true }); });
-  window.addEventListener("beforeunload", () => { save?.({ immediate: true }); });
-  const recordRuntimeFault = (kind, detail = "") => {
-    try {
-      const key = "solivoc-runtime-faults-v1", list = JSON.parse(localStorage.getItem(key) || "[]");
-      list.push({ kind, detail: String(detail || "").slice(0, 240), at: Date.now(), mode: state?.mode || "", level: state?.level || 0 });
-      localStorage.setItem(key, JSON.stringify(list.slice(-8)));
-      save?.({ immediate: true });
-    } catch {}
-  };
-  window.addEventListener("error", (event) => recordRuntimeFault("error", event?.message || event?.error?.message));
-  window.addEventListener("unhandledrejection", (event) => recordRuntimeFault("promise", event?.reason?.message || event?.reason));
+  window.addEventListener("pagehide", () => {
+    const priorStage = readStabilityState?.()?.current?.stage;
+    if (priorStage !== "closed") markStabilityStage?.("hidden", { pagehide: true });
+    cancelActiveDragForLifecycle?.(); cancelAutoMoveForLifecycle?.(); pauseActiveRun?.(); compactTransientRuntimeForBackground?.();
+    save?.({ immediate: true }); flushProfileSave?.({ skipCloud: true });
+  });
+  window.addEventListener("pageshow", (event) => {
+    markStabilityStage?.("active", { persisted: !!event.persisted });
+    resumeActiveRun?.(); resumeAudioForLifecycle?.(); scheduleAccountSync?.(1800);
+  });
+  window.addEventListener("freeze", () => {
+    markStabilityStage?.("hidden", { freeze: true });
+    cancelActiveDragForLifecycle?.(); cancelAutoMoveForLifecycle?.(); pauseActiveRun?.(); compactTransientRuntimeForBackground?.();
+    save?.({ immediate: true }); flushProfileSave?.({ skipCloud: true });
+  });
+  window.addEventListener("beforeunload", () => { markStabilityStage?.("closed", { beforeunload: true }); save?.({ immediate: true }); flushProfileSave?.({ skipCloud: true }); });
+  window.addEventListener("error", (event) => markStabilityFault?.("error", event?.message || event?.error?.message));
+  window.addEventListener("unhandledrejection", (event) => markStabilityFault?.("promise", event?.reason?.message || event?.reason));
 }
 
 async function fetchServerBootstrap() {
@@ -265,6 +296,7 @@ async function syncServerDataOnBoot() {
 
 async function boot() {
   try {
+    initStabilityRuntime?.();
     bindFeedbackEvents();
     bindAppEvents();
     bindRetentionUi?.();
@@ -347,8 +379,10 @@ async function boot() {
 
     flushRemoteAnalytics?.();
     syncLeaderboardNonBlocking?.();
+    markStabilityStage?.("active");
     setTimeout(() => scheduleDeadlockCheck(1000), 300);
   } catch (err) {
+    markStabilityFault?.("boot_error", err?.message || err);
     console.error(err);
     if ($("#splash")) showSplashError?.("Не удалось загрузить игру");
     else showToast("Ошибка запуска игры");

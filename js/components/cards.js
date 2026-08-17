@@ -36,6 +36,22 @@ function fitText(el, min = 6, max = 10) {
   }
 }
 function fitAllCardText(root = document) {
+  const constrained = typeof stabilityConstrainedMode === "function" && stabilityConstrainedMode();
+  if (constrained) {
+    // iOS WebKit pays heavily for the old scrollWidth/scrollHeight fitting loop:
+    // every card caused several forced layouts after each move. Use a cheap
+    // text-length heuristic on constrained devices instead.
+    root.querySelectorAll(".card:not(.face-down):not(.category), .drag-main:not(.category)").forEach((el) => {
+      const len = String(el.textContent || "").trim().length;
+      el.style.fontSize = len >= 15 ? "10px" : len >= 11 ? "11px" : "12.5px";
+    });
+    root.querySelectorAll(".card.category .name.short-title").forEach((el) => { el.style.fontSize = "11.5px"; });
+    root.querySelectorAll(".card.category .name.long-title, .drag-main.category span:first-child").forEach((el) => {
+      const len = String(el.textContent || "").trim().length;
+      el.style.fontSize = len >= 16 ? "9px" : "10.5px";
+    });
+    return;
+  }
   const probe = root.querySelector?.(".card,.drag-main") || document.querySelector(".card"),
     cw = probe?.getBoundingClientRect().width || 54;
   let wordMin = 10,

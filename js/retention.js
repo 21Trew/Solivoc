@@ -573,10 +573,13 @@ function base64UrlToUint8Array(value) {
   return out;
 }
 async function pushApi(body) {
-  const res = await fetch("/api/push",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),cache:"no-store"});
-  const data = await res.json().catch(()=>({}));
-  if (!res.ok) { const err=new Error(data.message||data.error||`Push ${res.status}`); err.status=res.status; throw err; }
-  return data;
+  const controller = new AbortController(), timer = setTimeout(()=>controller.abort(), 5500);
+  try {
+    const res = await fetch("/api/push",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),cache:"no-store",signal:controller.signal});
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok) { const err=new Error(data.message||data.error||`Push ${res.status}`); err.status=res.status; throw err; }
+    return data;
+  } finally { clearTimeout(timer); }
 }
 function pushStatePayload() {
   const w = weeklyProgress();

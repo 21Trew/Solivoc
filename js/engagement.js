@@ -1,7 +1,7 @@
 /* Product polish layer: onboarding, encyclopedia discovery, duel history,
    weekly recap, adaptive difficulty, quality diagnostics and privacy-light analytics. */
 const REMOTE_ANALYTICS_QUEUE_KEY = "worditaire-analytics-queue-v1";
-let remoteAnalyticsTimer = null;
+let remoteAnalyticsTimer = null, remoteAnalyticsBusy = false;
 let qualityAuditReport = { ok: true, checks: [], warnings: [] };
 
 function safeAnalyticsName(value) {
@@ -18,25 +18,28 @@ function queueRemoteAnalytics(name) {
   } catch {}
 }
 async function flushRemoteAnalytics() {
-  if (!/^https?:$/.test(location.protocol)) return false;
+  if (!/^https?:$/.test(location.protocol) || navigator.onLine === false || document.visibilityState === "hidden" || remoteAnalyticsBusy) return false;
+  if (typeof activelyPlayingRound === "function" && activelyPlayingRound()) return false;
   let queue = [];
   try { queue = JSON.parse(localStorage.getItem(REMOTE_ANALYTICS_QUEUE_KEY)) || []; } catch {}
   if (!queue.length) return false;
-  const batch = queue.slice(0, 30);
+  const batch = queue.slice(0, 30), controller = new AbortController(), timer = setTimeout(()=>controller.abort(), 4500);
+  remoteAnalyticsBusy = true;
   try {
     const response = await fetch("/api/analytics", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clientId: profile.analyticsClientId, events: batch }),
       cache: "no-store",
-      keepalive: true,
+      signal: controller.signal,
     });
     if (!response.ok) return false;
     const rest = queue.slice(batch.length);
     localStorage.setItem(REMOTE_ANALYTICS_QUEUE_KEY, JSON.stringify(rest));
-    if (rest.length) remoteAnalyticsTimer = setTimeout(flushRemoteAnalytics, 900);
+    if (rest.length) remoteAnalyticsTimer = setTimeout(flushRemoteAnalytics, 1400);
     return true;
   } catch { return false; }
+  finally { clearTimeout(timer); remoteAnalyticsBusy = false; }
 }
 
 function retentionMetricsSnapshot() {
@@ -520,6 +523,6 @@ function runFirstRunOnboarding() {
 
 function bindEngagementUi() {
   const close=$("#weeklyDigestClose"), next=$("#weeklyDigestNext"); if(close)close.onclick=closeWeeklyDigest;if(next)next.onclick=closeWeeklyDigest;
-  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")flushRemoteAnalytics();});
-  window.addEventListener("pagehide",()=>flushRemoteAnalytics());
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")setTimeout(()=>flushRemoteAnalytics(),1400);});
+  window.addEventListener("online",()=>setTimeout(()=>flushRemoteAnalytics(),900));
 }

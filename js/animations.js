@@ -11,6 +11,13 @@ function animateInitialDeal() {
   initialDealPending = false;
   const cards = [...tableau.querySelectorAll(".card"), ...slotsAnchor.querySelectorAll(".card")];
   if (!cards.length || motionReduced()) return;
+  if (typeof stabilityConstrainedMode === "function" && stabilityConstrainedMode()) {
+    // Do not create dozens of concurrent Web Animations + delayed audio nodes on
+    // iOS standalone. The board is shown immediately and remains responsive.
+    dealAnimating = false;
+    stockEl.classList.remove("deal-pulse");
+    return;
+  }
   const token = ++dealAnimationToken;
   dealAnimating = true;
   const origin = stockEl.getBoundingClientRect(),

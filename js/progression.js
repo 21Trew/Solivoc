@@ -249,7 +249,9 @@ function finishLevel() {
   if (typeof updateWeeklyChallenge === "function") updateWeeklyChallenge();
   if (typeof updateMonthlyChallenge === "function") updateMonthlyChallenge();
   newAchievements = checkAchievements();
+  flushProfileSave?.({ skipCloud: true });
   save();
+  scheduleAccountSync?.(1800);
   if (typeof syncPushState === "function") syncPushState();
   syncLeaderboardNonBlocking?.();
   showWin(stars, newAchievements, record, bonusDone);
@@ -260,7 +262,7 @@ function finishFailedRun(reason="Ошибка") {
   if(state.mode!=="tutorial"){profile.stats.gamesPlayed=(profile.stats.gamesPlayed||0)+1;profile.stats.totalMoves=(profile.stats.totalMoves||0)+(state.run.moves||0);recordDailyModeGame?.(state);}
   if(state.mode==="challenge"){profile.stats.challengesCompleted=(profile.stats.challengesCompleted||0)+1;if(state.challengeRole==="creator")recordCreatorChallengeResult(state,0);else if(state.challengeRole==="guest")enqueueGuestChallengeSubmission(state,0);}
   if(state.mode==="marathon")profile.activeMarathon=null;
-  track("run_failed",{mode:state.mode,reason,moves:state.run.moves||0}); checkAchievements(); save(); showWin(0,[],null,false); resetCombo();
+  track("run_failed",{mode:state.mode,reason,moves:state.run.moves||0}); checkAchievements(); flushProfileSave?.({ skipCloud: true }); save(); scheduleAccountSync?.(1800); showWin(0,[],null,false); resetCombo();
 }
 
 function showWin(stars, newAchievements = [], record = null, bonusDone = false) {

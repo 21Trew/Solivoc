@@ -290,7 +290,10 @@ function applyFrame(id) {
   profile.frame = def && frameUnlocked(def) ? def.id : "none";
   document.body.dataset.profileFrame = profile.frame;
 }
+let profileSaveTimer = null;
 function saveProfile(options = {}) {
+  clearTimeout(profileSaveTimer);
+  profileSaveTimer = null;
   recomputeStars();
   try {
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
@@ -304,6 +307,15 @@ function saveProfile(options = {}) {
   applyFrame(profile.frame);
   applySoundPack(profile.soundPack);
   if (!options.skipCloud && typeof scheduleAccountSync === "function") scheduleAccountSync();
+}
+function scheduleProfileSave(delay = 2200) {
+  clearTimeout(profileSaveTimer);
+  profileSaveTimer = setTimeout(() => saveProfile(), Math.max(400, delay));
+}
+function flushProfileSave(options = {}) {
+  clearTimeout(profileSaveTimer);
+  profileSaveTimer = null;
+  return saveProfile(options);
 }
 function track(name, data = {}) {
   try {

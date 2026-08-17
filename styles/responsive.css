@@ -1108,3 +1108,18 @@ body[data-card-back] .card.face-down::after { content:var(--selected-back-mark) 
 .cosmetic-section[data-cosmetic-section="frames"]:not(.expanded) .cosmetic-clip{max-height:171px}
 .cosmetic-section[data-cosmetic-section="effects"]:not(.expanded) .cosmetic-clip{max-height:187px}
 .cosmetic-section[data-cosmetic-section="sounds"]:not(.expanded) .cosmetic-clip{max-height:179px}
+
+
+/* iOS/PWA stability budget: keep the gradients, remove GPU-expensive live blur layers. */
+body[data-resource-mode="constrained"] * {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+body[data-resource-mode="constrained"] .drag-ghost,
+body[data-resource-mode="constrained"] .card,
+body[data-resource-mode="constrained"] .win-modal-card {
+  will-change: auto !important;
+}
+body[data-resource-mode="constrained"] .card {
+  transition-property: transform, opacity !important;
+}
