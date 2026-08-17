@@ -54,7 +54,7 @@ async function animateAutoMove(card, payload, target) {
     return;
   }
   const reduced = motionReduced(),
-    duration = reduced ? 80 : 215,
+    duration = reduced ? 70 : 145,
     flies = sources.map((source, i) => {
       const r = source.getBoundingClientRect(),
         fly = source.cloneNode(true);
@@ -97,7 +97,7 @@ async function animateAutoMove(card, payload, target) {
   state.run.autoMoves++;
   profile.stats.autoMoves++;
   track("auto_move", { mode: state.mode });
-  const moved = performDrop(payload, target, { comboEligible: false });
+  const moved = performDrop(payload, target, { comboEligible: true, comboSource: "auto" });
   if (!moved) {
     sources.forEach((n) => n.classList.remove("auto-source"));
     setSourceVacancy(vacancyNodes, false);
@@ -146,6 +146,7 @@ function startDrag(e) {
   const card = e.target.closest(".card.movable");
   if (!card) return;
   e.preventDefault();
+  try { card.setPointerCapture?.(e.pointerId); } catch {}
   const payload = getDragPayload(card);
   if (!payload) return;
   const sourceNodes = sourceNodesForPayload(payload, card).filter((n) => n?.isConnected);
@@ -197,7 +198,7 @@ function moveDrag(e) {
   if (!drag) return;
   e.preventDefault();
   const d = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
-  if (!drag.moved && d > 7) {
+  if (!drag.moved && d > 3) {
     drag.moved = true;
     setSourceVacancy(drag.vacancyNodes, true);
     drag.sourceNodes.forEach((n) => n.classList.add("drag-source"));

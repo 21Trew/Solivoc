@@ -1,6 +1,7 @@
 /* Game constants and progression definitions. */
 let BANK = [];
 const SAVE_KEY = "worditaire-state-v10";
+const SAVE_BACKUP_KEY = "worditaire-state-v10-backup";
 const OLD_SAVE_KEY = "assoc-klondike-v7";
 const PROFILE_KEY = "worditaire-profile-v6";
 const PREV_PROFILE_KEY = "worditaire-profile-v5";
@@ -95,7 +96,8 @@ const ASSOCIATION_COLLECTION_DEFS = [
     id: "food", name: "Еда", icon: "🍕", desc: "Продукты и блюда по понятным ассоциациям",
     categories: [
       { id: "breakfast", title: "Завтрак", cards: [["🍳","Яичница"],["🥞","Блины"],["🥐","Круассан"],["☕","Кофе"],["🥣","Каша"],["🍞","Хлеб"]] },
-      { id: "fruit", title: "Фрукты", cards: [["🍎","Яблоко"],["🍌","Банан"],["🍓","Клубника"],["🍇","Виноград"],["🍉","Арбуз"],["🍍","Ананас"]] },
+      { id: "fruit", title: "Фрукты", cards: [["🍎","Яблоко"],["🍌","Банан"],["🍊","Апельсин"],["🍇","Виноград"],["🍉","Арбуз"],["🍍","Ананас"]] },
+      { id: "berries", title: "Ягоды", cards: [["🍓","Клубника"],["🫐","Черника"],["🍒","Вишня"],["🍇","Виноград"]] },
       { id: "vegetables", title: "Овощи", cards: [["🥕","Морковь"],["🥦","Брокколи"],["🌽","Кукуруза"],["🍅","Помидор"],["🥒","Огурец"],["🫑","Перец"]] },
       { id: "fastfood", title: "Фастфуд", cards: [["🍔","Бургер"],["🍟","Картофель фри"],["🍕","Пицца"],["🌭","Хот-дог"],["🌮","Тако"],["🥤","Газировка"]] },
       { id: "sweets", title: "Сладкое", cards: [["🍰","Торт"],["🧁","Кекс"],["🍩","Пончик"],["🍪","Печенье"],["🍫","Шоколад"],["🍬","Конфета"]] },
@@ -131,7 +133,7 @@ const ASSOCIATION_COLLECTION_DEFS = [
       { id: "road", title: "Дорога", cards: [["🚗","Автомобиль"],["🛣️","Шоссе"],["🚦","Светофор"],["⛽","Заправка"],["🅿️","Парковка"],["🚧","Ремонт"]] },
       { id: "air", title: "Воздух", cards: [["✈️","Самолёт"],["🛩️","Лёгкий самолёт"],["🚁","Вертолёт"],["🛫","Взлёт"],["🪂","Парашют"],["🎈","Воздушный шар"]] },
       { id: "sea", title: "Море", cards: [["🚢","Корабль"],["⛴️","Паром"],["🛳️","Лайнер"],["⛵","Яхта"],["🚤","Катер"],["🛶","Каноэ"]] },
-      { id: "rail", title: "Рельсы", cards: [["🚂","Паровоз"],["🚉","Станция"],["🛤️","Путь"],["🎫","Билет"],["🚦","Сигнал"],["🧳","Багаж"]] },
+      { id: "rail", title: "Рельсы", cards: [["🚂","Паровоз"],["🚉","Станция"],["🛤️","Путь"],["🛤️","Платформа"],["🚦","Сигнал"],["🧳","Багаж"]] },
       { id: "service", title: "Службы", cards: [["🚑","Скорая"],["🚒","Пожарная"],["🚓","Полиция"],["🚔","Патруль"],["🚐","Фургон"],["🚜","Трактор"]] },
     ],
   },
@@ -163,7 +165,7 @@ const ASSOCIATION_COLLECTION_DEFS = [
       { id: "beach", title: "Пляж", cards: [["🏖️","Пляж"],["🏝️","Остров"],["🌴","Пальма"],["👙","Купальник"],["🩴","Шлёпанцы"],["⛱️","Зонт"]] },
       { id: "camping", title: "Поход", cards: [["⛺","Палатка"],["🥾","Ботинок"],["🎒","Рюкзак"],["🔥","Костёр"],["🧭","Компас"],["🏕️","Кемпинг"]] },
       { id: "hotel", title: "Отель", cards: [["🏨","Отель"],["🛎️","Звонок"],["🧳","Чемодан"],["🛏️","Номер"],["🔑","Ключ"],["🧾","Счёт"]] },
-      { id: "airport", title: "Аэропорт", cards: [["🛫","Вылет"],["🛬","Посадка"],["🎫","Билет"],["🛂","Паспортный контроль"],["🧳","Багаж"],["🛃","Таможня"]] },
+      { id: "airport", title: "Аэропорт", cards: [["🛫","Вылет"],["🛬","Посадка"],["🛤️","Платформа"],["🛂","Паспортный контроль"],["🧳","Багаж"],["🛃","Таможня"]] },
       { id: "city", title: "Туризм", cards: [["🗺️","Карта"],["📸","Фото"],["🏛️","Музей"],["🗽","Достопримечательность"],["🚶","Прогулка"],["🧭","Навигация"]] },
       { id: "mountain", title: "Высота", cards: [["🏔️","Горы"],["🚡","Канатка"],["🧗","Скалолаз"],["🥾","Треккинг"],["🌲","Лес"],["🏞️","Парк"]] },
     ],
@@ -189,7 +191,7 @@ ASSOCIATION_COLLECTION_DEFS.push(
       { id: "strings", title: "Струны", cards: [["🎸","Гитара"],["🎻","Скрипка"],["🪕","Банджо"],["🎼","Ноты"],["🎵","Мелодия"],["🎶","Музыка"]] },
       { id: "keys", title: "Клавиши", cards: [["🎹","Пианино"],["🎼","Партитура"],["🎵","Нота"],["👨‍🎤","Музыкант"],["🎧","Наушники"],["🎶","Мелодия"]] },
       { id: "rhythm", title: "Ритм", cards: [["🥁","Барабан"],["🪘","Тамтам"],["👏","Хлопок"],["💃","Танец"],["🕺","Танцор"],["🎶","Ритм"]] },
-      { id: "concert", title: "Концерт", cards: [["🎤","Микрофон"],["🎟️","Билет"],["🎫","Пропуск"],["🤘","Рок"],["🪩","Сцена"],["👏","Аплодисменты"]] },
+      { id: "concert", title: "Концерт", cards: [["🎤","Микрофон"],["🎟️","Вход"],["🎫","Пропуск"],["🤘","Рок"],["🪩","Сцена"],["👏","Аплодисменты"]] },
       { id: "studio", title: "Студия", cards: [["🎙️","Запись"],["🎚️","Микшер"],["🎛️","Пульт"],["🎧","Наушники"],["💻","Компьютер"],["🔊","Монитор"]] },
       { id: "orchestra", title: "Оркестр", cards: [["🎻","Скрипка"],["🎺","Труба"],["🎷","Саксофон"],["🥁","Ударные"],["🪈","Флейта"],["👨‍🎼","Дирижёр"]] },
     ],
@@ -197,7 +199,7 @@ ASSOCIATION_COLLECTION_DEFS.push(
   {
     id: "cinema", name: "Кино", icon: "🎬", desc: "Жанры, съёмки и атмосфера кино",
     categories: [
-      { id: "screen", title: "Кинотеатр", cards: [["🎬","Кино"],["🍿","Попкорн"],["🎟️","Билет"],["📽️","Проектор"],["🎞️","Плёнка"],["🪑","Кресло"]] },
+      { id: "screen", title: "Кинотеатр", cards: [["🎬","Кино"],["🍿","Попкорн"],["🎟️","Вход"],["📽️","Проектор"],["🎞️","Плёнка"],["🪑","Кресло"]] },
       { id: "horror", title: "Ужасы", cards: [["👻","Призрак"],["🧟","Зомби"],["🧛","Вампир"],["🔪","Нож"],["🌑","Темнота"],["😱","Крик"]] },
       { id: "comedy", title: "Комедия", cards: [["😂","Смех"],["🤣","Хохот"],["🤡","Клоун"],["🎭","Театр"],["🍌","Гэг"],["😜","Шутка"]] },
       { id: "romance", title: "Романтика", cards: [["❤️","Любовь"],["💐","Букет"],["💋","Поцелуй"],["🌹","Роза"],["💌","Письмо"],["🥂","Свидание"]] },
@@ -242,10 +244,10 @@ ASSOCIATION_COLLECTION_DEFS.push(
     id: "citylife", name: "Город", icon: "🏙️", desc: "Места, службы и повседневная городская жизнь",
     categories: [
       { id: "street", title: "Улица", cards: [["🚦","Светофор"],["🚶","Пешеход"],["🚗","Машина"],["🛣️","Дорога"],["🏢","Дом"],["🚏","Остановка"]] },
-      { id: "park", title: "Парк", cards: [["🌳","Дерево"],["🌿","Зелень"],["🪑","Скамейка"],["🚲","Велосипед"],["🐕","Собака"],["⛲","Фонтан"]] },
+      { id: "park", title: "Парк", cards: [["🌳","Дерево"],["🌿","Зелень"],["🛝","Горка"],["🚲","Велосипед"],["🐕","Собака"],["⛲","Фонтан"]] },
       { id: "cafe", title: "Кафе", cards: [["☕","Кофе"],["🥐","Круассан"],["🍰","Десерт"],["🧾","Счёт"],["🪑","Столик"],["🥄","Ложка"]] },
       { id: "mall", title: "Торговый центр", cards: [["🛍️","Покупки"],["👕","Одежда"],["👟","Обувь"],["💳","Оплата"],["🛒","Тележка"],["🏬","Магазин"]] },
-      { id: "station", title: "Вокзал", cards: [["🚉","Станция"],["🚆","Поезд"],["🎫","Билет"],["🧳","Багаж"],["🕐","Время"],["📢","Объявление"]] },
+      { id: "station", title: "Вокзал", cards: [["🚉","Станция"],["🚆","Поезд"],["🛤️","Платформа"],["🧳","Багаж"],["🕐","Время"],["📢","Объявление"]] },
       { id: "build", title: "Стройка", cards: [["🏗️","Кран"],["👷","Рабочий"],["🧱","Кирпич"],["🔨","Молоток"],["🚧","Ограждение"],["🏢","Здание"]] },
     ],
   },
@@ -334,16 +336,16 @@ ASSOCIATION_COLLECTION_DEFS.push(
       { id: "warning", title: "Опасность", cards: [["⚠️","Внимание"],["🚫","Запрет"],["☢️","Радиация"],["☣️","Биориск"],["❗","Важно"],["🔺","Сигнал"]] },
       { id: "traffic", title: "ПДД", cards: [["🚦","Светофор"],["🛑","Стоп"],["🚸","Переход"],["🚧","Ремонт"],["⚠️","Знак"],["🚗","Авто"]] },
       { id: "cyber", title: "Кибербезопасность", cards: [["🔒","Пароль"],["🛡️","Защита"],["🔑","Ключ"],["💻","Компьютер"],["📧","Почта"],["⚠️","Фишинг"]] },
-      { id: "home-safe", title: "Безопасность дома", cards: [["🔐","Замок"],["📷","Камера"],["🚪","Дверь"],["🔔","Сигнал"],["🔥","Датчик"],["📱","Контроль"]] },
+      { id: "home-safe", title: "Безопасность дома", cards: [["🔐","Замок"],["🪟","Окно"],["🚪","Дверь"],["🔔","Сигнал"],["🔥","Датчик"],["📱","Контроль"]] },
     ],
   },
   {
     id: "events", name: "События", icon: "🎪", desc: "Яркие события, встречи и большие впечатления",
     categories: [
       { id: "wedding2", title: "Свадебный день", cards: [["💍","Кольцо"],["👰","Невеста"],["🤵","Жених"],["💐","Букет"],["🥂","Тост"],["🎂","Торт"]] },
-      { id: "festival", title: "Фестиваль", cards: [["🎪","Фестиваль"],["🎶","Музыка"],["🎟️","Билет"],["🎨","Искусство"],["🌈","Краски"],["🎉","Праздник"]] },
+      { id: "festival", title: "Фестиваль", cards: [["🎪","Фестиваль"],["🎶","Музыка"],["🎟️","Вход"],["🎨","Искусство"],["🌈","Краски"],["🎉","Праздник"]] },
       { id: "circus", title: "Цирк", cards: [["🎪","Шатёр"],["🤡","Клоун"],["🎠","Карусель"],["🎈","Шары"],["🪄","Фокус"],["👏","Аплодисменты"]] },
-      { id: "concert2", title: "Шоу", cards: [["🎤","Певец"],["🎸","Гитара"],["🎧","Звук"],["💡","Свет"],["🎟️","Билет"],["👏","Зрители"]] },
+      { id: "concert2", title: "Шоу", cards: [["🎤","Певец"],["🎸","Гитара"],["🎧","Звук"],["💡","Свет"],["🎟️","Вход"],["👏","Зрители"]] },
       { id: "vacation", title: "Отпуск", cards: [["🏖️","Пляж"],["🧳","Чемодан"],["✈️","Самолёт"],["📸","Фото"],["🕶️","Очки"],["🍹","Коктейль"]] },
       { id: "meetup", title: "Встреча", cards: [["👥","Друзья"],["☕","Кофе"],["💬","Разговор"],["📍","Место"],["📅","Дата"],["😊","Радость"]] },
     ],
@@ -362,6 +364,12 @@ function associationCollectionCategories(id) {
     visualCollection: collection.id,
     visualCollectionName: collection.name,
     difficulty: 2,
+    semanticGroup: collection.id === "space" ? "astronomy"
+      : collection.id === "food" && cat.id === "fruit" ? "fruit_family"
+      : collection.id === "food" ? "food"
+      : collection.id === "transport" ? "transport"
+      : collection.id === "safety" ? "safety"
+      : collection.id,
     words: cat.cards.map(([emoji]) => emoji),
     visualLabels: Object.fromEntries(cat.cards),
   }));
@@ -488,6 +496,11 @@ const CARD_BACK_DEFS = [
   { id: "phoenix", name: "Феникс", desc: "За 25 особых уровней", achievement: "special25", rare: true },
   { id: "legend", name: "Легенда", desc: "За 3 идеальные главы", achievement: "chapterPerfect3", rare: true },
   { id: "obsidian", name: "Обсидиан", desc: "За 5 идеальных глав", achievement: "chapterPerfect5", rare: true },
+  { id: "midnight-grid", name: "Ночная сетка", desc: "За 2 достижения", minAchievements: 2 },
+  { id: "sunrise", name: "Рассвет", desc: "За 6 достижений", minAchievements: 6 },
+  { id: "lion", name: "Лев", desc: "За открытие всех карточек с рисунками", achievement: "allPictures", rare: true },
+  { id: "parrot", name: "Птица-говорун", desc: "За открытие всех карточек со словами", achievement: "allWords", rare: true },
+  { id: "grand-trophy", name: "Кубок", desc: "За все достижения", achievement: "allAchievements", rare: true },
 ];
 const ACHIEVEMENTS = [
   {
@@ -605,6 +618,10 @@ const ACHIEVEMENTS = [
   { id: "combo10", icon: "×10", title: "Мастер движений", desc: "Сделать ручное комбо ×10", rare: true, test: (p) => (p.stats.maxDragCombo || 0) >= 10 },
   { id: "special10", icon: "◆10", title: "Любитель испытаний", desc: "Пройти 10 особых уровней", test: (p) => (p.stats.specialCompleted || 0) >= 10 },
   { id: "special25", icon: "◆25", title: "Испытатель", desc: "Пройти 25 особых уровней", rare: true, test: (p) => (p.stats.specialCompleted || 0) >= 25 },
+  { id: "duelGold10", icon: "🥇10", title: "Золотой дуэлянт", desc: "Получить 10 золотых медалей в дуэлях", test: (p) => (p.stats.duelGold || 0) >= 10 },
+  { id: "allPictures", icon: "🦁", title: "Галерея собрана", desc: "Открыть все карточки с рисунками", rare: true, legendary: true, test: (p) => typeof hasDiscoveredAllVisualCards === "function" && hasDiscoveredAllVisualCards(p) },
+  { id: "allWords", icon: "🦜", title: "Птица-говорун", desc: "Открыть все карточки со словами", rare: true, legendary: true, test: (p) => typeof hasDiscoveredAllWordCards === "function" && hasDiscoveredAllWordCards(p) },
+  { id: "allAchievements", icon: "🏆", title: "Абсолютный коллекционер", desc: "Открыть все остальные достижения", rare: true, legendary: true, test: (p) => ACHIEVEMENTS.filter((a) => a.id !== "allAchievements").every((a) => p.achievements.includes(a.id)) },
 ];
 const DEFAULT_STATS = {
   levelsCompleted: 0,
@@ -640,6 +657,11 @@ const DEFAULT_STATS = {
   duelWins: 0,
   duelLosses: 0,
   duelDraws: 0,
+  duelGold: 0,
+  duelSilver: 0,
+  duelBronze: 0,
+  duelXp: 0,
+  duelRating: 0,
 };
 
 const WEEKLY_DEFS = [
@@ -667,6 +689,10 @@ const EFFECT_DEFS = [
   { id: "legend", name: "Легенда", desc: "За 5 идеальных глав", achievement: "chapterPerfect5", rare: true },
   { id: "duel", name: "Искры дуэли", desc: "За 25 побед в дуэлях", achievement: "duelWins25", rare: true },
   { id: "moon", name: "Лунное сияние", desc: "За первое месячное испытание", minMonthly: 1, rare: true },
+  { id: "fireworks", name: "Фейерверк", desc: "За 6 достижений", minAchievements: 6 },
+  { id: "ribbons", name: "Ленты", desc: "За 12 достижений", minAchievements: 12 },
+  { id: "stars", name: "Звёздный дождь", desc: "За 18 достижений", minAchievements: 18 },
+  { id: "crown-rain", name: "Дождь корон", desc: "За 10 золотых медалей", achievement: "duelGold10", rare: true },
 ];
 
 const FRAME_DEFS = [
@@ -683,6 +709,15 @@ const FRAME_DEFS = [
   { id: "chapter10", name: "Эрудит", chapter: 10, hue: 55 },
   { id: "chapter11", name: "Большая энциклопедия", chapter: 11, hue: 316 },
   { id: "chapter12", name: "За гранью очевидного", chapter: 12, hue: 105 },
+  { id: "duel-silver", name: "Серебряный дуэлянт", minDuelXp: 30, hue: 210 },
+  { id: "duel-gold", name: "Золотой дуэлянт", minDuelXp: 75, hue: 45 },
+];
+
+const SOUND_PACK_DEFS = [
+  { id: "classic", name: "Классика", minDuelXp: 0 },
+  { id: "crystal", name: "Кристалл", minDuelXp: 20 },
+  { id: "arcade", name: "Аркада", minDuelXp: 50 },
+  { id: "royal", name: "Королевский", minDuelXp: 100 },
 ];
 
 const TITLE_DEFS = [
@@ -773,7 +808,7 @@ function achievementProgressData(a, p = profile) {
     challenge1:[p.stats.challengesCompleted||0,1], challenge25:[p.stats.challengesCompleted||0,25], calm10:[p.stats.calmCompleted||0,10], marathon5:[p.stats.bestMarathon||0,5], marathon15:[p.stats.bestMarathon||0,15],
     mastery10:[p.stats.masteredCategories||0,10], mastery50:[p.stats.masteredCategories||0,50], final1:[p.stats.chapterFinalsCompleted||0,1], final6:[p.stats.chapterFinalsCompleted||0,6], bonus10:[p.stats.bonusObjectivesCompleted||0,10], series3:[p.stats.seriesWins||0,3],
     visits30:[p.retention?.totalOpenDays||0,30], visits50:[p.retention?.totalOpenDays||0,50], visits100:[p.retention?.totalOpenDays||0,100], visits180:[p.retention?.totalOpenDays||0,180], visits365:[p.retention?.totalOpenDays||0,365],
-    duel1:[p.stats.duelMatches||0,1], duelWin1:[p.stats.duelWins||0,1], duelWins5:[p.stats.duelWins||0,5], duelWins10:[p.stats.duelWins||0,10], duelWins25:[p.stats.duelWins||0,25],
+    duel1:[p.stats.duelMatches||0,1], duelWin1:[p.stats.duelWins||0,1], duelWins5:[p.stats.duelWins||0,5], duelWins10:[p.stats.duelWins||0,10], duelWins25:[p.stats.duelWins||0,25], duelGold10:[p.stats.duelGold||0,10],
   };
   const pair = map[a.id];
   if (!pair) return null;

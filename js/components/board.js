@@ -107,13 +107,21 @@ function render() {
               ? "▦"
             : state.mode === "calm"
               ? "☁"
-              : state.level;
+              : ["time","moves","combo","noMistakes"].includes(state.mode)
+                ? (GAME_MODE_DEFS.find((m)=>m.id===state.mode)?.icon || "◆")
+                : state.level;
   $("#left").textContent = left;
   $("#progressText").textContent = `${state.completed}/${state.totalCategories}`;
   $("#progressBar").style.width = (state.completed / state.totalCategories) * 100 + "%";
   $("#starTotal").textContent = profile.totalStars;
   const moveEl = $("#moveCount");
   if (moveEl) moveEl.textContent = state.run?.moves || 0;
+  const ruleMetricEl = $("#ruleMetric");
+  if (ruleMetricEl) {
+    const metric = typeof ruleMetricText === "function" ? ruleMetricText(state) : "";
+    ruleMetricEl.textContent = metric;
+    ruleMetricEl.hidden = !metric;
+  }
   const bonusEl = $("#bonusObjective");
   if (bonusEl) {
     bonusEl.innerHTML = typeof bonusObjectiveMarkup === "function" ? bonusObjectiveMarkup(state) : "";
@@ -131,16 +139,19 @@ function render() {
             ? associationCollectionById(state.collectionId).name.toLowerCase()
           : state.mode === "calm"
             ? "дзен"
-            : "прогресс";
+            : ["time","moves","combo","noMistakes"].includes(state.mode)
+              ? (GAME_MODE_DEFS.find((m)=>m.id===state.mode)?.label || "испытание").toLowerCase()
+              : "прогресс";
   const specialBadge = $("#specialBadge");
   if (state.mode === "regular" && state.special) {
     specialBadge.hidden = false;
     specialBadge.textContent = `${state.special.icon} ${state.special.title}`;
     specialBadge.title = state.special.desc;
   } else if (state.mode === "challenge") {
+    const duelDef = duelModeDef(state.duelMode);
     specialBadge.hidden = false;
-    specialBadge.textContent = "⚔ Дуэль";
-    specialBadge.title = "Одинаковый расклад можно отправить другу";
+    specialBadge.textContent = `⚔ ${duelDef.label}`;
+    specialBadge.title = duelDef.description || "Одинаковый расклад можно отправить другу";
   } else if (state.mode === "marathon") {
     specialBadge.hidden = false;
     specialBadge.textContent = `∞ Раунд ${state.marathonRound || 1}`;
@@ -154,6 +165,11 @@ function render() {
     specialBadge.hidden = false;
     specialBadge.textContent = "☁ Дзен";
     specialBadge.title = "Лёгкие расклады без комбо и особых ограничений";
+  } else if (["time","moves","combo","noMistakes"].includes(state.mode)) {
+    const modeDef = GAME_MODE_DEFS.find((m)=>m.id===state.mode);
+    specialBadge.hidden = false;
+    specialBadge.textContent = `${modeDef?.icon || "◆"} ${modeDef?.label || "Испытание"}`;
+    specialBadge.title = modeDef?.desc || "Особый режим";
   } else {
     specialBadge.hidden = true;
     specialBadge.textContent = "";

@@ -64,17 +64,17 @@ function regularConfig(level, rng, special = null) {
   let cols = rnd(colRange[0], colRange[1], rng);
   const recovery = level > 5 && level % 6 === 0;
   if (recovery) cols = Math.max(3, cols - 1);
-  const ranges = { 3: [3, 4], 4: [4, 6], 5: [6, 10] },
+  const ranges = { 3: [3, 4], 4: [4, 6], 5: [6, 7] },
     cr = ranges[cols];
   const cats = rnd(cr[0], cr[1], rng);
   let difficulty = level <= 12 ? 1 : level <= 35 ? 2 : level <= 80 ? 3 : level <= 160 ? 4 : 5;
   if (recovery) difficulty = Math.max(1, difficulty - 1);
-  let words = difficulty === 1 ? [3, 5] : difficulty === 2 ? [4, 6] : difficulty === 3 ? [4, 7] : [5, 9];
+  let words = difficulty === 1 ? [3, 5] : difficulty === 2 ? [4, 6] : difficulty === 3 ? [4, 7] : [5, 7];
   if (special?.bigMix) {
     cols = 5;
     const mixRange = ranges[5];
-    const boostedCats = Math.min(10, Math.max(cats + 1, mixRange[0] + 1));
-    words = [Math.min(8, words[0] + 1), Math.min(9, words[1] + 1)];
+    const boostedCats = Math.min(7, Math.max(cats + 1, mixRange[0] + 1));
+    words = [Math.min(7, words[0] + 1), Math.min(7, words[1] + 1)];
     return { cols, cats: boostedCats, difficulty: Math.max(2, difficulty), words };
   }
   return { cols, cats, difficulty, words };
@@ -93,6 +93,10 @@ function configForMode(level, mode, rng, special = null, opts = {}) {
   if (mode === "marathon") {
     const round = Math.max(1, opts.marathonRound || 1);
     return regularConfig(Math.min(180, 8 + round * 6), rng, null);
+  }
+  if (["time", "moves", "combo", "noMistakes"].includes(mode)) {
+    const cfg = regularConfig(Math.max(18, level || 25), rng, null);
+    return { ...cfg, difficulty: Math.max(2, Math.min(4, cfg.difficulty)) };
   }
   return typeof applyAdaptiveConfig === "function" ? applyAdaptiveConfig(regularConfig(level, rng, special), special) : regularConfig(level, rng, special);
 }
@@ -150,28 +154,21 @@ function categoriesForSourceMode(count, difficulty, rng, sourceMode = "all", coo
   const mixed = chooseCompatibleFromPool(visuals, count, 2, rng, words, cooldownIds);
   return mixed.length === count ? shuffle(mixed, rng) : chooseCompatibleFromPool([...BANK, ...visuals], count, difficulty, rng, [], cooldownIds);
 }
-function randomColumnCounts(total, cols, rng) {
-  const counts = Array(cols).fill(1),
-    softMax = Math.max(2, Math.ceil(total / cols) + 2);
-  let rest = total - cols;
+function randomColumnCounts(total, cols, rng, hardMax = 6) {
+  total = Math.min(total, cols * hardMax);
+  const counts = Array(cols).fill(1);
+  let rest = Math.max(0, total - cols);
   while (rest > 0) {
-    const candidates = counts.map((n, i) => (n < softMax ? i : -1)).filter((i) => i >= 0);
-    const target = candidates.length ? candidates[rnd(0, candidates.length - 1, rng)] : rnd(0, cols - 1, rng);
-    counts[target]++;
+    const candidates = counts.map((n, i) => (n < hardMax ? i : -1)).filter((i) => i >= 0);
+    if (!candidates.length) break;
+    counts[candidates[rnd(0, candidates.length - 1, rng)]]++;
     rest--;
   }
   for (let i = 0; i < cols * 5; i++) {
-    const a = rnd(0, cols - 1, rng),
-      b = rnd(0, cols - 1, rng);
-    if (a !== b && counts[a] > 1 && counts[b] < softMax && rng() < 0.75) {
-      counts[a]--;
-      counts[b]++;
-    }
+    const a = rnd(0, cols - 1, rng), b = rnd(0, cols - 1, rng);
+    if (a !== b && counts[a] > 1 && counts[b] < hardMax && rng() < 0.75) { counts[a]--; counts[b]++; }
   }
-  if (new Set(counts).size === 1 && total > cols) {
-    counts[0]--;
-    counts[cols - 1]++;
-  }
+  if (new Set(counts).size === 1 && total > cols && counts[0] > 1 && counts[cols - 1] < hardMax) { counts[0]--; counts[cols - 1]++; }
   return shuffle(counts, rng);
 }
 function allCards(s) {
@@ -280,7 +277,7 @@ function riskDealRoll(seed, cfg, mode, forceSolvable = false) {
   return { risk: rng() < chance, chance };
 }
 
-function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCode = null, challengeRole = null, challengeCreatorName = null, challengeCreatorAvatar = null, challengeCreatorResult = null, challengeGuestToken = null, seriesId = null, seriesRound = 1, seriesScoreCreator = 0, seriesScoreGuest = 0, marathonRound = 1, marathonId = null, collectionId = null, cardSourceMode = null, categoryCooldownIds = null, forceSolvable = false } = {}) {
+function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCode = null, challengeRole = null, challengeCreatorName = null, challengeCreatorAvatar = null, challengeCreatorResult = null, challengeGuestToken = null, duelMode = "classic", duelModeChoice = "creator", seriesId = null, seriesRound = 1, seriesScoreCreator = 0, seriesScoreGuest = 0, marathonRound = 1, marathonId = null, collectionId = null, cardSourceMode = null, categoryCooldownIds = null, forceSolvable = false } = {}) {
   const baseSeed = seed || (mode === "daily" ? `daily:${todayKey()}` : mode === "collection" ? `collection:${collectionId || "animals"}:${Date.now()}` : `level:${level}`);
   const sourceMode = mode === "collection" ? "pictures" : normalizeCardSourceMode(cardSourceMode || profile?.settings?.cardSourceMode);
   const cooldownIds = mode === "regular" ? (Array.isArray(categoryCooldownIds) ? [...categoryCooldownIds] : getRecentCategories().slice(0, 40)) : [];
@@ -295,7 +292,7 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
     if (chosen.length < cfg.cats) continue;
     const cards = [];
     for (const cat of chosen) {
-      const maxN = Math.min(cfg.words[1], 9, cat.words.length),
+      const maxN = Math.min(cfg.words[1], 7, cat.words.length),
         minN = Math.min(cfg.words[0], maxN),
         n = rnd(minN, maxN, rng),
         words = cat.visual ? shuffle(cat.words, rng).slice(0, n) : chooseWordsForDifficulty(cat, n, cfg.difficulty, rng);
@@ -303,7 +300,7 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
       for (const w of words) cards.push({ uid: uid(), cat: cat.id, label: w, type: "word", total: n, visual: !!cat.visual, visualAlt: cat.visualLabels?.[w] || "" });
     }
     const deck = shuffle(cards, rng),
-      layoutCount = Math.floor(deck.length / 2),
+      layoutCount = Math.min(Math.floor(deck.length / 2), cfg.cols * 6),
       layoutCards = deck.splice(0, layoutCount),
       counts = randomColumnCounts(layoutCount, cfg.cols, rng),
       columns = [];
@@ -328,7 +325,7 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
       categoryCooldownIds: cooldownIds,
       collectionId: mode === "collection" ? associationCollectionById(collectionId).id : null,
       cardSourceMode: sourceMode,
-      run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },
+      run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, maxCombo: 0, startedAt: Date.now(), pausedAt: 0, pausedDurationMs: 0 },
       special,
       challengeCode,
       challengeRole,
@@ -336,6 +333,8 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
       challengeCreatorAvatar,
       challengeCreatorResult,
       challengeGuestToken,
+      duelMode: mode === "challenge" ? normalizeDuelMode(duelMode) : null,
+      duelModeChoice: mode === "challenge" ? duelModeChoice : null,
       seriesId,
       seriesRound,
       seriesScoreCreator,
@@ -366,7 +365,7 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
   const cats = cards.filter((c) => c.type === "category"),
     words = cards.filter((c) => c.type === "word"),
     stock = shuffle([...cats, ...words.slice(Math.floor(words.length / 2))], rng),
-    layout = shuffle(words.slice(0, Math.floor(words.length / 2)), rng),
+    layout = shuffle(words.slice(0, Math.min(Math.floor(words.length / 2), cfg.cols * 6)), rng),
     counts = randomColumnCounts(layout.length, cfg.cols, rng);
   let k = 0;
   return {
@@ -386,7 +385,7 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
     categoryCooldownIds: cooldownIds,
     collectionId: mode === "collection" ? associationCollectionById(collectionId).id : null,
     cardSourceMode: sourceMode,
-    run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },
+    run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, maxCombo: 0, startedAt: Date.now(), pausedAt: 0, pausedDurationMs: 0 },
     special,
     challengeCode,
     challengeRole,
@@ -394,6 +393,8 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
     challengeCreatorAvatar,
     challengeCreatorResult,
     challengeGuestToken,
+    duelMode: mode === "challenge" ? normalizeDuelMode(duelMode) : null,
+    duelModeChoice: mode === "challenge" ? duelModeChoice : null,
     seriesId,
     seriesRound,
     seriesScoreCreator,
@@ -451,13 +452,13 @@ function makeTutorial(step = 1) {
     completed: 0,
     totalCategories: 1,
     categoryIds: [cat.id],
-    run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now() },
+    run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, maxCombo: 0, startedAt: Date.now(), pausedAt: 0, pausedDurationMs: 0 },
     special: null,
     rewarded: false,
   };
 }
 function normalizeState(s) {
-  s.run = { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, startedAt: Date.now(), ...(s.run || {}) };
+  s.run = { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, maxCombo: 0, startedAt: Date.now(), pausedAt: 0, pausedDurationMs: 0, ...(s.run || {}) };
   s.mode = s.mode || "regular";
   s.seed = s.seed || `legacy:${s.level || 1}`;
   s.rewarded = !!s.rewarded;
@@ -467,7 +468,13 @@ function normalizeState(s) {
 function normalizeLoadedLayout(s) {
   const normalized = normalizeState(s);
   if ((normalized.cols || normalized.columns?.length || 0) <= 5) return { state: normalized, migrated: false };
-  const mode = ["daily", "collection"].includes(normalized.mode) ? normalized.mode : "regular";
-  const rebuilt = buildGeneratedLevel(normalized.level || 1, { mode, seed: normalized.seed, collectionId: normalized.collectionId, cardSourceMode: normalized.cardSourceMode });
+  const allowedModes = ["daily", "collection", "marathon", "calm", "challenge", "time", "moves", "combo", "noMistakes"];
+  const mode = allowedModes.includes(normalized.mode) ? normalized.mode : "regular";
+  const rebuilt = buildGeneratedLevel(normalized.level || 1, {
+    mode, seed: normalized.seed, collectionId: normalized.collectionId, cardSourceMode: normalized.cardSourceMode,
+    marathonRound: normalized.marathonRound, marathonId: normalized.marathonId, challengeCode: normalized.challengeCode,
+    challengeRole: normalized.challengeRole, challengeCreatorName: normalized.challengeCreatorName, challengeCreatorAvatar: normalized.challengeCreatorAvatar,
+    challengeCreatorResult: normalized.challengeCreatorResult, challengeGuestToken: normalized.challengeGuestToken, duelMode: normalized.duelMode, duelModeChoice: normalized.duelModeChoice,
+  });
   return { state: rebuilt, migrated: true };
 }

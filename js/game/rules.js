@@ -123,7 +123,7 @@ function performDrop(p, target, options = {}) {
   }
   state.run.moves++;
   if (options.comboEligible) {
-    if (productive) registerCombo(true);
+    if (productive) registerCombo(true, options.comboSource || "manual");
     else resetCombo();
   } else resetCombo();
   playSfx("drop");

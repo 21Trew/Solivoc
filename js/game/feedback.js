@@ -29,6 +29,8 @@ function getAudioContext() {
   return soundEnabled() ? ensureAudioContext() : null;
 }
 function tone(freq, duration = 0.08, opts = {}) {
+  const pitch = ({ classic:1, crystal:1.12, arcade:.92, royal:.82 })[profile?.soundPack] || 1;
+  freq *= pitch; if (opts.to) opts = { ...opts, to: opts.to * pitch };
   const ctx = getAudioContext();
   if (!ctx) return;
   const start = ctx.currentTime + (opts.delay || 0),
@@ -212,31 +214,27 @@ function resetCombo() {
   const el = $("#comboPop");
   el?.classList.remove("show");
 }
-function registerCombo(productive = true) {
+function registerCombo(productive = true, source = "manual") {
   if (!productive || state?.mode === "tutorial" || state?.mode === "calm") return;
   const now = performance.now();
   if (comboLastAt && now - comboLastAt > 8500) comboCount = 0;
-  comboLastAt = now;
-  comboCount++;
-  if (state?.run) state.run.maxDragCombo = Math.max(state.run.maxDragCombo || 0, comboCount);
-  profile.stats.maxDragCombo = Math.max(profile.stats.maxDragCombo || 0, comboCount);
-  // maxCombo is kept only for backward-compatible analytics; UI/achievements use manual drag combo.
+  comboLastAt = now; comboCount++;
+  if (state?.run) {
+    state.run.maxCombo = Math.max(state.run.maxCombo || 0, comboCount);
+    if (source === "manual") state.run.maxDragCombo = Math.max(state.run.maxDragCombo || 0, comboCount);
+  }
+  if (source === "manual") profile.stats.maxDragCombo = Math.max(profile.stats.maxDragCombo || 0, comboCount);
   profile.stats.maxCombo = Math.max(profile.stats.maxCombo || 0, comboCount);
-  if (comboCount >= 3 && typeof checkAchievements === "function") checkAchievements();
-  clearTimeout(comboTimer);
-  comboTimer = setTimeout(resetCombo, 8500);
+  if (comboCount >= 3 && source === "manual" && typeof checkAchievements === "function") checkAchievements();
+  clearTimeout(comboTimer); comboTimer = setTimeout(resetCombo, 8500);
   if (comboCount < 2) return;
-  const el = $("#comboPop");
-  if (!el) return;
+  const el = $("#comboPop"); if (!el) return;
   el.innerHTML = `<strong>КОМБО ×${comboCount}</strong><span>${comboCount >= 5 ? "Идеальная серия!" : "Точные ходы подряд"}</span>`;
-  el.classList.remove("show", "pop");
-  void el.offsetWidth;
-  el.classList.add("show", "pop");
+  el.classList.remove("show", "pop"); void el.offsetWidth; el.classList.add("show", "pop");
   playSfx("combo", 0.75 + Math.min(comboCount, 6) * 0.05);
   if (comboCount >= 3) haptic([7, 18, 9]);
   setTimeout(() => el.classList.remove("pop"), 420);
 }
-
 function feedbackWrongMove(nodes = [], target = null, message = "Сюда положить нельзя") {
   resetCombo();
   if (state?.run) {
@@ -264,6 +262,9 @@ function feedbackWrongMove(nodes = [], target = null, message = "Сюда пол
     setTimeout(() => target.classList.remove("bad-target"), 330);
   }
   showToast(message);
+  if (typeof activeRuleMode === "function" && activeRuleMode(state) === "noMistakes" && !state?.rewarded) {
+    setTimeout(() => typeof finishFailedRun === "function" && finishFailedRun("Первая ошибка"), 120);
+  }
 }
 
 async function animateCategoryCompletion(slotIndex, label) {
@@ -293,7 +294,7 @@ async function animateCategoryCompletion(slotIndex, label) {
       { transform: "translateY(-11px) scale(.9)", filter: "brightness(1.35)", opacity: 0.9, offset: 0.7 },
       { transform: "translateY(-20px) scale(.72)", filter: "brightness(1.2)", opacity: 0 },
     ],
-    { duration: 430, easing: "cubic-bezier(.2,.82,.2,1)", fill: "forwards" },
+    { duration: 185, easing: "cubic-bezier(.2,.82,.2,1)", fill: "forwards" },
   );
   badge.animate(
     [

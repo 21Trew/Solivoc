@@ -163,6 +163,7 @@ function finishLevel() {
   if (state.mode !== "tutorial") {
     profile.stats.gamesPlayed = (profile.stats.gamesPlayed || 0) + 1;
     profile.stats.totalMoves = (profile.stats.totalMoves || 0) + (state.run.moves || 0);
+    recordDailyModeGame?.(state);
   }
   if (state.mode === "regular") {
     const old = profile.starsByLevel[state.level] || 0,
@@ -195,7 +196,7 @@ function finishLevel() {
     profile.stats.challengesCompleted = (profile.stats.challengesCompleted || 0) + 1;
     if (state.challengeRole === "creator") recordCreatorChallengeResult(state, stars);
     else if (state.challengeRole === "guest") enqueueGuestChallengeSubmission(state, stars);
-    track("challenge_completed", { seed: state.seed, stars, moves: state.run.moves, role: state.challengeRole || "legacy" });
+    track("challenge_completed", { seed: state.seed, stars, moves: state.run.moves, duelMode: state.duelMode || "classic", role: state.challengeRole || "legacy" });
     if (typeof awardXp === "function") awardXp(55 + stars * 10, "Дуэль", { notifyRank: false });
   } else if (state.mode === "collection") {
     const collection = associationCollectionById(state.collectionId);
@@ -215,9 +216,15 @@ function finishLevel() {
     state.marathonSuccess = stars === 3;
     if (state.marathonSuccess) {
       profile.stats.bestMarathon = Math.max(profile.stats.bestMarathon || 0, state.marathonRound || 1);
-    }
+      const nextRound=(state.marathonRound||1)+1, runId=state.marathonId||`marathon:${Date.now().toString(36)}`;
+      profile.activeMarathon={level:nextRound,seed:`${runId}:${nextRound}`,marathonRound:nextRound,marathonId:runId,cardSourceMode:state.cardSourceMode};
+    } else profile.activeMarathon=null;
     track("marathon_round_completed", { round: state.marathonRound || 1, stars, moves: state.run.moves });
     if (typeof awardXp === "function") awardXp(30 + stars * 8, "Марафон", { notifyRank: false });
+  } else if (["time","moves","combo","noMistakes"].includes(state.mode)) {
+    profile.stats.specialCompleted=(profile.stats.specialCompleted||0)+1;
+    track("rule_mode_completed",{mode:state.mode,moves:state.run.moves,maxCombo:state.run.maxCombo||0,durationMs:activeRunElapsedMs?.(state)||0});
+    if(typeof awardXp==="function")awardXp(35+stars*7,duelModeDef(state.mode).label,{notifyRank:false});
   } else if (state.mode === "tutorial") {
     track("tutorial_completed", { step: state.tutorialStep });
     if (state.tutorialStep === 3) { profile.tutorialComplete = true; track("tutorial_all_complete"); }
@@ -237,6 +244,14 @@ function finishLevel() {
   showWin(stars, newAchievements, record, bonusDone);
   resetCombo();
 }
+function finishFailedRun(reason="Ошибка") {
+  if(!state||state.rewarded)return; state.rewarded=true; state.failed=true; state.lastStars=0; state.run.xpEarned=0;
+  if(state.mode!=="tutorial"){profile.stats.gamesPlayed=(profile.stats.gamesPlayed||0)+1;profile.stats.totalMoves=(profile.stats.totalMoves||0)+(state.run.moves||0);recordDailyModeGame?.(state);}
+  if(state.mode==="challenge"){profile.stats.challengesCompleted=(profile.stats.challengesCompleted||0)+1;if(state.challengeRole==="creator")recordCreatorChallengeResult(state,0);else if(state.challengeRole==="guest")enqueueGuestChallengeSubmission(state,0);}
+  if(state.mode==="marathon")profile.activeMarathon=null;
+  track("run_failed",{mode:state.mode,reason,moves:state.run.moves||0}); checkAchievements(); save(); showWin(0,[],null,false); resetCombo();
+}
+
 function showWin(stars, newAchievements = [], record = null, bonusDone = false) {
   const winKey = `${state?.seed || ""}:${state?.mode || ""}:${state?.level || 0}:${state?.run?.moves || 0}`;
   if (modal?.classList.contains("show") && modal.dataset.winKey === winKey) return;
@@ -253,11 +268,13 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
     collection: `${associationCollectionById(state.collectionId).name}: собрано!`,
     calm: "Дзен завершён",
     marathon: state.marathonSuccess ? `Марафон · раунд ${state.marathonRound}` : "Марафон окончен",
+    time: "Режим на время завершён!", moves: "Режим на ходы завершён!", combo: "Комбо-режим завершён!", noMistakes: "Безошибочный режим завершён!",
   };
   $("#winTitle").textContent =
     state.mode === "tutorial" ? `Обучение ${state.tutorialStep}/3` : titles[state.mode] || `Уровень ${state.level} пройден`;
 
   $("#winText").textContent =
+    state.failed ? "Первая ошибка завершила этот режим. Попробуй ещё раз." :
     state.mode === "regular" && state.special
       ? specialWinPraise(state.special, perfect)
       : state.mode === "daily"
@@ -281,7 +298,7 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
                   : "Расклад завершён";
 
   const rewards = [
-    { earned: true, label: "За уровень" },
+    { earned: stars > 0, label: "За уровень" },
     { earned: noHints, label: "Без подсказок" },
     { earned: noUndos, label: "Без отмен" },
   ];
@@ -294,7 +311,8 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
 
   const recordEl = $("#winRecord");
   if (recordEl) {
-    const recordText = record?.isNew
+    const metric = typeof ruleMetricText === "function" ? ruleMetricText(state) : "";
+    const recordText = metric ? `${metric}${record?.isNew?" · Новый личный рекорд!":""}` : record?.isNew
       ? `↯ ${moves} ходов · Новый личный рекорд!`
       : record?.best
         ? `↯ ${moves} ходов · Лучший: ${record.best}`
@@ -341,6 +359,8 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
           ? "Ещё расклад →"
           : state.mode === "challenge"
             ? "К дуэлям →"
+            : ["time","moves","combo","noMistakes"].includes(state.mode)
+              ? "Ещё расклад →"
             : state.mode === "marathon"
               ? state.marathonSuccess ? "Продолжить марафон →" : "Новый марафон →"
               : "Следующий уровень →";

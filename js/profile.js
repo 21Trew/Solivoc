@@ -17,6 +17,9 @@ function defaultProfile() {
     avatarEmoji: "🙂",
     titleId: "player",
     frame: "none",
+    soundPack: "classic",
+    dailyQuests: { date: "", progress: {}, rewarded: {} },
+    activeMarathon: null,
     xp: 0,
     pendingRankUp: null,
     xpMigrated: false,
@@ -78,6 +81,8 @@ function loadProfile() {
         pendingChallengeSubmissions: Array.isArray(p.pendingChallengeSubmissions) ? p.pendingChallengeSubmissions : [],
         weekly: { ...defaultProfile().weekly, ...(p.weekly || {}) },
         monthly: { ...defaultProfile().monthly, ...(p.monthly || {}) },
+        dailyQuests: { ...defaultProfile().dailyQuests, ...(p.dailyQuests || {}), progress: { ...(p.dailyQuests?.progress || {}) }, rewarded: { ...(p.dailyQuests?.rewarded || {}) } },
+        activeMarathon: p.activeMarathon && typeof p.activeMarathon === "object" ? p.activeMarathon : null,
         onboardingComplete: typeof p.onboardingComplete === "boolean" ? p.onboardingComplete : !!p.tutorialComplete,
         featuredAchievements: Array.isArray(p.featuredAchievements) ? p.featuredAchievements : [],
         developerMailSeen: Array.isArray(p.developerMailSeen) ? p.developerMailSeen : [],
@@ -161,6 +166,8 @@ function migrateMetaProfile() {
   profile.pendingChallengeSubmissions = Array.isArray(profile.pendingChallengeSubmissions) ? profile.pendingChallengeSubmissions : [];
   profile.weekly = { ...defaultProfile().weekly, ...(profile.weekly || {}) };
   profile.monthly = { ...defaultProfile().monthly, ...(profile.monthly || {}) };
+  profile.dailyQuests = { ...defaultProfile().dailyQuests, ...(profile.dailyQuests || {}), progress: { ...(profile.dailyQuests?.progress || {}) }, rewarded: { ...(profile.dailyQuests?.rewarded || {}) } };
+  profile.activeMarathon = profile.activeMarathon && typeof profile.activeMarathon === "object" ? profile.activeMarathon : null;
   profile.effectUnlocksSeen = Array.isArray(profile.effectUnlocksSeen) ? profile.effectUnlocksSeen : ["spark"];
   profile.daily.weekRewards = profile.daily.weekRewards && typeof profile.daily.weekRewards === "object" ? profile.daily.weekRewards : {};
   profile.retention = { ...defaultProfile().retention, ...(profile.retention || {}) };
@@ -248,7 +255,13 @@ function applyTitle(id) {
   profile.titleId = def && titleUnlocked(def) ? id : "player";
 }
 function frameUnlocked(def, p = profile) {
-  return !!def && (!def.chapter || completedChapterCount(p) >= def.chapter);
+  return !!def && (!def.chapter || completedChapterCount(p) >= def.chapter) && (!def.minDuelXp || (p.stats.duelXp || 0) >= def.minDuelXp);
+}
+function soundPackUnlocked(def, p = profile) { return !!def && (p.stats.duelXp || 0) >= (def.minDuelXp || 0); }
+function applySoundPack(id) {
+  const def = SOUND_PACK_DEFS.find((x) => x.id === id);
+  profile.soundPack = def && soundPackUnlocked(def) ? id : "classic";
+  document.body.dataset.soundPack = profile.soundPack;
 }
 function applyFrame(id) {
   const def = FRAME_DEFS.find((x) => x.id === id);
@@ -263,6 +276,7 @@ function saveProfile() {
   applyEffect(profile.effect);
   applyTitle(profile.titleId);
   applyFrame(profile.frame);
+  applySoundPack(profile.soundPack);
 }
 function track(name, data = {}) {
   try {
@@ -287,3 +301,4 @@ applyCardBack(profile.cardBack);
 applyEffect(profile.effect);
 applyTitle(profile.titleId);
 applyFrame(profile.frame);
+applySoundPack(profile.soundPack);

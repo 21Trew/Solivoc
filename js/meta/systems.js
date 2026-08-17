@@ -44,6 +44,18 @@ function recordVisibleKnowledge(s = state) {
     saveProfile();
   }
 }
+function hasDiscoveredAllVisualCards(p = profile) {
+  const seen = new Set();
+  Object.entries(p?.categoryStats || {}).forEach(([id,stat])=>{ if(String(id).startsWith("visual:")) (stat.words||[]).forEach(w=>seen.add(`${id}:${w}`)); });
+  const all = allAssociationCategories();
+  return all.length > 0 && all.every(cat => (cat.words||[]).every(w => seen.has(`${cat.id}:${w}`)));
+}
+function hasDiscoveredAllWordCards(p = profile) {
+  const seen = new Set();
+  Object.entries(p?.categoryStats || {}).forEach(([id,stat])=>{ if(!String(id).startsWith("visual:")) (stat.words||[]).forEach(w=>seen.add(`${id}:${normWord(w)}`)); });
+  return BANK.length > 0 && BANK.every(cat => (cat.words||[]).every(w => seen.has(`${cat.id}:${normWord(w)}`)));
+}
+
 function recordCategoryCompletion(catId) {
   if (!catId) return;
   const stat = categoryStat(catId);
@@ -215,8 +227,13 @@ async function challengeApi(method, path = "", body = null, { keepalive = false 
 }
 function cleanChallengeResult(result = {}) {
   return {
-    stars: Math.max(1, Math.min(3, +result.stars || 1)),
+    stars: Math.max(0, Math.min(3, Number.isFinite(+result.stars) ? +result.stars : 1)),
     moves: Math.max(0, +result.moves || 0),
+    autoMoves: Math.max(0, +result.autoMoves || 0),
+    maxCombo: Math.max(0, +result.maxCombo || 0),
+    durationMs: Math.max(0, +result.durationMs || 0),
+    failed: !!result.failed,
+    duelMode: normalizeDuelMode(result.duelMode),
     hints: Math.max(0, +result.hints || 0),
     errors: Math.max(0, +result.errors || 0),
     undos: Math.max(0, +result.undos || 0),
@@ -233,6 +250,11 @@ function resultForCurrentChallenge(s = state, stars = null) {
   return cleanChallengeResult({
     stars: stars ?? s?.lastStars ?? 1,
     moves: s?.run?.moves || 0,
+    autoMoves: s?.run?.autoMoves || 0,
+    maxCombo: s?.run?.maxCombo || 0,
+    durationMs: typeof activeRunElapsedMs === "function" ? activeRunElapsedMs(s) : 0,
+    failed: !!s?.failed,
+    duelMode: normalizeDuelMode(s?.duelMode),
     hints: s?.run?.hints || 0,
     errors: s?.run?.errors || 0,
     undos: s?.run?.undos || 0,
@@ -249,17 +271,23 @@ function challengeStarsText(stars = 0) {
   const n = Math.max(0, Math.min(3, +stars || 0));
   return `${"★".repeat(n)}${"☆".repeat(3 - n)}`;
 }
+function challengeMetricText(result) {
+  if(!result)return ""; const mode=normalizeDuelMode(result.duelMode);
+  if(mode==="time")return `${Math.round((result.durationMs||0)/100)/10} сек.`;
+  if(mode==="combo")return `комбо ×${result.maxCombo||0}`;
+  if(mode==="moves")return `${result.moves||0} ход.`;
+  if(mode==="noMistakes")return result.failed?"ошибка — поражение":"без ошибок";
+  return `${result.moves||0} ход.`;
+}
 function challengeResultMarkup(label, result) {
   if (!result) return `<div class="challenge-result-row empty"><span class="challenge-avatar">•</span><div><b>${label}</b><span>ещё не сыграно</span></div></div>`;
-  return `<div class="challenge-result-row"><span class="challenge-avatar">${result.avatarEmoji || "🙂"}</span><div><div><b>${label}</b><span>${challengeStarsText(result.stars)} · ${result.moves} ход.</span></div><small>${result.title?`${escapeHtml(result.title)}${result.rank?` · ${escapeHtml(result.rank)}`:""}<br>`:""}Подсказки ${result.hints} · Ошибки ${result.errors || 0} · Отмены ${result.undos}</small></div></div>`;
+  return `<div class="challenge-result-row"><span class="challenge-avatar">${result.avatarEmoji || "🙂"}</span><div><div><b>${label}</b><span>${challengeStarsText(result.stars)} · ${challengeMetricText(result)}</span></div><small>${result.title?`${escapeHtml(result.title)}${result.rank?` · ${escapeHtml(result.rank)}`:""}<br>`:""}Подсказки ${result.hints} · Ошибки ${result.errors || 0} · Авто ${result.autoMoves||0} · Комбо ×${result.maxCombo||0}</small></div></div>`;
 }
 function challengeComparison(entry) {
-  const me = entry?.creatorResult, friend = entry?.guestResult;
-  if (!me || !friend) return "";
-  const outcome = challengeOutcome?.(me, friend) || 0, mine = challengePerformanceScore?.(me), theirs = challengePerformanceScore?.(friend);
-  if (outcome > 0) return `Ты победил · качество ${mine} против ${theirs}`;
-  if (outcome < 0) return `Друг победил · качество ${theirs} против ${mine}`;
-  return "Результаты равны";
+  const me=entry?.creatorResult,friend=entry?.guestResult;if(!me||!friend)return "";
+  const outcome=challengeOutcome?.(me,friend)||0, mine=challengeMetricText(me), theirs=challengeMetricText(friend);
+  if(outcome>0)return `Ты победил · ${mine} против ${theirs}`;
+  if(outcome<0)return `Друг победил · ${theirs} против ${mine}`; return "Результаты равны";
 }
 function pruneSentChallenges() {
   profile.sentChallenges = (profile.sentChallenges || [])
@@ -294,6 +322,8 @@ function rememberReceivedChallenge(data) {
       creatorAvatar: data.creatorAvatar || "🙂",
       creatorPlayerId: data.creatorPlayerId || data.creatorResult?.playerId || "",
       sourceMode: normalizeCardSourceMode(data.sourceMode),
+      duelMode: data.duelMode ? normalizeDuelMode(data.duelMode) : null,
+      duelModeChoice: data.duelModeChoice || "creator",
       creatorResult: data.creatorResult ? cleanChallengeResult(data.creatorResult) : null,
       guestToken: data.guestToken || null,
       seriesId: data.seriesId || null,
@@ -313,6 +343,8 @@ function rememberReceivedChallenge(data) {
     entry.creatorAvatar = data.creatorAvatar || entry.creatorAvatar || "🙂";
     entry.creatorPlayerId = data.creatorPlayerId || data.creatorResult?.playerId || entry.creatorPlayerId || "";
     entry.sourceMode = normalizeCardSourceMode(data.sourceMode || entry.sourceMode);
+    if (data.duelMode) entry.duelMode = normalizeDuelMode(data.duelMode);
+    if (data.duelModeChoice) entry.duelModeChoice = data.duelModeChoice;
     if (data.creatorResult) entry.creatorResult = cleanChallengeResult(data.creatorResult);
     if (data.guestToken) entry.guestToken = data.guestToken;
     entry.seriesId = data.seriesId || entry.seriesId || null;
@@ -410,14 +442,18 @@ async function createRemoteChallenge(meta = {}) {
     seriesId = meta.seriesId || `series:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 7)}`,
     seriesRound = Math.max(1, +meta.seriesRound || 1),
     seriesScoreCreator = Math.max(0, +meta.seriesScoreCreator || 0),
-    seriesScoreGuest = Math.max(0, +meta.seriesScoreGuest || 0);
-  const data = await challengeApi("POST", "", { action: "create", seed, level, sourceMode, creatorName: profile.playerName || "Игрок", creatorAvatar: profile.avatarEmoji || "🙂", creatorPlayerId: profile.playerId || "", seriesId, seriesRound, seriesScoreCreator, seriesScoreGuest, pushClientId: profile.settings?.notifications && profile.settings?.challengeReminders !== false ? profile.pushClientId : "" });
+    seriesScoreGuest = Math.max(0, +meta.seriesScoreGuest || 0),
+    duelModeChoice = ["creator","guest","random"].includes(meta.duelModeChoice) ? meta.duelModeChoice : "creator",
+    duelMode = duelModeChoice === "creator" ? normalizeDuelMode(meta.duelMode) : (duelModeChoice === "random" ? DUEL_MODE_DEFS[Math.floor(Math.random()*DUEL_MODE_DEFS.length)].id : null);
+  const data = await challengeApi("POST", "", { action: "create", seed, level, sourceMode, duelModeChoice, duelMode, creatorName: profile.playerName || "Игрок", creatorAvatar: profile.avatarEmoji || "🙂", creatorPlayerId: profile.playerId || "", seriesId, seriesRound, seriesScoreCreator, seriesScoreGuest, pushClientId: profile.settings?.notifications && profile.settings?.challengeReminders !== false ? profile.pushClientId : "" });
   const entry = {
     code: data.code,
     ownerToken: data.ownerToken,
     seed,
     level,
     sourceMode,
+    duelMode: data.duelMode ? normalizeDuelMode(data.duelMode) : duelMode,
+    duelModeChoice,
     creatorName: profile.playerName || "Игрок",
     creatorAvatar: profile.avatarEmoji || "🙂",
     creatorPlayerId: profile.playerId || "",
@@ -525,13 +561,14 @@ function roundRect(ctx, x, y, w, h, r) {
 async function shareChallengeEntry(entry) {
   if (!entry) return false;
   const link = challengeShortLink(entry),
-    text = `Словасьянс — дуэль\nКод: ${entry.code}\n${link}`;
+    fileText = `Словасьянс — дуэль\nКод: ${entry.code}`,
+    text = `${fileText}\n${link}`;
   try {
     const file = await challengeInviteFile(entry);
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       // Do not pass a separate `url`: Telegram and some other apps otherwise
       // create a second message/link preview. The link stays in the image caption.
-      await navigator.share({ text, files: [file] });
+      await navigator.share({ text: fileText, files: [file] });
     } else if (navigator.share && /^https?:$/.test(location.protocol)) {
       await navigator.share({ text });
     } else if (navigator.clipboard?.writeText) {
@@ -555,7 +592,9 @@ async function shareChallengeEntry(entry) {
 async function shareNewChallenge() {
   try {
     showToast("Создаю дуэль…");
-    const entry = await createRemoteChallenge();
+    const choice = document.querySelector("#duelModeChoice")?.value || "creator";
+    const selected = document.querySelector("#duelCreateMode")?.value || "classic";
+    const entry = await createRemoteChallenge({ duelModeChoice: choice, duelMode: selected });
     if (hub?.classList.contains("show") && typeof renderHub === "function") renderHub();
     await shareChallengeEntry(entry);
     if (typeof offerNotificationPrompt === "function") offerNotificationPrompt(entry);
@@ -566,41 +605,29 @@ async function shareNewChallenge() {
     return null;
   }
 }
-function playOwnedChallenge(code) {
-  const entry = ownedChallengeByCode(code);
-  if (!entry) return false;
-  closeHub?.();
-  makeLevel(entry.level, {
-    mode: "challenge",
-    seed: entry.seed,
-    challengeCode: entry.code,
-    challengeRole: "creator",
-    challengeCreatorName: entry.creatorName || profile.playerName || "Игрок",
-    seriesId: entry.seriesId, seriesRound: entry.seriesRound, seriesScoreCreator: entry.seriesScoreCreator, seriesScoreGuest: entry.seriesScoreGuest,
-    cardSourceMode: normalizeCardSourceMode(entry.sourceMode),
-  });
-  return true;
+async function resolveIncomingDuelMode(entry) {
+  if(entry?.duelMode)return normalizeDuelMode(entry.duelMode);
+  if(entry?.duelModeChoice !== "guest")return "classic";
+  const choices=DUEL_MODE_DEFS.map((x,i)=>`${i+1}. ${x.label}`).join("\n");
+  const raw=window.prompt(`Выбери правило дуэли:\n${choices}\n\nВведи номер 1–${DUEL_MODE_DEFS.length}. Пусто — случайно.`);
+  const idx=Math.max(0,Math.min(DUEL_MODE_DEFS.length-1,(parseInt(raw,10)||0)-1));
+  const mode=raw?.trim()?DUEL_MODE_DEFS[idx].id:DUEL_MODE_DEFS[Math.floor(Math.random()*DUEL_MODE_DEFS.length)].id;
+  try { const data=await challengeApi("POST","",{action:"chooseMode",code:entry.code,guestToken:entry.guestToken||"",duelMode:mode}); entry.duelMode=normalizeDuelMode(data.duelMode||mode); } catch { entry.duelMode=mode; }
+  saveProfile(); return entry.duelMode;
 }
-function playReceivedChallenge(code) {
-  const entry = receivedChallengeByCode(code);
-  if (!entry || entry.guestResult) return false;
-  closeHub?.();
-  makeLevel(entry.level, {
-    mode: "challenge",
-    seed: entry.seed,
-    challengeCode: entry.code,
-    challengeRole: "guest",
-    challengeCreatorName: entry.creatorName || "Друг",
-    challengeCreatorAvatar: entry.creatorAvatar || "🙂",
-    challengeCreatorResult: entry.creatorResult || null,
-    challengeGuestToken: entry.guestToken || null,
-    seriesId: entry.seriesId,
-    seriesRound: entry.seriesRound,
-    seriesScoreCreator: entry.seriesScoreCreator,
-    seriesScoreGuest: entry.seriesScoreGuest,
-    cardSourceMode: normalizeCardSourceMode(entry.sourceMode),
-  });
-  return true;
+
+async function playOwnedChallenge(code) {
+  const entry=ownedChallengeByCode(code); if(!entry)return false;
+  if(entry.duelModeChoice==="guest"&&!entry.duelMode){
+    try{const data=await challengeApi("GET",`?code=${encodeURIComponent(entry.code)}&ownerToken=${encodeURIComponent(entry.ownerToken||"")}`);if(data.duelMode)entry.duelMode=normalizeDuelMode(data.duelMode);}catch{}
+    if(!entry.duelMode){showToast("Друг ещё не выбрал режим дуэли");return false;}
+  }
+  closeHub?.(); makeLevel(entry.level,{mode:"challenge",seed:entry.seed,challengeCode:entry.code,challengeRole:"creator",challengeCreatorName:entry.creatorName||profile.playerName||"Игрок",duelMode:entry.duelMode||"classic",duelModeChoice:entry.duelModeChoice,seriesId:entry.seriesId,seriesRound:entry.seriesRound,seriesScoreCreator:entry.seriesScoreCreator,seriesScoreGuest:entry.seriesScoreGuest,cardSourceMode:normalizeCardSourceMode(entry.sourceMode)}); return true;
+}
+async function playReceivedChallenge(code) {
+  const entry=receivedChallengeByCode(code);if(!entry||entry.guestResult)return false;
+  const duelMode=await resolveIncomingDuelMode(entry); closeHub?.();
+  makeLevel(entry.level,{mode:"challenge",seed:entry.seed,challengeCode:entry.code,challengeRole:"guest",challengeCreatorName:entry.creatorName||"Друг",challengeCreatorAvatar:entry.creatorAvatar||"🙂",challengeCreatorResult:entry.creatorResult||null,challengeGuestToken:entry.guestToken||null,duelMode,duelModeChoice:entry.duelModeChoice,seriesId:entry.seriesId,seriesRound:entry.seriesRound,seriesScoreCreator:entry.seriesScoreCreator,seriesScoreGuest:entry.seriesScoreGuest,cardSourceMode:normalizeCardSourceMode(entry.sourceMode)});return true;
 }
 async function startChallengeCode(value) {
   const raw = challengeCodeFromValue(value),
@@ -609,19 +636,10 @@ async function startChallengeCode(value) {
   if (compact.length === 6 && SHORT_CHALLENGE_RE.test(shortCode)) {
     try {
       const data = await challengeApi("GET", `?code=${encodeURIComponent(shortCode)}`);
-      rememberReceivedChallenge({ code: shortCode, seed: data.seed, level: data.level, sourceMode: data.sourceMode, creatorName: data.creatorName || "Друг", creatorAvatar: data.creatorAvatar || "🙂", seriesId: data.seriesId, seriesRound: data.seriesRound, seriesScoreCreator: data.seriesScoreCreator, seriesScoreGuest: data.seriesScoreGuest, creatorResult: data.creatorResult });
-      closeHub?.();
-      makeLevel(data.level, {
-        mode: "challenge",
-        seed: data.seed,
-        challengeCode: shortCode,
-        challengeRole: "guest",
-        challengeCreatorName: data.creatorName || "Друг",
-        challengeCreatorAvatar: data.creatorAvatar || "🙂",
-        challengeCreatorResult: data.creatorResult || null,
-        seriesId: data.seriesId, seriesRound: data.seriesRound, seriesScoreCreator: data.seriesScoreCreator, seriesScoreGuest: data.seriesScoreGuest,
-        cardSourceMode: normalizeCardSourceMode(data.sourceMode),
-      });
+      rememberReceivedChallenge({ code: shortCode, seed: data.seed, level: data.level, sourceMode: data.sourceMode, duelMode: data.duelMode, duelModeChoice: data.duelModeChoice, creatorName: data.creatorName || "Друг", creatorAvatar: data.creatorAvatar || "🙂", seriesId: data.seriesId, seriesRound: data.seriesRound, seriesScoreCreator: data.seriesScoreCreator, seriesScoreGuest: data.seriesScoreGuest, creatorResult: data.creatorResult });
+      const entry = receivedChallengeByCode(shortCode);
+      const started = entry ? await playReceivedChallenge(shortCode) : false;
+      if (!started) return false;
       window.history?.replaceState?.({}, "", location.pathname + location.hash);
       track("challenge_accepted");
       return true;
@@ -726,6 +744,8 @@ async function refreshOwnedChallenges({ notify = true } = {}) {
   for (const entry of items) {
     try {
       const data = await challengeApi("GET", `?code=${encodeURIComponent(entry.code)}&ownerToken=${encodeURIComponent(entry.ownerToken)}`);
+      if (data.duelMode) entry.duelMode = normalizeDuelMode(data.duelMode);
+      if (data.duelModeChoice) entry.duelModeChoice = data.duelModeChoice;
       if (data.status === "completed" && data.guestResult) {
         const wasNew = !entry.guestResult;
         entry.guestResult = cleanChallengeResult(data.guestResult);
@@ -834,7 +854,7 @@ function resultShareTitle(s = state) {
   return `Уровень ${s.level}`;
 }
 async function resultShareFile(s = state) {
-  const stars = Math.max(1, Math.min(3, +(s?.lastStars || calculateStars?.() || 1))),
+  const stars = Math.max(0, Math.min(3, Number.isFinite(+s?.lastStars) ? +s.lastStars : +(calculateStars?.() || 1))),
     canvas = document.createElement("canvas");
   canvas.width = 1200;
   canvas.height = 630;
@@ -879,7 +899,7 @@ async function resultShareFile(s = state) {
 }
 async function shareCurrentResult() {
   if (!state || state.mode === "tutorial") return;
-  const stars = Math.max(1, Math.min(3, +(state.lastStars || calculateStars?.() || 1))),
+  const stars = Math.max(0, Math.min(3, Number.isFinite(+state.lastStars) ? +state.lastStars : +(calculateStars?.() || 1))),
     starText = `${"★".repeat(stars)}${"☆".repeat(3 - stars)}`,
     moves = state.run?.moves || 0,
     hints = state.run?.hints || 0,
@@ -887,10 +907,11 @@ async function shareCurrentResult() {
     undos = state.run?.undos || 0,
     link = appShareLink(),
     title = `Словасьянс · ${resultShareTitle(state)}`,
-    text = `${title}\n${starText} · ${moves} ходов · ${errors} ошибок · ${hints} подсказок · ${undos} отмен\nПопробуй сыграть: ${link}`;
+    fileText = `${title}\n${starText} · ${moves} ходов · ${errors} ошибок · ${hints} подсказок · ${undos} отмен`,
+    text = `${fileText}\nПопробуй сыграть: ${link}`;
   try {
     const file = await resultShareFile(state);
-    if (navigator.share && navigator.canShare?.({ files:[file] })) await navigator.share({ text, files:[file] });
+    if (navigator.share && navigator.canShare?.({ files:[file] })) await navigator.share({ text:fileText, files:[file] });
     else if (navigator.share && /^https?:$/.test(location.protocol)) await navigator.share({ title, text });
     else if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);

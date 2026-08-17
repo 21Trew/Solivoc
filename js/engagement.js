@@ -210,14 +210,11 @@ function duelHistorySummary() {
   return {wins,losses,draws,total:wins+losses+draws};
 }
 function syncDuelStats() {
-  const summary = duelHistorySummary(), stats = profile.stats || (profile.stats = {}),
-    changed = stats.duelMatches !== summary.total || stats.duelWins !== summary.wins || stats.duelLosses !== summary.losses || stats.duelDraws !== summary.draws;
-  stats.duelMatches = summary.total;
-  stats.duelWins = summary.wins;
-  stats.duelLosses = summary.losses;
-  stats.duelDraws = summary.draws;
-  if (changed) saveProfile?.();
-  return summary;
+  const summary=duelHistorySummary(),stats=profile.stats||(profile.stats={});
+  const gold=summary.wins,silver=summary.draws,bronze=summary.losses,duelXp=gold*4+silver*3+bronze*2,duelRating=gold*3+silver*2+bronze;
+  const changed=stats.duelMatches!==summary.total||stats.duelWins!==summary.wins||stats.duelLosses!==summary.losses||stats.duelDraws!==summary.draws||stats.duelGold!==gold||stats.duelSilver!==silver||stats.duelBronze!==bronze||stats.duelXp!==duelXp||stats.duelRating!==duelRating;
+  Object.assign(stats,{duelMatches:summary.total,duelWins:summary.wins,duelLosses:summary.losses,duelDraws:summary.draws,duelGold:gold,duelSilver:silver,duelBronze:bronze,duelXp,duelRating});
+  if(changed)saveProfile?.(); return {...summary,gold,silver,bronze,duelXp,duelRating};
 }
 function duelOpponentKey(x) {
   if (x?.opponentId) return `id:${x.opponentId}`;
@@ -270,8 +267,10 @@ function duelsHubMarkup(view="active") {
   const activeMarkup=active.length
     ? `<div class="owned-challenge-list duel-active-list">${active.map(x=>x.perspective==="guest"?receivedChallengeCardMarkup(x.entry,{compact:true}):ownedChallengeCardMarkup(x.entry,{compact:true})).join("")}</div>`
     : `<div class="empty-state">Активных дуэлей сейчас нет</div>`;
+  const medals=syncDuelStats();
   return `<section class="hub-section duels-hub">
     <div class="hub-section-head"><h3>Дуэли</h3><small>${active.length} активных · ${profiles.length} соперн. · ${completed.length} матч.</small></div>
+    <div class="duel-medal-bar"><span>🥇 <b>${medals.gold}</b></span><span>🥈 <b>${medals.silver}</b></span><span>🥉 <b>${medals.bronze}</b></span><span>XP <b>${medals.duelXp}</b></span><span>Рейтинг <b>${medals.duelRating}</b></span></div>
     <div class="duel-tabs">
       <button class="${current==="active"?"active":""}" data-duel-tab="active">Активные <span>${active.length}</span></button>
       <button class="${current==="history"?"active":""}" data-duel-tab="history">История <span>${profiles.length}</span></button>

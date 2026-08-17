@@ -32,9 +32,18 @@ function categoriesConflict(a, b) {
   if (a.conflictGroup && a.conflictGroup === b.conflictGroup) return true;
   if (a.conflicts?.includes(b.id) || b.conflicts?.includes(a.id)) return true;
   if (a.visual || b.visual) {
-    if (!!a.visual !== !!b.visual) return false;
+    const visual = a.visual ? a : b, word = a.visual ? b : a;
+    if (!!a.visual !== !!b.visual) {
+      if (visual.semanticGroup && word.conflictGroup && visual.semanticGroup === word.conflictGroup) return true;
+      const visualTerms = new Set([normWord(visual.title), ...Object.values(visual.visualLabels || {}).map(normWord)]);
+      const wordTerms = [normWord(word.title), ...(word.words || []).map(normWord)];
+      return wordTerms.some((term) => visualTerms.has(term));
+    }
+    if (a.semanticGroup && b.semanticGroup && a.semanticGroup === b.semanticGroup) return true;
     const exact = new Set((a.words || []).map(String));
-    return (b.words || []).some((w) => exact.has(String(w)));
+    if ((b.words || []).some((w) => exact.has(String(w)))) return true;
+    const labels = new Set(Object.values(a.visualLabels || {}).map(normWord));
+    return Object.values(b.visualLabels || {}).some((label) => labels.has(normWord(label)));
   }
   const aw = new Set(a.words.map(normWord));
   return b.words.some((w) => aw.has(normWord(w)));

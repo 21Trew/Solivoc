@@ -998,3 +998,113 @@ html[data-cols="5"] {
   .hub-nav { padding-left:max(4px,env(safe-area-inset-left)) !important; padding-right:max(4px,env(safe-area-inset-right)) !important; }
   .hub-tabs { gap:3px !important; }
 }
+
+/* ===== v31 gameplay/content pass ===== */
+/* During a solitaire round the board gets the full top width; profile stays in the hub. */
+.app #gameProfileButton { display:none !important; }
+.app .top { justify-content:flex-end; }
+.app .stats { width:100%; justify-content:space-between; }
+
+/* Three-line profile copy with rank information pinned to the right. */
+.global-profile-button { grid-template-columns:auto minmax(0,1fr) auto !important; column-gap:9px; }
+.global-profile-copy { display:grid; grid-template-rows:repeat(3,minmax(0,auto)); align-content:center; }
+.global-profile-copy b,.global-profile-copy small { margin:0 !important; line-height:1.18; }
+.global-profile-copy small + small { margin-top:2px !important; }
+.global-profile-rank { align-self:center; justify-self:end; max-width:105px; color:#d8d4f2; font-size:9px; font-weight:900; line-height:1.15; text-align:right; }
+.hub-profile-button { grid-template-columns:42px minmax(0,1fr) auto !important; }
+.hub-profile-xp { left:52px; }
+
+/* Longer adaptive cards: width follows viewport, height follows both width and available height. */
+:root,
+html[data-cols="3"],html[data-cols="4"],html[data-cols="5"] {
+  --cw: clamp(58px, min(17.2vw, 8.6dvh), 72px);
+  --card-ratio: clamp(1.34, calc(1.25 + 0.12 * (100dvh / 100vw)), 1.48);
+  --ch: calc(var(--cw) * var(--card-ratio));
+}
+@media (min-width:430px) {
+  :root,html[data-cols="3"],html[data-cols="4"],html[data-cols="5"] { --cw:clamp(66px,8.2dvh,74px); }
+}
+@media (max-height:650px) {
+  :root,html[data-cols="3"],html[data-cols="4"],html[data-cols="5"] { --cw:clamp(54px,7.9dvh,64px); --card-ratio:1.34; }
+}
+.rule-metric { white-space:nowrap; }
+
+/* Card backs are selected cosmetics, never theme-dependent. These final rules intentionally
+   outrank older theme selectors so switching themes cannot silently change a chosen back. */
+body { --selected-back:linear-gradient(145deg,#4730a8,#6d50e5 52%,#263e9b); --selected-back-border:#b9a9ff; --selected-back-mark:"✦"; }
+body[data-card-back="classic"]{--selected-back:linear-gradient(145deg,#4730a8,#6d50e5 52%,#263e9b);--selected-back-border:#b9a9ff;--selected-back-mark:"✦"}
+body[data-card-back="prism"]{--selected-back:conic-gradient(from 40deg,#7c5cff,#43d9ff,#ff69b4,#ffd76a,#7c5cff);--selected-back-border:#fff;--selected-back-mark:"◇"}
+body[data-card-back="constellation"]{--selected-back:radial-gradient(circle at 25% 20%,#fff 0 1px,transparent 2px),radial-gradient(circle at 72% 35%,#fff 0 1px,transparent 2px),linear-gradient(145deg,#081a45,#203a78);--selected-back-border:#89c8ff;--selected-back-mark:"✧"}
+body[data-card-back="trophy"]{--selected-back:linear-gradient(145deg,#6a4a12,#c89224 50%,#5c370c);--selected-back-border:#ffe18a;--selected-back-mark:"🏆"}
+body[data-card-back="mosaic"]{--selected-back:repeating-linear-gradient(45deg,#3842a7 0 9px,#784bc2 9px 18px,#2e8cc6 18px 27px);--selected-back-border:#c5d8ff;--selected-back-mark:"◆"}
+body[data-card-back="velvet"]{--selected-back:linear-gradient(145deg,#3f153f,#742c68 52%,#2a102f);--selected-back-border:#e8a9df;--selected-back-mark:"❖"}
+body[data-card-back="glacier"]{--selected-back:linear-gradient(150deg,#d9fbff,#67b9d9 48%,#2a709d);--selected-back-border:#efffff;--selected-back-mark:"❄"}
+body[data-card-back="lotus"]{--selected-back:linear-gradient(145deg,#173c2e,#3b7650 52%,#163328);--selected-back-border:#b8e6a0;--selected-back-mark:"🎋"}
+body[data-card-back="duelist"]{--selected-back:linear-gradient(135deg,#141a31,#3d4a70 52%,#70582d);--selected-back-border:#e5c778;--selected-back-mark:"⚔"}
+body[data-card-back="anniversary"]{--selected-back:radial-gradient(circle at 50% 30%,#fff5a350,transparent 28%),linear-gradient(145deg,#153c56,#3a5c8b 54%,#6d3c73);--selected-back-border:#ffe69a;--selected-back-mark:"🏅"}
+body[data-card-back="crown"]{--selected-back:linear-gradient(145deg,#30235f,#7553b8 55%,#9a6a20);--selected-back-border:#ffe59d;--selected-back-mark:"♛"}
+body[data-card-back="ember"]{--selected-back:radial-gradient(circle at 50% 80%,#ffbf4c66,transparent 30%),linear-gradient(145deg,#40100d,#9c2f1c 55%,#e56a1e);--selected-back-border:#ffc06f;--selected-back-mark:"🔥"}
+body[data-card-back="master"]{--selected-back:linear-gradient(145deg,#0c3040,#176f76 52%,#1da69c);--selected-back-border:#8dfff0;--selected-back-mark:"×10"}
+body[data-card-back="atlas"]{--selected-back:linear-gradient(145deg,#173b55,#2d7180 52%,#6d7a43);--selected-back-border:#bfe4b8;--selected-back-mark:"◎"}
+body[data-card-back="chronicle"]{--selected-back:linear-gradient(145deg,#392744,#78526e 52%,#b78659);--selected-back-border:#edd2b0;--selected-back-mark:"☀"}
+body[data-card-back="phoenix"]{--selected-back:radial-gradient(circle at 50% 70%,#ffd55d66,transparent 30%),linear-gradient(145deg,#41102b,#b62d42 50%,#e88520);--selected-back-border:#ffd07a;--selected-back-mark:"◆"}
+body[data-card-back="legend"]{--selected-back:linear-gradient(145deg,#1a1738,#5d408e 48%,#a1772c);--selected-back-border:#f3d98d;--selected-back-mark:"✦"}
+body[data-card-back="obsidian"]{--selected-back:linear-gradient(145deg,#090b14,#232a38 48%,#080a0f);--selected-back-border:#718096;--selected-back-mark:"◆"}
+body[data-card-back="midnight-grid"]{--selected-back:linear-gradient(#68a7ff20 1px,transparent 1px),linear-gradient(90deg,#68a7ff20 1px,transparent 1px),linear-gradient(145deg,#071329,#142850);--selected-back-border:#6bb6ff;--selected-back-mark:"▦"}
+body[data-card-back="sunrise"]{--selected-back:radial-gradient(circle at 50% 105%,#fff2a9 0 20%,#ffad5d 21% 38%,transparent 39%),linear-gradient(180deg,#7658b8,#db7096 58%,#f2a25c);--selected-back-border:#ffe1a6;--selected-back-mark:"☀"}
+body[data-card-back="lion"]{--selected-back:radial-gradient(circle at 50% 45%,#c98d2f55,transparent 33%),linear-gradient(145deg,#4b2d13,#9c681f 55%,#4a2b10);--selected-back-border:#f0c66e;--selected-back-mark:"🦁"}
+body[data-card-back="parrot"]{--selected-back:linear-gradient(145deg,#0b574c,#1c9671 48%,#ca404d);--selected-back-border:#e8f28a;--selected-back-mark:"🦜"}
+body[data-card-back="grand-trophy"]{--selected-back:radial-gradient(circle at 50% 30%,#fff5a36b,transparent 30%),linear-gradient(145deg,#38245f,#6b4c9c 48%,#b27a22);--selected-back-border:#ffe783;--selected-back-mark:"🏆"}
+body[data-card-back] .card.face-down {
+  background:var(--selected-back) !important;
+  border-color:var(--selected-back-border) !important;
+  box-shadow:inset 0 1px #fff5,0 5px 14px #0004 !important;
+}
+body[data-card-back] .card.face-down::before { background:none !important; border:1px solid color-mix(in srgb,var(--selected-back-border) 42%,transparent) !important; }
+body[data-card-back] .card.face-down::after { content:var(--selected-back-mark) !important; display:grid !important; place-items:center; width:auto !important; height:auto !important; min-width:30px; min-height:30px; transform:none !important; border:0 !important; color:#fff !important; background:transparent !important; font-size:clamp(15px,4vw,22px) !important; font-weight:950; text-shadow:0 2px 8px #0008; }
+.cardback-preview { overflow:hidden; }
+.cardback-preview.back-midnight-grid{background:linear-gradient(#68a7ff25 1px,transparent 1px),linear-gradient(90deg,#68a7ff25 1px,transparent 1px),linear-gradient(145deg,#071329,#142850);border-color:#6bb6ff}.cardback-preview.back-midnight-grid::after{content:"▦"}
+.cardback-preview.back-sunrise{background:linear-gradient(180deg,#7658b8,#db7096 58%,#f2a25c);border-color:#ffe1a6}.cardback-preview.back-sunrise::after{content:"☀"}
+.cardback-preview.back-lion{background:linear-gradient(145deg,#4b2d13,#9c681f,#4a2b10);border-color:#f0c66e}.cardback-preview.back-lion::after{content:"🦁"}
+.cardback-preview.back-parrot{background:linear-gradient(145deg,#0b574c,#1c9671,#ca404d);border-color:#e8f28a}.cardback-preview.back-parrot::after{content:"🦜"}
+.cardback-preview.back-grand-trophy{background:linear-gradient(145deg,#38245f,#6b4c9c,#b27a22);border-color:#ffe783}.cardback-preview.back-grand-trophy::after{content:"🏆"}
+.cardback-preview.back-midnight-grid::after,.cardback-preview.back-sunrise::after,.cardback-preview.back-lion::after,.cardback-preview.back-parrot::after,.cardback-preview.back-grand-trophy::after{position:relative;z-index:2;font-size:18px}
+
+/* Cosmetic shelves show two rows until explicitly expanded. */
+.cosmetic-section .cosmetic-clip { overflow:hidden; max-height:205px; transition:max-height .24s ease; }
+.cosmetic-section.expanded .cosmetic-clip { max-height:1400px; }
+.cosmetic-expand { width:100%; margin-top:9px; min-height:38px; border:1px solid #ffffff14; border-radius:12px; background:#ffffff08; color:#c9c6e8; font-size:10px; font-weight:900; }
+.sound-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+.sound-tile { min-height:86px; display:grid; place-items:center; gap:3px; padding:8px; border:1px solid #ffffff14; border-radius:14px; background:#ffffff08; color:#fff; }
+.sound-tile i{font-size:22px;font-style:normal}.sound-tile b{font-size:10px}.sound-tile span{font-size:8px;color:#aaa6cf}.sound-tile.selected{outline:2px solid #fff;outline-offset:-3px}.sound-tile.locked{opacity:.45}
+
+/* Daily quests and duel controls. */
+.daily-quest-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+.daily-quest { padding:9px; border:1px solid #ffffff12; border-radius:13px; background:#ffffff07; display:grid; gap:5px; }
+.daily-quest b{font-size:10px}.daily-quest span{font-size:8px;color:#aaa6cf}.daily-quest em{height:4px;border-radius:99px;background:#ffffff10;overflow:hidden}.daily-quest em i{display:block;height:100%;background:linear-gradient(90deg,#6bd9ef,#8b6aff)}.daily-quest.done{border-color:#74e5a950;background:#5be39b0d}
+.duel-medal-bar { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+.duel-medal-bar span { padding:6px 8px; border-radius:10px; background:#ffffff09; border:1px solid #ffffff10; font-size:9px; }
+.duel-create-controls { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.duel-create-controls select,.duel-create-controls button { min-width:0; min-height:42px; border:1px solid #ffffff16; border-radius:12px; background:#171936; color:#fff; padding:8px; font:inherit; font-size:9px; font-weight:850; }
+.duel-create-controls button { grid-column:1/-1; background:linear-gradient(135deg,#7159f5,#417ddf); }
+.mode-nearest { display:block; margin-top:6px; color:#9bdff0 !important; font-size:7.5px !important; line-height:1.25; }
+
+/* Four additional victory cosmetics. */
+.effect-fireworks i,.spark-fireworks { border-radius:50%; box-shadow:0 0 12px currentColor; }
+.effect-ribbons i,.spark-ribbons { width:16px;height:4px;border-radius:99px; }
+.effect-stars i::after,.spark-stars::after { content:"★"; color:#fff4a8; font-size:13px; }
+.effect-crown-rain i::after,.spark-crown-rain::after { content:"♛"; color:#ffe27d; font-size:15px; }
+.spark-ribbons { background:linear-gradient(90deg,#ff8db8,#8fe9ff) !important; }
+.spark-stars,.spark-crown-rain { width:16px !important;height:16px !important;background:transparent !important;overflow:visible; }
+
+/* Volumetric result stars. */
+.win-star-symbol { display:inline-block; color:#ffd95a; text-shadow:0 1px 0 #fff2a8,0 2px 0 #d49a25,0 4px 7px #0007,0 0 12px #ffd65b55; filter:drop-shadow(0 3px 2px #0005); transform:perspective(100px) rotateX(-8deg); }
+.win-star-item.missed .win-star-symbol { color:#77728a; text-shadow:0 1px 0 #aaa5bd,0 3px 5px #0005; opacity:.48; }
+
+@media (max-width:370px){.daily-quest-grid{grid-template-columns:1fr}.global-profile-rank{max-width:82px;font-size:8px}}
+/* Exactly two visible cosmetic rows while collapsed (tile heights differ by shelf). */
+.cosmetic-section[data-cosmetic-section="themes"]:not(.expanded) .cosmetic-clip{max-height:141px}
+.cosmetic-section[data-cosmetic-section="backs"]:not(.expanded) .cosmetic-clip{max-height:219px}
+.cosmetic-section[data-cosmetic-section="frames"]:not(.expanded) .cosmetic-clip{max-height:171px}
+.cosmetic-section[data-cosmetic-section="effects"]:not(.expanded) .cosmetic-clip{max-height:187px}
+.cosmetic-section[data-cosmetic-section="sounds"]:not(.expanded) .cosmetic-clip{max-height:179px}

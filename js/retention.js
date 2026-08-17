@@ -242,6 +242,42 @@ function migrateCategoryMasteryProgress() {
   return newlyMastered;
 }
 
+const DAILY_MODE_QUESTS = Object.freeze([
+  ["regular","Обычный"], ["daily","Ежедневный"], ["marathon","Марафон"], ["zen","Дзен"], ["pictures","Картинки"],
+  ["duel","Дуэли"], ["time","На время"], ["moves","На ходы"], ["combo","На комбо"], ["noMistakes","До ошибки"],
+].map(([id,label]) => ({ id, label, target:5, rewardXp:30 })));
+function normalizeDailyQuests() {
+  const today=todayKey(); profile.dailyQuests ||= {date:"",progress:{},rewarded:{}};
+  if (profile.dailyQuests.date !== today) profile.dailyQuests={date:today,progress:{},rewarded:{}};
+  return profile.dailyQuests;
+}
+function dailyQuestModeForState(s=state) {
+  if (!s) return "regular";
+  if (s.mode === "challenge") return "duel";
+  if (s.mode === "collection") return "pictures";
+  if (s.mode === "calm") return "zen";
+  return s.mode || "regular";
+}
+function recordDailyModeGame(s=state) {
+  const q=normalizeDailyQuests(), id=dailyQuestModeForState(s), def=DAILY_MODE_QUESTS.find(x=>x.id===id); if(!def) return;
+  q.progress[id]=Math.min(def.target,(+q.progress[id]||0)+1);
+  if(q.progress[id]>=def.target&&!q.rewarded[id]){q.rewarded[id]=true; awardXp(def.rewardXp,`Ежедневное задание: ${def.label}`,{notifyRank:false}); showToast?.(`✓ ${def.label}: +${def.rewardXp} XP`);}
+  saveProfile();
+}
+function dailyModeQuestsMarkup() {
+  const q=normalizeDailyQuests();
+  return `<section class="hub-section daily-quests"><div class="hub-section-head"><div><h3>Ежедневные задания</h3><small>сыграй 5 раз в каждый режим</small></div></div><div class="daily-quest-grid">${DAILY_MODE_QUESTS.map(def=>{const v=Math.min(def.target,+q.progress[def.id]||0),done=v>=def.target;return `<div class="daily-quest ${done?"done":""}"><b>${def.label}</b><span>${v}/${def.target}${done?" ✓":` · +${def.rewardXp} XP`}</span><em><i style="width:${v/def.target*100}%"></i></em></div>`;}).join("")}</div></section>`;
+}
+function activeRuleMode(s=state) { return s?.mode === "challenge" ? normalizeDuelMode(s.duelMode) : (["time","moves","combo","noMistakes"].includes(s?.mode) ? s.mode : "classic"); }
+function ruleMetricText(s=state) {
+  const mode=activeRuleMode(s); if(!s?.run||mode==="classic")return "";
+  if(mode==="time") return `⏱ ${Math.floor((typeof activeRunElapsedMs === "function" ? activeRunElapsedMs(s) : 0)/1000)} сек.`;
+  if(mode==="moves") return `↯ ${s.run.moves||0} ход.`;
+  if(mode==="combo") return `× ${s.run.maxCombo||0}`;
+  if(mode==="noMistakes") return (s.run.errors||0)?"Ошибка — поражение":"◇ Без ошибок";
+  return "";
+}
+
 function assignBonusObjective(s) {
   if (!s || s.mode === "tutorial" || s.mode === "calm") return null;
   if (s.bonusObjective) return s.bonusObjective;
@@ -290,21 +326,30 @@ function bonusObjectiveMarkup(s = state) {
   return `<span class="bonus-objective-chip ${failed?"failed":""}">${b.icon} ${b.title}<small>${bonusObjectiveStatus(s)}</small></span>`;
 }
 
+function nearestAchievementForMode(mode) {
+  const map={regular:["ten","fifty","hundred"],daily:["daily7","daily30","daily100"],marathon:["marathon5","marathon15"],zen:["calm10"],pictures:["allPictures"],duel:["challenge1","challenge25","duelGold10"],time:["special10","special25"],moves:["special10","special25"],combo:["combo3","combo10"],noMistakes:["nohint","nohint50","nohint100"]};
+  const defs=(map[mode]||[]).map(id=>ACHIEVEMENTS.find(a=>a.id===id)).filter(Boolean).filter(a=>!profile.achievements.includes(a.id));
+  return defs.map(a=>({a,p:achievementProgressData(a,profile)})).sort((x,y)=>((y.p?.value||0)/(y.p?.goal||1))-((x.p?.value||0)/(x.p?.goal||1)))[0]?.a||defs[0]||null;
+}
+function modeNearestAchievementMarkup(mode) { const a=nearestAchievementForMode(mode); return a?`<small class="mode-nearest">Ближе всего: ${a.icon} ${escapeHtml(a.title)}</small>`:""; }
+
 function nearGoalCandidates() {
-  const goals = [], xp = xpLevelProgress(), rank = playerRank();
+  const progressAchievements = ACHIEVEMENTS.map((a)=>({a,p:achievementProgressData(a,profile)})).filter((x)=>x.p&&!profile.achievements.includes(x.a.id)&&x.p.value>0).map(({a,p})=>({id:`achievement:${a.id}`,icon:a.icon,title:a.title,desc:`${p.value}/${p.goal}`,ratio:p.value/p.goal})).sort((a,b)=>b.ratio-a.ratio);
+  const goals = [...progressAchievements], xp = xpLevelProgress(), rank = playerRank();
   goals.push({ id: "xp", icon: rank.icon, title: `Ранг ${xp.level + 1}`, desc: `Ещё ${xp.goal - xp.value} XP`, ratio: xp.ratio });
   const nt = typeof nextTheme === "function" ? nextTheme() : null;
   if (nt) goals.push({ id: "theme", icon: "✦", title: `Тема ${nt.name}`, desc: `Ещё ${Math.max(0, nt.stars - profile.totalStars)} ★`, ratio: Math.min(1, profile.totalStars / nt.stars) });
   const chapter = chapterInfo(profile.currentLevel || 1), stars = chapterStarsForProfile(profile, chapter.number).reduce((a,b)=>a+b,0);
   if (stars < 30) goals.push({ id: "chapter", icon: "◆", title: `Глава ${chapter.number}`, desc: `До идеала: ${30-stars} ★`, ratio: stars/30 });
-  const nearAchievement = ACHIEVEMENTS.map((a)=>({a,p:achievementProgressData(a,profile)})).filter((x)=>x.p&&!profile.achievements.includes(x.a.id)&&x.p.value>0).sort((a,b)=>(b.p.value/b.p.goal)-(a.p.value/a.p.goal))[0];
-  if (nearAchievement) goals.push({ id:`achievement:${nearAchievement.a.id}`, icon:nearAchievement.a.icon, title:nearAchievement.a.title, desc:`${nearAchievement.p.value}/${nearAchievement.p.goal}`, ratio:nearAchievement.p.value/nearAchievement.p.goal });
   const mastery = nearestMasteryGoal();
   if (mastery) goals.push({ id:`mastery:${mastery.cat.id}`, icon:"▦", title:`Освоить «${mastery.cat.title}»`, desc:`Осталось ${mastery.total-mastery.known} слов`, ratio:mastery.ratio });
   return goals.sort((a,b)=>b.ratio-a.ratio);
 }
 function nearGoalsMarkup(limit = 2) {
-  const goals = nearGoalCandidates().slice(0, limit);
+  const candidates = nearGoalCandidates();
+  const achievements = candidates.filter((g) => String(g.id).startsWith("achievement:"));
+  const others = candidates.filter((g) => !String(g.id).startsWith("achievement:"));
+  const goals = [...achievements, ...others].slice(0, limit);
   if (!goals.length) return "";
   return `<section class="near-goals"><div class="near-goals-head"><b>Совсем близко</b><span>ещё одна причина сыграть</span></div>${goals.map((g)=>`<div class="near-goal"><i>${g.icon}</i><div><b>${g.title}</b><span>${g.desc}</span><em><u style="width:${Math.round(g.ratio*100)}%"></u></em></div></div>`).join("")}</section>`;
 }
@@ -341,29 +386,20 @@ function runSmartHomeAction() {
 
 function challengePerformanceScore(result) {
   if (!result) return Number.POSITIVE_INFINITY;
-  // Fair duel score: errors matter enough that one careless move cannot beat
-  // a clean solve just because the raw move count is one lower.
-  return (+result.moves || 0)
-    + (+result.errors || 0) * 2
-    + (+result.hints || 0) * 5
-    + (+result.undos || 0) * 3;
+  const mode=normalizeDuelMode(result.duelMode);
+  if(mode==="time") return +result.durationMs||Number.POSITIVE_INFINITY;
+  if(mode==="combo") return -(+result.maxCombo||0);
+  if(mode==="moves") return +result.moves||0;
+  if(mode==="noMistakes") return result.failed?Number.POSITIVE_INFINITY:(+result.moves||0)+((+result.durationMs||0)/1e9);
+  return (+result.moves||0)+(+result.errors||0)*2+(+result.hints||0)*5+(+result.undos||0)*3;
 }
 function challengeOutcome(me, friend) {
   if (!me || !friend) return 0;
-  const mine = challengePerformanceScore(me), theirs = challengePerformanceScore(friend);
-  if (mine !== theirs) return mine < theirs ? 1 : -1;
-  const tieBreakers = [
-    [+me.errors || 0, +friend.errors || 0, false],
-    [+me.hints || 0, +friend.hints || 0, false],
-    [+me.undos || 0, +friend.undos || 0, false],
-    [+me.stars || 0, +friend.stars || 0, true],
-    [+me.moves || 0, +friend.moves || 0, false],
-  ];
-  for (const [a, b, higherWins] of tieBreakers) {
-    if (a === b) continue;
-    return higherWins ? (a > b ? 1 : -1) : (a < b ? 1 : -1);
-  }
-  return 0;
+  const mine=challengePerformanceScore(me),theirs=challengePerformanceScore(friend);
+  if(mine!==theirs)return mine<theirs?1:-1;
+  const mode=normalizeDuelMode(me.duelMode||friend.duelMode);
+  const tieBreakers=mode==="combo"?[[+me.moves||0,+friend.moves||0,false],[+me.durationMs||0,+friend.durationMs||0,false]]:[[+me.errors||0,+friend.errors||0,false],[+me.hints||0,+friend.hints||0,false],[+me.undos||0,+friend.undos||0,false],[+me.stars||0,+friend.stars||0,true],[+me.moves||0,+friend.moves||0,false]];
+  for(const [a,b,higherWins] of tieBreakers){if(a===b)continue;return higherWins?(a>b?1:-1):(a<b?1:-1)} return 0;
 }
 function resolvedSeriesScore(entry) {
   let creator = +(entry?.seriesScoreCreator || 0), guest = +(entry?.seriesScoreGuest || 0);
@@ -582,7 +618,7 @@ function rewardChapterFinal(s, firstClear) {
 }
 
 function frameTilesMarkup() {
-  return FRAME_DEFS.map((f)=>{const unlocked=frameUnlocked(f), selected=profile.frame===f.id;return `<button class="frame-tile ${unlocked?"":"locked"} ${selected?"selected":""}" data-frame-id="${f.id}" style="--frame-h:${f.hue}"><i>◇</i><b>${f.name}</b><span>${unlocked?(selected?"Выбрано":"Открыто"):(`Глава ${f.chapter}`)}</span></button>`;}).join("");
+  return FRAME_DEFS.map((f)=>{const unlocked=frameUnlocked(f), selected=profile.frame===f.id,locked=f.minDuelXp?`${f.minDuelXp} дуэльного XP`:`Глава ${f.chapter}`;return `<button class="frame-tile ${unlocked?"":"locked"} ${selected?"selected":""}" data-frame-id="${f.id}" style="--frame-h:${f.hue}"><i>◇</i><b>${f.name}</b><span>${unlocked?(selected?"Выбрано":"Открыто"):locked}</span></button>`;}).join("");
 }
 
 function bindRetentionUi() {

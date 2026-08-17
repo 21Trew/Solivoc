@@ -9,7 +9,8 @@ function progressMeterMarkup(ratio, className = "ui-progress") {
 }
 
 function modeCardMarkup({ id, icon, label, className = "", description = "", meta = "" }) {
-  return `<button class="mode-card ${className}" data-game-mode="${id}"><i>${icon}</i><b>${escapeHtml(label)}</b><span>${escapeHtml(description)}</span>${meta ? `<em>${escapeHtml(meta)}</em>` : ""}</button>`;
+  const nearest = typeof modeNearestAchievementMarkup === "function" ? modeNearestAchievementMarkup(id) : "";
+  return `<button class="mode-card ${className}" data-game-mode="${id}"><i>${icon}</i><b>${escapeHtml(label)}</b><span>${escapeHtml(description)}</span>${meta ? `<em>${escapeHtml(meta)}</em>` : ""}${nearest}</button>`;
 }
 
 function statBoxMarkup(value, label) {

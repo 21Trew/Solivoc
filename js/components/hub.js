@@ -32,21 +32,11 @@ function hubTabsMarkup() {
   return `<nav class="hub-tabs">${tabs}<button class="hub-play" data-hub-resume aria-label="Продолжить уровень ${level}"><i>▶</i><span>Играть</span></button></nav>`;
 }
 function renderGlobalProfileHeaders() {
-  const rank = typeof playerRank === "function" ? playerRank(profile) : { name: "Новичок" },
-    xp = typeof xpLevelProgress === "function" ? xpLevelProgress(profile) : { level: 1, ratio: 0, value: 0, goal: 100 },
-    left = Math.max(0, xp.goal - xp.value),
-    meta = `Ранг ${xp.level} · ${rank.name} · ещё ${left} XP`;
-  const values = [
-    ["#gameProfileAvatar", profile.avatarEmoji || "🙂"], ["#gameProfileName", profile.playerName || "Игрок"], ["#gameProfileMeta", meta],
-    ["#hubProfileAvatar", profile.avatarEmoji || "🙂"], ["#hubProfileName", profile.playerName || "Игрок"], ["#hubProfileMeta", meta],
-  ];
-  for (const [selector, value] of values) { const el = $(selector); if (el) el.textContent = value; }
-  const frame = FRAME_DEFS.find((f) => f.id === profile.frame) || FRAME_DEFS[0];
-  [$("#gameProfileAvatar"), $("#hubProfileAvatar")].filter(Boolean).forEach((avatar) => {
-    avatar.dataset.frame = frame.id;
-    avatar.style.setProperty("--frame-h", frame.hue || 250);
-  });
-  const bar = $("#hubProfileXpBar"); if (bar) bar.style.width = `${Math.max(0, Math.min(1, xp.ratio || 0)) * 100}%`;
+  const rank=typeof playerRank==="function"?playerRank(profile):{name:"Новичок"},xp=typeof xpLevelProgress==="function"?xpLevelProgress(profile):{level:1,ratio:0,value:0,goal:100},title=titleCurrent();
+  const values=[["#gameProfileAvatar",profile.avatarEmoji||"🙂"],["#gameProfileName",profile.playerName||"Игрок"],["#gameProfileTitle",`${title.icon||"◇"} ${title.name}`],["#gameProfileMeta",`${xp.value}/${xp.goal} XP`],["#gameProfileRank",`Ранг ${xp.level} · ${rank.name}`],["#hubProfileAvatar",profile.avatarEmoji||"🙂"],["#hubProfileName",profile.playerName||"Игрок"],["#hubProfileTitle",`${title.icon||"◇"} ${title.name}`],["#hubProfileMeta",`${xp.value}/${xp.goal} XP`],["#hubProfileRank",`Ранг ${xp.level} · ${rank.name}`]];
+  for(const [selector,value] of values){const el=$(selector);if(el)el.textContent=value;}
+  const frame=FRAME_DEFS.find(f=>f.id===profile.frame)||FRAME_DEFS[0]; [$("#gameProfileAvatar"),$("#hubProfileAvatar")].filter(Boolean).forEach(avatar=>{avatar.dataset.frame=frame.id;avatar.style.setProperty("--frame-h",frame.hue||250);});
+  const bar=$("#hubProfileXpBar");if(bar)bar.style.width=`${Math.max(0,Math.min(1,xp.ratio||0))*100}%`;
 }
 function collapsibleSectionMarkup(key, title, subtitle, content, extraClass = "") {
   const open = hubExpandedSections.has(key);
@@ -96,10 +86,15 @@ function modesTabMarkup() {
     zen: { description: "Бесконечные расклады без давления", meta: "Для спокойной игры" },
     duel: { description: "Одинаковый расклад для двух игроков", meta: "Серия до 2 побед" },
     pictures: { description: "Тематические расклады только с картинками", meta: `${ASSOCIATION_COLLECTION_DEFS.length} наборов` },
+    time: { description: "Заверши расклад как можно быстрее", meta: "Секундомер" },
+    moves: { description: "Реши расклад за минимум ходов", meta: "Точность" },
+    combo: { description: "Собери самое длинное комбо", meta: "Серия ходов" },
+    noMistakes: { description: "Первая ошибка завершает партию", meta: "Один шанс" },
   };
   const cards = GAME_MODE_DEFS.map((def) => modeCardMarkup({ ...def, ...(copy[def.id] || {}) })).join("");
   return `<section class="hub-section modes-intro"><div class="hub-section-head"><div><h3>Режимы игры</h3><small>у каждого режима свой темп и музыка</small></div></div><div class="mode-grid">${cards}</div></section>
     ${typeof duelsHubMarkup === "function" ? duelsHubMarkup(hubDuelTab) : `${ownedChallengesMarkup()}${receivedChallengesMarkup()}`}
+    <section class="hub-section duel-create"><div class="hub-section-head"><div><h3>Новая дуэль</h3><small>кто выбирает правило</small></div></div><div class="duel-create-controls"><select id="duelModeChoice"><option value="creator">Я выбираю режим</option><option value="guest">Пусть выберет друг</option><option value="random">Случайный режим</option></select><select id="duelCreateMode">${DUEL_MODE_DEFS.map(x=>`<option value="${x.id}">${x.icon} ${x.label}</option>`).join("")}</select><button id="duelCreate">Создать и отправить</button></div></section>
     <section class="hub-section challenge-enter"><div class="hub-section-head"><h3>Код дуэли</h3><small>6 символов</small></div><div class="challenge-input-row"><input id="challengeInput" inputmode="text" autocomplete="off" autocapitalize="characters" maxlength="6" placeholder="ABC123"><button id="challengeStart">Открыть</button></div></section>`;
 }
 
@@ -107,6 +102,7 @@ function homeTabMarkup() {
   return `<section class="home-welcome"><div class="home-welcome-copy"><small>ГЛАВНАЯ</small><h2>Продолжим?</h2><p>Серия, недельная цель и следующий лучший ход — на одном экране.</p></div></section>
     ${typeof smartHomeMarkup === "function" ? smartHomeMarkup() : ""}
     ${typeof dailyCalendarMarkup === "function" ? dailyCalendarMarkup() : ""}
+    ${typeof dailyModeQuestsMarkup === "function" ? dailyModeQuestsMarkup() : ""}
     ${weeklyMarkup()}
     ${monthlyMarkup()}`;
 }
@@ -397,12 +393,11 @@ function notificationPermissionLabel() {
   return { cls:"idle", text:"Браузер ещё не спрашивал разрешение" };
 }
 function appearanceTabMarkup() {
-  const themes = THEME_DEFS.map((t)=>{ const unlocked=themeUnlocked(t); return `<button class="theme-tile theme-${t.id} ${unlocked?"":"locked"} ${profile.theme===t.id?"selected":""}" data-theme-id="${t.id}"><b>${t.name}</b><span>${unlocked?"Открыто":themeUnlockLabel(t)}</span></button>`; }).join("");
-  const effects = EFFECT_DEFS.map((e)=>{ const unlocked=effectUnlocked(e); return `<button class="effect-tile ${unlocked?"":"locked"} ${profile.effect===e.id?"selected":""}" data-effect-id="${e.id}">${effectPreviewMarkup(e)}<b>${e.name}</b><span>${unlocked?"Открыто":effectUnlockLabel(e)}</span></button>`; }).join("");
-  return `<section class="hub-section"><div class="hub-section-head"><h3>Темы</h3><small>выбери оформление</small></div><div class="theme-grid">${themes}</div></section>
-    <section class="hub-section"><div class="hub-section-head"><h3>Рубашки</h3><small>${CARD_BACK_DEFS.filter((b) => cardBackUnlocked(b)).length}/${CARD_BACK_DEFS.length}</small></div><div class="cardback-grid">${cardBackMarkup()}</div></section>
-    <section class="hub-section"><div class="hub-section-head"><h3>Рамки профиля</h3><small>за финалы глав</small></div><div class="frame-grid">${typeof frameTilesMarkup === "function" ? frameTilesMarkup() : ""}</div></section>
-    <section class="hub-section"><div class="hub-section-head"><h3>Эффекты победы</h3><small>косметические награды</small></div><div class="effect-grid">${effects}</div></section>`;
+  const themes=THEME_DEFS.map(t=>{const unlocked=themeUnlocked(t);return `<button class="theme-tile theme-${t.id} ${unlocked?"":"locked"} ${profile.theme===t.id?"selected":""}" data-theme-id="${t.id}"><b>${t.name}</b><span>${unlocked?"Открыто":themeUnlockLabel(t)}</span></button>`;}).join("");
+  const effects=EFFECT_DEFS.map(e=>{const unlocked=effectUnlocked(e);return `<button class="effect-tile ${unlocked?"":"locked"} ${profile.effect===e.id?"selected":""}" data-effect-id="${e.id}">${effectPreviewMarkup(e)}<b>${e.name}</b><span>${unlocked?"Открыто":effectUnlockLabel(e)}</span></button>`;}).join("");
+  const sounds=SOUND_PACK_DEFS.map(x=>{const unlocked=soundPackUnlocked(x);return `<button class="sound-tile ${unlocked?"":"locked"} ${profile.soundPack===x.id?"selected":""}" data-sound-pack="${x.id}"><i>♪</i><b>${x.name}</b><span>${unlocked?"Открыто":`${x.minDuelXp} дуэльного XP`}</span></button>`;}).join("");
+  const shelf=(key,title,subtitle,cls,content)=>{const open=hubExpandedSections.has(`cosmetic:${key}`);return `<section class="hub-section cosmetic-section ${open?"expanded":""}" data-cosmetic-section="${key}"><div class="hub-section-head"><h3>${title}</h3><small>${subtitle}</small></div><div class="cosmetic-clip"><div class="${cls}">${content}</div></div><button class="cosmetic-expand" data-cosmetic-expand="${key}">${open?"Свернуть":"Показать все"}</button></section>`};
+  return `${shelf("themes","Темы","выбери оформление","theme-grid",themes)}${shelf("backs","Рубашки",`${CARD_BACK_DEFS.filter(b=>cardBackUnlocked(b)).length}/${CARD_BACK_DEFS.length}`,"cardback-grid",cardBackMarkup())}${shelf("frames","Рамки профиля","главы и дуэльный XP","frame-grid",typeof frameTilesMarkup==="function"?frameTilesMarkup():"")}${shelf("effects","Эффекты победы","косметические награды","effect-grid",effects)}${shelf("sounds","Звуки","награды за дуэльный опыт","sound-grid",sounds)}`;
 }
 function settingsTabMarkup() {
   const standalone=isStandalonePwa(),
@@ -471,8 +466,10 @@ function bindHubHandlers() {
     if(mode==="marathon"){closeHub();const runId=`marathon:${Date.now().toString(36)}`;makeLevel(1,{mode:"marathon",seed:`${runId}:1`,marathonRound:1,marathonId:runId});return;}
     if(mode==="zen"){closeHub();makeLevel(1,{mode:"calm",seed:`zen:${Date.now()}:${Math.random()}`});return;}
     if(mode==="pictures"){openPictureModePicker();return;}
-    if(mode==="duel") shareNewChallenge();
+    if(mode==="duel"){hubContent.querySelector(".duel-create")?.scrollIntoView({behavior:"smooth",block:"center"});return;}
+    if(["time","moves","combo","noMistakes"].includes(mode)){closeHub();makeLevel(25,{mode,seed:`${mode}:${Date.now()}:${Math.random()}`});return;}
   });
+  on("#duelCreate",()=>shareNewChallenge());
   on("#challengeStart",()=>startChallengeCode($("#challengeInput")?.value));
   const challengeInput=$("#challengeInput"); if(challengeInput) challengeInput.oninput=()=>{challengeInput.value=normalizeChallengeCode(challengeInput.value);};
   hubContent.querySelectorAll("[data-owned-challenge-play]").forEach((btn)=>btn.onclick=()=>playOwnedChallenge(btn.dataset.ownedChallengePlay));
@@ -506,8 +503,10 @@ function bindHubHandlers() {
   hubContent.querySelectorAll("[data-association-collection]").forEach((btn)=>btn.onclick=()=>{const id=btn.dataset.associationCollection;closeHub();makeLevel(1,{mode:"collection",collectionId:id,seed:`collection:${id}:${Date.now()}`});});
   hubContent.querySelectorAll("[data-theme-id]").forEach((btn)=>btn.onclick=()=>{const def=THEME_DEFS.find((x)=>x.id===btn.dataset.themeId);if(themeUnlocked(def)){profile.theme=def.id;saveProfile();}renderHub();if(!themeUnlocked(def))showToast(`Откроется за ${themeUnlockLabel(def)}`);});
   hubContent.querySelectorAll("[data-card-back-id]").forEach((btn)=>btn.onclick=()=>{const def=CARD_BACK_DEFS.find((x)=>x.id===btn.dataset.cardBackId);if(cardBackUnlocked(def)){profile.cardBack=def.id;saveProfile();}renderHub();if(!cardBackUnlocked(def))showToast(cardBackUnlockLabel(def));});
-  hubContent.querySelectorAll("[data-frame-id]").forEach((btn)=>btn.onclick=()=>{const def=FRAME_DEFS.find((x)=>x.id===btn.dataset.frameId);if(frameUnlocked(def)){profile.frame=def.id;saveProfile();}renderHub();if(!frameUnlocked(def))showToast(`Откроется после главы ${def.chapter}`);});
+  hubContent.querySelectorAll("[data-frame-id]").forEach((btn)=>btn.onclick=()=>{const def=FRAME_DEFS.find((x)=>x.id===btn.dataset.frameId);if(frameUnlocked(def)){profile.frame=def.id;saveProfile();}renderHub();if(!frameUnlocked(def))showToast(def.minDuelXp?`Нужно ${def.minDuelXp} дуэльного XP`:`Откроется после главы ${def.chapter}`);});
   hubContent.querySelectorAll("[data-effect-id]").forEach((btn)=>btn.onclick=()=>{const def=EFFECT_DEFS.find((x)=>x.id===btn.dataset.effectId);if(effectUnlocked(def)){profile.effect=def.id;saveProfile();burst(false);}renderHub();if(!effectUnlocked(def))showToast(effectUnlockLabel(def));});
+  hubContent.querySelectorAll("[data-sound-pack]").forEach(btn=>btn.onclick=()=>{const def=SOUND_PACK_DEFS.find(x=>x.id===btn.dataset.soundPack);if(soundPackUnlocked(def)){profile.soundPack=def.id;saveProfile();playSfx("combo",.7);}else showToast(`Нужно ${def.minDuelXp} дуэльного XP`);renderHub();});
+  hubContent.querySelectorAll("[data-cosmetic-expand]").forEach(btn=>btn.onclick=()=>{const key=`cosmetic:${btn.dataset.cosmeticExpand}`;if(hubExpandedSections.has(key))hubExpandedSections.delete(key);else hubExpandedSections.add(key);renderHub();});
   on("#soundToggle",()=>{profile.settings.sound=!profile.settings.sound;saveProfile();if(profile.settings.sound)playSfx("combo",.65);renderHub();});
   on("#musicToggle",()=>{profile.settings.music=!profile.settings.music;saveProfile();if(profile.settings.music)setBackgroundMusic("menu");else stopBackgroundMusic();renderHub();});
   on("#hapticsToggle",()=>{profile.settings.haptics=!profile.settings.haptics;saveProfile();if(profile.settings.haptics)haptic([8,20,8]);renderHub();});

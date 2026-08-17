@@ -99,6 +99,7 @@ function bindAppEvents() {
       else if (state.mode === "challenge") openHub("modes");
       else if (state.mode === "collection") makeLevel(1, { mode: "collection", collectionId: state.collectionId, seed: `collection:${state.collectionId}:${Date.now()}` });
       else if (state.mode === "calm") makeLevel(1, { mode: "calm", seed: `calm:${Date.now()}:${Math.random()}` });
+      else if (["time","moves","combo","noMistakes"].includes(state.mode)) makeLevel(1, { mode: state.mode, seed: `${state.mode}:${Date.now()}:${Math.random()}` });
       else if (state.mode === "marathon") {
         const nextRound = state.marathonSuccess ? (state.marathonRound || 1) + 1 : 1;
         const runId = state.marathonSuccess ? state.marathonId : `marathon:${Date.now().toString(36)}`;
@@ -185,23 +186,44 @@ function registerPwa() {
   });
 }
 
-let challengeSyncTimer = null;
+let challengeSyncTimer = null, resumeSyncTimer = null, ruleMetricTimer = null;
+function syncChallengesNonBlocking() {
+  if (document.visibilityState !== "visible") return;
+  const run = () => Promise.allSettled([
+    Promise.resolve(flushPendingChallengeSubmissions?.()),
+    Promise.resolve(refreshOwnedChallenges?.({ notify: true })),
+    Promise.resolve(refreshReceivedChallenges?.()),
+    Promise.resolve(syncPushState?.()),
+  ]);
+  if ("requestIdleCallback" in window) requestIdleCallback(run, { timeout: 1600 });
+  else setTimeout(run, 80);
+}
 function startChallengeSyncLoop() {
   clearInterval(challengeSyncTimer);
-  challengeSyncTimer = setInterval(() => {
-    if (document.visibilityState !== "visible") return;
-    flushPendingChallengeSubmissions?.();
-    refreshOwnedChallenges?.({ notify: true });
-    refreshReceivedChallenges?.();
-    syncPushState?.();
-  }, 20000);
+  clearInterval(ruleMetricTimer);
+  challengeSyncTimer = setInterval(syncChallengesNonBlocking, 20000);
+  ruleMetricTimer = setInterval(() => {
+    if (document.visibilityState !== "visible" || !state) return;
+    const el = $("#ruleMetric");
+    if (!el || el.hidden || typeof ruleMetricText !== "function") return;
+    el.textContent = ruleMetricText(state);
+  }, 500);
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible") return;
-    flushPendingChallengeSubmissions?.();
-    refreshOwnedChallenges?.({ notify: true });
-    refreshReceivedChallenges?.();
-    syncPushState?.();
+    clearTimeout(resumeSyncTimer);
+    if (document.visibilityState === "hidden") {
+      pauseActiveRun?.();
+      save?.();
+      saveProfile?.();
+      return;
+    }
+    resumeActiveRun?.();
+    // Let the browser paint the restored board before network/Push work starts.
+    resumeSyncTimer = setTimeout(syncChallengesNonBlocking, 650);
   });
+  window.addEventListener("pagehide", () => { pauseActiveRun?.(); save?.(); saveProfile?.(); });
+  window.addEventListener("pageshow", () => { resumeActiveRun?.(); });
+  window.addEventListener("error", () => { try { save?.(); saveProfile?.(); } catch {} });
+  window.addEventListener("unhandledrejection", () => { try { save?.(); saveProfile?.(); } catch {} });
 }
 
 async function fetchServerBootstrap() {

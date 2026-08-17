@@ -20,12 +20,27 @@ const HUB_TAB_DEFS = Object.freeze([
   { id: "appearance", icon: "✦", label: UI_TEXT.appearance },
 ]);
 
+
+const DUEL_MODE_DEFS = Object.freeze([
+  { id: "classic", icon: "⚔", label: "Классика", description: "Лучший общий результат" },
+  { id: "time", icon: "⏱", label: "На время", description: "Побеждает тот, кто закончит быстрее" },
+  { id: "combo", icon: "×", label: "На комбо", description: "Побеждает самое большое комбо" },
+  { id: "moves", icon: "↯", label: "На ходы", description: "Побеждает меньшее количество ходов" },
+  { id: "noMistakes", icon: "◇", label: "До ошибки", description: "Первая ошибка означает поражение" },
+]);
+function normalizeDuelMode(value) { return DUEL_MODE_DEFS.some((x) => x.id === value) ? value : "classic"; }
+function duelModeDef(value) { return DUEL_MODE_DEFS.find((x) => x.id === normalizeDuelMode(value)) || DUEL_MODE_DEFS[0]; }
+
 const GAME_MODE_DEFS = Object.freeze([
   { id: "daily", icon: "☀", label: UI_TEXT.daily, className: "daily", music: "daily" },
   { id: "marathon", icon: "∞", label: UI_TEXT.marathon, className: "marathon", music: "marathon" },
   { id: "zen", icon: "☁", label: UI_TEXT.zen, className: "zen", music: "zen" },
   { id: "duel", icon: "⚔", label: UI_TEXT.duel, className: "duel", music: "duel" },
   { id: "pictures", icon: "▧", label: "Картинки", className: "pictures", music: "collection" },
+  { id: "time", icon: "⏱", label: "На время", className: "time", music: "game" },
+  { id: "moves", icon: "↯", label: "На ходы", className: "moves", music: "game" },
+  { id: "combo", icon: "×", label: "Макс. комбо", className: "combo", music: "game" },
+  { id: "noMistakes", icon: "◇", label: "До ошибки", className: "no-mistakes", music: "game" },
 ]);
 
 

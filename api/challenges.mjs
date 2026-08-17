@@ -15,9 +15,11 @@ function resultKey(code){return `worditaire:challenge:result:${code}`;}
 function parse(value){if(!value)return null;if(typeof value==="object")return value;try{return JSON.parse(value);}catch{return null;}}
 function cleanCode(value){const code=String(value||"").trim().toUpperCase();return CODE_RE.test(code)?code:"";}
 function cleanSourceMode(value){return ["words","pictures","all"].includes(value)?value:"all";}
+function cleanDuelMode(value){return ["classic","time","combo","moves","noMistakes"].includes(value)?value:null;}
+function cleanDuelChoice(value){return ["creator","guest","random"].includes(value)?value:"creator";}
 function shortCode(){const bytes=randomBytes(6);let code="";for(let i=0;i<6;i++)code+=CODE_ALPHABET[bytes[i]%CODE_ALPHABET.length];return code;}
 function token(){return randomBytes(24).toString("base64url");}
-function cleanResult(value){return{stars:Math.max(1,Math.min(3,Number(value?.stars)||1)),moves:Math.max(0,Math.min(100000,Number(value?.moves)||0)),hints:Math.max(0,Math.min(10000,Number(value?.hints)||0)),errors:Math.max(0,Math.min(10000,Number(value?.errors)||0)),undos:Math.max(0,Math.min(10000,Number(value?.undos)||0)),playerName:String(value?.playerName||"Игрок").trim().slice(0,20)||"Игрок",playerId:String(value?.playerId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),avatarEmoji:String(value?.avatarEmoji||"🙂").slice(0,8)||"🙂",title:String(value?.title||"").trim().slice(0,32),rank:String(value?.rank||"").trim().slice(0,32),featured:Array.isArray(value?.featured)?value.featured.map((x)=>String(x).slice(0,32)).slice(0,3):[],completedAt:Date.now()};}
+function cleanResult(value){return{stars:Math.max(0,Math.min(3,Number.isFinite(Number(value?.stars))?Number(value.stars):1)),moves:Math.max(0,Math.min(100000,Number(value?.moves)||0)),autoMoves:Math.max(0,Math.min(100000,Number(value?.autoMoves)||0)),maxCombo:Math.max(0,Math.min(100000,Number(value?.maxCombo)||0)),durationMs:Math.max(0,Math.min(86400000,Number(value?.durationMs)||0)),failed:!!value?.failed,duelMode:cleanDuelMode(value?.duelMode)||"classic",hints:Math.max(0,Math.min(10000,Number(value?.hints)||0)),errors:Math.max(0,Math.min(10000,Number(value?.errors)||0)),undos:Math.max(0,Math.min(10000,Number(value?.undos)||0)),playerName:String(value?.playerName||"Игрок").trim().slice(0,20)||"Игрок",playerId:String(value?.playerId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),avatarEmoji:String(value?.avatarEmoji||"🙂").slice(0,8)||"🙂",title:String(value?.title||"").trim().slice(0,32),rank:String(value?.rank||"").trim().slice(0,32),featured:Array.isArray(value?.featured)?value.featured.map((x)=>String(x).slice(0,32)).slice(0,3):[],completedAt:Date.now()};}
 async function setWithExistingTtl(key,record,fallback=RESULT_TTL){let ttl=Number(await redis(["TTL",key]));if(!Number.isFinite(ttl)||ttl<60)ttl=fallback;await redis(["SET",key,JSON.stringify(record),"EX",ttl]);}
 function seriesFields(x={}){return{seriesId:String(x.seriesId||"").slice(0,96)||null,seriesRound:Math.max(1,Math.min(99,Number(x.seriesRound)||1)),seriesScoreCreator:Math.max(0,Math.min(9,Number(x.seriesScoreCreator)||0)),seriesScoreGuest:Math.max(0,Math.min(9,Number(x.seriesScoreGuest)||0))};}
 
@@ -32,17 +34,17 @@ export async function GET(request){
       if(result){
         if(ownerToken&&result.ownerToken!==ownerToken)return json({error:"forbidden"},403);
         if(guestToken&&result.guestToken!==guestToken)return json({error:"forbidden"},403);
-        return json({status:"completed",code,guestResult:result.guestResult,creatorResult:result.creatorResult||null,creatorName:result.creatorName,creatorAvatar:result.creatorAvatar||"🙂",creatorPlayerId:result.creatorPlayerId||result.creatorResult?.playerId||"",level:result.level,seed:result.seed,sourceMode:cleanSourceMode(result.sourceMode),...seriesFields(result)});
+        return json({status:"completed",code,guestResult:result.guestResult,creatorResult:result.creatorResult||null,creatorName:result.creatorName,creatorAvatar:result.creatorAvatar||"🙂",creatorPlayerId:result.creatorPlayerId||result.creatorResult?.playerId||"",level:result.level,seed:result.seed,sourceMode:cleanSourceMode(result.sourceMode),duelMode:cleanDuelMode(result.duelMode),duelModeChoice:cleanDuelChoice(result.duelModeChoice),...seriesFields(result)});
       }
       if(guestToken)return json({error:"not_found"},404);
       const active=parse(await redis(["GET",activeKey(code)]));
       if(!active)return json({error:"not_found",message:"Вызов истёк или уже получен"},404);
       if(active.ownerToken!==ownerToken)return json({error:"forbidden"},403);
-      return json({status:"pending",code,level:active.level,seed:active.seed,sourceMode:cleanSourceMode(active.sourceMode),expiresAt:active.expiresAt,creatorResult:active.creatorResult||null,...seriesFields(active)});
+      return json({status:"pending",code,level:active.level,seed:active.seed,sourceMode:cleanSourceMode(active.sourceMode),duelMode:cleanDuelMode(active.duelMode),duelModeChoice:cleanDuelChoice(active.duelModeChoice),expiresAt:active.expiresAt,creatorResult:active.creatorResult||null,...seriesFields(active)});
     }
     const active=parse(await redis(["GET",activeKey(code)]));
     if(!active)return json({error:"used_or_expired",message:"Код уже сыгран или истёк"},410);
-    return json({status:"active",code,seed:active.seed,level:active.level,sourceMode:cleanSourceMode(active.sourceMode),creatorName:active.creatorName||"Игрок",creatorAvatar:active.creatorAvatar||"🙂",creatorPlayerId:active.creatorPlayerId||active.creatorResult?.playerId||"",creatorResult:active.creatorResult||null,expiresAt:active.expiresAt,...seriesFields(active)});
+    return json({status:"active",code,seed:active.seed,level:active.level,sourceMode:cleanSourceMode(active.sourceMode),duelMode:cleanDuelMode(active.duelMode),duelModeChoice:cleanDuelChoice(active.duelModeChoice),creatorName:active.creatorName||"Игрок",creatorAvatar:active.creatorAvatar||"🙂",creatorPlayerId:active.creatorPlayerId||active.creatorResult?.playerId||"",creatorResult:active.creatorResult||null,expiresAt:active.expiresAt,...seriesFields(active)});
   }catch(error){if(error?.code==="REDIS_NOT_CONFIGURED")return json({error:"redis_not_configured",message:"Redis не подключён"},503);console.error("challenge GET",error);return json({error:"server_error"},500);}
 }
 
@@ -50,17 +52,27 @@ export async function POST(request){
   try{
     const body=await request.json().catch(()=>({}));
     if(body.action==="create"){
-      const seed=String(body.seed||"").slice(0,160),level=Math.max(1,Math.min(999,Number(body.level)||25)),sourceMode=cleanSourceMode(body.sourceMode),creatorName=String(body.creatorName||"Игрок").trim().slice(0,20)||"Игрок",creatorAvatar=String(body.creatorAvatar||"🙂").slice(0,8)||"🙂",creatorPlayerId=String(body.creatorPlayerId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),pushClientId=String(body.pushClientId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),series=seriesFields(body);
+      const seed=String(body.seed||"").slice(0,160),level=Math.max(1,Math.min(999,Number(body.level)||25)),sourceMode=cleanSourceMode(body.sourceMode),duelModeChoice=cleanDuelChoice(body.duelModeChoice),duelMode=cleanDuelMode(body.duelMode),creatorName=String(body.creatorName||"Игрок").trim().slice(0,20)||"Игрок",creatorAvatar=String(body.creatorAvatar||"🙂").slice(0,8)||"🙂",creatorPlayerId=String(body.creatorPlayerId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),pushClientId=String(body.pushClientId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),series=seriesFields(body);
       if(!seed)return json({error:"invalid_seed"},400);
       const ownerToken=token(),createdAt=Date.now(),expiresAt=createdAt+ACTIVE_TTL*1000;
       for(let attempt=0;attempt<14;attempt++){
-        const code=shortCode(),record={v:5,code,seed,level,sourceMode,creatorName,creatorAvatar,creatorPlayerId,ownerToken,createdAt,expiresAt,pushClientId,creatorResult:null,...series};
+        const code=shortCode(),record={v:6,code,seed,level,sourceMode,duelModeChoice,duelMode,creatorName,creatorAvatar,creatorPlayerId,ownerToken,createdAt,expiresAt,pushClientId,creatorResult:null,...series};
         const stored=await redis(["SET",activeKey(code),JSON.stringify(record),"EX",ACTIVE_TTL,"NX"]);
-        if(stored==="OK")return json({ok:true,code,ownerToken,expiresAt,...series});
+        if(stored==="OK")return json({ok:true,code,ownerToken,expiresAt,duelMode,duelModeChoice,...series});
       }
       return json({error:"code_collision",message:"Не удалось создать код"},503);
     }
     const code=cleanCode(body.code); if(!code)return json({error:"invalid_code"},400);
+
+    if(body.action==="chooseMode"){
+      const active=parse(await redis(["GET",activeKey(code)])); if(!active)return json({error:"not_found"},404);
+      const requested=cleanDuelMode(body.duelMode); if(!requested)return json({error:"invalid_mode"},400);
+      if(active.duelModeChoice!=="guest")return json({error:"mode_locked"},409);
+      const supplied=String(body.guestToken||"");
+      // A guest token is issued only after completion in the legacy flow, so the active challenge may be claimed once by code.
+      if(active.duelMode)return json({ok:true,duelMode:active.duelMode});
+      active.duelMode=requested; await setWithExistingTtl(activeKey(code),active,ACTIVE_TTL); return json({ok:true,duelMode:active.duelMode});
+    }
 
     if(body.action==="cancel"){
       const ownerToken=String(body.ownerToken||""),active=parse(await redis(["GET",activeKey(code)]));
@@ -111,10 +123,10 @@ export async function POST(request){
       const existing=parse(await redis(["GET",resultKey(code)]));
       if(existing){if(existing.submissionId===submissionId)return json({ok:true,duplicate:true,guestToken:existing.guestToken,creatorResult:existing.creatorResult||null,...seriesFields(existing)});return json({error:"used_or_expired",message:"Этот вызов уже сыгран"},410);}
       const raw=await redis(["GETDEL",activeKey(code)]),active=parse(raw);if(!active)return json({error:"used_or_expired",message:"Этот вызов уже сыгран или истёк"},410);
-      const guestResult=cleanResult(body.result),guestToken=token(),guestPushClientId=String(body.pushClientId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),completedAt=Date.now(),record={v:5,code,seed:active.seed,level:active.level,sourceMode:cleanSourceMode(active.sourceMode),creatorName:active.creatorName,creatorAvatar:active.creatorAvatar||"🙂",creatorPlayerId:active.creatorPlayerId||active.creatorResult?.playerId||"",ownerToken:active.ownerToken,guestToken,guestPushClientId,submissionId,guestResult,creatorResult:active.creatorResult||null,ownerAck:false,guestAck:false,completedAt,...seriesFields(active)};
+      const guestResult=cleanResult(body.result),guestToken=token(),guestPushClientId=String(body.pushClientId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64),completedAt=Date.now(),record={v:6,code,seed:active.seed,level:active.level,sourceMode:cleanSourceMode(active.sourceMode),duelMode:cleanDuelMode(active.duelMode),duelModeChoice:cleanDuelChoice(active.duelModeChoice),creatorName:active.creatorName,creatorAvatar:active.creatorAvatar||"🙂",creatorPlayerId:active.creatorPlayerId||active.creatorResult?.playerId||"",ownerToken:active.ownerToken,guestToken,guestPushClientId,submissionId,guestResult,creatorResult:active.creatorResult||null,ownerAck:false,guestAck:false,completedAt,...seriesFields(active)};
       await redis(["SET",resultKey(code),JSON.stringify(record),"EX",RESULT_TTL]);
       if(active.pushClientId) sendPushToClient(active.pushClientId,{title:"Друг завершил вызов",body:`${guestResult.playerName}: ${"★".repeat(guestResult.stars)} · ${guestResult.moves} ходов`,tag:`challenge-${code}`,url:"/"}).catch(()=>{});
-      return json({ok:true,completedAt,guestToken,creatorResult:record.creatorResult,...seriesFields(record)});
+      return json({ok:true,completedAt,guestToken,creatorResult:record.creatorResult,duelMode:record.duelMode,duelModeChoice:record.duelModeChoice,...seriesFields(record)});
     }
 
     if(body.action==="ack"){
