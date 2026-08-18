@@ -1,4 +1,31 @@
 /* UI event binding, hint/undo orchestration, PWA registration and application bootstrap. */
+function syncGameCompanion() {
+  const def = typeof companionDef === "function" ? companionDef(profile?.settings?.companion) : null;
+  const button = $("#gameCompanion"), image = $("#gameCompanionImage");
+  if (!button || !def) return;
+  if (image) { image.src = def.image; image.alt = def.name; }
+  button.title = `${def.name} — нажми для интересного факта`;
+  button.dataset.companion = def.id;
+}
+function showCompanionBubble(text, ms = 5200) {
+  const bubble = $("#companionBubble");
+  if (!bubble) return;
+  bubble.textContent = text; bubble.hidden = false;
+  clearTimeout(showCompanionBubble.timer);
+  showCompanionBubble.timer = setTimeout(() => { bubble.hidden = true; }, ms);
+}
+function clearMascotHintLine() { document.querySelector(".mascot-hint-line")?.remove(); $("#gameCompanion")?.classList.remove("pointing"); }
+function pointCompanionAt(target, text = "Смотри сюда!") {
+  clearMascotHintLine();
+  const mascot = $("#gameCompanion"); if (!mascot || !target) return;
+  mascot.classList.add("pointing"); showCompanionBubble(text, 2200);
+  const a = mascot.getBoundingClientRect(), b = target.getBoundingClientRect();
+  const x1=a.left+a.width*.2, y1=a.top+a.height*.72, x2=b.left+b.width*.5, y2=b.top+b.height*.45;
+  const dx=x2-x1, dy=y2-y1, len=Math.max(24,Math.hypot(dx,dy));
+  const line=document.createElement("div"); line.className="mascot-hint-line"; line.style.left=`${x1}px`; line.style.top=`${y1}px`; line.style.width=`${len}px`; line.style.transform=`rotate(${Math.atan2(dy,dx)*180/Math.PI}deg)`;
+  document.body.appendChild(line); setTimeout(clearMascotHintLine, 1500);
+}
+
 function bindAppEvents() {
   let lastTouchEndAt = 0;
   document.addEventListener(
@@ -24,6 +51,14 @@ function bindAppEvents() {
 
   $("#gameProfileButton")?.addEventListener("click", openProfileEditorModal);
   $("#menuButton").onclick = openHub;
+  $("#gameCompanion")?.addEventListener("click", () => {
+    const def = companionDef(profile.settings.companion);
+    const fact = companionFact(def.id);
+    saveProfile?.();
+    showCompanionBubble(fact);
+    track?.("companion_fact", { companion: def.id });
+  });
+  syncGameCompanion();
 
   $("#undo").onclick = () => {
     if (autoMoveBusy || categoryAnimating || !history.length) return;
@@ -74,15 +109,18 @@ function bindAppEvents() {
       else if (p.source === "waste") q = ".waste .card.movable";
       const n = q ? document.querySelector(q) : null;
       n?.classList.add("hint");
+      pointCompanionAt(n, companionDef(profile.settings.companion).id === "cat" ? "Мяу! Вот эта карта." : "Подсказка: начни с этой карты.");
       setTimeout(() => n?.classList.remove("hint"), 1400);
       const actionText = hint.zone === "slot" ? "в категорию" : "на связанную стопку";
       showToast(`Ход: ${groupLabel(p.groups[0])} → ${actionText}`);
     } else if (hint?.action === "draw") {
       stockEl.classList.add("hint-stock");
+      pointCompanionAt(stockEl, "Загляни в колоду!");
       setTimeout(() => stockEl.classList.remove("hint-stock"), 1100);
       showToast("Открой следующую карту колоды");
     } else if (hint?.action === "recycle") {
       stockEl.classList.add("hint-stock");
+      pointCompanionAt(stockEl, "Верни сброс сюда.");
       setTimeout(() => stockEl.classList.remove("hint-stock"), 1100);
       showToast("Верни сброс в колоду");
     } else {

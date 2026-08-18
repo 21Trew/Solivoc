@@ -57,7 +57,7 @@ function defaultProfile() {
     tutorialComplete: false,
     legacyStarsMigrated: false,
     categoryAchievementModelMigrated: false,
-    settings: { sound: true, music: true, haptics: true, notifications: false, challengeReminders: true, dailyReminders: true, weeklyReminders: true, notificationPrompted: false, cardSourceMode: "all", startupScreen: "home", appIcon: "classic" },
+    settings: { sound: true, music: true, haptics: true, notifications: false, challengeReminders: true, dailyReminders: true, weeklyReminders: true, notificationPrompted: false, cardSourceMode: "all", startupScreen: "home", appIcon: "classic", appIconFrame: "none", companion: "owl", companionFactIndex: -1 },
     stats: { ...DEFAULT_STATS },
     daily: { lastDate: null, currentStreak: 0, bestStreak: 0, completedDates: [], freezeWeek: null, weekRewards: {} },
   };
@@ -348,15 +348,22 @@ function applySoundPack(id) {
   profile.soundPack = def && soundPackUnlocked(def) ? id : "classic";
   document.body.dataset.soundPack = profile.soundPack;
 }
-function applyAppIcon(id = profile?.settings?.appIcon) {
+function applyAppIcon(id = profile?.settings?.appIcon, frameId = profile?.settings?.appIconFrame) {
   const def = typeof appIconDef === "function" ? appIconDef(id) : APP_ICON_DEFS[0];
+  let frame = typeof appIconFrameDef === "function" ? appIconFrameDef(frameId) : { id: "none" };
+  if (typeof appIconFrameUnlocked === "function" && !appIconFrameUnlocked(frame)) frame = appIconFrameDef("none");
   profile.settings ||= {};
   profile.settings.appIcon = def.id;
+  profile.settings.appIconFrame = frame.id;
   const manifest = document.querySelector('link[rel="manifest"]'), apple = document.querySelector('link[rel="apple-touch-icon"]'), favicon = document.querySelector('link[rel="icon"]');
-  if (manifest) manifest.href = def.manifest;
-  if (apple) apple.href = def.apple;
-  if (favicon) { favicon.href = def.favicon; favicon.type = "image/svg+xml"; }
+  const stamp = encodeURIComponent(`${def.id}-${frame.id}-v22`);
+  const manifestUrl = typeof appIconManifest === "function" ? appIconManifest(def.id, frame.id) : def.manifest;
+  const iconUrl = typeof appIconAsset === "function" ? appIconAsset(def.id, frame.id, 192) : def.apple;
+  if (manifest) manifest.href = `${manifestUrl}?icon=${stamp}`;
+  if (apple) { apple.href = `${iconUrl}?icon=${stamp}`; apple.setAttribute("sizes", "192x192"); }
+  if (favicon) { favicon.href = `${iconUrl}?icon=${stamp}`; favicon.type = "image/png"; }
   document.body.dataset.appIcon = def.id;
+  document.body.dataset.appIconFrame = frame.id;
   return def.id;
 }
 function applyFrame(id) {

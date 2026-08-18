@@ -7,7 +7,7 @@ const UI_TEXT = Object.freeze({
   duel: "Дуэль",
   modes: "Режимы",
   progress: "Прогресс",
-  encyclopedia: "Энциклопедия",
+  encyclopedia: "Каталог",
   appearance: "Стиль",
   settings: "Ещё",
 });

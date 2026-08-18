@@ -295,6 +295,15 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
   $("#winTitle").textContent =
     state.failed ? "Почти! Попробуй ещё раз" : state.mode === "tutorial" ? `Обучение ${state.tutorialStep}/3` : titles[state.mode] || `Уровень ${state.level} пройден`;
 
+  const companion = typeof companionDef === "function" ? companionDef(profile?.settings?.companion) : null;
+  const companionImage = $("#winCompanionImage"), companionText = $("#winCompanionText");
+  if (companion && companionImage && companionText) {
+    companionImage.src = companion.image; companionImage.alt = companion.name;
+    companionText.textContent = state.failed
+      ? (companion.id === "cat" ? "Не беда — распутаем этот клубок со следующей попытки." : "Ошибки — тоже данные. Следующая попытка уже будет точнее.")
+      : companionWinLine(companion.id, perfect);
+  }
+
   $("#winText").textContent =
     state.failed ? `${state.failureReason || "Условие режима не выполнено"}. Новый расклад уже ждёт!` :
     state.mode === "regular" && state.special

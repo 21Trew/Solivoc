@@ -71,6 +71,10 @@
               <div class="waste empty" id="waste"></div>
             </div>
             <span class="draw-label">Колода и сброс</span>
+            <button class="game-companion" id="gameCompanion" type="button" aria-label="Факт от напарника">
+              <img id="gameCompanionImage" src="./icons/mascot-owl.svg" alt="">
+              <span class="companion-bubble" id="companionBubble" hidden></span>
+            </button>
           </section>
           <section class="category-row">
             <div class="category-area" id="slotsAnchor"></div>
@@ -140,6 +144,10 @@
       <div class="modal-card win-modal-card">
         <div class="win-icon">★</div>
         <h2 id="winTitle">Уровень пройден!</h2>
+        <div class="win-companion" id="winCompanion">
+          <img id="winCompanionImage" src="./icons/mascot-owl.svg" alt="">
+          <p id="winCompanionText">Отличная партия!</p>
+        </div>
         <p id="winText">Отличная партия!</p>
         <div class="win-stars" id="winStars" aria-label="Награды за уровень"></div>
         <div class="win-record" id="winRecord"></div>

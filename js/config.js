@@ -30,6 +30,67 @@ const APP_ICON_DEFS = Object.freeze([
 ]);
 function appIconDef(id) { return APP_ICON_DEFS.find((x) => x.id === id) || APP_ICON_DEFS[0]; }
 
+const COMPANION_DEFS = Object.freeze([
+  { id: "owl", name: "Мудрая сова", image: "./icons/mascot-owl.svg", role: "Научный наставник" },
+  { id: "cat", name: "Кот-учёный", image: "./icons/mascot-cat.svg", role: "Весёлый напарник" },
+]);
+function companionDef(id) { return COMPANION_DEFS.find((x) => x.id === id) || COMPANION_DEFS[0]; }
+const COMPANION_FACTS = Object.freeze({
+  owl: [
+    "У сов глаза почти не двигаются в глазницах — поэтому они поворачивают голову, чтобы менять направление взгляда.",
+    "У осьминога три сердца, а его кровь содержит медь и выглядит голубоватой.",
+    "Свет от Солнца добирается до Земли примерно за 8 минут 20 секунд.",
+    "Банан с точки зрения ботаники — ягода, а клубника — нет.",
+    "Самая крупная часть мозга человека — большие полушария; они отвечают в том числе за речь, память и мышление.",
+    "Вода расширяется при замерзании, поэтому лёд менее плотный и плавает на поверхности.",
+    "У жирафа и человека одинаковое число шейных позвонков — семь.",
+    "Молния может нагревать воздух вокруг канала разряда примерно до 30 000 °C."
+  ],
+  cat: [
+    "Кошки используют усы как чувствительные датчики пространства и движения воздуха.",
+    "Домашние кошки могут издавать десятки разных звуков, а мяуканье особенно активно используют в общении с людьми.",
+    "Отпечаток носа у каждой кошки имеет уникальный рисунок — почти как отпечаток пальца.",
+    "Слова легче запоминать, когда связываешь их не по одному признаку, а сразу по нескольким ассоциациям.",
+    "Короткие игровые сессии с повторением обычно полезнее для памяти, чем одна очень длинная.",
+    "Во сне мозг продолжает сортировать и закреплять часть того, что ты узнал за день."
+  ]
+});
+function companionFact(id = profile?.settings?.companion) {
+  const list = COMPANION_FACTS[companionDef(id).id] || COMPANION_FACTS.owl;
+  const last = Number(profile?.settings?.companionFactIndex || -1);
+  const next = list.length > 1 ? (last + 1 + Math.floor(Math.random() * (list.length - 1))) % list.length : 0;
+  if (profile?.settings) profile.settings.companionFactIndex = next;
+  return list[next];
+}
+function companionWinLine(id = profile?.settings?.companion, perfect = false) {
+  if (companionDef(id).id === "cat") {
+    const lines = perfect
+      ? ["Ты замурчательно справился — идеальный расклад!", "Мяу-гнифико! Три звезды и ни одной лишней царапины.", "Вот это коготки ума: безупречная партия!"]
+      : ["Ты замурчательно справился!", "Отличная партия — кот-учёный одобряет.", "Мяу! Ещё один расклад аккуратно уложен по полочкам."];
+    return lines[(state?.level || state?.run?.moves || 0) % lines.length];
+  }
+  return `Факт от совы: ${companionFact("owl")}`;
+}
+
+const APP_ICON_FRAME_DEFS = Object.freeze([
+  { id: "none", name: "Без рамки", desc: "Базовый вид", unlock: () => true },
+  { id: "bronze", name: "Исследователь", desc: "За 10 пройденных уровней", unlock: (p) => (p.stats?.levelsCompleted || 0) >= 10 },
+  { id: "gold", name: "Мастер", desc: "За 50 пройденных уровней", unlock: (p) => (p.stats?.levelsCompleted || 0) >= 50 },
+  { id: "prism", name: "Комбо", desc: "За достижение комбо ×10", unlock: (p) => (p.achievements || []).includes("combo10") },
+]);
+function appIconFrameDef(id) { return APP_ICON_FRAME_DEFS.find((x) => x.id === id) || APP_ICON_FRAME_DEFS[0]; }
+function appIconFrameUnlocked(def, p = profile) { return !!def?.unlock?.(p); }
+function appIconAsset(iconId, frameId, size = 192) {
+  const icon = appIconDef(iconId), frame = appIconFrameDef(frameId);
+  if (frame.id === "none") return size === 512 ? icon.apple.replace("192", "512") : icon.apple;
+  return `./icons/icon-${icon.id}-${frame.id}-${size}.png`;
+}
+function appIconManifest(iconId, frameId) {
+  const icon = appIconDef(iconId), frame = appIconFrameDef(frameId);
+  if (frame.id === "none") return icon.manifest;
+  return `./manifest-${icon.id}-${frame.id}.webmanifest`;
+}
+
 const AVATAR_EMOJIS = [
   "🙂", "😎", "🤩", "🥳", "🤓", "🤠", "🫠", "😈",
   "🦊", "🐼", "🐸", "🦉", "🐱", "🐙", "🦄", "🐯", "🐧",
