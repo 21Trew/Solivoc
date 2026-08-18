@@ -27,7 +27,9 @@ export function cleanEmail(value) {
 
 export function validPassword(value) {
   const password = String(value || "");
-  return password.length >= 8 && password.length <= 128;
+  if (password.length < 8 || password.length > 128) return false;
+  if (/\p{Cc}/u.test(password)) return false;
+  return password.trim().length >= 8;
 }
 
 export function sha256(value) {
@@ -61,10 +63,6 @@ export function newUserId() {
   return `u_${randomBytes(12).toString("hex")}`;
 }
 
-export function newRecoveryCode() {
-  const raw = randomBytes(18).toString("base64url").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 24);
-  return raw.match(/.{1,4}/g)?.join("-") || raw;
-}
 
 export function emailKey(email) { return `worditaire:auth:email:${sha256(cleanEmail(email))}`; }
 export function userKey(userId) { return `worditaire:auth:user:${String(userId || "").slice(0, 64)}`; }
@@ -94,6 +92,8 @@ export async function checkRateLimit(request, bucket, limit = 12, windowSec = 90
 }
 
 export function sameOrigin(request) {
+  const fetchSite = String(request.headers.get("sec-fetch-site") || "").toLowerCase();
+  if (fetchSite === "cross-site") return false;
   const origin = request.headers.get("origin");
   if (!origin) return true;
   try { return origin === new URL(request.url).origin; } catch { return false; }
@@ -137,7 +137,10 @@ export async function currentSession(request) {
   catch { userId = String(raw || ""); }
   if (!userId) return null;
   const user = await readJsonKey(userKey(userId));
-  if (!user || Math.max(1, Number(user.sessionVersion) || 1) !== sessionVersion) return null;
+  if (!user || Math.max(1, Number(user.sessionVersion) || 1) !== sessionVersion) {
+    await redis(["DEL", sessionKey(token)]).catch(() => {});
+    return null;
+  }
   return { token, userId, user };
 }
 

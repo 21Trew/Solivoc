@@ -1,12 +1,36 @@
 /* Offline-first account layer: guest profile, secure server session and cloud profile merge. */
 const ACCOUNT_STATE_KEY = "solivoc-account-v1";
 const ACCOUNT_BACKUP_PREFIX = "solivoc-account-backup:";
+const ACCOUNT_VERIFICATION_KEY = "solivoc-auth-flow-v1";
 let accountSyncTimer = null,
   accountSyncBusy = false,
   accountApplyingCloud = false,
   accountState = loadAccountState();
 let accountVerificationTimer = null;
-let accountVerification = { email: "", expiresAt: 0, resendAt: 0 };
+let accountVerification = loadAccountVerification();
+
+function loadAccountVerification() {
+  try {
+    const raw = JSON.parse(sessionStorage.getItem(ACCOUNT_VERIFICATION_KEY) || "null");
+    const purpose = ["register", "recover"].includes(raw?.purpose) ? raw.purpose : "";
+    const email = String(raw?.email || "").trim().toLowerCase().slice(0, 160);
+    const expiresAt = Math.max(0, Number(raw?.expiresAt) || 0);
+    const resendAt = Math.max(0, Number(raw?.resendAt) || 0);
+    if (!purpose || !email || expiresAt <= Date.now()) {
+      sessionStorage.removeItem(ACCOUNT_VERIFICATION_KEY);
+      return { purpose: "", email: "", expiresAt: 0, resendAt: 0 };
+    }
+    return { purpose, email, expiresAt, resendAt };
+  } catch {
+    return { purpose: "", email: "", expiresAt: 0, resendAt: 0 };
+  }
+}
+function persistAccountVerification() {
+  try {
+    if (!accountVerification.email) sessionStorage.removeItem(ACCOUNT_VERIFICATION_KEY);
+    else sessionStorage.setItem(ACCOUNT_VERIFICATION_KEY, JSON.stringify(accountVerification));
+  } catch {}
+}
 
 function loadAccountState() {
   try {
@@ -205,7 +229,6 @@ function authErrorText(error) {
     weak_password: "Пароль должен содержать минимум 8 символов.",
     email_exists: "Аккаунт с этой почтой уже существует.",
     invalid_credentials: "Неверная почта или пароль.",
-    invalid_recovery: "Не удалось подтвердить код восстановления.",
     verification_required: "Обнови игру: регистрация теперь требует подтверждения почты.",
     verification_code_required: "Введи шестизначный код из письма.",
     invalid_verification_code: "Код не подходит. Проверь цифры и попробуй ещё раз.",
@@ -214,6 +237,11 @@ function authErrorText(error) {
     verification_attempts_exceeded: "Слишком много неверных кодов. Запроси новый код.",
     verification_resend_too_soon: "Новый код можно запросить через несколько секунд.",
     verification_send_limit: "Отправка кодов временно приостановлена. Попробуй позже.",
+    recovery_code_required: "Введи шестизначный код из письма.",
+    invalid_recovery_code: "Код не подходит. Проверь цифры и попробуй ещё раз.",
+    recovery_expired: "Код истёк. Запроси новый код.",
+    recovery_attempts_exceeded: "Слишком много неверных кодов. Запроси новый код.",
+    recovery_resend_too_soon: "Новый код можно запросить через несколько секунд.",
     email_send_failed: "Не удалось отправить письмо. Попробуй ещё раз чуть позже.",
     email_not_configured: "Отправка писем пока не настроена на сервере.",
     rate_limited: "Слишком много попыток. Попробуй немного позже.",
@@ -235,21 +263,26 @@ function saveAccountIdentity(user, status = "signed_in", version = 0) {
   persistAccountState();
 }
 
-function accountVerificationActive() {
-  return !!accountVerification.email && accountVerification.expiresAt > Date.now();
+function accountVerificationActive(purpose = "") {
+  return !!accountVerification.email
+    && accountVerification.expiresAt > Date.now()
+    && (!purpose || accountVerification.purpose === purpose);
 }
 function clearAccountVerification() {
-  accountVerification = { email: "", expiresAt: 0, resendAt: 0 };
+  accountVerification = { purpose: "", email: "", expiresAt: 0, resendAt: 0 };
+  persistAccountVerification();
   clearInterval(accountVerificationTimer);
   accountVerificationTimer = null;
 }
-function setAccountVerification(email, data = {}) {
+function setAccountVerification(email, data = {}, purpose = "register") {
   const now = Date.now();
   accountVerification = {
+    purpose,
     email: String(data.email || email || "").trim().toLowerCase().slice(0, 160),
     expiresAt: now + Math.max(1, Number(data.expiresIn) || 600) * 1000,
     resendAt: now + Math.max(0, Number(data.resendAfter) || 60) * 1000,
   };
+  persistAccountVerification();
 }
 async function startRegistration(email, password) {
   const data = await accountRequest("/api/auth", {
@@ -257,7 +290,7 @@ async function startRegistration(email, password) {
     body: JSON.stringify({ action: "register_start", email, password }),
     timeout: 15000,
   });
-  setAccountVerification(email, data);
+  setAccountVerification(email, data, "register");
   return data;
 }
 async function resendRegistrationCode(email) {
@@ -266,7 +299,7 @@ async function resendRegistrationCode(email) {
     body: JSON.stringify({ action: "register_resend", email }),
     timeout: 15000,
   });
-  setAccountVerification(email, data);
+  setAccountVerification(email, data, "register");
   return data;
 }
 async function verifyRegistration(email, code) {
@@ -294,10 +327,34 @@ async function loginAccount(email, password) {
   syncLeaderboardNonBlocking?.();
   return data;
 }
-async function recoverAccount(email, recoveryCode, newPassword) {
-  const data = await accountRequest("/api/auth", { method: "POST", body: JSON.stringify({ action: "recover", email, recoveryCode, newPassword }) });
+async function startPasswordRecovery(email) {
+  const data = await accountRequest("/api/auth", {
+    method: "POST",
+    body: JSON.stringify({ action: "recover_start", email }),
+    timeout: 15000,
+  });
+  setAccountVerification(email, data, "recover");
+  return data;
+}
+async function resendPasswordRecoveryCode(email) {
+  const data = await accountRequest("/api/auth", {
+    method: "POST",
+    body: JSON.stringify({ action: "recover_resend", email }),
+    timeout: 15000,
+  });
+  setAccountVerification(email, data, "recover");
+  return data;
+}
+async function recoverAccount(email, code, newPassword) {
+  const data = await accountRequest("/api/auth", {
+    method: "POST",
+    body: JSON.stringify({ action: "recover_verify", email, code, newPassword }),
+    timeout: 15000,
+  });
+  clearAccountVerification();
   saveAccountIdentity(data.user, "signed_in", data.version);
   applyAccountCloudProfile(data.profile, { version: data.version });
+  syncLeaderboardNonBlocking?.();
   return data;
 }
 
@@ -408,11 +465,11 @@ function accountSyncTimeLabel() {
 
 function accountGuestMarkup(mode = "register") {
   const login = mode === "login", recover = mode === "recover";
-  if (recover) return `<div class="account-hero"><span>↺</span><div><small>ВОССТАНОВЛЕНИЕ</small><h2>Новый пароль</h2><p>Введи код восстановления, который был показан при регистрации.</p></div></div>
-    <form class="account-form" id="accountForm"><label>Почта<input id="accountEmail" type="email" autocomplete="email" value="${authEsc(accountState.email)}" required></label><label>Код восстановления<input id="accountRecovery" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX" required></label><label>Новый пароль<input id="accountPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label><div class="account-error" id="accountError"></div><button class="account-primary" type="submit">Сменить пароль и войти</button></form><button class="account-link" type="button" data-account-mode="login">← Вернуться ко входу</button>`;
+  if (recover) return `<div class="account-hero recovery"><span>↺</span><div><small>ВОССТАНОВЛЕНИЕ</small><h2>Верни доступ</h2><p>Укажи почту аккаунта. Если такой аккаунт есть, мы отправим шестизначный код.</p></div></div>
+    <form class="account-form" id="accountForm"><label>Почта<input id="accountEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" value="${authEsc(accountState.email)}" placeholder="name@example.com" required></label><p class="account-security-note">Мы не сообщаем, зарегистрирован ли этот адрес. Это защищает аккаунты от перебора.</p><div class="account-error" id="accountError" aria-live="polite"></div><button class="account-primary" type="submit">Получить код</button></form><button class="account-link" type="button" data-account-mode="login" data-account-reset-verification="1">← Вернуться ко входу</button>`;
   return `<div class="account-hero"><span>${login ? "↗" : "☁"}</span><div><small>${login ? "ВХОД" : "АККАУНТ"}</small><h2>${login ? "С возвращением" : "Сохрани прогресс"}</h2><p>${login ? "Войди, чтобы вернуть облачный прогресс на это устройство." : "Гостевой прогресс останется на устройстве и будет привязан к аккаунту."}</p></div></div>
-    <form class="account-form" id="accountForm"><label>Почта<input id="accountEmail" type="email" autocomplete="email" value="${authEsc(accountState.email)}" placeholder="name@example.com" required></label><label>Пароль<input id="accountPassword" type="password" autocomplete="${login ? "current-password" : "new-password"}" minlength="8" maxlength="128" required></label>${login ? "" : `<small class="account-password-note">Минимум 8 символов. Сначала пришлём код на почту, а после подтверждения покажем резервный код восстановления.</small>`}<div class="account-error" id="accountError"></div><button class="account-primary" type="submit">${login ? "Войти" : "Получить код"}</button></form>
-    <button class="account-link" type="button" data-account-mode="${login ? "register" : "login"}">${login ? "Нет аккаунта? Создать аккаунт" : "Уже есть аккаунт? Войти"}</button>${login ? `<button class="account-link subtle" type="button" data-account-mode="recover">Забыл пароль · восстановить по коду</button>` : ""}`;
+    <form class="account-form" id="accountForm"><label>Почта<input id="accountEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" value="${authEsc(accountState.email)}" placeholder="name@example.com" required></label><label>Пароль<input id="accountPassword" type="password" autocomplete="${login ? "current-password" : "new-password"}" minlength="8" maxlength="128" required></label>${login ? "" : `<small class="account-password-note">Минимум 8 символов. Перед созданием аккаунта подтвердим почту шестизначным кодом.</small>`}<div class="account-error" id="accountError" aria-live="polite"></div><button class="account-primary" type="submit">${login ? "Войти" : "Получить код"}</button></form>
+    <button class="account-link" type="button" data-account-mode="${login ? "register" : "login"}" data-account-reset-verification="1">${login ? "Нет аккаунта? Создать аккаунт" : "Уже есть аккаунт? Войти"}</button>${login ? `<button class="account-link subtle" type="button" data-account-mode="recover" data-account-reset-verification="1">Забыл пароль? Восстановить по почте</button>` : ""}`;
 }
 function accountSignedInMarkup() {
   return `<div class="account-hero signed"><span>✓</span><div><small>АККАУНТ ПОДКЛЮЧЁН</small><h2>${authEsc(accountState.email || "Игрок")}</h2><p>${authEsc(accountStatusHint())}</p></div></div>
@@ -420,20 +477,23 @@ function accountSignedInMarkup() {
     <p class="account-note">Одиночная игра продолжает работать без интернета. После возвращения сети прогресс объединится с облачной копией.</p>
     <div class="account-actions"><button class="account-danger" id="accountLogout" type="button">Выйти из аккаунта</button></div>`;
 }
-function accountVerificationMarkup() {
+function accountVerificationMarkup(mode = "verify-email") {
+  const recovering = mode === "recover-verify";
   const email = authEsc(accountVerification.email);
-  return `<div class="account-hero verify"><span>✉</span><div><small>ПОДТВЕРЖДЕНИЕ</small><h2>Проверь почту</h2><p>Мы отправили шестизначный код на <b>${email}</b>.</p></div></div>
-    <form class="account-form" id="accountForm"><label>Код из письма<input class="account-code-input" id="accountVerificationCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" required></label><small class="account-password-note" id="accountVerificationHint">Код действует 10 минут.</small><div class="account-error" id="accountError"></div><button class="account-primary" type="submit">Подтвердить и создать аккаунт</button></form>
-    <div class="account-verification-actions"><button class="account-link" id="accountResendCode" type="button">Отправить код ещё раз</button><button class="account-link subtle" type="button" data-account-mode="register" data-account-reset-verification="1">← Изменить почту или пароль</button></div>`;
-}
-function accountRecoveryMarkup(code) {
-  return `<div class="account-hero recovery"><span>🔑</span><div><small>ВАЖНО</small><h2>Сохрани резервный код</h2><p>Он понадобится, если забудешь пароль. Мы показываем его только сейчас.</p></div></div><div class="recovery-code" id="accountRecoveryCode">${authEsc(code)}</div><button class="account-primary" id="accountCopyRecovery" type="button">Скопировать код</button><button class="account-link" id="accountRecoveryDone" type="button">Код сохранён →</button>`;
+  const passwordField = recovering ? `<label>Новый пароль<input id="accountPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label><small class="account-password-note">После смены пароля старые сессии на других устройствах будут завершены.</small>` : "";
+  const deliveryText = recovering
+    ? `Если аккаунт существует, шестизначный код отправлен на <b>${email}</b>.`
+    : `Мы отправили шестизначный код на <b>${email}</b>.`;
+  return `<div class="account-hero ${recovering ? "recovery" : "verify"}"><span>${recovering ? "↺" : "✉"}</span><div><small>${recovering ? "ВОССТАНОВЛЕНИЕ" : "ПОДТВЕРЖДЕНИЕ"}</small><h2>${recovering ? "Код для сброса пароля" : "Проверь почту"}</h2><p>${deliveryText}</p></div></div>
+    <form class="account-form" id="accountForm"><label>Код из письма<input class="account-code-input" id="accountVerificationCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" required></label>${passwordField}<small class="account-password-note" id="accountVerificationHint">Код действует 10 минут.</small><div class="account-error" id="accountError" aria-live="polite"></div><button class="account-primary" type="submit">${recovering ? "Сменить пароль и войти" : "Подтвердить и создать аккаунт"}</button></form>
+    <div class="account-verification-actions"><button class="account-link" id="accountResendCode" type="button">Отправить код ещё раз</button><button class="account-link subtle" type="button" data-account-mode="${recovering ? "recover" : "register"}" data-account-reset-verification="1">← ${recovering ? "Изменить почту" : "Изменить почту или пароль"}</button></div>`;
 }
 
 function openAccountModal(mode = null) {
   const modal = document.querySelector("#accountModal"), content = document.querySelector("#accountContent");
   if (!modal || !content) return;
-  modal.dataset.mode = mode || (accountSignedIn() ? "signed" : accountVerificationActive() ? "verify-email" : accountState.status === "signed_out" ? "login" : "register");
+  const pendingMode = accountVerificationActive("recover") ? "recover-verify" : accountVerificationActive("register") ? "verify-email" : "";
+  modal.dataset.mode = mode || (accountSignedIn() ? "signed" : pendingMode || (accountState.status === "signed_out" ? "login" : "register"));
   renderAccountModal();
   modal.classList.add("show"); modal.setAttribute("aria-hidden", "false");
 }
@@ -466,7 +526,7 @@ function updateVerificationControls() {
     resend.disabled = waitSec > 0;
     resend.textContent = waitSec > 0 ? `Отправить ещё раз через ${waitSec} с` : "Отправить код ещё раз";
   }
-  if (hint) hint.textContent = expiresSec > 0 ? `Код действует ещё ${Math.max(1, Math.ceil(expiresSec / 60))} мин.` : "Код истёк. Вернись назад и запроси новый.";
+  if (hint) hint.textContent = expiresSec > 0 ? `Код действует ещё ${Math.max(1, Math.ceil(expiresSec / 60))} мин.` : "Код истёк. Запроси новый.";
 }
 
 function renderAccountModal() {
@@ -475,15 +535,21 @@ function renderAccountModal() {
   clearInterval(accountVerificationTimer);
   accountVerificationTimer = null;
   let mode = modal.dataset.mode || "register";
-  if (mode === "verify-email" && !accountVerification.email) mode = modal.dataset.mode = "register";
-  content.innerHTML = mode === "recovery-code" ? accountRecoveryMarkup(modal.dataset.recoveryCode || "") : mode === "verify-email" ? accountVerificationMarkup() : accountSignedIn() && mode === "signed" ? accountSignedInMarkup() : accountGuestMarkup(mode);
+  if (mode === "verify-email" && !accountVerificationActive("register")) mode = modal.dataset.mode = "register";
+  if (mode === "recover-verify" && !accountVerification.email) mode = modal.dataset.mode = "recover";
+  content.innerHTML = (mode === "verify-email" || mode === "recover-verify")
+    ? accountVerificationMarkup(mode)
+    : accountSignedIn() && mode === "signed"
+      ? accountSignedInMarkup()
+      : accountGuestMarkup(mode);
+
   content.querySelectorAll("[data-account-mode]").forEach((button) => button.onclick = () => {
     if (button.dataset.accountResetVerification) clearAccountVerification();
     modal.dataset.mode = button.dataset.accountMode;
     renderAccountModal();
   });
 
-  if (mode === "verify-email") {
+  if (mode === "verify-email" || mode === "recover-verify") {
     updateVerificationControls();
     accountVerificationTimer = setInterval(updateVerificationControls, 1000);
     const codeInput = document.querySelector("#accountVerificationCode");
@@ -494,11 +560,12 @@ function renderAccountModal() {
       if (errorBox) errorBox.textContent = "";
       button.disabled = true; button.textContent = "Отправляю…";
       try {
-        await resendRegistrationCode(accountVerification.email);
+        if (mode === "recover-verify") await resendPasswordRecoveryCode(accountVerification.email);
+        else await resendRegistrationCode(accountVerification.email);
         updateVerificationControls();
         showToast?.("Новый код отправлен");
       } catch (error) {
-        if (error?.code === "verification_not_started") {
+        if (error?.code === "verification_not_started" && mode === "verify-email") {
           const message = authErrorText(error);
           clearAccountVerification(); modal.dataset.mode = "register"; renderAccountModal();
           const box = document.querySelector("#accountError"); if (box) box.textContent = message;
@@ -509,19 +576,32 @@ function renderAccountModal() {
 
   const form = document.querySelector("#accountForm");
   if (form) form.onsubmit = async (event) => {
-    event.preventDefault(); const errorBox=document.querySelector("#accountError"); if(errorBox)errorBox.textContent="";
-    const email = document.querySelector("#accountEmail")?.value?.trim() || accountVerification.email || "", password = document.querySelector("#accountPassword")?.value || "";
-    setAccountFormBusy(true, mode === "login" ? "Вхожу…" : mode === "recover" ? "Восстанавливаю…" : mode === "verify-email" ? "Проверяю…" : "Отправляю код…");
+    event.preventDefault();
+    const errorBox = document.querySelector("#accountError"); if (errorBox) errorBox.textContent = "";
+    const email = document.querySelector("#accountEmail")?.value?.trim() || accountVerification.email || "";
+    const password = document.querySelector("#accountPassword")?.value || "";
+    const busyText = mode === "login" ? "Вхожу…"
+      : mode === "recover" ? "Отправляю код…"
+      : mode === "recover-verify" ? "Меняю пароль…"
+      : mode === "verify-email" ? "Проверяю…"
+      : "Отправляю код…";
+    setAccountFormBusy(true, busyText);
     try {
       if (mode === "login") {
-        await loginAccount(email, password); modal.dataset.mode = "signed"; renderAccountModal(); showToast?.("Аккаунт подключён");
+        await loginAccount(email, password);
+        modal.dataset.mode = "signed"; renderAccountModal(); showToast?.("Аккаунт подключён");
       } else if (mode === "recover") {
-        const recovery = document.querySelector("#accountRecovery")?.value || "";
-        await recoverAccount(email, recovery, password); modal.dataset.mode = "signed"; renderAccountModal(); showToast?.("Пароль обновлён");
+        await startPasswordRecovery(email);
+        modal.dataset.mode = "recover-verify"; renderAccountModal();
+        showToast?.("Если аккаунт существует, код отправлен на почту");
+      } else if (mode === "recover-verify") {
+        const code = document.querySelector("#accountVerificationCode")?.value || "";
+        await recoverAccount(email, code, password);
+        modal.dataset.mode = "signed"; renderAccountModal(); showToast?.("Пароль обновлён");
       } else if (mode === "verify-email") {
         const code = document.querySelector("#accountVerificationCode")?.value || "";
-        const data = await verifyRegistration(email, code);
-        modal.dataset.recoveryCode = data.recoveryCode || ""; modal.dataset.mode = "recovery-code"; renderAccountModal();
+        await verifyRegistration(email, code);
+        modal.dataset.mode = "signed"; renderAccountModal(); showToast?.("Аккаунт создан");
       } else {
         await startRegistration(email, password);
         modal.dataset.mode = "verify-email"; renderAccountModal(); showToast?.("Код отправлен на почту");
@@ -537,9 +617,7 @@ function renderAccountModal() {
     }
   };
   document.querySelector("#accountSyncNow")?.addEventListener("click", async (event) => { const b=event.currentTarget;b.disabled=true;b.textContent="Синхронизирую…";const ok=await flushAccountSync();renderAccountModal();showToast?.(ok?"Прогресс синхронизирован":"Синхронизация пока недоступна"); });
-  document.querySelector("#accountLogout")?.addEventListener("click", async (event) => { const b=event.currentTarget;b.disabled=true;b.textContent="Выхожу…";await logoutAccount();modal.dataset.mode="register";renderAccountModal();showToast?.("Теперь ты играешь как гость"); });
-  document.querySelector("#accountCopyRecovery")?.addEventListener("click", async () => { const code=modal.dataset.recoveryCode||"";try{await navigator.clipboard.writeText(code);showToast?.("Код скопирован");}catch{showToast?.("Сохрани код вручную");} });
-  document.querySelector("#accountRecoveryDone")?.addEventListener("click", () => { modal.dataset.recoveryCode="";modal.dataset.mode="signed";renderAccountModal(); });
+  document.querySelector("#accountLogout")?.addEventListener("click", async (event) => { const b=event.currentTarget;b.disabled=true;b.textContent="Выхожу…";await logoutAccount();clearAccountVerification();modal.dataset.mode="register";renderAccountModal();showToast?.("Теперь ты играешь как гость"); });
 }
 
 function bindAccountUi() {

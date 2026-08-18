@@ -3195,7 +3195,8 @@ body[data-theme="galaxy"] .card.face-down { background:radial-gradient(circle at
   background:#fff; color:#27233d; font:inherit; font-size:13px; box-shadow:0 4px 12px #49436b0b inset;
 }
 .account-form input:focus { border-color:#756cff; box-shadow:0 0 0 3px #756cff17; }
-.account-password-note,.account-note { margin:0; color:#807b92; font-size:9.5px; line-height:1.45; }
+.account-password-note,.account-note,.account-security-note { margin:0; color:#807b92; font-size:9.5px; line-height:1.45; }
+.account-security-note { padding:9px 11px; border:1px solid #dedbea; border-radius:12px; background:#ffffff8c; color:#746f86; }
 .account-error { min-height:14px; color:#d84f68; font-size:9.5px; font-weight:850; }
 .account-primary,.account-link,.account-danger,.account-cloud-card button {
   min-height:47px; border:0; border-radius:14px; font-weight:950; font-size:12px;
@@ -3212,8 +3213,6 @@ body[data-theme="galaxy"] .card.face-down { background:radial-gradient(circle at
 .account-cloud-card button { padding:0 13px; background:#eeecff; color:#5b55a1; }
 .account-actions { display:grid; padding-top:4px; border-top:1px solid #e8e5f0; }
 .account-danger { background:#fff0f2; color:#c74c63; }
-.recovery-code { padding:16px 10px; border:1px dashed #9c8fff; border-radius:16px; background:#f3f0ff; color:#4e478a; text-align:center; font-size:17px; font-weight:950; letter-spacing:.08em; overflow-wrap:anywhere; }
-
 @media (max-width:420px) {
   .account-card { padding:18px 15px 16px; border-radius:22px; }
   .account-hero { grid-template-columns:50px minmax(0,1fr); gap:10px; }
@@ -3222,7 +3221,7 @@ body[data-theme="galaxy"] .card.face-down { background:radial-gradient(circle at
   .profile-account-strip em { white-space:normal; line-height:1.25; }
 }
 
-/* E-mail verification during account registration. */
+/* E-mail verification and password recovery. */
 .account-hero.verify > span { background:linear-gradient(145deg,#6f64ff,#8b6ff0); }
 .account-hero p b { color:#4d4862; font-weight:900; overflow-wrap:anywhere; }
 .account-code-input {
