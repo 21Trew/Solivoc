@@ -217,7 +217,9 @@ function registerPwa() {
       const reg = await navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" });
       const banner = $("#updateBanner"), updateBtn = $("#updateNow"), updateReloadKey = "solivoc-explicit-update";
       const currentBuild = document.querySelector('meta[name="slovasyans-build"]')?.content || "";
+      const deploymentKey = "solivoc-deployment-id";
       let pendingWorker = reg.waiting || null,
+        pendingDeployment = "",
         updateRequested = false,
         refreshing = false,
         checkBusy = false,
@@ -263,11 +265,21 @@ function registerPwa() {
           const response = await fetch(`/api/version?t=${now}`, { cache: "no-store", credentials: "same-origin" });
           if (!response.ok) return false;
           const data = await response.json().catch(() => ({}));
-          if (currentBuild && data?.build && String(data.build) !== String(currentBuild)) {
+          const serverBuild = String(data?.build || "");
+          const serverDeployment = String(data?.deployment || "");
+          let savedDeployment = "";
+          try { savedDeployment = localStorage.getItem(deploymentKey) || ""; } catch {}
+          const buildChanged = !!(currentBuild && serverBuild && serverBuild !== String(currentBuild));
+          const deploymentChanged = !!(serverDeployment && savedDeployment && serverDeployment !== savedDeployment);
+          if (buildChanged || deploymentChanged) {
+            pendingDeployment = serverDeployment || pendingDeployment;
             showUpdate(reg.waiting || pendingWorker);
             // Start downloading the new worker immediately, even before the player taps the banner.
             reg.update().catch(() => {});
             return true;
+          }
+          if (serverDeployment && (!savedDeployment || serverBuild === String(currentBuild))) {
+            try { localStorage.setItem(deploymentKey, serverDeployment); } catch {}
           }
           return !!reg.waiting;
         } catch {
@@ -287,6 +299,25 @@ function registerPwa() {
         try { await reg.update(); } catch {}
         if (requestActivation(reg.waiting || pendingWorker)) return;
         watchWorker(reg.installing);
+
+        // A deployment id lets us detect a release even if somebody forgets to
+        // bump the SW cache/version next time. In that case the player explicitly
+        // asked to update, so clear the current offline generation and reload from
+        // the network instead of leaving the button stuck on "Повторить".
+        if (pendingDeployment && navigator.serviceWorker.controller) {
+          const channel = new MessageChannel();
+          const cleared = new Promise((resolve) => {
+            const timeout = setTimeout(() => resolve(false), 2500);
+            channel.port1.onmessage = () => { clearTimeout(timeout); resolve(true); };
+          });
+          try { navigator.serviceWorker.controller.postMessage({ type: "CLEAR_APP_CACHE" }, [channel.port2]); } catch {}
+          await cleared;
+          try { localStorage.setItem(deploymentKey, pendingDeployment); } catch {}
+          refreshing = true;
+          location.reload();
+          return;
+        }
+
         // If installation is still downloading, keep the request armed. The
         // statechange handler will activate it as soon as it reaches installed.
         setTimeout(() => {
@@ -303,6 +334,7 @@ function registerPwa() {
         if (!explicit) return;
         refreshing = true;
         try { sessionStorage.removeItem(updateReloadKey); } catch {}
+        if (pendingDeployment) { try { localStorage.setItem(deploymentKey, pendingDeployment); } catch {} }
         markStabilityStage?.("updating");
         location.reload();
       });

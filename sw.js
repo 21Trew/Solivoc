@@ -1,4 +1,4 @@
-const CACHE = "worditaire-v45";
+const CACHE = "worditaire-v46";
 const CORE = [
   "./",
   "./index.html",
@@ -16,6 +16,17 @@ const CORE = [
   "./icons/icon-cat-512.png",
   "./icons/mascot-owl.svg",
   "./icons/mascot-cat.svg",
+  "./icons/mascot-fox.svg",
+  "./icons/mascot-bear.svg",
+  "./icons/mascot-raven.svg",
+  "./icons/mascot-wolf.svg",
+  "./icons/mascot-tiger.svg",
+  "./icons/mascot-panda.svg",
+  "./icons/mascot-frog.svg",
+  "./icons/mascot-octopus.svg",
+  "./icons/mascot-gandalf.svg",
+  "./icons/mascot-clip.svg",
+  "./icons/mascot-birthday.svg",
   "./icons/share-duel.svg",
   "./icons/share-duel.png",
   "./manifest-classic-bronze.webmanifest",
@@ -79,7 +90,16 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("message", (event) => {
-  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+    return;
+  }
+  if (event.data?.type === "CLEAR_APP_CACHE") {
+    event.waitUntil((async () => {
+      try { await caches.delete(CACHE); } catch {}
+      try { event.ports?.[0]?.postMessage({ ok: true }); } catch {}
+    })());
+  }
 });
 
 self.addEventListener("activate", (event) => {
