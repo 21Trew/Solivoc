@@ -465,19 +465,49 @@ function notificationPermissionLabel() {
   if (Notification.permission === "denied") return { cls:"blocked", text:"Заблокированы в настройках браузера" };
   return { cls:"idle", text:"Браузер ещё не спрашивал разрешение" };
 }
+function closeCompanionInfoModal() {
+  const modal = $("#companionInfoModal");
+  if (!modal) return;
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden", "true");
+}
+function openCompanionInfoModal(id) {
+  const def = companionDef(id);
+  const modal = $("#companionInfoModal");
+  const body = $("#companionInfoBody");
+  const choose = $("#companionInfoChoose");
+  if (!modal || !body || !def) return;
+  const selected = (ensureCompanionSelection?.(profile)?.id || "") === def.id;
+  body.innerHTML = `<div class="companion-info-hero"><img src="${companionAsset(def)}" alt="${escapeHtml(def.name)}"><div><small>${escapeHtml(def.role || "Маскот")}</small><h2>${escapeHtml(def.name)}</h2><p>${escapeHtml(def.personality || "У каждого маскота свой характер.")}</p></div></div><div class="companion-info-section"><b>Кто это</b><p>${escapeHtml(def.lore || def.rewardText || "Напарник уже готов сопровождать тебя в игре.")}</p></div><div class="companion-info-section"><b>Как открыт</b><p>${escapeHtml(def.rewardText || companionUnlockLabel(def))}</p></div>`;
+  choose.textContent = selected ? "Это твой напарник" : "Выбрать напарником";
+  choose.disabled = !!selected;
+  choose.onclick = () => {
+    profile.settings.companion = def.id;
+    saveProfile();
+    syncGameCompanion?.();
+    showToast?.(`${def.name} теперь твой напарник`);
+    closeCompanionInfoModal();
+    renderHub?.();
+  };
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+  modal.onclick = (event) => { if (event.target === modal) closeCompanionInfoModal(); };
+  $("#companionInfoClose")?.addEventListener("click", closeCompanionInfoModal, { once: true });
+}
+
 function appearanceTabMarkup() {
   const themes=THEME_DEFS.map(t=>{const unlocked=themeUnlocked(t);return `<button class="theme-tile theme-${t.id} ${unlocked?"":"locked"} ${profile.theme===t.id?"selected":""}" data-theme-id="${t.id}"><b>${t.name}</b><span>${unlocked?"Открыто":themeUnlockLabel(t)}</span></button>`;}).join("");
   const effects=EFFECT_DEFS.map(e=>{const unlocked=effectUnlocked(e);return `<button class="effect-tile ${unlocked?"":"locked"} ${profile.effect===e.id?"selected":""}" data-effect-id="${e.id}">${effectPreviewMarkup(e)}<b>${e.name}</b><span>${unlocked?"Открыто":effectUnlockLabel(e)}</span></button>`;}).join("");
   const sounds=SOUND_PACK_DEFS.map(x=>{const unlocked=soundPackUnlocked(x);return `<button class="sound-tile ${unlocked?"":"locked"} ${profile.soundPack===x.id?"selected":""}" data-sound-pack="${x.id}"><i>♪</i><b>${x.name}</b><span>${unlocked?"Открыто":`${x.minDuelXp} дуэльного XP`}</span></button>`;}).join("");
   const selectedCompanion = ensureCompanionSelection?.(profile);
   const companionId = selectedCompanion?.id || "";
-  const unlockedCompanions=COMPANION_DEFS.filter((x)=>companionUnlocked(x));
-  const companions=unlockedCompanions.map(x=>`<button class="companion-tile ${companionId===x.id?"selected":""}" data-companion="${x.id}"><img src="${companionAsset(x)}" alt=""><span><b>${x.name}</b><small>${x.role}</small></span><em>${companionId===x.id?"Напарник":"Выбрать"}</em></button>`).join("");
+  const unlockedCompanions = availableCompanions(profile);
+  const companions = unlockedCompanions.map(x=>`<button class="companion-tile ${companionId===x.id?"selected":""}" data-companion-open="${x.id}"><img src="${companionAsset(x)}" alt=""><span><b>${x.name}</b><small>${x.role}</small></span><em>${companionId===x.id?"Напарник":"Подробнее"}</em></button>`).join("");
   const selectedFrame=appIconFrameDef(profile.settings.appIconFrame);
   const icons=APP_ICON_DEFS.map(x=>`<button class="app-icon-tile ${profile.settings.appIcon===x.id?"selected":""}" data-app-icon="${x.id}"><img src="${appIconAsset(x.id,selectedFrame.id,192)}" alt=""><b>${x.name}</b><span>${profile.settings.appIcon===x.id?"Выбрано":"Выбрать"}</span></button>`).join("");
   const iconFrames=APP_ICON_FRAME_DEFS.map(x=>{const unlocked=appIconFrameUnlocked(x);return `<button class="app-icon-frame-tile ${unlocked?"":"locked"} ${selectedFrame.id===x.id?"selected":""}" data-app-icon-frame="${x.id}" ${unlocked?"":"disabled"}><span class="frame-preview frame-${x.id}"><img src="${appIconAsset(profile.settings.appIcon,x.id,192)}" alt=""></span><b>${x.name}</b><small>${unlocked?(selectedFrame.id===x.id?"Выбрано":"Открыто"):x.desc}</small></button>`;}).join("");
   const shelf=(key,title,subtitle,cls,content)=>{const open=hubExpandedSections.has(`cosmetic:${key}`);return `<section class="hub-section cosmetic-section ${open?"expanded":""}" data-cosmetic-section="${key}"><div class="hub-section-head"><h3>${title}</h3><small>${subtitle}</small></div><div class="cosmetic-clip"><div class="${cls}">${content}</div></div><button class="cosmetic-expand" data-cosmetic-expand="${key}">${open?"Свернуть":"Показать все"}</button></section>`};
-  const companionShelf=`<section class="hub-section companion-section"><div class="hub-section-head"><div><h3>Маскот-напарник</h3><small>помогает с подсказками и встречает после уровня</small></div></div>${companions?`<div class="companion-grid">${companions}</div>`:`<div class="empty-state companion-empty">Создай игровой аккаунт — сова и кот станут первыми напарниками.</div>`}</section>`;
+  const companionShelf=`<section class="hub-section companion-section"><div class="hub-section-head"><div><h3>Маскот-напарник</h3><small>помогает с подсказками и встречает после уровня</small></div></div>${companions ? `<div class="companion-slider">${companions}</div><p class="companion-slider-note">Нажми на маскота, чтобы узнать его историю и выбрать напарником.</p>` : `<div class="empty-state companion-empty">Создай игровой аккаунт — сова и кот станут первыми напарниками.</div>`}</section>`;
   const appIcons=`<section class="hub-section app-icon-section"><div class="hub-section-head"><div><h3>Иконка приложения</h3><small>персонаж и заслуженная рамка</small></div></div><div class="app-icon-grid">${icons}</div><div class="hub-subhead app-icon-frame-head"><h4>Рамка иконки</h4><small>новые рамки открываются за достижения</small></div><div class="app-icon-frame-grid">${iconFrames}</div><p class="app-icon-note">Выбор сразу обновляет manifest, favicon и системную иконку там, где платформа это поддерживает. iOS может сохранять иконку уже установленного ярлыка в системном кэше — веб-приложение не может принудительно очистить этот кэш.</p></section>`;
   return `${shelf("themes","Темы","выбери оформление","theme-grid",themes)}${companionShelf}${appIcons}${shelf("backs","Рубашки",`${CARD_BACK_DEFS.filter(b=>cardBackUnlocked(b)).length}/${CARD_BACK_DEFS.length}`,"cardback-grid",cardBackMarkup())}${shelf("frames","Рамки профиля","главы и дуэльный XP","frame-grid",typeof frameTilesMarkup==="function"?frameTilesMarkup():"")}${shelf("effects","Эффекты победы","косметические награды","effect-grid",effects)}${shelf("sounds","Звуки","награды за дуэльный опыт","sound-grid",sounds)}`;
 }
@@ -594,7 +624,7 @@ function bindHubHandlers() {
   hubContent.querySelectorAll("[data-startup-screen]").forEach((btn)=>btn.onclick=()=>{profile.settings.startupScreen=btn.dataset.startupScreen==="game"?"game":"home";saveProfile();showToast(profile.settings.startupScreen==="game"?"При запуске: сразу в игру":"При запуске: стартовая");renderHub();});
   hubContent.querySelectorAll("[data-association-collection]").forEach((btn)=>btn.onclick=()=>{const id=btn.dataset.associationCollection;closeHub();makeLevel(1,{mode:"collection",collectionId:id,seed:`collection:${id}:${Date.now()}`});});
   hubContent.querySelectorAll("[data-theme-id]").forEach((btn)=>btn.onclick=()=>{const def=THEME_DEFS.find((x)=>x.id===btn.dataset.themeId);if(themeUnlocked(def)){profile.theme=def.id;saveProfile();}renderHub();if(!themeUnlocked(def))showToast(`Откроется за ${themeUnlockLabel(def)}`);});
-  hubContent.querySelectorAll("[data-companion]").forEach((btn)=>btn.onclick=()=>{const def=companionDef(btn.dataset.companion);if(!companionUnlocked(def)){showToast(companionUnlockLabel(def));return;}profile.settings.companion=def.id;saveProfile();syncGameCompanion?.();showToast(`${def.name} теперь твой напарник`);renderHub();});
+  hubContent.querySelectorAll("[data-companion-open]").forEach((btn)=>btn.onclick=()=>openCompanionInfoModal(btn.dataset.companionOpen));
   hubContent.querySelectorAll("[data-app-icon]").forEach((btn)=>btn.onclick=()=>{profile.settings.appIcon=appIconDef(btn.dataset.appIcon).id;applyAppIcon(profile.settings.appIcon,profile.settings.appIconFrame);saveProfile();showToast("Иконка обновлена там, где это разрешает система");renderHub();});
   hubContent.querySelectorAll("[data-app-icon-frame]").forEach((btn)=>btn.onclick=()=>{const frame=appIconFrameDef(btn.dataset.appIconFrame);if(!appIconFrameUnlocked(frame))return;profile.settings.appIconFrame=frame.id;applyAppIcon(profile.settings.appIcon,frame.id);saveProfile();showToast(`Рамка «${frame.name}» выбрана`);renderHub();});
   hubContent.querySelectorAll("[data-card-back-id]").forEach((btn)=>btn.onclick=()=>{const def=CARD_BACK_DEFS.find((x)=>x.id===btn.dataset.cardBackId);if(cardBackUnlocked(def)){profile.cardBack=def.id;saveProfile();}renderHub();if(!cardBackUnlocked(def))showToast(cardBackUnlockLabel(def));});

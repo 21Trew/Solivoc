@@ -29,7 +29,7 @@ function specialLevelInfoLines(special) {
   else if (special.lockedSlot) lines.push("Один слот откроется после первой собранной категории.");
   else if (special.mysteryCategories) lines.push("Названия категорий будут открываться по ходу решения.");
   else if (special.bigMix) lines.push("В раскладе больше категорий и карточек, чем обычно.");
-  if (special.bossTaunt) lines.push(`${special.bossName || "Босс"}: «${special.bossTaunt}»`);
+  if (special.bossTaunt) lines.push(`«${special.bossTaunt}»`);
   return [...new Set(lines.map((x)=>String(x).trim()).filter(Boolean))].slice(0, 2);
 }
 function closeSpecialLevelIntro({ start = false } = {}) {
@@ -132,6 +132,7 @@ function checkAchievements() {
     (effect) => effect.id !== "spark" && effectUnlocked(effect) && !profile.effectUnlocksSeen.includes(effect.id),
   );
   if (fresh.length || newlyUnlockedBacks.length || newlyUnlockedEffects.length) {
+    syncAchievementCompanions?.({ notify: true });
     newlyUnlockedBacks.forEach((back) => profile.cardBackUnlocksSeen.push(back.id));
     newlyUnlockedEffects.forEach((effect) => profile.effectUnlocksSeen.push(effect.id));
     saveProfile();

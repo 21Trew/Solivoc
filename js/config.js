@@ -31,16 +31,18 @@ const APP_ICON_DEFS = Object.freeze([
 function appIconDef(id) { return APP_ICON_DEFS.find((x) => x.id === id) || APP_ICON_DEFS[0]; }
 
 const COMPANION_DEFS = Object.freeze([
-  { id: "owl", name: "Мудрая сова", image: "./icons/mascot-owl.svg", role: "Научный наставник", unlockLabel: "За регистрацию аккаунта", starter: true },
-  { id: "cat", name: "Кот-учёный", image: "./icons/mascot-cat.svg", role: "Весёлый напарник", unlockLabel: "За регистрацию аккаунта", starter: true },
-  { id: "fox", name: "Лис-трюкач", emoji: "🦊", role: "Хитрый босс", unlockChapter: 3, bossReward: true, rewardText: "Приручён после финала главы 3" },
-  { id: "bear", name: "Медведь-хранитель", emoji: "🐻", role: "Спокойная сила", unlockChapter: 6, bossReward: true, rewardText: "Приручён после финала главы 6" },
-  { id: "raven", name: "Ворон-ворчун", emoji: "🐦‍⬛", role: "Едкий стратег", unlockChapter: 9, bossReward: true, rewardText: "Приручён после финала главы 9" },
-  { id: "wolf", name: "Волк-следопыт", emoji: "🐺", role: "Упрямый охотник", unlockChapter: 12, bossReward: true, rewardText: "Приручён после финала главы 12" },
-  { id: "tiger", name: "Тигр-задавака", emoji: "🐯", role: "Грозный соперник", unlockChapter: 15, bossReward: true, rewardText: "Приручён после финала главы 15" },
-  { id: "panda", name: "Панда-стратег", emoji: "🐼", role: "Невозмутимый тактик", unlockChapter: 18, bossReward: true, rewardText: "Приручён после финала главы 18" },
-  { id: "frog", name: "Лягуш-алхимик", emoji: "🐸", role: "Зелёный хитрец", unlockChapter: 21, bossReward: true, rewardText: "Приручён после финала главы 21" },
-  { id: "octopus", name: "Осьминог-профессор", emoji: "🐙", role: "Многозадачный босс", unlockChapter: 24, bossReward: true, rewardText: "Приручён после финала главы 24" },
+  { id: "owl", name: "Мудрая сова", image: "./icons/mascot-owl.svg", role: "Научный наставник", unlockLabel: "За регистрацию аккаунта", starter: true, personality: "спокойная, любознательная и немного профессорская", lore: "Мудрая сова любит объяснять сложное простыми словами. Она подмечает закономерности, делится научными фактами и всегда подталкивает к вдумчивой победе." },
+  { id: "cat", name: "Кот-учёный", image: "./icons/mascot-cat.svg", role: "Весёлый напарник", unlockLabel: "За регистрацию аккаунта", starter: true, personality: "ироничный, тёплый и очень харизматичный", lore: "Кот-учёный обожает похвалу, каламбуры и красивые победы. Он встречает успех мягкой самоиронией и превращает каждый уровень в маленькое приключение." },
+  { id: "fox", name: "Хитрый лис", emoji: "🦊", role: "Ловкий стратег", unlockChapter: 3, bossReward: true, rewardText: "Приручён после финала главы 3", personality: "быстрый, остроумный и чуть ехидный", lore: "Хитрый лис любит запутывать соперника и проверять, умеешь ли ты замечать тонкие связи. После победы он признаёт умного игрока своим." },
+  { id: "bear", name: "Сильный медведь", emoji: "🐻", role: "Надёжный защитник", unlockChapter: 6, bossReward: true, rewardText: "Приручён после финала главы 6", personality: "спокойный, основательный и уверенный", lore: "Сильный медведь не любит суету. Он уважает выдержку, точность и победы, которые добыты без паники." },
+  { id: "raven", name: "Умный ворон", emoji: "🐦‍⬛", role: "Колкий умник", unlockChapter: 9, bossReward: true, rewardText: "Приручён после финала главы 9", personality: "язвительный, наблюдательный и очень сообразительный", lore: "Умный ворон замечает ошибки раньше всех и обожает острые фразы. Но ещё больше он уважает игрока, который умеет удивлять." },
+  { id: "wolf", name: "Серый волк", emoji: "🐺", role: "Упрямый следопыт", unlockChapter: 12, bossReward: true, rewardText: "Приручён после финала главы 12", personality: "собранный, настойчивый и прямой", lore: "Серый волк идёт по следу до конца. Он любит тех, кто не сдаётся после первой же сложной комбинации." },
+  { id: "tiger", name: "Грозный тигр", emoji: "🐯", role: "Гордый соперник", unlockChapter: 15, bossReward: true, rewardText: "Приручён после финала главы 15", personality: "эффектный, громкий и соревновательный", lore: "Грозный тигр появляется там, где нужен вызов посерьёзнее. Он уважает только тех, кто не пугается давления." },
+  { id: "panda", name: "Спокойная панда", emoji: "🐼", role: "Невозмутимый тактик", unlockChapter: 18, bossReward: true, rewardText: "Приручён после финала главы 18", personality: "неторопливая, мягкая и сосредоточенная", lore: "Спокойная панда напоминает: не каждая победа должна быть шумной. Иногда лучший ход — самый тихий и точный." },
+  { id: "frog", name: "Ловкая лягушка", emoji: "🐸", role: "Зелёная выдумщица", unlockChapter: 21, bossReward: true, rewardText: "Приручена после финала главы 21", personality: "смешливая, резкая и непредсказуемая", lore: "Ловкая лягушка любит неожиданные решения и нестандартные ассоциации. С ней игра всегда становится чуть веселее." },
+  { id: "octopus", name: "Умный осьминог", emoji: "🐙", role: "Мастер сложных ходов", unlockChapter: 24, bossReward: true, rewardText: "Приручён после финала главы 24", personality: "спокойный, системный и многозадачный", lore: "Умный осьминог умеет держать в голове сразу несколько вариантов. Он ценит порядок мысли и длинные цепочки верных решений." },
+  { id: "gandalf", name: "Гендальф", emoji: "🧙‍♂️", role: "Легендарный босс", unlockChapter: 100, bossReward: true, rewardText: "Приручён после финала главы 100", personality: "величественный, суровый и мудрый", lore: "Гендальф встречает только тех, кто добрался до сотой главы. Его уважение нужно заслужить — и эта победа запоминается надолго." },
+  { id: "clip", name: "Скрепка", emoji: "📎", role: "Легендарный советчик", achievementId: "retro90", rewardText: "Открыта за достижение «Я из 90-х»", personality: "деловая, смешная и ностальгическая", lore: "Скрепка с глазами словно сбежала из старого компьютера девяностых. Она любит советы, ретро-настроение и большие коллекции пройденных режимов." },
 ]);
 function companionDef(id) { return COMPANION_DEFS.find((x) => x.id === id) || COMPANION_DEFS[0]; }
 function companionUnlocked(def, p = profile) {
@@ -64,6 +66,16 @@ function syncBossCompanionsFromProgress({ notify = false } = {}) {
   const chapters = companionChapterProgress(profile);
   let fresh = 0;
   for (const def of COMPANION_DEFS.filter((x) => x.bossReward && x.unlockChapter && chapters >= x.unlockChapter)) {
+    const before = companionUnlocked(def, profile);
+    unlockCompanion(def.id, { notify: !before && notify, select: false });
+    if (!before) fresh++;
+  }
+  ensureCompanionSelection(profile);
+  return fresh;
+}
+function syncAchievementCompanions({ notify = false } = {}) {
+  let fresh = 0;
+  for (const def of COMPANION_DEFS.filter((x) => x.achievementId && profile?.achievements?.includes(x.achievementId))) {
     const before = companionUnlocked(def, profile);
     unlockCompanion(def.id, { notify: !before && notify, select: false });
     if (!before) fresh++;
@@ -165,6 +177,16 @@ const COMPANION_FACTS = Object.freeze({
     "У осьминога большая часть нейронов находится не в мозге, а в щупальцах, которые умеют обрабатывать часть информации самостоятельно.",
     "Многозадачность обычно снижает качество внимания — последовательное решение задач надёжнее.",
     "Сложная задача становится проще, если удерживать в голове только ближайший следующий шаг."
+  ],
+  gandalf: [
+    "Самые сложные задачи почти всегда решаются серией небольших, но точных шагов.",
+    "Когда кажется, что выходов нет, мозгу часто помогает короткая пауза и новый взгляд на расклад.",
+    "Опытный игрок не спешит — он заранее замечает, какие варианты ведут в тупик."
+  ],
+  clip: [
+    "Скрепки придумали в XIX веке, а в 90-х они стали символом офисной эпохи и первых домашних компьютеров.",
+    "Повторение в разных режимах помогает мозгу лучше переносить навык из одной ситуации в другую.",
+    "Ностальгия тоже полезна: знакомые образы и стиль прошлого могут сильнее закреплять воспоминания."
   ]
 });
 function companionFact(id = profile?.settings?.companion) {
@@ -182,15 +204,18 @@ function companionWinLine(id = profile?.settings?.companion, perfect = false) {
       : ["Ты замурчательно справился!", "Отличная партия — кот-учёный одобряет.", "Мяу! Ещё один расклад аккуратно уложен по полочкам."];
     return lines[(state?.level || state?.run?.moves || 0) % lines.length];
   }
-  if (companionId === "fox") return perfect ? "Хитро сработано — даже лис признаёт это мастерством." : "Лис кивает: ловкий был ход.";
-  if (companionId === "bear") return perfect ? "Медведь уважает такую спокойную и точную победу." : "Крепкая партия — медведь одобряет выдержку.";
-  if (companionId === "raven") return perfect ? "Ворону больше нечем крыть — партия безупречна." : "Ворон бурчит, но признаёт: сыграно сильно.";
-  if (companionId === "wolf") return perfect ? "Волк признаёт в тебе вожака этой партии." : "Волк довольно щурится: след взят верно.";
-  if (companionId === "tiger") return perfect ? "Тигр сдаётся: сегодня ты оказался грознее." : "Тигр рычит одобрительно — достойная победа.";
-  if (companionId === "panda") return perfect ? "Панда спокойна: идеальная партия и ни одного лишнего движения." : "Панда кивает: аккуратно и без суеты.";
-  if (companionId === "frog") return perfect ? "Лягуш-алхимик объявляет формулу победы найденной." : "Лягуш довольно квакает: эксперимент удался.";
-  if (companionId === "octopus") return perfect ? "Все восемь щупалец голосуют за идеальную партию." : "Осьминог-профессор ставит зачёт за решение.";
-  return `Факт от совы: ${companionFact("owl")}`;
+  if (companionId === "owl") return perfect ? `Факт от совы: ${companionFact("owl")}` : `Сова довольно кивает: ${companionFact("owl")}`;
+  if (companionId === "fox") return perfect ? "Хитрый лис признаёт поражение: ты сыграл тоньше него." : "Хитрый лис ухмыляется: ловкая была партия.";
+  if (companionId === "bear") return perfect ? "Сильный медведь уважает такую спокойную и точную победу." : "Сильный медведь довольно ворчит: крепкая партия.";
+  if (companionId === "raven") return perfect ? "Умный ворон щёлкает клювом: безупречно." : "Умный ворон бурчит, но признаёт: сыграно сильно.";
+  if (companionId === "wolf") return perfect ? "Серый волк признаёт в тебе вожака этой партии." : "Серый волк довольно щурится: след взят верно.";
+  if (companionId === "tiger") return perfect ? "Грозный тигр сдаётся: сегодня ты оказался сильнее." : "Грозный тигр рычит одобрительно — достойная победа.";
+  if (companionId === "panda") return perfect ? "Спокойная панда улыбается: идеально и без суеты." : "Спокойная панда кивает: аккуратно и уверенно.";
+  if (companionId === "frog") return perfect ? "Ловкая лягушка объявляет эксперимент блестящим." : "Ловкая лягушка довольно квакает: получилось хитро.";
+  if (companionId === "octopus") return perfect ? "Умный осьминог ставит высшую оценку за эту партию." : "Умный осьминог доволен: всё разложено по щупальцам.";
+  if (companionId === "gandalf") return perfect ? "Гендальф склоняет посох: ты действительно прошёл." : "Гендальф признаёт силу твоего хода.";
+  if (companionId === "clip") return perfect ? "Скрепка сияет: это прохождение достойно лучших 90-х." : "Скрепка подмигивает: отличный файл... то есть уровень.";
+  return companionFact("owl");
 }
 
 const APP_ICON_FRAME_DEFS = Object.freeze([
@@ -728,6 +753,30 @@ const CARD_BACK_DEFS = [
   { id: "parrot", name: "Птица-говорун", desc: "За открытие всех карточек со словами", achievement: "allWords", rare: true },
   { id: "grand-trophy", name: "Кубок", desc: "За все достижения", achievement: "allAchievements", rare: true },
 ];
+
+function achievementMode90Counts(p = profile) {
+  const modeStats = p?.modeStats || {};
+  return {
+    classic: +(p?.stats?.levelsCompleted || 0),
+    daily: +(p?.stats?.dailyCompleted || 0),
+    zen: +(p?.stats?.calmCompleted || 0),
+    pictures: +(p?.stats?.collectionGamesCompleted || 0),
+    duel: +(p?.stats?.challengesCompleted || 0),
+    time: +(modeStats.time?.completed || 0),
+    moves: +(modeStats.moves?.completed || 0),
+    combo: +(modeStats.combo?.completed || 0),
+    noMistakes: +(modeStats.noMistakes?.completed || 0),
+    onePass: +(modeStats.onePass?.completed || 0),
+  };
+}
+function retro90AchievementReady(p = profile) {
+  return Object.values(achievementMode90Counts(p)).every((value) => value >= 90);
+}
+function retro90AchievementProgress(p = profile) {
+  const counts = achievementMode90Counts(p);
+  return Math.min(...Object.values(counts).map((value) => Math.max(0, +value || 0)));
+}
+
 const ACHIEVEMENTS = [
   {
     id: "first",
@@ -847,6 +896,7 @@ const ACHIEVEMENTS = [
   { id: "duelGold10", icon: "🥇10", title: "Золотой дуэлянт", desc: "Получить 10 золотых медалей в дуэлях", test: (p) => (p.stats.duelGold || 0) >= 10 },
   { id: "allPictures", icon: "🦁", title: "Галерея собрана", desc: "Открыть все карточки с рисунками", rare: true, legendary: true, test: (p) => typeof hasDiscoveredAllVisualCards === "function" && hasDiscoveredAllVisualCards(p) },
   { id: "allWords", icon: "🦜", title: "Птица-говорун", desc: "Открыть все карточки со словами", rare: true, legendary: true, test: (p) => typeof hasDiscoveredAllWordCards === "function" && hasDiscoveredAllWordCards(p) },
+  { id: "retro90", icon: "📼", title: "Я из 90-х", desc: "Пройти все режимы по 90 раз", rare: true, legendary: true, test: (p) => retro90AchievementReady(p) },
   { id: "allAchievements", icon: "🏆", title: "Абсолютный коллекционер", desc: "Открыть все остальные достижения", rare: true, legendary: true, test: (p) => ACHIEVEMENTS.filter((a) => a.id !== "allAchievements").every((a) => p.achievements.includes(a.id)) },
 ];
 const DEFAULT_STATS = {
@@ -1035,6 +1085,7 @@ function achievementProgressData(a, p = profile) {
     mastery10:[p.stats.masteredCategories||0,10], mastery50:[p.stats.masteredCategories||0,50], final1:[p.stats.chapterFinalsCompleted||0,1], final6:[p.stats.chapterFinalsCompleted||0,6], bonus10:[p.stats.bonusObjectivesCompleted||0,10], series3:[p.stats.seriesWins||0,3],
     visits30:[p.retention?.totalOpenDays||0,30], visits50:[p.retention?.totalOpenDays||0,50], visits100:[p.retention?.totalOpenDays||0,100], visits180:[p.retention?.totalOpenDays||0,180], visits365:[p.retention?.totalOpenDays||0,365],
     duel1:[p.stats.duelMatches||0,1], duelWin1:[p.stats.duelWins||0,1], duelWins5:[p.stats.duelWins||0,5], duelWins10:[p.stats.duelWins||0,10], duelWins25:[p.stats.duelWins||0,25], duelGold10:[p.stats.duelGold||0,10],
+    retro90:[retro90AchievementProgress(p),90],
   };
   const pair = map[a.id];
   if (!pair) return null;

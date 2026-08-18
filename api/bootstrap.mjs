@@ -1,5 +1,19 @@
 const developerMessages = [
   {
+    id: "update-v24-2026-08-18",
+    version: "v24",
+    major: true,
+    date: "18 августа 2026",
+    title: "Легендарные маскоты и новый экран напарников",
+    intro: "Добавили новых маскотов и обновили их экран.",
+    items: [
+      "Легендарная Скрепка открывается за достижение «Я из 90-х».",
+      "У маскотов теперь больше характера, а их карточки открываются в отдельной модалке.",
+      "Сотая глава получила особого босса Гендальфа с фирменной фразой.",
+      "Исправлено отображение реплики маскота и сделана надёжнее плашка обновления."
+    ]
+  },
+  {
     id: "update-v21-2026-08-17",
     version: "v21",
     major: true,
@@ -44,7 +58,7 @@ const developerMessages = [
 export async function GET() {
   return new Response(JSON.stringify({
     ok: true,
-    version: "v21",
+    version: "v24",
     serverTime: Date.now(),
     developerMessages,
   }), {

@@ -20,9 +20,18 @@ function showCompanionBubble(text, ms = 5200) {
   }
   const rect = host.getBoundingClientRect();
   bubble.textContent = text;
-  bubble.style.left = `${Math.max(10, rect.left - 168)}px`;
-  bubble.style.top = `${Math.max(10, rect.top - 18)}px`;
   bubble.hidden = false;
+  bubble.style.left = `10px`;
+  bubble.style.top = `10px`;
+  requestAnimationFrame(() => {
+    const bw = bubble.offsetWidth || 240, bh = bubble.offsetHeight || 56;
+    const safeRight = window.innerWidth - 10;
+    const preferredLeft = rect.left - bw + rect.width * 0.75;
+    const left = Math.min(Math.max(10, preferredLeft), Math.max(10, safeRight - bw));
+    const top = Math.max(10, rect.top - bh - 8);
+    bubble.style.left = `${left}px`;
+    bubble.style.top = `${top}px`;
+  });
   clearTimeout(showCompanionBubble.timer);
   showCompanionBubble.timer = setTimeout(() => { bubble.hidden = true; }, ms);
 }
@@ -216,7 +225,6 @@ function registerPwa() {
         return true;
       };
       const showUpdate = (worker = null) => {
-        if (!navigator.serviceWorker.controller) return;
         if (worker) pendingWorker = worker;
         banner?.classList.add("show");
         banner?.setAttribute("aria-hidden", "false");
@@ -435,6 +443,7 @@ async function boot() {
     await restoreAccountSessionOnBoot?.();
     if (typeof accountSignedIn === "function" && accountSignedIn()) grantStarterCompanions?.({ notify: false });
     syncBossCompanionsFromProgress?.({ notify: false });
+    syncAchievementCompanions?.({ notify: false });
     saveProfile?.({ skipCloud: true });
     setSplashProgress?.(55,"Собираю прогресс…");
     migrateCategoryMasteryProgress?.();
@@ -442,6 +451,9 @@ async function boot() {
     ensureMonthlyChallenge?.();
     setSplashProgress?.(64,"Синхронизирую с сервером…");
     await syncServerDataOnBoot();
+    syncBossCompanionsFromProgress?.({ notify: false });
+    syncAchievementCompanions?.({ notify: false });
+    saveProfile?.({ skipCloud: true });
     runQualityAudit?.();
 
     // First-run onboarding is interactive. The splash must be fully removed

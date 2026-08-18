@@ -130,7 +130,7 @@ function render() {
   const specialBadge = $("#specialBadge");
   if (state.mode === "regular" && state.special) {
     specialBadge.hidden = false;
-    specialBadge.textContent = `${state.special.icon} ${state.special.title}`;
+    specialBadge.textContent = state.special.boss ? `${state.special.icon} Финал главы` : `${state.special.icon} ${state.special.title}`;
     specialBadge.title = state.special.desc;
   } else if (state.mode === "challenge") {
     const duelDef = duelModeDef(state.duelMode);
