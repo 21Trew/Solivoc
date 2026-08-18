@@ -314,6 +314,12 @@ export async function POST(request) {
       return json({ error: "recovery_expired" }, 410);
     }
 
+    // Compare only after the one-time code is verified. Doing this earlier would
+    // let an unauthenticated caller probe whether a guessed password matches.
+    if (await verifySecret(body.newPassword, user.passwordHash)) {
+      return json({ error: "password_unchanged" }, 400);
+    }
+
     user.passwordHash = await hashSecret(body.newPassword);
     user.passwordChangedAt = Date.now();
     user.sessionVersion = Math.max(1, Number(user.sessionVersion) || 1) + 1;

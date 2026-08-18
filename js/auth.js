@@ -227,6 +227,7 @@ function authErrorText(error) {
     offline: "Сейчас нет интернета. Одиночная игра продолжит работать офлайн.",
     invalid_email: "Проверь адрес электронной почты.",
     weak_password: "Пароль должен содержать минимум 8 символов.",
+    password_unchanged: "Новый пароль совпадает со старым. Придумай другой пароль.",
     email_exists: "Аккаунт с этой почтой уже существует.",
     invalid_credentials: "Неверная почта или пароль.",
     verification_required: "Обнови игру: регистрация теперь требует подтверждения почты.",
@@ -463,12 +464,34 @@ function accountSyncTimeLabel() {
   catch { return "Прогресс синхронизирован"; }
 }
 
+function accountPasswordField({ label = "Пароль", autocomplete = "current-password" } = {}) {
+  return `<label>${label}<span class="account-password-field"><input id="accountPassword" type="password" autocomplete="${authEsc(autocomplete)}" minlength="8" maxlength="128" required><button class="account-password-toggle" type="button" aria-label="Показать пароль" aria-pressed="false" title="Показать пароль"><svg class="account-password-eye account-password-eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.75"></circle></svg><svg class="account-password-eye account-password-eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"></path><path d="M10.6 6.15A10.8 10.8 0 0 1 12 6c6 0 9.5 6 9.5 6a15 15 0 0 1-2.2 2.9M6.25 6.35C3.8 8.15 2.5 12 2.5 12s3.5 6 9.5 6c1.25 0 2.38-.26 3.4-.67"></path><path d="M9.9 9.9A3 3 0 0 0 14.1 14.1"></path></svg></button></span></label>`;
+}
+
+function bindAccountPasswordToggle() {
+  document.querySelectorAll(".account-password-toggle").forEach((button) => {
+    button.addEventListener("click", () => {
+      const field = button.closest(".account-password-field");
+      const input = field?.querySelector("input");
+      if (!input || input.disabled) return;
+      const reveal = input.type === "password";
+      input.type = reveal ? "text" : "password";
+      button.setAttribute("aria-pressed", String(reveal));
+      button.setAttribute("aria-label", reveal ? "Скрыть пароль" : "Показать пароль");
+      button.title = reveal ? "Скрыть пароль" : "Показать пароль";
+      field.classList.toggle("is-visible", reveal);
+      input.focus({ preventScroll: true });
+      try { input.setSelectionRange(input.value.length, input.value.length); } catch {}
+    });
+  });
+}
+
 function accountGuestMarkup(mode = "register") {
   const login = mode === "login", recover = mode === "recover";
   if (recover) return `<div class="account-hero recovery"><span>↺</span><div><small>ВОССТАНОВЛЕНИЕ</small><h2>Верни доступ</h2><p>Укажи почту аккаунта. Если такой аккаунт есть, мы отправим шестизначный код.</p></div></div>
     <form class="account-form" id="accountForm"><label>Почта<input id="accountEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" value="${authEsc(accountState.email)}" placeholder="name@example.com" required></label><p class="account-security-note">Мы не сообщаем, зарегистрирован ли этот адрес. Это защищает аккаунты от перебора.</p><div class="account-error" id="accountError" aria-live="polite"></div><button class="account-primary" type="submit">Получить код</button></form><button class="account-link" type="button" data-account-mode="login" data-account-reset-verification="1">← Вернуться ко входу</button>`;
   return `<div class="account-hero"><span>${login ? "↗" : "☁"}</span><div><small>${login ? "ВХОД" : "АККАУНТ"}</small><h2>${login ? "С возвращением" : "Сохрани прогресс"}</h2><p>${login ? "Войди, чтобы вернуть облачный прогресс на это устройство." : "Гостевой прогресс останется на устройстве и будет привязан к аккаунту."}</p></div></div>
-    <form class="account-form" id="accountForm"><label>Почта<input id="accountEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" value="${authEsc(accountState.email)}" placeholder="name@example.com" required></label><label>Пароль<input id="accountPassword" type="password" autocomplete="${login ? "current-password" : "new-password"}" minlength="8" maxlength="128" required></label>${login ? "" : `<small class="account-password-note">Минимум 8 символов. Перед созданием аккаунта подтвердим почту шестизначным кодом.</small>`}<div class="account-error" id="accountError" aria-live="polite"></div><button class="account-primary" type="submit">${login ? "Войти" : "Получить код"}</button></form>
+    <form class="account-form" id="accountForm"><label>Почта<input id="accountEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" value="${authEsc(accountState.email)}" placeholder="name@example.com" required></label>${accountPasswordField({ autocomplete: login ? "current-password" : "new-password" })}${login ? "" : `<small class="account-password-note">Минимум 8 символов. Перед созданием аккаунта подтвердим почту шестизначным кодом.</small>`}<div class="account-error" id="accountError" aria-live="polite"></div><button class="account-primary" type="submit">${login ? "Войти" : "Получить код"}</button></form>
     <button class="account-link" type="button" data-account-mode="${login ? "register" : "login"}" data-account-reset-verification="1">${login ? "Нет аккаунта? Создать аккаунт" : "Уже есть аккаунт? Войти"}</button>${login ? `<button class="account-link subtle" type="button" data-account-mode="recover" data-account-reset-verification="1">Забыл пароль? Восстановить по почте</button>` : ""}`;
 }
 function accountSignedInMarkup() {
@@ -480,7 +503,7 @@ function accountSignedInMarkup() {
 function accountVerificationMarkup(mode = "verify-email") {
   const recovering = mode === "recover-verify";
   const email = authEsc(accountVerification.email);
-  const passwordField = recovering ? `<label>Новый пароль<input id="accountPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label><small class="account-password-note">После смены пароля старые сессии на других устройствах будут завершены.</small>` : "";
+  const passwordField = recovering ? `${accountPasswordField({ label: "Новый пароль", autocomplete: "new-password" })}<small class="account-password-note">Новый пароль должен отличаться от прежнего. После смены пароля старые сессии на других устройствах будут завершены.</small>` : "";
   const deliveryText = recovering
     ? `Если аккаунт существует, шестизначный код отправлен на <b>${email}</b>.`
     : `Мы отправили шестизначный код на <b>${email}</b>.`;
@@ -542,6 +565,8 @@ function renderAccountModal() {
     : accountSignedIn() && mode === "signed"
       ? accountSignedInMarkup()
       : accountGuestMarkup(mode);
+
+  bindAccountPasswordToggle();
 
   content.querySelectorAll("[data-account-mode]").forEach((button) => button.onclick = () => {
     if (button.dataset.accountResetVerification) clearAccountVerification();
