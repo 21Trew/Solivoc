@@ -3221,3 +3221,13 @@ body[data-theme="galaxy"] .card.face-down { background:radial-gradient(circle at
   .account-hero h2 { font-size:19px; }
   .profile-account-strip em { white-space:normal; line-height:1.25; }
 }
+
+/* E-mail verification during account registration. */
+.account-hero.verify > span { background:linear-gradient(145deg,#6f64ff,#8b6ff0); }
+.account-hero p b { color:#4d4862; font-weight:900; overflow-wrap:anywhere; }
+.account-code-input {
+  text-align:center; font-size:22px !important; font-weight:950 !important; letter-spacing:.28em;
+  font-variant-numeric:tabular-nums; padding-left:calc(13px + .28em) !important;
+}
+.account-verification-actions { display:grid; gap:2px; }
+.account-verification-actions .account-link:disabled { opacity:.5; cursor:default; }
