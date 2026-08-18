@@ -309,7 +309,7 @@ function recordChallengeEligibleProgress(s=state, stars=0) {
   const moves=+s.run?.moves||0;if(moves>0)ms.bestMoves=!ms.bestMoves?moves:Math.min(ms.bestMoves,moves);
   return true;
 }
-function activeRuleMode(s=state) { return s?.mode === "challenge" ? normalizeDuelMode(s.duelMode) : (["time","moves","combo","noMistakes","onePass","custom"].includes(s?.mode) ? s.mode : "classic"); }
+function activeRuleMode(s=state) { return s?.mode === "challenge" ? normalizeDuelMode(s.duelMode) : (["time","moves","combo","noMistakes","onePass","hardcore","custom"].includes(s?.mode) ? s.mode : "classic"); }
 function ruleHasNoMistakes(s=state) { return activeRuleMode(s)==="noMistakes" || !!s?.rules?.noMistakes; }
 function activeTimeRemainingMs(s=state) {
   const limit=+s?.rules?.timeLimitMs||0;if(!limit)return 0;
@@ -322,6 +322,7 @@ function ruleMetricText(s=state) {
   if(rules.moveLimit) { const n=s.run.moves||0; return `↯ ${n}/${rules.moveLimit} ${ruPlural(n, "ход", "хода", "ходов")}`; }
   if(rules.comboTarget) return `× ${s.run.maxCombo||0}/${rules.comboTarget}`;
   if(rules.maxRecycles===0) return `↻ Один проход · ${s.stock?.length||0}`;
+  if(mode==="hardcore") return `☠ Раунд ${Math.max(1,+s.level||1)}`;
   if(ruleHasNoMistakes(s)) return (s.run.errors||0)?"Ошибка — поражение":"◇ Без ошибок";
   if(mode==="time") return `⏱ ${Math.floor((typeof activeRunElapsedMs === "function" ? activeRunElapsedMs(s) : 0)/1000)} сек.`;
   if(mode==="moves") return `↯ ${ruCount(s.run.moves||0, "ход", "хода", "ходов")}`;
@@ -393,7 +394,7 @@ function bonusObjectiveMarkup(s = state) {
 }
 
 function nearestAchievementForMode(mode) {
-  const map={regular:["ten","fifty","hundred"],daily:["daily7","daily30","daily100"],marathon:["marathon5","marathon15"],zen:["calm10"],pictures:["allPictures"],duel:["challenge1","challenge25","duelGold10"],time:["special10","special25"],moves:["special10","special25"],combo:["combo3","combo10"],noMistakes:["nohint","nohint50","nohint100"],onePass:["special10","special25"],custom:["special10","special25"]};
+  const map={regular:["ten","fifty","hundred"],daily:["daily7","daily30","daily100"],marathon:["marathon5","marathon15"],zen:["calm10"],pictures:["allPictures"],duel:["challenge1","challenge25","duelGold10"],time:["special10","special25"],moves:["special10","special25"],combo:["combo3","combo10"],noMistakes:["nohint","nohint50","nohint100"],onePass:["special10","special25"],hardcore:["retro90"],custom:["special10","special25"]};
   const defs=(map[mode]||[]).map(id=>ACHIEVEMENTS.find(a=>a.id===id)).filter(Boolean).filter(a=>!profile.achievements.includes(a.id));
   return defs.map(a=>({a,p:achievementProgressData(a,profile)})).sort((x,y)=>((y.p?.value||0)/(y.p?.goal||1))-((x.p?.value||0)/(x.p?.goal||1)))[0]?.a||defs[0]||null;
 }
@@ -412,12 +413,9 @@ function nearGoalCandidates() {
   return goals.sort((a,b)=>b.ratio-a.ratio);
 }
 function nearGoalsMarkup(limit = 2) {
-  const candidates = nearGoalCandidates();
-  const achievements = candidates.filter((g) => String(g.id).startsWith("achievement:"));
-  const others = candidates.filter((g) => !String(g.id).startsWith("achievement:"));
-  const goals = [...achievements, ...others].slice(0, limit);
+  const goals = nearGoalCandidates().slice(0, limit);
   if (!goals.length) return "";
-  return `<section class="near-goals"><div class="near-goals-head"><b>Совсем близко</b><span>ещё одна причина сыграть</span></div>${goals.map((g)=>`<div class="near-goal"><i>${g.icon}</i><div><b>${g.title}</b><span>${g.desc}</span><em><u style="width:${Math.round(g.ratio*100)}%"></u></em></div></div>`).join("")}</section>`;
+  return `<section class="near-goals"><div class="near-goals-head"><b>Ближайшие награды</b><span>осталось совсем немного</span></div><div class="near-goal-row">${goals.map((g)=>`<div class="near-goal"><i>${g.icon}</i><div><b>${g.title}</b><span>${g.desc}</span><em><u style="width:${Math.round(g.ratio*100)}%"></u></em></div></div>`).join("")}</div></section>`;
 }
 
 function unseenDuelEntry() {

@@ -7,9 +7,11 @@ function comboXpBonusInfo(s = state) {
   return { combo, multiplier: 1, percent: 0 };
 }
 function awardLevelXpWithCombo(baseXp, reason) {
+  baseXp = Math.max(0, Math.round(+baseXp || 0));
   const bonus = comboXpBonusInfo(state), total = Math.round(baseXp * bonus.multiplier);
   if (state?.run) {
-    state.run.comboXpBonus = Math.max(0, total - Math.round(baseXp));
+    state.run.xpBaseEarned = (state.run.xpBaseEarned || 0) + baseXp;
+    state.run.comboXpBonus = Math.max(0, total - baseXp);
     state.run.comboXpPercent = bonus.percent;
     state.run.comboXpCombo = bonus.combo;
   }
@@ -177,6 +179,7 @@ function finishLevel() {
   state.lastStars = stars;
   let newAchievements = [], firstRegularClear = false, firstDailyClear = false;
   state.run.xpEarned = 0;
+  state.run.xpBaseEarned = 0;
   if (state.mode !== "tutorial") {
     profile.stats.gamesPlayed = (profile.stats.gamesPlayed || 0) + 1;
     profile.stats.totalMoves = (profile.stats.totalMoves || 0) + (state.run.moves || 0);
@@ -214,7 +217,7 @@ function finishLevel() {
     if (state.challengeRole === "creator") recordCreatorChallengeResult(state, stars);
     else if (state.challengeRole === "guest") enqueueGuestChallengeSubmission(state, stars);
     track("challenge_completed", { seed: state.seed, stars, moves: state.run.moves, duelMode: state.duelMode || "classic", role: state.challengeRole || "legacy" });
-    if (typeof awardXp === "function") awardXp(55 + stars * 10, "Дуэль", { notifyRank: false });
+    if (typeof awardXp === "function") { const baseXp=55+stars*10; state.run.xpBaseEarned=(state.run.xpBaseEarned||0)+baseXp; awardXp(baseXp, "Дуэль", { notifyRank: false }); }
   } else if (state.mode === "collection") {
     const collection = associationCollectionById(state.collectionId);
     profile.associationCollections ||= {};
@@ -238,6 +241,11 @@ function finishLevel() {
     } else profile.activeMarathon=null;
     track("marathon_round_completed", { round: state.marathonRound || 1, stars, moves: state.run.moves });
     if (typeof awardXp === "function") awardLevelXpWithCombo(30 + stars * 8, "Марафон");
+  } else if (state.mode === "hardcore") {
+    profile.stats.specialCompleted=(profile.stats.specialCompleted||0)+1;
+    profile.stats.bestHardcore=Math.max(profile.stats.bestHardcore||0,Math.max(1,+state.level||1));
+    track("hardcore_completed",{round:Math.max(1,+state.level||1),moves:state.run.moves,maxCombo:state.run.maxCombo||0,riskDeal:!!state.riskDeal});
+    if(typeof awardXp==="function") awardLevelXpWithCombo(65+Math.min(60,Math.max(1,+state.level||1)*5)+stars*10,"Хардкор!");
   } else if (["time","moves","combo","noMistakes","onePass","custom"].includes(state.mode)) {
     profile.stats.specialCompleted=(profile.stats.specialCompleted||0)+1;
     track("rule_mode_completed",{mode:state.mode,moves:state.run.moves,maxCombo:state.run.maxCombo||0,durationMs:activeRunElapsedMs?.(state)||0});
@@ -285,13 +293,15 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
     perfect = stars === 3,
     moves = state.run.moves || 0;
 
+  const cleanPraise = ["Идеальное прохождение!", "Безупречно!", "Ни единой ошибки!", "Вот это точность!", "Чистая победа!", "Сыграно идеально!"];
   const titles = {
     daily: "Ежедневный расклад пройден!",
     challenge: "Дуэль завершена!",
     collection: `Коллекция «${associationCollectionById(state.collectionId).name}» собрана!`,
     calm: "Дзен завершён",
     marathon: state.marathonSuccess ? `Марафон · раунд ${state.marathonRound}` : "Марафон окончен",
-    time: "Готово вовремя!", moves: "Лимит ходов соблюдён!", combo: "Комбо собрано!", noMistakes: "Без ошибки — отлично!", onePass: "Колода пройдена за один круг!", custom: "Твои правила выполнены!",
+    hardcore: `Хардкор · раунд ${Math.max(1,+state.level||1)} пройден!`,
+    time: "Готово вовремя!", moves: "Лимит ходов соблюдён!", combo: "Комбо собрано!", noMistakes: cleanPraise[Math.floor(Math.random()*cleanPraise.length)], onePass: "Колода пройдена за один круг!", custom: "Твои правила выполнены!",
   };
   $("#winTitle").textContent =
     state.failed ? "Почти! Попробуй ещё раз" : state.mode === "tutorial" ? `Обучение ${state.tutorialStep}/3` : titles[state.mode] || `Уровень ${state.level} пройден`;
@@ -307,29 +317,24 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
     if (companionWrap) companionWrap.hidden = false;
   } else if (companionWrap) companionWrap.hidden = true;
 
-  $("#winText").textContent =
+  const winTextEl = $("#winText");
+  const winTextValue =
     state.failed ? `${state.failureReason || "Условие режима не выполнено"}. Новый расклад уже ждёт!` :
-    state.mode === "regular" && state.special
-      ? specialWinPraise(state.special, perfect)
-      : state.mode === "daily"
+    state.mode === "daily"
       ? `Серия: ${ruCount(profile.daily.currentStreak, "день", "дня", "дней")}`
       : state.mode === "challenge"
         ? perfect ? "Идеальная дуэль!" : "Расклад решён. Можно улучшить результат."
         : state.mode === "collection"
           ? (() => { const p = associationCollectionProgress(state.collectionId); return `Освоено ассоциаций: ${p.completed}/${p.total}`; })()
-        : state.mode === "calm"
-          ? "Без спешки. Просто хороший расклад."
           : state.mode === "marathon"
             ? state.marathonSuccess ? `Серия продолжается: ${state.marathonRound} ★★★ подряд` : `Результат серии: ${ruCount(Math.max(0, (state.marathonRound || 1) - 1), "идеальный расклад", "идеальных расклада", "идеальных раскладов")}`
             : state.mode === "tutorial"
-              ? state.tutorialStep < 3
-                ? "Отлично. Переходим к следующей механике."
-                : "Обучение закончено. Теперь начинается настоящая игра."
-              : perfect
-                ? "Идеальное прохождение!"
-                : state.special
-                  ? state.special.title
-                  : "Расклад завершён";
+              ? state.tutorialStep < 3 ? "Переходим к следующей механике." : "Обучение закончено. Теперь начинается настоящая игра."
+              : "";
+  if (winTextEl) {
+    winTextEl.textContent = winTextValue;
+    winTextEl.hidden = !winTextValue;
+  }
 
   const rewards = [
     { earned: stars > 0, label: "Уровень" },
@@ -350,17 +355,17 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
       ? `↯ ${ruCount(moves, "ход", "хода", "ходов")} · Новый рекорд`
       : `↯ ${ruCount(moves, "ход", "хода", "ходов")}`;
     recordEl.textContent = recordText;
-    recordEl.hidden = false;
+    recordEl.hidden = state.mode === "noMistakes" || recordText.includes("Без ошибок");
     recordEl.classList.toggle("new-record", !!record?.isNew);
   }
 
   const xpEl = $("#winXp");
-  if (xpEl) {
-    const comboBonus = state.run?.comboXpPercent ? ` · комбо ×${state.run.comboXpCombo}: +${state.run.comboXpPercent}%` : "";
-    xpEl.innerHTML = `<b>+${state.run?.xpEarned || 0} XP</b><span>${comboBonus}${bonusDone ? ` · бонус «${state.bonusObjective?.title || "цель"}» ✓` : ""}</span>`;
-  }
+  const totalXp = Math.max(0, +(state.run?.xpEarned || 0));
+  const baseXp = Math.max(0, Math.min(totalXp, +(state.run?.xpBaseEarned || totalXp)));
+  const bonusXp = Math.max(0, totalXp - baseXp);
+  if (xpEl) xpEl.innerHTML = `<b data-win-xp-counter>+${baseXp} XP</b>`;
   const goalsEl = $("#winGoals");
-  if (goalsEl && typeof nearGoalsMarkup === "function") goalsEl.innerHTML = nearGoalsMarkup(1);
+  if (goalsEl && typeof nearGoalsMarkup === "function") goalsEl.innerHTML = nearGoalsMarkup(2);
 
   const shareBtn = $("#winShare");
   if (shareBtn) {
@@ -368,19 +373,20 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
     shareBtn.textContent = state.mode === "challenge" ? "⚔ Поделиться дуэлью" : "↗ Поделиться уровнем";
   }
 
-  const nt = nextTheme();
-  $("#winUnlock").textContent =
+  const unlockEl = $("#winUnlock");
+  const unlockText =
     state.mode === "regular" && state.special
       ? `Усложнение пройдено: ${state.special.desc}`
       : state.mode === "calm"
-      ? "Дзен не влияет на кампанию и звёзды"
-      : state.mode === "marathon"
-        ? `Лучший марафон: ${profile.stats.bestMarathon || 0}`
-        : state.mode === "challenge"
-          ? state.challengeRole === "guest" ? "Результат отправляется сопернику" : state.challengeRole === "creator" ? "Твой результат сохранён. Ждём соперника." : "Результат сохранён для этой дуэли"
-          : nt
-            ? `До темы ${nt.name}: ${Math.max(0, nt.stars - Math.max(profile.totalStars || 0, profile.cosmeticStarsPeak || 0))} ★`
-            : "Все темы за звёзды открыты";
+        ? "Дзен не влияет на кампанию и звёзды"
+        : state.mode === "marathon"
+          ? `Лучший марафон: ${profile.stats.bestMarathon || 0}`
+          : state.mode === "hardcore"
+            ? `Рекорд хардкора: ${profile.stats.bestHardcore || 0}`
+            : state.mode === "challenge"
+              ? state.challengeRole === "guest" ? "Результат отправляется сопернику" : state.challengeRole === "creator" ? "Твой результат сохранён. Ждём соперника." : "Результат сохранён для этой дуэли"
+              : "";
+  if (unlockEl) { unlockEl.textContent = unlockText; unlockEl.hidden = !unlockText; }
   $("#next").textContent =
     state.mode === "tutorial"
       ? state.tutorialStep < 3
@@ -392,8 +398,8 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
           ? "Ещё расклад →"
           : state.mode === "challenge"
             ? "К дуэлям →"
-            : ["time","moves","combo","noMistakes","onePass","custom"].includes(state.mode)
-              ? "Ещё расклад →"
+            : ["time","moves","combo","noMistakes","onePass","hardcore","custom"].includes(state.mode)
+              ? "Следующий уровень →"
             : state.mode === "marathon"
               ? state.marathonSuccess ? "Продолжить марафон →" : "Новый марафон →"
               : "Следующий уровень →";
@@ -404,6 +410,33 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
   if (perfect) modal.classList.add("perfect");
   modal.setAttribute("aria-hidden", "false");
   modal.classList.add("show");
+
+  if (!state.failed && bonusXp > 0) {
+    const timer = setTimeout(() => {
+      if (!modal.classList.contains("show")) return;
+      const popup = $("#xpBonusBurst"), counter = $("[data-win-xp-counter]");
+      const details = [];
+      if ((state.run?.comboXpBonus || 0) > 0) details.push(`комбо ×${state.run.comboXpCombo || 0}`);
+      if (bonusDone) details.push(`бонус «${state.bonusObjective?.title || "цель"}»`);
+      if (popup) {
+        popup.querySelector("b").textContent = `+${bonusXp} XP`;
+        popup.querySelector("span").textContent = details.join(" · ") || "бонус за прохождение";
+        popup.classList.remove("show"); void popup.offsetWidth; popup.classList.add("show");
+        setTimeout(() => popup.classList.remove("show"), 1500);
+      }
+      if (counter) {
+        const started = performance.now(), duration = 720;
+        const tick = (now) => {
+          const p = Math.min(1, (now - started) / duration), eased = 1 - Math.pow(1-p, 3);
+          counter.textContent = `+${Math.round(baseXp + (totalXp-baseXp)*eased)} XP`;
+          if (p < 1 && modal.classList.contains("show")) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }
+      playSfx?.("combo", .8); haptic?.([10,18,12]);
+    }, 850);
+    winRevealTimers.push(timer);
+  }
 
   playVictoryJingle?.(perfect);
   playSfx("win", perfect ? 0.9 : 0.72, 0.08);

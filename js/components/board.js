@@ -103,7 +103,7 @@ function render() {
               ? "▦"
             : state.mode === "calm"
               ? "☁"
-              : ["time","moves","combo","noMistakes","onePass","custom"].includes(state.mode)
+              : ["time","moves","combo","noMistakes","onePass","hardcore","custom"].includes(state.mode)
                 ? (GAME_MODE_DEFS.find((m)=>m.id===state.mode)?.icon || "◆")
                 : state.level;
   $("#progressText").textContent = `${state.completed}/${state.totalCategories}`;
@@ -150,10 +150,10 @@ function render() {
     specialBadge.hidden = false;
     specialBadge.textContent = "☁ Дзен";
     specialBadge.title = "Лёгкие расклады без комбо и особых ограничений";
-  } else if (["time","moves","combo","noMistakes","onePass","custom"].includes(state.mode)) {
+  } else if (["time","moves","combo","noMistakes","onePass","hardcore","custom"].includes(state.mode)) {
     const modeDef = GAME_MODE_DEFS.find((m)=>m.id===state.mode);
     specialBadge.hidden = false;
-    specialBadge.textContent = `${modeDef?.icon || "◆"} ${modeDef?.label || "Испытание"}`;
+    specialBadge.textContent = state.mode === "hardcore" ? `☠ Хардкор! · ${Math.max(1,+state.level||1)}` : `${modeDef?.icon || "◆"} ${modeDef?.label || "Испытание"}`;
     specialBadge.title = modeDef?.desc || "Особый режим";
   } else {
     specialBadge.hidden = true;
@@ -161,7 +161,7 @@ function render() {
   }
   const undoLimit = state.special?.maxUndos;
   $("#undo").disabled = !history.length || (Number.isFinite(undoLimit) && state.run.undos >= undoLimit);
-  $("#hint").disabled = !!state.special?.noHints;
+  $("#hint").disabled = !!state.special?.noHints || !!state.rules?.noHints;
   scheduleSave?.();
   queuePostRenderCardAnimations();
   const validCompletion = state.totalCategories > 0 && state.completed === state.totalCategories && (state.run?.moves || 0) > 0;

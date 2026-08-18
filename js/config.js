@@ -767,6 +767,7 @@ function achievementMode90Counts(p = profile) {
     combo: +(modeStats.combo?.completed || 0),
     noMistakes: +(modeStats.noMistakes?.completed || 0),
     onePass: +(modeStats.onePass?.completed || 0),
+    hardcore: +(modeStats.hardcore?.completed || 0),
   };
 }
 function retro90AchievementReady(p = profile) {
@@ -922,6 +923,7 @@ const DEFAULT_STATS = {
   calmCompleted: 0,
   collectionGamesCompleted: 0,
   bestMarathon: 0,
+  bestHardcore: 0,
   totalMoves: 0,
   personalRecords: 0,
   masteredCategories: 0,

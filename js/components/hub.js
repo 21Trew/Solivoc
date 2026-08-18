@@ -93,6 +93,7 @@ function modesTabMarkup() {
     combo: { description: "Достигни заданного множителя комбо", meta: "Цель показывается в игре" },
     noMistakes: { description: "Первая ошибка завершает партию", meta: "Один шанс" },
     onePass: { description: "Пройди колоду один раз без возврата сброса", meta: "Без второй прокрутки" },
+    hardcore: { description: "Без ошибок и подсказок. Только сложные расклады, а каждый следующий ещё тяжелее", meta: `Рекорд: ${profile.stats.bestHardcore || 0} раундов` },
     custom: { description: "Сам выбери таймер, ходы, комбо и другие ограничения", meta: "Твои ограничения" },
   };
   const cards = GAME_MODE_DEFS.map((def) => modeCardMarkup({ ...def, ...(copy[def.id] || {}) })).join("");
@@ -581,6 +582,7 @@ function bindHubHandlers() {
     if(mode==="pictures"){if(quick){const defs=ASSOCIATION_COLLECTION_DEFS||[],i=defs.length?Math.floor(Math.random()*defs.length):0,id=defs[i]?.id||"animals";closeHub();makeLevel(1,{mode:"collection",collectionId:id,seed:`daily-picture:${todayKey()}:${Date.now()}:${id}`});}else openPictureModePicker();return;}
     if(mode==="duel"){hubContent.querySelector(".duel-create")?.scrollIntoView({behavior:"smooth",block:"center"});return;}
     if(mode==="custom"){openCustomRulesModal();return;}
+    if(mode==="hardcore"){closeHub();const runId=`hardcore:${Date.now().toString(36)}`;makeLevel(1,{mode:"hardcore",seed:`${runId}:1`});return;}
     if(["regular","time","moves","combo","noMistakes","onePass"].includes(mode)){closeHub();makeLevel(mode==="regular"?(profile.currentLevel||1):25,{mode,seed:`${mode}:${Date.now()}:${Math.random()}`});return;}
   };
   hubContent.querySelectorAll("[data-game-mode]").forEach((btn)=>btn.onclick=()=>startHubMode(btn.dataset.gameMode));

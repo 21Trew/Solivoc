@@ -3248,3 +3248,5 @@ body[data-theme="galaxy"] .card.face-down { background:radial-gradient(circle at
 }
 .account-verification-actions { display:grid; gap:2px; }
 .account-verification-actions .account-link:disabled { opacity:.5; cursor:default; }
+
+.win-xp [data-win-xp-counter] { display:inline-block; min-width:76px; font-size:16px !important; transition:transform .18s ease; }

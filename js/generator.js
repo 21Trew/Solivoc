@@ -115,6 +115,16 @@ function configForMode(level, mode, rng, special = null, opts = {}) {
     const round = Math.max(1, opts.marathonRound || 1);
     return regularConfig(Math.min(180, 8 + round * 6), rng, null);
   }
+  if (mode === "hardcore") {
+    const round = Math.max(1, Math.trunc(+level || 1));
+    return {
+      cols: 5,
+      cats: Math.min(7, 6 + Math.floor((round - 1) / 4)),
+      difficulty: Math.min(5, 4 + Math.floor((round - 1) / 3)),
+      words: [Math.min(6, 5 + Math.floor((round - 1) / 6)), 7],
+      hardcoreRound: round,
+    };
+  }
   if (["time", "moves", "combo", "noMistakes", "onePass", "custom"].includes(mode)) {
     const cfg = regularConfig(Math.max(18, level || 25), rng, null);
     return { ...cfg, difficulty: Math.max(2, Math.min(4, cfg.difficulty)) };
@@ -136,6 +146,7 @@ function modeRulesFor(mode, { cardCount = 36, totalCategories = 5 } = {}, custom
   if (mode === "combo") return { comboTarget: Math.max(6, Math.min(20, totalCategories * 2)) };
   if (mode === "noMistakes") return { noMistakes: true };
   if (mode === "onePass") return { maxRecycles: 0 };
+  if (mode === "hardcore") return { noMistakes: true, noHints: true };
   if (mode === "custom") {
     const c=sanitizeCustomRules(customRules || profile?.customRules || {});
     return {
@@ -352,15 +363,19 @@ function isLikelySolvable(s) {
   return completed === target;
 }
 function imperfectDealChance(cfg, mode = "regular") {
-  if (mode !== "regular") return 0;
   const difficulty = Math.max(1, Math.min(5, +(cfg?.difficulty || 1)));
+  if (mode === "hardcore") {
+    const round = Math.max(1, +(cfg?.hardcoreRound || 1));
+    return Math.min(0.34, 0.12 + (round - 1) * 0.018);
+  }
+  if (mode !== "regular") return 0;
   const games = Math.max(0, +(profile?.stats?.gamesPlayed || 0));
   const difficultyFactor = (difficulty - 1) / 4;
   const experienceFactor = Math.min(1, games / 300);
   return Math.min(0.08, 0.02 + 0.035 * difficultyFactor + 0.025 * experienceFactor);
 }
 function riskDealRoll(seed, cfg, mode, forceSolvable = false) {
-  if (forceSolvable || mode !== "regular") return { risk: false, chance: 0 };
+  if (forceSolvable || !["regular","hardcore"].includes(mode)) return { risk: false, chance: 0 };
   const chance = imperfectDealChance(cfg, mode);
   const rng = makeRng(`${seed}:natural-risk`);
   return { risk: rng() < chance, chance };
@@ -570,7 +585,7 @@ function normalizeState(s) {
 }
 function normalizeLoadedLayout(s) {
   const normalized = normalizeState(s);
-  const allowedModes = ["daily", "collection", "marathon", "calm", "challenge", "time", "moves", "combo", "noMistakes", "onePass", "custom"];
+  const allowedModes = ["daily", "collection", "marathon", "calm", "challenge", "time", "moves", "combo", "noMistakes", "onePass", "hardcore", "custom"];
   const rebuild = (repairInvalid = false) => {
     const mode = allowedModes.includes(normalized.mode) ? normalized.mode : "regular";
     const rebuilt = buildGeneratedLevel(normalized.level || 1, {

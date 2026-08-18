@@ -15,22 +15,24 @@ function showCompanionBubble(text, ms = 5200) {
   let bubble = document.querySelector(".companion-bubble-floating");
   if (!bubble) {
     bubble = document.createElement("div");
-    bubble.className = "companion-bubble companion-bubble-floating";
+    bubble.className = "companion-bubble-floating";
+    bubble.innerHTML = `<div class="companion-bubble-card"></div>`;
     document.body.appendChild(bubble);
   }
-  const rect = host.getBoundingClientRect();
-  bubble.textContent = text;
+  const card = bubble.querySelector(".companion-bubble-card");
+  if (!card) return;
+  card.textContent = text;
   bubble.hidden = false;
   bubble.style.left = `10px`;
   bubble.style.top = `10px`;
   requestAnimationFrame(() => {
-    const bw = bubble.offsetWidth || 240, bh = bubble.offsetHeight || 56;
-    const safeRight = window.innerWidth - 10;
-    const preferredLeft = rect.left - bw + rect.width * 0.75;
-    const left = Math.min(Math.max(10, preferredLeft), Math.max(10, safeRight - bw));
-    const top = Math.max(10, rect.top - bh - 8);
+    const rect = host.getBoundingClientRect();
+    const bw = bubble.offsetWidth || 270, bh = bubble.offsetHeight || 70;
+    const left = Math.min(Math.max(10, rect.right - bw), Math.max(10, window.innerWidth - bw - 10));
+    const above = rect.top - bh - 10;
+    const top = above >= 10 ? above : Math.min(window.innerHeight - bh - 10, rect.bottom + 10);
     bubble.style.left = `${left}px`;
-    bubble.style.top = `${top}px`;
+    bubble.style.top = `${Math.max(10, top)}px`;
   });
   clearTimeout(showCompanionBubble.timer);
   showCompanionBubble.timer = setTimeout(() => { bubble.hidden = true; }, ms);
@@ -114,7 +116,7 @@ function bindAppEvents() {
 
   $("#hint").onclick = () => {
     if (autoMoveBusy || categoryAnimating) return;
-    if (state.special?.noHints) {
+    if (state.special?.noHints || state.rules?.noHints) {
       feedbackWrongMove([$("#hint")], $("#hint"), "На этом уровне подсказки отключены");
       return;
     }
@@ -162,6 +164,10 @@ function bindAppEvents() {
       else if (state.mode === "challenge") openHub("modes");
       else if (state.mode === "collection") makeLevel(1, { mode: "collection", collectionId: state.collectionId, seed: `collection:${state.collectionId}:${Date.now()}` });
       else if (state.mode === "calm") makeLevel(1, { mode: "calm", seed: `calm:${Date.now()}:${Math.random()}` });
+      else if (state.mode === "hardcore") {
+        const nextRound = Math.max(1, (+state.level || 1) + 1);
+        makeLevel(nextRound, { mode: "hardcore", seed: `hardcore:${Date.now().toString(36)}:${nextRound}:${Math.random()}` });
+      }
       else if (["time","moves","combo","noMistakes","onePass","custom"].includes(state.mode)) makeLevel(1, { mode: state.mode, seed: `${state.mode}:${Date.now()}:${Math.random()}`, customRules: state.customRules || null });
       else if (state.mode === "marathon") {
         const nextRound = state.marathonSuccess ? (state.marathonRound || 1) + 1 : 1;
