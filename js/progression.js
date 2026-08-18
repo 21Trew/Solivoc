@@ -20,18 +20,17 @@ let specialIntroStartCallback = null;
 function specialLevelInfoLines(special) {
   if (!special) return [];
   const lines = [];
-  if (special.noHints && special.maxRecycles === 1) lines.push("✨ Без подсказок · колоду можно вернуть один раз");
-  else if (special.noHints) lines.push("✨ Без подсказок — полагайся на ассоциации");
-  else if (Number.isFinite(special.maxUndos)) lines.push(`↶ ${ruCount(special.maxUndos, "отмена", "отмены", "отмен")}`);
-  else if (Number.isFinite(special.maxRecycles)) lines.push(`↻ Колоду можно вернуть ${ruCount(special.maxRecycles, "раз", "раза", "раз")}`);
-  else if (special.lockedSlot) lines.push("🔓 Один слот откроется после первой собранной категории");
-  else if (special.mysteryCategories) lines.push("🎭 Названия категорий откроются по ходу решения");
-  else if (special.bigMix) lines.push("🌈 В раскладе больше категорий и карточек");
   const desc = String(special.desc || "").trim();
-  if (desc && !lines.some((x)=>x.toLowerCase().includes(desc.toLowerCase()) || desc.toLowerCase().includes(x.replace(/^[^\p{L}]+/u, "").toLowerCase()))) {
-    lines.unshift(desc);
-  }
-  return [...new Set(lines)].slice(0, 2);
+  if (desc) lines.push(desc);
+  if (special.noHints && special.maxRecycles === 1) lines.push("Подсказки отключены, а колоду можно вернуть только один раз.");
+  else if (special.noHints) lines.push("Подсказки отключены — полагайся только на ассоциации.");
+  else if (Number.isFinite(special.maxUndos)) lines.push(`Доступно только ${ruCount(special.maxUndos, "отмена", "отмены", "отмен")}.`);
+  else if (Number.isFinite(special.maxRecycles)) lines.push(`Колоду можно вернуть только ${ruCount(special.maxRecycles, "раз", "раза", "раз")}.`);
+  else if (special.lockedSlot) lines.push("Один слот откроется после первой собранной категории.");
+  else if (special.mysteryCategories) lines.push("Названия категорий будут открываться по ходу решения.");
+  else if (special.bigMix) lines.push("В раскладе больше категорий и карточек, чем обычно.");
+  if (special.bossTaunt) lines.push(`${special.bossName || "Босс"}: «${special.bossTaunt}»`);
+  return [...new Set(lines.map((x)=>String(x).trim()).filter(Boolean))].slice(0, 2);
 }
 function closeSpecialLevelIntro({ start = false } = {}) {
   const modal = $("#specialLevelModal");
@@ -46,7 +45,7 @@ function showSpecialLevelIntro(special, onStart) {
   const modal = $("#specialLevelModal");
   if (!modal || !special) { onStart?.(); return; }
   specialIntroStartCallback = typeof onStart === "function" ? onStart : null;
-  $("#specialLevelIcon").textContent = special.icon || "◆";
+  $("#specialLevelIcon").textContent = special.icon || "✦";
   $("#specialLevelEyebrow").textContent = special.boss ? "ФИНАЛ ГЛАВЫ" : "ОСОБЫЙ УРОВЕНЬ";
   $("#specialLevelTitle").textContent = special.title || "Испытание";
   const lines = specialLevelInfoLines(special);
@@ -257,6 +256,7 @@ function finishLevel() {
   const record = typeof updatePersonalRecord === "function" ? updatePersonalRecord(stars, state) : null;
   if (typeof updateWeeklyChallenge === "function") updateWeeklyChallenge();
   if (typeof updateMonthlyChallenge === "function") updateMonthlyChallenge();
+  if (state.mode === "regular" && state.special?.bossCompanionId && firstRegularClear) unlockCompanion?.(state.special.bossCompanionId, { notify: true, select: false });
   newAchievements = checkAchievements();
   flushProfileSave?.({ skipCloud: true });
   save();
@@ -295,14 +295,16 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
   $("#winTitle").textContent =
     state.failed ? "Почти! Попробуй ещё раз" : state.mode === "tutorial" ? `Обучение ${state.tutorialStep}/3` : titles[state.mode] || `Уровень ${state.level} пройден`;
 
-  const companion = typeof companionDef === "function" ? companionDef(profile?.settings?.companion) : null;
+  const companion = typeof ensureCompanionSelection === "function" ? ensureCompanionSelection(profile) : (typeof companionDef === "function" ? companionDef(profile?.settings?.companion) : null);
   const companionImage = $("#winCompanionImage"), companionText = $("#winCompanionText");
+  const companionWrap = $("#winCompanion");
   if (companion && companionImage && companionText) {
-    companionImage.src = companion.image; companionImage.alt = companion.name;
+    companionImage.src = companionAsset(companion); companionImage.alt = companion.name;
     companionText.textContent = state.failed
       ? (companion.id === "cat" ? "Не беда — распутаем этот клубок со следующей попытки." : "Ошибки — тоже данные. Следующая попытка уже будет точнее.")
       : companionWinLine(companion.id, perfect);
-  }
+    if (companionWrap) companionWrap.hidden = false;
+  } else if (companionWrap) companionWrap.hidden = true;
 
   $("#winText").textContent =
     state.failed ? `${state.failureReason || "Условие режима не выполнено"}. Новый расклад уже ждёт!` :
@@ -329,7 +331,7 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
                   : "Расклад завершён";
 
   const rewards = [
-    { earned: stars > 0, label: "За уровень" },
+    { earned: stars > 0, label: "Уровень" },
     { earned: noHints, label: "Без подсказок" },
     { earned: noUndos, label: "Без отмен" },
   ];
@@ -343,12 +345,11 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
   const recordEl = $("#winRecord");
   if (recordEl) {
     const metric = typeof ruleMetricText === "function" ? ruleMetricText(state) : "";
-    const recordText = metric ? `${metric}${record?.isNew?" · Новый личный рекорд!":""}` : record?.isNew
-      ? `↯ ${ruCount(moves, "ход", "хода", "ходов")} · Новый личный рекорд!`
-      : record?.best
-        ? `↯ ${ruCount(moves, "ход", "хода", "ходов")} · Лучший: ${record.best}`
-        : `↯ ${ruCount(moves, "ход", "хода", "ходов")}`;
+    const recordText = metric ? `${metric}${record?.isNew?" · рекорд":""}` : record?.isNew
+      ? `↯ ${ruCount(moves, "ход", "хода", "ходов")} · Новый рекорд`
+      : `↯ ${ruCount(moves, "ход", "хода", "ходов")}`;
     recordEl.textContent = recordText;
+    recordEl.hidden = false;
     recordEl.classList.toggle("new-record", !!record?.isNew);
   }
 
@@ -358,7 +359,7 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
     xpEl.innerHTML = `<b>+${state.run?.xpEarned || 0} XP</b><span>${comboBonus}${bonusDone ? ` · бонус «${state.bonusObjective?.title || "цель"}» ✓` : ""}</span>`;
   }
   const goalsEl = $("#winGoals");
-  if (goalsEl && typeof nearGoalsMarkup === "function") goalsEl.innerHTML = nearGoalsMarkup(2);
+  if (goalsEl && typeof nearGoalsMarkup === "function") goalsEl.innerHTML = nearGoalsMarkup(1);
 
   const shareBtn = $("#winShare");
   if (shareBtn) {

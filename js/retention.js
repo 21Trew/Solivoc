@@ -288,7 +288,7 @@ function recordDailyModeGame(s=state) {
 }
 function dailyModeQuestsMarkup() {
   const q=normalizeDailyQuests(), defs=activeDailyQuestDefs();
-  return `<section class="hub-section daily-quests"><div class="hub-section-head"><div><h3>Ежедневные задания</h3><small>3 режима · по 5 побед</small></div></div><div class="daily-quest-grid">${defs.map(def=>{const v=Math.min(def.target,+q.progress[def.id]||0),done=v>=def.target;return `<button class="daily-quest ${done?"done":""}" data-daily-quest-mode="${def.id}"><b>${def.label}</b><span>${v}/${def.target}${done?" ✓":""}</span><em><i style="width:${v/def.target*100}%"></i></em><small>${done?"Готово":`+${def.rewardXp} XP`}</small></button>`;}).join("")}</div></section>`;
+  return `<section class="hub-section daily-quests"><div class="hub-section-head"><div><h3>Ежедневные задания</h3><small>3 режима · по 5 побед</small></div></div><div class="daily-quest-grid">${defs.map(def=>{const v=Math.min(def.target,+q.progress[def.id]||0),done=v>=def.target;return `<button class="daily-quest ${done?"done":""}" data-daily-quest-mode="${def.id}"><div class="daily-quest-top"><b>${def.label}</b><small>+${def.rewardXp} XP</small></div><div class="daily-quest-bottom"><em><i style="width:${v/def.target*100}%"></i></em><span>${v}/${def.target}${done?" ✓":""}</span></div></button>`;}).join("")}</div></section>`;
 }
 function challengeEligibleState(s=state) { return !!s && s.mode !== "challenge" && s.mode !== "tutorial"; }
 function recordChallengeEligibleProgress(s=state, stars=0) {

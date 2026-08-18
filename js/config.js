@@ -31,10 +31,56 @@ const APP_ICON_DEFS = Object.freeze([
 function appIconDef(id) { return APP_ICON_DEFS.find((x) => x.id === id) || APP_ICON_DEFS[0]; }
 
 const COMPANION_DEFS = Object.freeze([
-  { id: "owl", name: "Мудрая сова", image: "./icons/mascot-owl.svg", role: "Научный наставник" },
-  { id: "cat", name: "Кот-учёный", image: "./icons/mascot-cat.svg", role: "Весёлый напарник" },
+  { id: "owl", name: "Мудрая сова", image: "./icons/mascot-owl.svg", role: "Научный наставник", unlockLabel: "За регистрацию аккаунта", starter: true },
+  { id: "cat", name: "Кот-учёный", image: "./icons/mascot-cat.svg", role: "Весёлый напарник", unlockLabel: "За регистрацию аккаунта", starter: true },
+  { id: "fox", name: "Лис-трюкач", emoji: "🦊", role: "Хитрый босс", unlockLabel: "Приручи после 3-го финала", bossReward: true, rewardText: "Приручается после победы над лисом" },
+  { id: "bear", name: "Медведь-хранитель", emoji: "🐻", role: "Спокойная сила", unlockLabel: "Приручи после 6-го финала", bossReward: true, rewardText: "Приручается после победы над медведем" },
+  { id: "raven", name: "Ворон-ворчун", emoji: "🐦", role: "Едкий стратег", unlockLabel: "Приручи после 9-го финала", bossReward: true, rewardText: "Приручается после победы над вороном" },
 ]);
 function companionDef(id) { return COMPANION_DEFS.find((x) => x.id === id) || COMPANION_DEFS[0]; }
+function companionUnlocked(def, p = profile) {
+  if (!def) return false;
+  const unlocked = new Set(Array.isArray(p?.companionsUnlocked) ? p.companionsUnlocked : []);
+  return unlocked.has(def.id);
+}
+function availableCompanions(p = profile) { return COMPANION_DEFS.filter((x) => companionUnlocked(x, p)); }
+function companionUnlockLabel(def) { return def?.unlockLabel || "Открывается позже"; }
+function ensureCompanionSelection(p = profile) {
+  if (!p?.settings) return null;
+  const current = companionDef(p.settings.companion);
+  if (companionUnlocked(current, p)) return current;
+  const fallback = availableCompanions(p)[0] || null;
+  p.settings.companion = fallback?.id || "";
+  return fallback;
+}
+function emojiSvgDataUri(emoji = "✨") {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><rect width="128" height="128" rx="28" fill="none"/><text x="50%" y="56%" text-anchor="middle" dominant-baseline="middle" font-size="84">${emoji}</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+function companionAsset(def) { return def?.image || emojiSvgDataUri(def?.emoji || "✨"); }
+function unlockCompanion(id, { notify = true, select = false } = {}) {
+  const def = companionDef(id);
+  profile.companionsUnlocked ||= [];
+  if (!profile.companionsUnlocked.includes(def.id)) {
+    profile.companionsUnlocked.push(def.id);
+    if (notify && typeof queueAchievementNotifications === "function") queueAchievementNotifications([{ icon: def.emoji || "🦉", title: `Новый маскот: ${def.name}`, desc: def.rewardText || "Напарник уже доступен в разделе «Стиль»" }]);
+  }
+  if (select || !companionUnlocked(companionDef(profile.settings?.companion), profile)) {
+    profile.settings ||= {};
+    profile.settings.companion = def.id;
+  }
+  return def;
+}
+function grantStarterCompanions({ notify = true } = {}) {
+  let fresh = false;
+  for (const def of COMPANION_DEFS.filter((x) => x.starter)) {
+    const before = companionUnlocked(def);
+    unlockCompanion(def.id, { notify: before ? false : notify, select: !before && !profile.settings?.companion });
+    if (!before) fresh = true;
+  }
+  ensureCompanionSelection(profile);
+  return fresh;
+}
 const COMPANION_FACTS = Object.freeze({
   owl: [
     "У сов глаза почти не двигаются в глазницах — поэтому они поворачивают голову, чтобы менять направление взгляда.",
@@ -53,6 +99,21 @@ const COMPANION_FACTS = Object.freeze({
     "Слова легче запоминать, когда связываешь их не по одному признаку, а сразу по нескольким ассоциациям.",
     "Короткие игровые сессии с повторением обычно полезнее для памяти, чем одна очень длинная.",
     "Во сне мозг продолжает сортировать и закреплять часть того, что ты узнал за день."
+  ],
+  fox: [
+    "Лисы отлично запоминают маршруты и быстро адаптируются к новым условиям — почти как игрок после нескольких удачных попыток.",
+    "Короткая пауза между партиями помогает мозгу лучше закреплять новые связи и шаблоны.",
+    "Если разбить задачу на небольшие шаги, мозг справляется с ней заметно спокойнее и быстрее."
+  ],
+  bear: [
+    "Медведи хорошо ориентируются на местности и могут помнить важные места очень долго.",
+    "Повторение с интервалами работает для памяти лучше, чем зубрёжка за один подход.",
+    "Когда ты решаешь задачу без спешки, мозг чаще находит более устойчивое решение."
+  ],
+  raven: [
+    "Вороны умеют решать многошаговые задачи и запоминают лица людей — у них впечатляюще гибкое мышление.",
+    "Мозгу легче удерживать в фокусе небольшое число целей — поэтому компактные подсказки работают лучше длинных инструкций.",
+    "Даже одна короткая тренировка каждый день обычно полезнее редких длинных марафонов."
   ]
 });
 function companionFact(id = profile?.settings?.companion) {
@@ -63,12 +124,16 @@ function companionFact(id = profile?.settings?.companion) {
   return list[next];
 }
 function companionWinLine(id = profile?.settings?.companion, perfect = false) {
-  if (companionDef(id).id === "cat") {
+  const companionId = companionDef(id).id;
+  if (companionId === "cat") {
     const lines = perfect
       ? ["Ты замурчательно справился — идеальный расклад!", "Мяу-гнифико! Три звезды и ни одной лишней царапины.", "Вот это коготки ума: безупречная партия!"]
       : ["Ты замурчательно справился!", "Отличная партия — кот-учёный одобряет.", "Мяу! Ещё один расклад аккуратно уложен по полочкам."];
     return lines[(state?.level || state?.run?.moves || 0) % lines.length];
   }
+  if (companionId === "fox") return perfect ? "Хитро сработано — даже лис признаёт это мастерством." : "Лис кивает: ловкий был ход.";
+  if (companionId === "bear") return perfect ? "Медведь уважает такую спокойную и точную победу." : "Крепкая партия — медведь одобряет выдержку.";
+  if (companionId === "raven") return perfect ? "Ворону больше нечем крыть — партия безупречна." : "Ворон бурчит, но признаёт: сыграно сильно.";
   return `Факт от совы: ${companionFact("owl")}`;
 }
 

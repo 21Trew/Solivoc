@@ -312,6 +312,8 @@ async function verifyRegistration(email, code) {
   clearAccountVerification();
   saveAccountIdentity(data.user, "signed_in", data.version);
   applyAccountCloudProfile(data.profile, { version: data.version });
+  grantStarterCompanions?.({ notify: true });
+  saveProfile?.();
   syncLeaderboardNonBlocking?.();
   return data;
 }
@@ -325,6 +327,8 @@ async function loginAccount(email, password) {
   }
   saveAccountIdentity(data.user, "signed_in", data.version);
   applyAccountCloudProfile(data.profile, { version: data.version });
+  grantStarterCompanions?.({ notify: true });
+  saveProfile?.();
   syncLeaderboardNonBlocking?.();
   return data;
 }
@@ -355,6 +359,8 @@ async function recoverAccount(email, code, newPassword) {
   clearAccountVerification();
   saveAccountIdentity(data.user, "signed_in", data.version);
   applyAccountCloudProfile(data.profile, { version: data.version });
+  grantStarterCompanions?.({ notify: true });
+  saveProfile?.();
   syncLeaderboardNonBlocking?.();
   return data;
 }

@@ -9,12 +9,26 @@ function chapterFinalSpecial(level) {
   if (!level || level % CHAPTER_SIZE !== 0) return null;
   const chapter = chapterInfo(level).number, cycle = (chapter - 1) % 4;
   const defs = [
-    { id: "final-mystery", icon: "◆", title: "Финал: Тайные категории", desc: "Названия категорий откроются после первого найденного слова", boss: true, mysteryCategories: true },
-    { id: "final-lock", icon: "◆", title: "Финал: Закрытый слот", desc: "Последний слот откроется после первой собранной категории", boss: true, lockedSlot: true, unlockAfter: 1 },
-    { id: "final-precise", icon: "◆", title: "Финал: Один шанс", desc: "Без подсказок и только одна прокрутка колоды", boss: true, noHints: true, maxRecycles: 1 },
-    { id: "final-mix", icon: "◆", title: "Финал: Большая смесь", desc: "Больше категорий, одна отмена и плотный расклад", boss: true, bigMix: true, maxUndos: 1 },
+    { id: "final-mystery", icon: "◈", title: "Финал: Тайные категории", desc: "Названия категорий откроются после первого найденного слова", boss: true, mysteryCategories: true },
+    { id: "final-lock", icon: "🔒", title: "Финал: Закрытый слот", desc: "Последний слот откроется после первой собранной категории", boss: true, lockedSlot: true, unlockAfter: 1 },
+    { id: "final-precise", icon: "↻", title: "Финал: Один шанс", desc: "Без подсказок и только одна прокрутка колоды", boss: true, noHints: true, maxRecycles: 1 },
+    { id: "final-mix", icon: "✦", title: "Финал: Большая смесь", desc: "Больше категорий, одна отмена и плотный расклад", boss: true, bigMix: true, maxUndos: 1 },
   ];
-  return { ...defs[cycle], chapter };
+  const special = { ...defs[cycle], chapter };
+  const everyThirdFinal = chapter % 3 === 0;
+  if (everyThirdFinal) {
+    const bosses = [
+      { id: "fox", icon: "🦊", name: "Лис-трюкач", taunts: ["Ты не пройдёшь.", "Лучше сдайся сразу.", "Я уже спрятал победу в рукаве."] },
+      { id: "bear", icon: "🐻", name: "Медведь-хранитель", taunts: ["Можешь разворачиваться.", "Эту главу я никому не отдаю.", "Проверим, хватит ли тебе терпения."] },
+      { id: "raven", icon: "🐦", name: "Ворон-ворчун", taunts: ["Ты опоздал к своей победе.", "Слишком самоуверенно для новичка.", "Посмотрим, как ты выкрутишься теперь."] },
+    ];
+    const boss = bosses[Math.floor(chapter / 3 - 1) % bosses.length];
+    special.icon = boss.icon;
+    special.bossCompanionId = boss.id;
+    special.bossName = boss.name;
+    special.bossTaunt = boss.taunts[(chapter - 1) % boss.taunts.length];
+  }
+  return special;
 }
 function specialForLevel(level) {
   const final = chapterFinalSpecial(level);

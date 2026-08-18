@@ -33,6 +33,7 @@ function defaultProfile() {
     onboardingVersion: 1,
     favoriteCategory: "",
     featuredAchievements: [],
+    companionsUnlocked: [],
     developerMailSeen: [],
     developerMailDeleted: [],
     patchSeenVersion: "",
@@ -94,6 +95,7 @@ function loadProfile() {
         activeMarathon: p.activeMarathon && typeof p.activeMarathon === "object" ? p.activeMarathon : null,
         onboardingComplete: typeof p.onboardingComplete === "boolean" ? p.onboardingComplete : !!p.tutorialComplete,
         featuredAchievements: Array.isArray(p.featuredAchievements) ? p.featuredAchievements : [],
+        companionsUnlocked: Array.isArray(p.companionsUnlocked) ? p.companionsUnlocked : [],
         developerMailSeen: Array.isArray(p.developerMailSeen) ? p.developerMailSeen : [],
         developerMailDeleted: Array.isArray(p.developerMailDeleted) ? p.developerMailDeleted : [],
         adaptive: { ...defaultProfile().adaptive, ...(p.adaptive || {}), history: Array.isArray(p.adaptive?.history) ? p.adaptive.history : [] },
@@ -107,6 +109,7 @@ function loadProfile() {
   return defaultProfile();
 }
 let profile = loadProfile();
+if (typeof ensureCompanionSelection === "function") ensureCompanionSelection(profile);
 function inferLegacyCompletedThrough() {
   let completed = Math.max(0, (+profile.currentLevel || 1) - 1);
   const keys = [SAVE_KEY, OLD_SAVE_KEY, "assoc-klondike-v6", "assoc-klondike-v5", "assoc-klondike-v4"];

@@ -1,23 +1,35 @@
 /* UI event binding, hint/undo orchestration, PWA registration and application bootstrap. */
 function syncGameCompanion() {
-  const def = typeof companionDef === "function" ? companionDef(profile?.settings?.companion) : null;
   const button = $("#gameCompanion"), image = $("#gameCompanionImage");
-  if (!button || !def) return;
-  if (image) { image.src = def.image; image.alt = def.name; }
+  if (!button) return;
+  const def = typeof ensureCompanionSelection === "function" ? ensureCompanionSelection(profile) : companionDef(profile?.settings?.companion);
+  button.hidden = !def;
+  if (!def) return;
+  if (image) { image.src = companionAsset(def); image.alt = def.name; }
   button.title = `${def.name} — нажми для интересного факта`;
   button.dataset.companion = def.id;
 }
 function showCompanionBubble(text, ms = 5200) {
-  const bubble = $("#companionBubble");
-  if (!bubble) return;
-  bubble.textContent = text; bubble.hidden = false;
+  const host = $("#gameCompanion");
+  if (!host || host.hidden) return;
+  let bubble = document.querySelector(".companion-bubble-floating");
+  if (!bubble) {
+    bubble = document.createElement("div");
+    bubble.className = "companion-bubble companion-bubble-floating";
+    document.body.appendChild(bubble);
+  }
+  const rect = host.getBoundingClientRect();
+  bubble.textContent = text;
+  bubble.style.left = `${Math.max(10, rect.left - 168)}px`;
+  bubble.style.top = `${Math.max(10, rect.top - 18)}px`;
+  bubble.hidden = false;
   clearTimeout(showCompanionBubble.timer);
   showCompanionBubble.timer = setTimeout(() => { bubble.hidden = true; }, ms);
 }
 function clearMascotHintLine() { document.querySelector(".mascot-hint-line")?.remove(); $("#gameCompanion")?.classList.remove("pointing"); }
 function pointCompanionAt(target, text = "Смотри сюда!") {
   clearMascotHintLine();
-  const mascot = $("#gameCompanion"); if (!mascot || !target) return;
+  const mascot = $("#gameCompanion"); if (!mascot || mascot.hidden || !target) return;
   mascot.classList.add("pointing"); showCompanionBubble(text, 2200);
   const a = mascot.getBoundingClientRect(), b = target.getBoundingClientRect();
   const x1=a.left+a.width*.2, y1=a.top+a.height*.72, x2=b.left+b.width*.5, y2=b.top+b.height*.45;
@@ -52,7 +64,8 @@ function bindAppEvents() {
   $("#gameProfileButton")?.addEventListener("click", openProfileEditorModal);
   $("#menuButton").onclick = openHub;
   $("#gameCompanion")?.addEventListener("click", () => {
-    const def = companionDef(profile.settings.companion);
+    const def = ensureCompanionSelection?.(profile) || companionDef(profile.settings.companion);
+    if (!def) return;
     const fact = companionFact(def.id);
     saveProfile?.();
     showCompanionBubble(fact);

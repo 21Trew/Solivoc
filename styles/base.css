@@ -233,14 +233,14 @@
      display: flex;
      align-items: center;
      gap: 8px;
-     padding: 7px 8px;
+     padding: 0;
      margin-bottom: 11px;
-     width: max-content;
+     width: 100%;
      max-width: 100%;
-     border-radius: 17px;
-     background: #ffffff09;
-     border: 1px solid #ffffff12;
-     box-shadow: inset 0 1px #ffffff0d;
+     border-radius: 0;
+     background: transparent;
+     border: 0;
+     box-shadow: none;
    }
    .draw-label {
      margin-left: 1px;

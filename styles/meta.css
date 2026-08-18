@@ -374,8 +374,8 @@
      position: relative;
      display: grid;
      grid-template-columns: repeat(3, minmax(0, 1fr));
-     gap: 7px;
-     margin: 9px -3px 18px;
+     gap: 6px;
+     margin: 6px -2px 12px;
    }
    .win-star-item {
      min-width: 0;
@@ -395,7 +395,7 @@
    }
    .win-star-symbol {
      display: block;
-     font-size: clamp(46px, 14vw, 58px);
+     font-size: clamp(38px, 11vw, 48px);
      line-height: 0.94;
      color: #d7d3e4;
      text-shadow: 0 3px 9px #7d72851c;
@@ -415,10 +415,10 @@
    }
    .win-star-label {
      display: block;
-     max-width: 96px;
-     min-height: 27px;
+     max-width: 90px;
+     min-height: 22px;
      color: #8b879b;
-     font-size: 9px;
+     font-size: 8px;
      line-height: 1.15;
      font-weight: 850;
      text-align: center;
@@ -435,7 +435,7 @@
    }
    .modal-actions {
      display: grid;
-     gap: 15px;
+     gap: 10px;
    }
    .modal-actions .win-next {
      min-height: 49px;
@@ -1130,7 +1130,7 @@ body[data-card-back="phoenix"] .card.face-down::after { content: "♨"; transfor
 .empty-state { padding:20px 10px; text-align:center; color:#8581a7; font-size:9px; }
 
 /* Win record. */
-.win-record { position:relative; margin:2px 0 9px; color:#777287; font-size:10px; font-weight:800; }
+.win-record { position:relative; margin:1px 0 6px; color:#777287; font-size:9px; font-weight:800; }
 .win-record.new-record { color:#7a58e8; animation:recordPop .55s cubic-bezier(.2,.9,.2,1); }
 @keyframes recordPop { 0%{transform:scale(.88);opacity:0} 55%{transform:scale(1.06)} 100%{transform:scale(1);opacity:1} }
 
@@ -1150,8 +1150,8 @@ body[data-card-back="phoenix"] .card.face-down::after { content: "♨"; transfor
 
 /* Shareable Daily/challenge/level results. */
 .win-share {
-  width:100%; margin:2px 0 10px; min-height:42px; border:1px solid #7868ba26; border-radius:13px;
-  background:#f0edf9; color:#514a76; font-weight:900; font-size:10px; box-shadow:none;
+  width:100%; margin:1px 0 8px; min-height:38px; border:1px solid #7868ba26; border-radius:13px;
+  background:#f0edf9; color:#514a76; font-weight:900; font-size:9px; box-shadow:none;
 }
 .win-share[hidden] { display:none !important; }
 
@@ -1365,9 +1365,9 @@ body[data-card-back="phoenix"] .card.face-down::after { content: "♨"; transfor
 
 .challenge-series-line { margin-top:7px; padding:5px 7px; border-radius:8px; background:#ffffff06; color:#d3cfed; font-size:7.5px; font-weight:800; }
 
-.win-xp { min-height:31px; margin:2px 0 8px; display:flex; align-items:center; justify-content:center; gap:4px; color:#686476; font-size:9px; }
-.win-xp b { color:#327b88; font-size:14px; }
-.win-goals { margin-bottom:9px; text-align:left; }
+.win-xp { min-height:26px; margin:1px 0 6px; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:4px; color:#686476; font-size:8.5px; }
+.win-xp b { color:#327b88; font-size:13px; }
+.win-goals { margin-bottom:7px; text-align:left; }
 .win-goals .near-goals { padding:8px; border-radius:12px; background:#f1f2f7; border-color:#e4e5eb; }
 .win-goals .near-goals-head span { color:#8a8793; }
 .win-goals .near-goal { background:#fff; }
@@ -2709,7 +2709,7 @@ body[data-theme="galaxy"] .card.face-down { background:radial-gradient(circle at
 .special-level-card > small { color:#ffd977; font-size:10px; font-weight:950; letter-spacing:.16em; }
 .special-level-card h2 { margin:8px 0 8px; font-size:24px; line-height:1.08; }
 .special-level-card p { margin:0 auto; max-width:330px; color:#c8c7dc; font-size:13px; line-height:1.45; }
-.special-level-rule { margin:16px 0; padding:11px 12px; border-radius:14px; background:#ffffff08; border:1px solid #ffffff10; color:#fff; font-size:12px; font-weight:850; line-height:1.35; }
+.special-level-rule { margin:12px 0 16px; padding:11px 12px; border-radius:14px; background:#ffffff08; border:1px solid #ffffff10; color:#fff; font-size:12px; font-weight:850; line-height:1.35; }
 .special-level-card button { width:100%; min-height:50px; border:0; border-radius:15px; background:linear-gradient(135deg,#6b61ff,#4f86ff); color:#fff; font-size:14px; font-weight:950; }
 
 .profile-editor-mail {
