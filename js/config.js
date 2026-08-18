@@ -33,9 +33,14 @@ function appIconDef(id) { return APP_ICON_DEFS.find((x) => x.id === id) || APP_I
 const COMPANION_DEFS = Object.freeze([
   { id: "owl", name: "Мудрая сова", image: "./icons/mascot-owl.svg", role: "Научный наставник", unlockLabel: "За регистрацию аккаунта", starter: true },
   { id: "cat", name: "Кот-учёный", image: "./icons/mascot-cat.svg", role: "Весёлый напарник", unlockLabel: "За регистрацию аккаунта", starter: true },
-  { id: "fox", name: "Лис-трюкач", emoji: "🦊", role: "Хитрый босс", unlockLabel: "Приручи после 3-го финала", bossReward: true, rewardText: "Приручается после победы над лисом" },
-  { id: "bear", name: "Медведь-хранитель", emoji: "🐻", role: "Спокойная сила", unlockLabel: "Приручи после 6-го финала", bossReward: true, rewardText: "Приручается после победы над медведем" },
-  { id: "raven", name: "Ворон-ворчун", emoji: "🐦", role: "Едкий стратег", unlockLabel: "Приручи после 9-го финала", bossReward: true, rewardText: "Приручается после победы над вороном" },
+  { id: "fox", name: "Лис-трюкач", emoji: "🦊", role: "Хитрый босс", unlockChapter: 3, bossReward: true, rewardText: "Приручён после финала главы 3" },
+  { id: "bear", name: "Медведь-хранитель", emoji: "🐻", role: "Спокойная сила", unlockChapter: 6, bossReward: true, rewardText: "Приручён после финала главы 6" },
+  { id: "raven", name: "Ворон-ворчун", emoji: "🐦‍⬛", role: "Едкий стратег", unlockChapter: 9, bossReward: true, rewardText: "Приручён после финала главы 9" },
+  { id: "wolf", name: "Волк-следопыт", emoji: "🐺", role: "Упрямый охотник", unlockChapter: 12, bossReward: true, rewardText: "Приручён после финала главы 12" },
+  { id: "tiger", name: "Тигр-задавака", emoji: "🐯", role: "Грозный соперник", unlockChapter: 15, bossReward: true, rewardText: "Приручён после финала главы 15" },
+  { id: "panda", name: "Панда-стратег", emoji: "🐼", role: "Невозмутимый тактик", unlockChapter: 18, bossReward: true, rewardText: "Приручён после финала главы 18" },
+  { id: "frog", name: "Лягуш-алхимик", emoji: "🐸", role: "Зелёный хитрец", unlockChapter: 21, bossReward: true, rewardText: "Приручён после финала главы 21" },
+  { id: "octopus", name: "Осьминог-профессор", emoji: "🐙", role: "Многозадачный босс", unlockChapter: 24, bossReward: true, rewardText: "Приручён после финала главы 24" },
 ]);
 function companionDef(id) { return COMPANION_DEFS.find((x) => x.id === id) || COMPANION_DEFS[0]; }
 function companionUnlocked(def, p = profile) {
@@ -44,7 +49,28 @@ function companionUnlocked(def, p = profile) {
   return unlocked.has(def.id);
 }
 function availableCompanions(p = profile) { return COMPANION_DEFS.filter((x) => companionUnlocked(x, p)); }
-function companionUnlockLabel(def) { return def?.unlockLabel || "Открывается позже"; }
+function companionUnlockLabel(def) {
+  if (def?.unlockLabel) return def.unlockLabel;
+  if (def?.unlockChapter) return `После финала главы ${def.unlockChapter}`;
+  return "Открывается позже";
+}
+function companionChapterProgress(p = profile) {
+  const recorded = Math.max(0, Math.trunc(Number(p?.stats?.chapterFinalsCompleted) || 0));
+  const through = Math.max(0, Math.trunc(Number(p?.currentLevel || 1) - 1));
+  const byLevel = typeof CHAPTER_SIZE !== "undefined" && CHAPTER_SIZE > 0 ? Math.floor(through / CHAPTER_SIZE) : 0;
+  return Math.max(recorded, byLevel);
+}
+function syncBossCompanionsFromProgress({ notify = false } = {}) {
+  const chapters = companionChapterProgress(profile);
+  let fresh = 0;
+  for (const def of COMPANION_DEFS.filter((x) => x.bossReward && x.unlockChapter && chapters >= x.unlockChapter)) {
+    const before = companionUnlocked(def, profile);
+    unlockCompanion(def.id, { notify: !before && notify, select: false });
+    if (!before) fresh++;
+  }
+  ensureCompanionSelection(profile);
+  return fresh;
+}
 function ensureCompanionSelection(p = profile) {
   if (!p?.settings) return null;
   const current = companionDef(p.settings.companion);
@@ -114,6 +140,31 @@ const COMPANION_FACTS = Object.freeze({
     "Вороны умеют решать многошаговые задачи и запоминают лица людей — у них впечатляюще гибкое мышление.",
     "Мозгу легче удерживать в фокусе небольшое число целей — поэтому компактные подсказки работают лучше длинных инструкций.",
     "Даже одна короткая тренировка каждый день обычно полезнее редких длинных марафонов."
+  ],
+  wolf: [
+    "Волки координируют действия внутри стаи с помощью поз, звуков и запахов — сложная задача требует хорошей коммуникации.",
+    "Поиск знакомого шаблона часто ускоряет решение новой задачи: мозг постоянно сравнивает новое с уже известным.",
+    "Чем лучше ты различаешь похожие варианты, тем быстрее становится выбор правильной ассоциации."
+  ],
+  tiger: [
+    "Полосы тигра уникальны у каждой особи — рисунок отличается примерно так же, как отпечатки пальцев у людей.",
+    "Короткие паузы между сложными задачами помогают восстановить внимание.",
+    "Уверенный ответ обычно появляется быстрее, когда ты сначала исключаешь явно неподходящие варианты."
+  ],
+  panda: [
+    "Большие панды проводят значительную часть дня за едой: бамбук даёт мало энергии, поэтому приходится экономить силы.",
+    "Спокойный темп часто повышает точность там, где поспешность провоцирует случайные ошибки.",
+    "Повторение через разные интервалы помогает воспоминанию стать устойчивее."
+  ],
+  frog: [
+    "Некоторые лягушки способны менять оттенок кожи в зависимости от условий среды и состояния организма.",
+    "Новая ассоциация запоминается лучше, если связать её с ярким образом или необычной деталью.",
+    "Ошибочный вариант тоже полезен: мозг уточняет границы между похожими категориями."
+  ],
+  octopus: [
+    "У осьминога большая часть нейронов находится не в мозге, а в щупальцах, которые умеют обрабатывать часть информации самостоятельно.",
+    "Многозадачность обычно снижает качество внимания — последовательное решение задач надёжнее.",
+    "Сложная задача становится проще, если удерживать в голове только ближайший следующий шаг."
   ]
 });
 function companionFact(id = profile?.settings?.companion) {
@@ -134,6 +185,11 @@ function companionWinLine(id = profile?.settings?.companion, perfect = false) {
   if (companionId === "fox") return perfect ? "Хитро сработано — даже лис признаёт это мастерством." : "Лис кивает: ловкий был ход.";
   if (companionId === "bear") return perfect ? "Медведь уважает такую спокойную и точную победу." : "Крепкая партия — медведь одобряет выдержку.";
   if (companionId === "raven") return perfect ? "Ворону больше нечем крыть — партия безупречна." : "Ворон бурчит, но признаёт: сыграно сильно.";
+  if (companionId === "wolf") return perfect ? "Волк признаёт в тебе вожака этой партии." : "Волк довольно щурится: след взят верно.";
+  if (companionId === "tiger") return perfect ? "Тигр сдаётся: сегодня ты оказался грознее." : "Тигр рычит одобрительно — достойная победа.";
+  if (companionId === "panda") return perfect ? "Панда спокойна: идеальная партия и ни одного лишнего движения." : "Панда кивает: аккуратно и без суеты.";
+  if (companionId === "frog") return perfect ? "Лягуш-алхимик объявляет формулу победы найденной." : "Лягуш довольно квакает: эксперимент удался.";
+  if (companionId === "octopus") return perfect ? "Все восемь щупалец голосуют за идеальную партию." : "Осьминог-профессор ставит зачёт за решение.";
   return `Факт от совы: ${companionFact("owl")}`;
 }
 

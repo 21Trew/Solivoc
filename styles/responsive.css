@@ -1425,15 +1425,13 @@ body[data-theme="paper"] .home-welcome-copy p { color:#f0edf8 !important; }
 .app-icon-frame-tile b { font-size:9.5px; } .app-icon-frame-tile small { font-size:8.5px !important; text-align:center; color:#c7c2dd; }
 .app-icon-frame-tile.selected { border-color:#ffe5839b; background:#816b2528; outline:2px solid #ffe27736; }
 .app-icon-frame-tile.locked { opacity:.46; filter:saturate(.45); }
-/* Daily quests: compact two-line cards. */
+/* Daily quests: two compact rows, no progress bar. */
 .daily-quests .hub-section-head { margin-bottom:6px !important; }
 .daily-quest-grid { grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:6px !important; }
-.daily-quest { min-height:66px !important; padding:8px 7px !important; display:grid !important; grid-template-rows:auto auto; gap:8px !important; }
-.daily-quest-top, .daily-quest-bottom { display:grid; align-items:center; gap:8px; }
-.daily-quest-top { grid-template-columns:minmax(0,1fr) auto; }
-.daily-quest-top b { min-width:0; font-size:10px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.daily-quest-top small { color:#c7c2dd !important; font-size:9px !important; font-weight:850; }
-.daily-quest-bottom { grid-template-columns:minmax(0,1fr) auto; }
-.daily-quest-bottom span { color:#e5e1f2 !important; font-size:9.5px !important; font-weight:850; }
-.daily-quest-bottom em { height:4px !important; margin:0 !important; }
-@media (max-width:370px){ .draw-row{padding-right:78px !important}.game-companion{width:72px;height:72px}.game-companion img{width:66px;height:66px}.app-icon-frame-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.app-icon-frame-tile b{font-size:8.5px}.daily-quest{padding:7px 5px !important}.daily-quest-top b{font-size:9.2px !important}.daily-quest-top small,.daily-quest-bottom span{font-size:8.6px !important} }
+.daily-quest { min-height:58px !important; padding:8px 7px !important; display:grid !important; grid-template-rows:auto auto; align-content:center; gap:7px !important; }
+.daily-quest > b { min-width:0; font-size:10px !important; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:left; }
+.daily-quest-meta { display:flex; align-items:center; justify-content:space-between; gap:6px; min-width:0; }
+.daily-quest-meta small { color:#c7c2dd !important; font-size:9px !important; font-weight:850; white-space:nowrap; }
+.daily-quest-meta span { color:#e5e1f2 !important; font-size:9.5px !important; font-weight:900; white-space:nowrap; }
+.daily-quest.done { background:#164b4396 !important; border-color:#7ee5b65c !important; }
+@media (max-width:370px){ .draw-row{padding-right:78px !important}.game-companion{width:72px;height:72px}.game-companion img{width:66px;height:66px}.app-icon-frame-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.app-icon-frame-tile b{font-size:8.5px}.daily-quest{padding:7px 5px !important}.daily-quest>b{font-size:9.2px !important}.daily-quest-meta small,.daily-quest-meta span{font-size:8.6px !important} }

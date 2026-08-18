@@ -313,6 +313,7 @@ async function verifyRegistration(email, code) {
   saveAccountIdentity(data.user, "signed_in", data.version);
   applyAccountCloudProfile(data.profile, { version: data.version });
   grantStarterCompanions?.({ notify: true });
+  syncBossCompanionsFromProgress?.({ notify: false });
   saveProfile?.();
   syncLeaderboardNonBlocking?.();
   return data;
@@ -328,6 +329,7 @@ async function loginAccount(email, password) {
   saveAccountIdentity(data.user, "signed_in", data.version);
   applyAccountCloudProfile(data.profile, { version: data.version });
   grantStarterCompanions?.({ notify: true });
+  syncBossCompanionsFromProgress?.({ notify: false });
   saveProfile?.();
   syncLeaderboardNonBlocking?.();
   return data;
@@ -360,6 +362,7 @@ async function recoverAccount(email, code, newPassword) {
   saveAccountIdentity(data.user, "signed_in", data.version);
   applyAccountCloudProfile(data.profile, { version: data.version });
   grantStarterCompanions?.({ notify: true });
+  syncBossCompanionsFromProgress?.({ notify: false });
   saveProfile?.();
   syncLeaderboardNonBlocking?.();
   return data;
@@ -456,6 +459,9 @@ async function restoreAccountSessionOnBoot() {
     if (!response.ok || !data?.authenticated) return false;
     saveAccountIdentity(data.user, "signed_in", data.version);
     applyAccountCloudProfile(data.profile, { version: data.version });
+    grantStarterCompanions?.({ notify: false });
+    syncBossCompanionsFromProgress?.({ notify: false });
+    saveProfile?.({ skipCloud: true });
     scheduleAccountSync(1200); // Upload any progress that was earned while offline.
     return true;
   } catch { return false; } finally { clearTimeout(timer); }

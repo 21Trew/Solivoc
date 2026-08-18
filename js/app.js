@@ -199,42 +199,109 @@ function registerPwa() {
   if (!("serviceWorker" in navigator) || !/^https?:$/.test(location.protocol)) return;
   window.addEventListener("load", async () => {
     try {
-      const reg = await navigator.serviceWorker.register("./sw.js");
-      reg.update().catch(()=>{});
+      const reg = await navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" });
       const banner = $("#updateBanner"), updateBtn = $("#updateNow"), updateReloadKey = "solivoc-explicit-update";
-      const showUpdate = (worker) => {
-        if (!worker || !navigator.serviceWorker.controller) return;
+      const currentBuild = document.querySelector('meta[name="slovasyans-build"]')?.content || "";
+      let pendingWorker = reg.waiting || null,
+        updateRequested = false,
+        refreshing = false,
+        checkBusy = false,
+        lastCheckAt = 0;
+
+      const requestActivation = (worker) => {
+        if (!worker || worker.state !== "installed") return false;
+        pendingWorker = worker;
+        if (!updateRequested) return true;
+        try { worker.postMessage({ type: "SKIP_WAITING" }); } catch {}
+        return true;
+      };
+      const showUpdate = (worker = null) => {
+        if (!navigator.serviceWorker.controller) return;
+        if (worker) pendingWorker = worker;
         banner?.classList.add("show");
         banner?.setAttribute("aria-hidden", "false");
-        if (updateBtn) updateBtn.onclick = () => {
-          try { sessionStorage.setItem(updateReloadKey, "1"); } catch {}
-          updateBtn.disabled = true;
-          updateBtn.textContent = "Обновляю…";
-          worker.postMessage({ type: "SKIP_WAITING" });
-        };
       };
+      const watchWorker = (worker) => {
+        if (!worker) return;
+        const onState = () => {
+          if (worker.state !== "installed") return;
+          pendingWorker = worker;
+          showUpdate(worker);
+          requestActivation(worker);
+        };
+        onState();
+        worker.addEventListener("statechange", onState);
+      };
+
       if (reg.waiting) showUpdate(reg.waiting);
-      reg.addEventListener("updatefound", () => {
-        const worker = reg.installing;
-        worker?.addEventListener("statechange", () => {
-          if (worker.state === "installed") showUpdate(worker);
-        });
-      });
-      let refreshing = false;
+      watchWorker(reg.installing);
+      reg.addEventListener("updatefound", () => watchWorker(reg.installing));
+
+      const checkForUpdate = async ({ force = false } = {}) => {
+        if (checkBusy || navigator.onLine === false || document.visibilityState === "hidden") return false;
+        const now = Date.now();
+        if (!force && now - lastCheckAt < 15000) return false;
+        lastCheckAt = now;
+        checkBusy = true;
+        try {
+          await reg.update().catch(() => {});
+          if (reg.waiting) showUpdate(reg.waiting);
+          const response = await fetch(`/api/version?t=${now}`, { cache: "no-store", credentials: "same-origin" });
+          if (!response.ok) return false;
+          const data = await response.json().catch(() => ({}));
+          if (currentBuild && data?.build && String(data.build) !== String(currentBuild)) {
+            showUpdate(reg.waiting || pendingWorker);
+            // Start downloading the new worker immediately, even before the player taps the banner.
+            reg.update().catch(() => {});
+            return true;
+          }
+          return !!reg.waiting;
+        } catch {
+          return false;
+        } finally {
+          checkBusy = false;
+        }
+      };
+
+      if (updateBtn) updateBtn.onclick = async () => {
+        updateRequested = true;
+        try { sessionStorage.setItem(updateReloadKey, "1"); } catch {}
+        updateBtn.disabled = true;
+        updateBtn.textContent = "Обновляю…";
+        const ready = reg.waiting || pendingWorker;
+        if (requestActivation(ready)) return;
+        try { await reg.update(); } catch {}
+        if (requestActivation(reg.waiting || pendingWorker)) return;
+        watchWorker(reg.installing);
+        // If installation is still downloading, keep the request armed. The
+        // statechange handler will activate it as soon as it reaches installed.
+        setTimeout(() => {
+          if (!updateRequested || refreshing || reg.waiting || pendingWorker?.state === "installed") return;
+          updateBtn.disabled = false;
+          updateBtn.textContent = "Повторить";
+        }, 8000);
+      };
+
       navigator.serviceWorker.addEventListener("controllerchange", () => {
         if (refreshing) return;
         let explicit = false;
         try { explicit = sessionStorage.getItem(updateReloadKey) === "1"; } catch {}
-        // A newly installed service worker can take control on first launch.
-        // Never reload the game for that event: on iOS/PWA it can briefly leave
-        // a white screen or restart an active session. Reload only when the
-        // player explicitly pressed the update button.
         if (!explicit) return;
         refreshing = true;
         try { sessionStorage.removeItem(updateReloadKey); } catch {}
         markStabilityStage?.("updating");
         location.reload();
       });
+
+      // iOS can keep a PWA alive in the background for a long time. Recheck
+      // whenever the player returns, not only on a cold launch.
+      const visibleCheck = () => { if (document.visibilityState === "visible") checkForUpdate({ force: true }); };
+      document.addEventListener("visibilitychange", visibleCheck, { passive: true });
+      window.addEventListener("pageshow", () => checkForUpdate({ force: true }), { passive: true });
+      window.addEventListener("focus", () => checkForUpdate(), { passive: true });
+      window.addEventListener("online", () => checkForUpdate({ force: true }), { passive: true });
+      setInterval(() => checkForUpdate(), 120000);
+      checkForUpdate({ force: true });
     } catch (err) {
       console.warn("Service worker:", err);
     }
@@ -366,6 +433,9 @@ async function boot() {
     await loadCategoryBank();
     setSplashProgress?.(48,"Проверяю аккаунт…");
     await restoreAccountSessionOnBoot?.();
+    if (typeof accountSignedIn === "function" && accountSignedIn()) grantStarterCompanions?.({ notify: false });
+    syncBossCompanionsFromProgress?.({ notify: false });
+    saveProfile?.({ skipCloud: true });
     setSplashProgress?.(55,"Собираю прогресс…");
     migrateCategoryMasteryProgress?.();
     ensureWeeklyChallenge();
