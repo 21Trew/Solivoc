@@ -1162,3 +1162,232 @@ body[data-resource-mode="constrained"] .card {
   .app .progress-label { max-width: 70vw; }
   .app .special-badge, .app .rule-metric, .app .combo-xp-status { font-size: 9px; }
 }
+
+/* ===== v22 readability, compact quests and modal polish ===== */
+/* Gameplay: the third HUD row is bonus objective + an always-visible combo counter. */
+.hud-third-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+}
+.app .hud-third-row .bonus-objective-wrap { min-width:0; justify-content:flex-start; overflow:hidden; }
+.app .hud-third-row .bonus-objective-chip { min-width:0; max-width:100%; }
+.app .hud-third-row .combo-xp-status {
+  display:inline-flex;
+  flex:0 0 auto;
+  min-height:30px;
+  max-width:44vw;
+  padding:6px 9px;
+  border:1px solid #ffe39155;
+  border-radius:999px;
+  background:linear-gradient(135deg,#3b315ecc,#664270d6);
+  color:#fff3bb;
+  font-size:10.5px;
+  line-height:1.1;
+  font-weight:950;
+  text-transform:none;
+  letter-spacing:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  box-shadow:none;
+}
+
+/* Profile: the whole card scrolls, so mail/close controls naturally leave the viewport. */
+.profile-editor-card {
+  overflow:auto !important;
+  overscroll-behavior:contain;
+}
+.profile-editor-content {
+  max-height:none !important;
+  overflow:visible !important;
+}
+.profile-editor-actions {
+  position:static !important;
+  bottom:auto !important;
+  margin:12px 0 0 !important;
+  padding:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+.profile-editor-actions button,
+.profile-card-actions button { box-shadow:none !important; text-shadow:none; }
+
+/* Developer mail: toolbar is content, not chrome; no sticky dark fade. */
+.developer-mail-toolbar {
+  position:static !important;
+  top:auto !important;
+  z-index:auto !important;
+  margin:0 0 9px;
+  padding:9px 10px !important;
+  border:1px solid #ffffff18;
+  border-radius:13px;
+  background:#ffffff09 !important;
+  box-shadow:none !important;
+}
+.developer-mail-toolbar span { color:#e3e0f3 !important; font-size:10.5px !important; }
+.developer-mail-toolbar button { font-size:10px !important; box-shadow:none !important; }
+
+/* Three daily quests stay in one compact row on phones. */
+.daily-quest-grid { grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:6px !important; }
+.daily-quest {
+  min-width:0;
+  min-height:94px;
+  align-content:start;
+  padding:9px 8px !important;
+  gap:5px !important;
+  border-color:#ffffff22 !important;
+  background:#171b42a8 !important;
+}
+.daily-quest b { min-width:0; font-size:10.5px !important; line-height:1.15; overflow:hidden; text-overflow:ellipsis; }
+.daily-quest span { color:#e5e1f2 !important; font-size:10px !important; font-weight:850; }
+.daily-quest small { color:#bbb7d9 !important; font-size:9.5px !important; }
+.daily-quest.done { background:#164b4396 !important; border-color:#7ee5b65c !important; }
+@media (max-width:370px) {
+  .daily-quest-grid { grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:4px !important; }
+  .daily-quest { padding:8px 5px !important; }
+  .daily-quest b { font-size:9.8px !important; }
+  .daily-quest span, .daily-quest small { font-size:9px !important; }
+  .app .hud-third-row .combo-xp-status { max-width:47vw; padding-inline:7px; font-size:9.5px; }
+}
+
+/* Readability baseline: remove the 7–8 px UI text that was hard to read on phones. */
+.hub-section h3 { font-size:17px !important; }
+.hub-section h4, .hub-subhead h4 { font-size:14px !important; }
+.hub-section small, .hub-subhead small, .hub-section p, .settings-note, .empty-state { font-size:10.5px !important; line-height:1.38; }
+.hub-tabs button span { font-size:9px !important; font-weight:900; }
+.global-profile-copy > b { font-size:17px !important; }
+.global-profile-copy > small { font-size:10px !important; }
+.global-profile-rank b { font-size:11.5px !important; }
+.global-profile-rank small { font-size:9.5px !important; }
+.weekly-copy small, .daily-calendar-head small, .profile-editor-head small, .profile-field > span,
+.leaderboard-head small, .developer-mail-head small, .profile-account-strip small { font-size:9.5px !important; }
+.weekly-copy > b { font-size:15px !important; }
+.weekly-copy > span, .weekly-copy > em { font-size:10.5px !important; line-height:1.3; }
+.mode-card p, .mode-card small, .mode-card .mode-nearest, .achievement p, .achievement-copy small,
+.setting-toggle span, .startup-options button span small, .theme-tile span, .cardback-tile > span:last-child,
+.effect-tile span, .sound-tile span, .collection-item, .profile-showcase-grid span { font-size:10px !important; line-height:1.3; }
+.setting-toggle b, .startup-options button span b, .theme-tile b, .cardback-tile b, .effect-tile b, .sound-tile b,
+.achievement b, .profile-showcase-grid b { font-size:11.5px !important; }
+.leaderboard-tabs button { font-size:10.5px !important; }
+.leaderboard-row > div strong { font-size:12px !important; }
+.leaderboard-row > div small { font-size:9px !important; }
+.leaderboard-row > em { font-size:11px !important; }
+.controls button span:not(.ctrl-icon) { font-size:11px !important; }
+.pill { font-size:11px; }
+.pill b { font-size:12px; }
+
+/* Strong surfaces and text contrast, especially for Frost/Paper themes. */
+.hub-section,
+.daily-calendar,
+.weekly-card,
+.smart-action,
+.profile-showcase,
+.mode-card {
+  border-color:#ffffff24 !important;
+}
+.home-welcome-copy p,
+.hub-section small,
+.hub-subhead small,
+.weekly-copy > span,
+.weekly-copy > em,
+.smart-copy span,
+.mode-card p,
+.mode-card small { color:#dedbea !important; }
+body[data-theme="frost"] .hub-section,
+body[data-theme="frost"] .daily-calendar,
+body[data-theme="frost"] .weekly-card,
+body[data-theme="frost"] .smart-action,
+body[data-theme="frost"] .mode-card,
+body[data-theme="frost"] .profile-showcase,
+body[data-theme="paper"] .hub-section,
+body[data-theme="paper"] .daily-calendar,
+body[data-theme="paper"] .weekly-card,
+body[data-theme="paper"] .smart-action,
+body[data-theme="paper"] .mode-card,
+body[data-theme="paper"] .profile-showcase {
+  background:#1a2251cc !important;
+  border-color:#ffffff38 !important;
+  box-shadow:inset 0 1px #ffffff16 !important;
+}
+body[data-theme="frost"] .home-welcome-copy,
+body[data-theme="paper"] .home-welcome-copy {
+  padding:10px 12px;
+  border:1px solid #ffffff32;
+  border-radius:16px;
+  background:#18204aa8;
+}
+body[data-theme="frost"] .home-welcome-copy p,
+body[data-theme="paper"] .home-welcome-copy p { color:#f0edf8 !important; }
+
+/* Two original mascots are deliberately compact: identity without stealing the home screen. */
+.mascot-welcome { display:grid; grid-template-columns:minmax(0,1fr) 98px; align-items:center; gap:8px; min-height:82px; }
+.mascot-pair { position:relative; height:76px; min-width:94px; }
+.mascot-pair img { position:absolute; width:58px; height:58px; object-fit:contain; filter:drop-shadow(0 7px 10px #11142f55); }
+.mascot-pair img:first-child { left:0; top:0; transform:rotate(-4deg); }
+.mascot-pair img:last-child { right:0; bottom:0; transform:rotate(5deg); }
+
+/* App icon chooser. */
+.app-icon-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.app-icon-tile { min-width:0; display:grid; justify-items:center; gap:5px; padding:10px 5px; border:1px solid #ffffff1d; border-radius:15px; background:#10153870; color:#fff; text-align:center; }
+.app-icon-tile img { width:54px; height:54px; border-radius:14px; box-shadow:0 7px 16px #080a1c42; }
+.app-icon-tile b { font-size:10.5px; line-height:1.15; }
+.app-icon-tile span { color:#c8c4df; font-size:9.5px; }
+.app-icon-tile.selected { border-color:#8fe8ff8a; outline:2px solid #88dcff50; background:#4771b52d; }
+.app-icon-note { margin:10px 0 0 !important; color:#cbc8df !important; }
+
+/* Hard/special level intro: light, cheerful and only one or two information rows. */
+.special-level-modal {
+  background:radial-gradient(circle at 15% 8%,#fff29b66,transparent 32%),radial-gradient(circle at 85% 14%,#7cecff66,transparent 31%),#6b70bc8f !important;
+}
+.special-level-card {
+  background:linear-gradient(160deg,#fffef8 0%,#fff5fb 50%,#eefbff 100%) !important;
+  border-color:#ffffff !important;
+  color:#292746 !important;
+  box-shadow:0 24px 60px #29346a45 !important;
+}
+.special-level-card::before { background:radial-gradient(circle at 9% 6%,#ffd45947,transparent 26%),radial-gradient(circle at 91% 8%,#65ddff38,transparent 26%) !important; }
+.special-level-icon { background:linear-gradient(145deg,#ffe46e,#ff8ab6 54%,#7c75ff) !important; color:#3e2d55 !important; box-shadow:0 10px 26px #8a6eaa35 !important; }
+.special-level-card > small { color:#7b55bd !important; font-size:10.5px !important; }
+.special-level-card h2 { color:#292746 !important; font-size:25px !important; }
+.special-level-card p { color:#625f76 !important; font-size:13.5px !important; font-weight:700; }
+.special-level-rule { margin:12px 0 16px !important; padding:11px 13px !important; border-color:#8d78c62d !important; background:linear-gradient(135deg,#8d70ff12,#5bdfff15) !important; color:#413d5b !important; font-size:12.5px !important; box-shadow:none !important; }
+.special-level-rule[hidden] { display:none !important; }
+.special-level-card button { min-height:52px !important; background:linear-gradient(135deg,#7f61ff,#537fff 52%,#36b8df) !important; box-shadow:0 10px 24px #5e6acb35 !important; font-size:14.5px !important; }
+
+
+/* v22.1 final type scale: metadata never drops to micro-text on a phone. */
+.brand small, .progress-label, .draw-label, .achievement-notice-kicker,
+.stat-box span, .daily-badge, .coach .coach-step, .special-badge, .combo-pop span,
+.chapter-level-stars, .achievement-filters button, .title-chip, .text-button,
+.encyclopedia-title small, .encyclopedia-meta span, .word-collection span,
+.bank-health-grid span, .bank-health p, .update-banner span, .owned-challenge-code span,
+.owned-challenge-results, .owned-challenge-results strong, .challenge-result-row span,
+.challenge-result-row small, .smart-copy small, .daily-day span, .daily-milestones b,
+.daily-milestones small, .near-goals-head span, .near-goal span, .mastery-progress span,
+.frame-tile span, .challenge-series-line, .duel-kicker, .duel-result-card > p,
+.notification-prompt-card span, .association-collection-copy small, .association-collection-meta,
+.notification-state, .title-pill span, .encyclopedia-type-tabs button span,
+.visual-category-group-head span, .collection-item.visual-item span, .collection-item.visual-item em,
+.card-source-options button span, .duel-history-list em, .encyclopedia-sort > span,
+.qa-checks small, .analytics-health small, .duel-tabs button span, .duel-direction,
+.login-reward b, .login-reward small, .profile-compact-section > summary > small,
+.profile-card-identity small, .picture-mode-head small, .developer-mail-head small,
+.developer-message-meta b, .duel-rating-note, .custom-rules-head small,
+.profile-account-strip small, .profile-account-strip em, .account-hero small, .account-cloud-card small {
+  font-size:9.5px !important;
+  line-height:1.28 !important;
+}
+.profile-field input, .profile-field select, .achievement-filters button, .text-button,
+.card-source-options button, .encyclopedia-type-tabs button, .duel-tabs button { font-size:10.5px !important; }
+.daily-milestones b, .near-goal b, .stat-box b, .profile-compact-section > summary > span { font-size:11px !important; }
+
+/* The profile/mail close buttons belong to scrollable card content, not a sticky viewport layer. */
+.profile-editor-card > .profile-editor-mail,
+.profile-editor-card > .profile-editor-close { position:absolute !important; }
+
+/* Bottom action bars are flat controls; remove the old dark fade/shadow completely. */
+.profile-editor-actions::before, .profile-editor-actions::after,
+.developer-mail-toolbar::before, .developer-mail-toolbar::after { content:none !important; display:none !important; }

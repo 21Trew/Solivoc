@@ -117,10 +117,9 @@ function render() {
   }
   const comboXpEl = $("#comboXpStatus");
   if (comboXpEl) {
-    const combo = Math.max(0, +(state.run?.maxCombo || 0));
-    const text = combo >= 10 && typeof comboXpHudText === "function" ? comboXpHudText(state) : "";
+    const text = typeof comboXpHudText === "function" ? comboXpHudText(state) : `Комбо ×${Math.max(0, +(state.run?.comboCurrent || 0))}`;
     comboXpEl.textContent = text;
-    comboXpEl.hidden = !text;
+    comboXpEl.hidden = false;
   }
   const bonusEl = $("#bonusObjective");
   if (bonusEl) {

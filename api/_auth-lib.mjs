@@ -214,6 +214,20 @@ function mergeProgress(base, incoming, path = "") {
   return jsonClone(incoming);
 }
 
+function mergeDailyQuestSnapshots(baseValue, incomingValue) {
+  const base = baseValue && typeof baseValue === "object" ? baseValue : {}, incoming = incomingValue && typeof incomingValue === "object" ? incomingValue : {};
+  const bd=String(base.date||""), id=String(incoming.date||"");
+  if (bd && id && bd !== id) return jsonClone(bd > id ? base : incoming);
+  if (!bd) return jsonClone(incoming);
+  if (!id) return jsonClone(base);
+  const modes = Array.isArray(incoming.modes) && incoming.modes.length ? incoming.modes.slice(0,3) : (Array.isArray(base.modes)?base.modes.slice(0,3):[]), progress={}, rewarded={};
+  for (const mode of modes) {
+    progress[mode]=Math.max(0,Math.min(5,Math.max(Number(base.progress?.[mode])||0,Number(incoming.progress?.[mode])||0)));
+    rewarded[mode]=!!base.rewarded?.[mode]||!!incoming.rewarded?.[mode];
+  }
+  return { date: bd || id, modes, progress, rewarded };
+}
+
 function normalizeCampaignProfile(profile) {
   const stars = {};
   for (const [rawLevel, rawStars] of Object.entries(profile?.starsByLevel || {})) {
@@ -247,9 +261,17 @@ function normalizeCampaignProfile(profile) {
 
   let completedThrough = 0;
   while (Number(stars[completedThrough + 1]) > 0) completedThrough++;
+  const previousTotal = Math.max(0, Number(profile.totalStars) || 0);
+  const campaignStars = Object.values(stars).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+  const dailyStars = Object.values(profile?.dailyStars || {}).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
   profile.starsByLevel = stars;
   profile.currentLevel = completedThrough + 1;
-  profile.stats = { ...(profile.stats || {}), levelsCompleted: completedThrough, chapterFinalsCompleted: Math.floor(completedThrough / CAMPAIGN_CHAPTER_SIZE) };
+  // totalStars is the campaign counter shown in profile/leaderboards. Daily stars
+  // stay separate so a three-star-level count can never disagree with the total.
+  profile.totalStars = campaignStars;
+  profile.dailyStarTotal = dailyStars;
+  profile.cosmeticStarsPeak = Math.max(0, Number(profile.cosmeticStarsPeak) || 0, previousTotal, campaignStars + dailyStars);
+  profile.stats = { ...(profile.stats || {}), levelsCompleted: completedThrough, chapterFinalsCompleted: Math.floor(completedThrough / CAMPAIGN_CHAPTER_SIZE), tripleStarWins: Object.values(stars).filter((value) => Number(value) === 3).length };
   profile.campaignProgressVersion = Math.max(2, Number(profile.campaignProgressVersion) || 0);
   return profile;
 }
@@ -259,6 +281,7 @@ export function mergeProfiles(current, incoming, userId, { preferIncomingPrefere
   const b = sanitizeProfile(incoming || {}, userId);
   const aCampaignVersion = Number(a.campaignProgressVersion) || 0, bCampaignVersion = Number(b.campaignProgressVersion) || 0;
   const merged = mergeProgress(a, b);
+  merged.dailyQuests = mergeDailyQuestSnapshots(a.dailyQuests, b.dailyQuests);
   if (bCampaignVersion >= 2 && aCampaignVersion < 2) {
     merged.starsByLevel = jsonClone(b.starsByLevel || {});
     if (b.campaignRepairXpAdjusted) { merged.xp = Math.max(0, Number(b.xp) || 0); merged.campaignRepairXpAdjusted = true; }

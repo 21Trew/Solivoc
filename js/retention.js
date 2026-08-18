@@ -263,6 +263,9 @@ function normalizeDailyQuests() {
   }
   const allowed=new Set(DAILY_QUEST_POOL.map((x)=>x.id)), modes=Array.isArray(profile.dailyQuests.modes)?profile.dailyQuests.modes:[];
   if (modes.length !== 3 || new Set(modes).size !== 3 || modes.some((id)=>!allowed.has(id))) profile.dailyQuests.modes=dailyQuestDefinitions(today).map((x)=>x.id);
+  const selected=new Set(profile.dailyQuests.modes), defs=new Map(DAILY_QUEST_POOL.map((x)=>[x.id,x]));
+  profile.dailyQuests.progress=Object.fromEntries([...selected].map((id)=>[id,Math.max(0,Math.min(defs.get(id)?.target||5,+profile.dailyQuests.progress?.[id]||0))]));
+  profile.dailyQuests.rewarded=Object.fromEntries([...selected].map((id)=>[id,!!profile.dailyQuests.rewarded?.[id]]));
   return profile.dailyQuests;
 }
 function activeDailyQuestDefs() {
@@ -276,15 +279,16 @@ function dailyQuestModeForState(s=state) {
   return s.mode || "regular";
 }
 function recordDailyModeGame(s=state) {
-  if (!s || s.failed || s.mode === "challenge" || s.mode === "tutorial") return;
+  if (!s || s.failed || s.mode === "challenge" || s.mode === "tutorial" || s.run?.dailyQuestCounted) return;
   const q=normalizeDailyQuests(), id=dailyQuestModeForState(s), def=activeDailyQuestDefs().find(x=>x.id===id); if(!def) return;
+  if (s.run) s.run.dailyQuestCounted = true;
   q.progress[id]=Math.min(def.target,(+q.progress[id]||0)+1);
   if(q.progress[id]>=def.target&&!q.rewarded[id]){q.rewarded[id]=true; awardXp(def.rewardXp,`Ежедневное задание: ${def.label}`,{notifyRank:false}); showToast?.(`✓ ${def.label}: +${def.rewardXp} XP`);}
   saveProfile();
 }
 function dailyModeQuestsMarkup() {
   const q=normalizeDailyQuests(), defs=activeDailyQuestDefs();
-  return `<section class="hub-section daily-quests"><div class="hub-section-head"><div><h3>Ежедневные задания</h3><small>сегодня 3 режима · пройди каждый по 5 раз</small></div></div><div class="daily-quest-grid">${defs.map(def=>{const v=Math.min(def.target,+q.progress[def.id]||0),done=v>=def.target;return `<button class="daily-quest ${done?"done":""}" data-daily-quest-mode="${def.id}"><b>${def.label}</b><span>${v}/${def.target}${done?" ✓":` · +${def.rewardXp} XP`}</span><em><i style="width:${v/def.target*100}%"></i></em><small>${done?"Выполнено":"Играть →"}</small></button>`;}).join("")}</div></section>`;
+  return `<section class="hub-section daily-quests"><div class="hub-section-head"><div><h3>Ежедневные задания</h3><small>3 режима · по 5 побед</small></div></div><div class="daily-quest-grid">${defs.map(def=>{const v=Math.min(def.target,+q.progress[def.id]||0),done=v>=def.target;return `<button class="daily-quest ${done?"done":""}" data-daily-quest-mode="${def.id}"><b>${def.label}</b><span>${v}/${def.target}${done?" ✓":""}</span><em><i style="width:${v/def.target*100}%"></i></em><small>${done?"Готово":`+${def.rewardXp} XP`}</small></button>`;}).join("")}</div></section>`;
 }
 function challengeEligibleState(s=state) { return !!s && s.mode !== "challenge" && s.mode !== "tutorial"; }
 function recordChallengeEligibleProgress(s=state, stars=0) {
@@ -336,10 +340,8 @@ function checkActiveRuleFailure() {
   const reason=activeRuleFailureReason(state); if(reason&&typeof finishFailedRun==="function"){finishFailedRun(reason);return true;} return false;
 }
 function comboXpHudText(s=state) {
-  const combo=Math.max(0,+s?.run?.maxCombo||0),info=typeof comboXpBonusInfo==="function"?comboXpBonusInfo(s):{percent:0};
-  if(combo>=20)return `XP +30% · ×${combo} MAX`;
-  if(combo>=10)return `XP +${info.percent}% · ×20 → +30%`;
-  return `XP +0% · ×10 → +10%`;
+  const current=Math.max(0,+s?.run?.comboCurrent||0),info=typeof comboXpBonusInfo==="function"?comboXpBonusInfo(s):{percent:0};
+  return `Комбо ×${current} · XP +${Math.max(0,+info.percent||0)}%`;
 }
 
 function assignBonusObjective(s) {
@@ -402,7 +404,7 @@ function nearGoalCandidates() {
   const goals = [...progressAchievements], xp = xpLevelProgress(), rank = playerRank();
   goals.push({ id: "xp", icon: rank.icon, title: `Ранг ${xp.level + 1}`, desc: `Ещё ${xp.goal - xp.value} XP`, ratio: xp.ratio });
   const nt = typeof nextTheme === "function" ? nextTheme() : null;
-  if (nt) goals.push({ id: "theme", icon: "✦", title: `Тема ${nt.name}`, desc: `Ещё ${Math.max(0, nt.stars - profile.totalStars)} ★`, ratio: Math.min(1, profile.totalStars / nt.stars) });
+  if (nt) { const starProgress=Math.max(profile.totalStars||0,profile.cosmeticStarsPeak||0); goals.push({ id: "theme", icon: "✦", title: `Тема ${nt.name}`, desc: `Ещё ${Math.max(0, nt.stars-starProgress)} ★`, ratio: Math.min(1, starProgress/nt.stars) }); }
   const chapter = chapterInfo(profile.currentLevel || 1), stars = chapterStarsForProfile(profile, chapter.number).reduce((a,b)=>a+b,0);
   if (stars < 30) goals.push({ id: "chapter", icon: "◆", title: `Глава ${chapter.number}`, desc: `До идеала: ${30-stars} ★`, ratio: stars/30 });
   const mastery = nearestMasteryGoal();
@@ -679,7 +681,7 @@ function rewardChapterFinal(s, firstClear) {
   profile.stats.chapterFinalsCompleted = (profile.stats.chapterFinalsCompleted || 0) + 1;
   const frame = chapterFrameFor(chapter);
   awardXp(120,`Финал главы ${chapter}`,{notifyRank:false});
-  if (frame?.id && frame.id !== "none") profile.frame = frame.id;
+  // Unlocking a frame must never silently replace the player's chosen frame.
   if (typeof queueAchievementNotifications === "function") queueAchievementNotifications([{icon:"◆",title:`Глава ${chapter} завершена`,desc:`Открыта рамка «${frame?.name || chapterInfo(s.level).title}» · +120 XP`}]);
   return true;
 }

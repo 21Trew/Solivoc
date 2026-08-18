@@ -394,7 +394,7 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
       categoryCooldownIds: cooldownIds,
       collectionId: mode === "collection" ? associationCollectionById(collectionId).id : null,
       cardSourceMode: sourceMode,
-      run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, maxCombo: 0, startedAt: Date.now(), pausedAt: 0, pausedDurationMs: 0 },
+      run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, comboCurrent: 0, maxCombo: 0, startedAt: Date.now(), pausedAt: 0, pausedDurationMs: 0 },
       special,
       challengeCode,
       challengeRole,
@@ -461,7 +461,7 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
     categoryCooldownIds: cooldownIds,
     collectionId: mode === "collection" ? associationCollectionById(collectionId).id : null,
     cardSourceMode: sourceMode,
-    run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, maxCombo: 0, startedAt: Date.now(), pausedAt: 0, pausedDurationMs: 0 },
+    run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, comboCurrent: 0, maxCombo: 0, startedAt: Date.now(), pausedAt: 0, pausedDurationMs: 0 },
     special,
     challengeCode,
     challengeRole,
@@ -534,13 +534,13 @@ function makeTutorial(step = 1) {
     completed: 0,
     totalCategories: 1,
     categoryIds: [cat.id],
-    run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, maxCombo: 0, startedAt: Date.now(), pausedAt: 0, pausedDurationMs: 0 },
+    run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, comboCurrent: 0, maxCombo: 0, startedAt: Date.now(), pausedAt: 0, pausedDurationMs: 0 },
     special: null,
     rewarded: false,
   };
 }
 function normalizeState(s) {
-  s.run = { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, maxCombo: 0, startedAt: Date.now(), pausedAt: 0, pausedDurationMs: 0, ...(s.run || {}) };
+  s.run = { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, comboCurrent: 0, maxCombo: 0, startedAt: Date.now(), pausedAt: 0, pausedDurationMs: 0, ...(s.run || {}) };
   s.mode = s.mode || "regular";
   s.seed = s.seed || `legacy:${s.level || 1}`;
   s.rewarded = !!s.rewarded;

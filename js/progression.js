@@ -17,16 +17,21 @@ function awardLevelXpWithCombo(baseXp, reason) {
 }
 
 let specialIntroStartCallback = null;
-function specialLevelRuleText(special) {
-  if (!special) return "";
-  if (special.noHints && special.maxRecycles === 1) return "Подсказки отключены · колоду можно вернуть только один раз";
-  if (special.noHints) return "Подсказки отключены на весь уровень";
-  if (Number.isFinite(special.maxUndos)) return `${ruPlural(special.maxUndos, "Доступна", "Доступны", "Доступно")} ${ruCount(special.maxUndos, "отмена", "отмены", "отмен")}`;
-  if (Number.isFinite(special.maxRecycles)) return `Колоду можно вернуть ${ruCount(special.maxRecycles, "раз", "раза", "раз")}`;
-  if (special.lockedSlot) return "Один слот откроется только после первой собранной категории";
-  if (special.mysteryCategories) return "Названия категорий будут открываться по ходу решения";
-  if (special.bigMix) return "Больше категорий и слов, чем в обычном раскладе";
-  return special.desc || "Особое правило действует до конца уровня";
+function specialLevelInfoLines(special) {
+  if (!special) return [];
+  const lines = [];
+  if (special.noHints && special.maxRecycles === 1) lines.push("✨ Без подсказок · колоду можно вернуть один раз");
+  else if (special.noHints) lines.push("✨ Без подсказок — полагайся на ассоциации");
+  else if (Number.isFinite(special.maxUndos)) lines.push(`↶ ${ruCount(special.maxUndos, "отмена", "отмены", "отмен")}`);
+  else if (Number.isFinite(special.maxRecycles)) lines.push(`↻ Колоду можно вернуть ${ruCount(special.maxRecycles, "раз", "раза", "раз")}`);
+  else if (special.lockedSlot) lines.push("🔓 Один слот откроется после первой собранной категории");
+  else if (special.mysteryCategories) lines.push("🎭 Названия категорий откроются по ходу решения");
+  else if (special.bigMix) lines.push("🌈 В раскладе больше категорий и карточек");
+  const desc = String(special.desc || "").trim();
+  if (desc && !lines.some((x)=>x.toLowerCase().includes(desc.toLowerCase()) || desc.toLowerCase().includes(x.replace(/^[^\p{L}]+/u, "").toLowerCase()))) {
+    lines.unshift(desc);
+  }
+  return [...new Set(lines)].slice(0, 2);
 }
 function closeSpecialLevelIntro({ start = false } = {}) {
   const modal = $("#specialLevelModal");
@@ -44,8 +49,11 @@ function showSpecialLevelIntro(special, onStart) {
   $("#specialLevelIcon").textContent = special.icon || "◆";
   $("#specialLevelEyebrow").textContent = special.boss ? "ФИНАЛ ГЛАВЫ" : "ОСОБЫЙ УРОВЕНЬ";
   $("#specialLevelTitle").textContent = special.title || "Испытание";
-  $("#specialLevelDesc").textContent = special.desc || "В этом раскладе действует особое правило.";
-  $("#specialLevelRule").textContent = specialLevelRuleText(special);
+  const lines = specialLevelInfoLines(special);
+  const descEl=$("#specialLevelDesc"), ruleEl=$("#specialLevelRule");
+  descEl.textContent = lines[0] || "Особый расклад — правило видно до старта.";
+  ruleEl.textContent = lines[1] || "";
+  ruleEl.hidden = !lines[1];
   $("#specialLevelStart").textContent = special.boss ? "Начать финал →" : "Начать испытание →";
   $("#specialLevelStart").onclick = () => closeSpecialLevelIntro({ start: true });
   modal.classList.add("show");
@@ -141,7 +149,8 @@ function checkAchievements() {
   return fresh;
 }
 function nextTheme() {
-  return THEME_DEFS.find((t) => t.stars > profile.totalStars) || null;
+  const starProgress = Math.max(profile.totalStars || 0, profile.cosmeticStarsPeak || 0);
+  return THEME_DEFS.find((t) => t.stars > starProgress) || null;
 }
 let winRevealTimers = [];
 function clearWinRevealTimers() {
@@ -359,7 +368,7 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
         : state.mode === "challenge"
           ? state.challengeRole === "guest" ? "Результат отправляется сопернику" : state.challengeRole === "creator" ? "Твой результат сохранён. Ждём соперника." : "Результат сохранён для этой дуэли"
           : nt
-            ? `До темы ${nt.name}: ${nt.stars - profile.totalStars} ★`
+            ? `До темы ${nt.name}: ${Math.max(0, nt.stars - Math.max(profile.totalStars || 0, profile.cosmeticStarsPeak || 0))} ★`
             : "Все темы за звёзды открыты";
   $("#next").textContent =
     state.mode === "tutorial"

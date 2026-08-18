@@ -23,9 +23,16 @@ function ruCount(value, one, few, many = few) {
   return `${n} ${ruPlural(n, one, few, many)}`;
 }
 
+const APP_ICON_DEFS = Object.freeze([
+  { id: "classic", name: "Классическая", preview: "✦", manifest: "./manifest.webmanifest", apple: "./icons/icon-192.png", favicon: "./icons/icon.svg" },
+  { id: "owl", name: "Мудрая сова", preview: "🦉", manifest: "./manifest-owl.webmanifest", apple: "./icons/icon-owl-192.png", favicon: "./icons/icon-owl.svg" },
+  { id: "cat", name: "Кот-учёный", preview: "🐱", manifest: "./manifest-cat.webmanifest", apple: "./icons/icon-cat-192.png", favicon: "./icons/icon-cat.svg" },
+]);
+function appIconDef(id) { return APP_ICON_DEFS.find((x) => x.id === id) || APP_ICON_DEFS[0]; }
+
 const AVATAR_EMOJIS = [
   "🙂", "😎", "🤩", "🥳", "🤓", "🤠", "🫠", "😈",
-  "🦊", "🐼", "🐸", "🦉", "🐙", "🦄", "🐯", "🐧",
+  "🦊", "🐼", "🐸", "🦉", "🐱", "🐙", "🦄", "🐯", "🐧",
   "🌙", "⭐", "🔥", "❄️", "🌸", "🍀", "⚡", "🌈",
   "🎯", "🎮", "🧩", "🏆", "🚀", "💎", "🎧", "🍕"
 ];
@@ -87,7 +94,7 @@ const ASSOCIATION_COLLECTION_DEFS = [
     categories: [
       { id: "farm", title: "Ферма", cards: [["🐄","Корова"],["🐖","Свинья"],["🐔","Курица"],["🐑","Овца"],["🐐","Коза"],["🐎","Лошадь"]] },
       { id: "africa", title: "Африка", cards: [["🦁","Лев"],["🐘","Слон"],["🦒","Жираф"],["🦓","Зебра"],["🦏","Носорог"],["🐆","Леопард"]] },
-      { id: "forest", title: "Лес", cards: [["🦊","Лиса"],["🐻","Медведь"],["🐺","Волк"],["🦌","Олень"],["🐿️","Белка"],["🦉","Сова"]] },
+      { id: "forest", title: "Лес", cards: [["🦊","Лиса"],["🐻","Медведь"],["🐺","Волк"],["🦌","Олень"],["🐿️","Белка"],["🦉","Сова"],["🐇","Заяц"]] },
       { id: "ocean", title: "Океан", cards: [["🐬","Дельфин"],["🐳","Кит"],["🦈","Акула"],["🐙","Осьминог"],["🦀","Краб"],["🐠","Рыба"]] },
       { id: "birds", title: "Птицы", cards: [["🦅","Орёл"],["🦆","Утка"],["🦜","Попугай"],["🦢","Лебедь"],["🦩","Фламинго"],["🐧","Пингвин"]] },
       { id: "insects", title: "Насекомые", cards: [["🐝","Пчела"],["🦋","Бабочка"],["🐞","Божья коровка"],["🦗","Кузнечик"],["🪲","Жук"],["🐜","Муравей"]] },
@@ -145,7 +152,7 @@ const ASSOCIATION_COLLECTION_DEFS = [
       { id: "road", title: "Дорога", cards: [["🚗","Автомобиль"],["🛣️","Шоссе"],["🚦","Светофор"],["⛽","Заправка"],["🅿️","Парковка"],["🚧","Ремонт"]] },
       { id: "air", title: "Воздух", cards: [["✈️","Самолёт"],["🛩️","Лёгкий самолёт"],["🚁","Вертолёт"],["🛫","Взлёт"],["🪂","Парашют"],["🎈","Воздушный шар"]] },
       { id: "sea", title: "Море", cards: [["🚢","Корабль"],["⛴️","Паром"],["🛳️","Лайнер"],["⛵","Яхта"],["🚤","Катер"],["🛶","Каноэ"]] },
-      { id: "rail", title: "Рельсы", cards: [["🚂","Паровоз"],["🚉","Станция"],["🛤️","Путь"],["🛤️","Платформа"],["🚦","Сигнал"],["🧳","Багаж"]] },
+      { id: "rail", title: "Рельсы", cards: [["🚂","Паровоз"],["🚉","Станция"],["🛤️","Путь"],["🚏","Платформа"],["🚦","Сигнал"],["🧳","Багаж"]] },
       { id: "service", title: "Службы", cards: [["🚑","Скорая"],["🚒","Пожарная"],["🚓","Полиция"],["🚔","Патруль"],["🚐","Фургон"],["🚜","Трактор"]] },
     ],
   },
@@ -201,7 +208,6 @@ ASSOCIATION_COLLECTION_DEFS.push(
     id: "music", name: "Музыка", icon: "🎵", desc: "Инструменты, жанры и всё вокруг музыки",
     categories: [
       { id: "strings", title: "Струны", cards: [["🎸","Гитара"],["🎻","Скрипка"],["🪕","Банджо"],["🎼","Ноты"],["🎵","Мелодия"],["🎶","Музыка"]] },
-      { id: "keys", title: "Клавиши", cards: [["🎹","Пианино"],["🎼","Партитура"],["🎵","Нота"],["👨‍🎤","Музыкант"],["🎧","Наушники"],["🎶","Мелодия"]] },
       { id: "rhythm", title: "Ритм", cards: [["🥁","Барабан"],["🪘","Тамтам"],["👏","Хлопок"],["💃","Танец"],["🕺","Танцор"],["🎶","Ритм"]] },
       { id: "concert", title: "Концерт", cards: [["🎤","Микрофон"],["🎟️","Вход"],["🎫","Пропуск"],["🤘","Рок"],["🪩","Сцена"],["👏","Аплодисменты"]] },
       { id: "studio", title: "Студия", cards: [["🎙️","Запись"],["🎚️","Микшер"],["🎛️","Пульт"],["🎧","Наушники"],["💻","Компьютер"],["🔊","Монитор"]] },
@@ -216,7 +222,7 @@ ASSOCIATION_COLLECTION_DEFS.push(
       { id: "comedy", title: "Комедия", cards: [["😂","Смех"],["🤣","Хохот"],["🤡","Клоун"],["🎭","Театр"],["🍌","Гэг"],["😜","Шутка"]] },
       { id: "romance", title: "Романтика", cards: [["❤️","Любовь"],["💐","Букет"],["💋","Поцелуй"],["🌹","Роза"],["💌","Письмо"],["🥂","Свидание"]] },
       { id: "action", title: "Боевик", cards: [["💥","Взрыв"],["🚁","Погоня"],["🏎️","Скорость"],["🕶️","Герой"],["🔥","Огонь"],["🎯","Цель"]] },
-      { id: "cartoon", title: "Мультфильмы", cards: [["🐭","Мультмышь"],["🐰","Мультзаяц"],["🧚","Фея"],["🧞","Джинн"],["🐉","Сказочный дракон"],["👸","Принцесса"]] },
+      { id: "cartoon", title: "Мультфильм", cards: [["🖍️","Рисунок"],["🎨","Краски"],["🎬","Кадр"],["📺","Экран"],["💬","Реплика"],["🧑‍🎨","Аниматор"]] },
     ],
   },
   {
@@ -238,7 +244,7 @@ ASSOCIATION_COLLECTION_DEFS.push(
       { id: "internet", title: "Интернет", cards: [["🌐","Сеть"],["📡","Антенна"],["📶","Wi-Fi"],["🔗","Ссылка"],["☁️","Облако"],["🔒","Безопасность"]] },
       { id: "gaming", title: "Гейминг", cards: [["🎮","Геймпад"],["🕹️","Джойстик"],["🎧","Гарнитура"],["🏆","Победа"],["👾","Аркада"],["🖥️","Экран"]] },
       { id: "charge", title: "Зарядка", cards: [["🔋","Батарея"],["⚡","Энергия"],["🔌","Розетка"],["🪫","Разряд"],["📱","Телефон"],["💡","Питание"]] },
-      { id: "smarthome", title: "Умный дом", cards: [["🏠","Дом"],["💡","Лампа"],["🔊","Колонка"],["📱","Управление"],["🌡️","Термостат"],["📷","Камера"]] },
+      { id: "smarthome", title: "Умный дом", cards: [["🏠","Дом"],["💡","Умная лампа"],["🔊","Умная колонка"],["🌡️","Термостат"],["📷","Камера"],["🔐","Умный замок"]] },
     ],
   },
   {
@@ -348,7 +354,7 @@ ASSOCIATION_COLLECTION_DEFS.push(
       { id: "warning", title: "Опасность", cards: [["⚠️","Внимание"],["🚫","Запрет"],["☢️","Радиация"],["☣️","Биориск"],["❗","Важно"],["🔺","Сигнал"]] },
       { id: "traffic", title: "ПДД", cards: [["🚦","Светофор"],["🛑","Стоп"],["🚸","Переход"],["🚧","Ремонт"],["⚠️","Знак"],["🚗","Авто"]] },
       { id: "cyber", title: "Киберзащита", cards: [["🔒","Пароль"],["🛡️","Защита"],["🔑","Ключ"],["💻","Компьютер"],["📧","Почта"],["⚠️","Фишинг"]] },
-      { id: "home-safe", title: "Дом", cards: [["🔐","Замок"],["🪟","Окно"],["🚪","Дверь"],["🔔","Сигнал"],["🔥","Датчик"],["📱","Контроль"]] },
+      { id: "home-safe", title: "Охрана дома", cards: [["🔐","Замок"],["🚪","Дверь"],["🔔","Сигнализация"],["📷","Камера"],["🛡️","Охрана"],["🚨","Тревога"]] },
     ],
   },
   {
@@ -367,6 +373,31 @@ ASSOCIATION_COLLECTION_DEFS.push(
 function associationCollectionById(id) {
   return ASSOCIATION_COLLECTION_DEFS.find((x) => x.id === id) || ASSOCIATION_COLLECTION_DEFS[0];
 }
+const VISUAL_WORD_CONFLICT_GROUPS = Object.freeze({
+  animals: ["animals_mammal", "animals_birds", "animals_small", "animals_water", "prehistoric"],
+  nature: ["astronomy", "weather", "seasons", "wild_nature", "geology", "water_nature", "coast"],
+  food: ["fruit_family", "vegetables", "seasoning", "bakery", "dessert", "beverages", "kitchenware"],
+  space: ["astronomy", "school_science", "consumer_tech"],
+  transport: ["urban", "transport_road", "transport_rail", "transport_air", "transport_water", "tourism"],
+  home: ["kitchenware", "home_interior", "home_rooms", "home_chores", "garden", "workplace"],
+  sports: ["ball_sports", "racket_sports", "winter_sports", "fitness", "water_sports", "combat_sports"],
+  travel: ["tourism", "outdoor_trip", "transport_air", "transport_rail"],
+  celebration: ["celebrations", "ceremonies"],
+  music: ["music", "music_genres", "stage_media"],
+  cinema: ["screen_media", "stage_media"],
+  school: ["education", "school_science"],
+  tech: ["consumer_tech", "digital", "tech_work"],
+  health: ["human_body", "fitness", "daily_routine"],
+  citylife: ["urban", "hospitality", "retail", "transport_rail"],
+  jobs: ["professions", "workplace", "creative_work", "tech_work"],
+  times: ["seasons", "daily_routine", "timekeeping", "weather"],
+  shopping: ["retail", "clothing", "fashion_accessories", "beauty", "consumer_tech"],
+  hobbies: ["creative_work", "garden", "water_activity", "literature", "bakery"],
+  games: ["games_table", "digital_entertainment"],
+  world: ["tourism", "urban"],
+  safety: ["workshop", "digital", "urban"],
+  events: ["celebrations", "ceremonies", "stage_media", "hospitality"],
+});
 function associationCollectionCategories(id) {
   const collection = associationCollectionById(id);
   return collection.categories.map((cat) => ({
@@ -382,6 +413,7 @@ function associationCollectionCategories(id) {
       : collection.id === "transport" ? "transport"
       : collection.id === "safety" ? "safety"
       : collection.id,
+    conflictGroups: VISUAL_WORD_CONFLICT_GROUPS[collection.id] || [],
     words: cat.cards.map(([emoji]) => emoji),
     visualLabels: Object.fromEntries(cat.cards),
   }));

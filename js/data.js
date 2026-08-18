@@ -35,6 +35,7 @@ function categoriesConflict(a, b) {
     const visual = a.visual ? a : b, word = a.visual ? b : a;
     if (!!a.visual !== !!b.visual) {
       if (visual.semanticGroup && word.conflictGroup && visual.semanticGroup === word.conflictGroup) return true;
+      if (word.conflictGroup && Array.isArray(visual.conflictGroups) && visual.conflictGroups.includes(word.conflictGroup)) return true;
       const visualTerms = new Set([normWord(visual.title), ...Object.values(visual.visualLabels || {}).map(normWord)]);
       const wordTerms = [normWord(word.title), ...(word.words || []).map(normWord)];
       return wordTerms.some((term) => visualTerms.has(term));

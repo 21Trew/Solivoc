@@ -67,10 +67,24 @@ function mergeAccountProgress(local, cloud) {
   }
   return cloneAccountValue(cloud);
 }
+function mergeDailyQuestSnapshots(localValue, cloudValue) {
+  const local = localValue && typeof localValue === "object" ? localValue : {}, cloud = cloudValue && typeof cloudValue === "object" ? cloudValue : {};
+  const ld=String(local.date||""), cd=String(cloud.date||"");
+  if (ld && cd && ld !== cd) return cloneAccountValue(ld > cd ? local : cloud);
+  if (!ld) return cloneAccountValue(cloud);
+  if (!cd) return cloneAccountValue(local);
+  const modes = Array.isArray(cloud.modes) && cloud.modes.length ? cloud.modes.slice(0,3) : (Array.isArray(local.modes)?local.modes.slice(0,3):[]), progress={}, rewarded={};
+  for (const id of modes) {
+    progress[id]=Math.max(0,Math.min(5,Math.max(+local.progress?.[id]||0,+cloud.progress?.[id]||0)));
+    rewarded[id]=!!local.rewarded?.[id]||!!cloud.rewarded?.[id];
+  }
+  return { date: ld || cd, modes, progress, rewarded };
+}
 function mergeAccountProfiles(localProfile, cloudProfile) {
   const local = localProfile && typeof localProfile === "object" ? localProfile : {};
   const cloud = cloudProfile && typeof cloudProfile === "object" ? cloudProfile : {};
   const merged = mergeAccountProgress(local, cloud);
+  merged.dailyQuests = mergeDailyQuestSnapshots(local.dailyQuests, cloud.dailyQuests);
   // Campaign v2 is a corrective migration. When the cloud still contains the old
   // inflated campaign counters, the repaired local star map must win once instead
   // of being unioned with the obsolete synthetic tail.

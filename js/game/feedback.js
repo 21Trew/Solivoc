@@ -5,8 +5,6 @@ let audioCtx = null,
   musicStep = 0,
   musicGeneration = 0,
   comboCount = 0,
-  comboTimer = null,
-  comboLastAt = 0,
   categoryAnimating = false,
   deadlockTimer = null,
   lastDeadlockSignature = "",
@@ -221,25 +219,21 @@ function resumeAudioForLifecycle() {
 
 function resetCombo() {
   comboCount = 0;
-  comboLastAt = 0;
-  clearTimeout(comboTimer);
-  comboTimer = null;
+  if (state?.run) state.run.comboCurrent = 0;
   const el = $("#comboPop");
   el?.classList.remove("show");
 }
 function registerCombo(productive = true, source = "manual") {
   if (!productive || state?.mode === "tutorial" || state?.mode === "calm") return;
-  const now = performance.now();
-  if (comboLastAt && now - comboLastAt > 8500) comboCount = 0;
-  comboLastAt = now; comboCount++;
+  comboCount = Math.max(0, +(state?.run?.comboCurrent || 0)) + 1;
   if (state?.run) {
+    state.run.comboCurrent = comboCount;
     state.run.maxCombo = Math.max(state.run.maxCombo || 0, comboCount);
     if (source === "manual") state.run.maxDragCombo = Math.max(state.run.maxDragCombo || 0, comboCount);
   }
   if (source === "manual") profile.stats.maxDragCombo = Math.max(profile.stats.maxDragCombo || 0, comboCount);
   profile.stats.maxCombo = Math.max(profile.stats.maxCombo || 0, comboCount);
   if (comboCount >= 3 && source === "manual" && typeof checkAchievements === "function") checkAchievements();
-  clearTimeout(comboTimer); comboTimer = setTimeout(resetCombo, 8500);
   if (comboCount < 2) return;
   const el = $("#comboPop"); if (!el) return;
   el.innerHTML = `<strong>КОМБО ×${comboCount}</strong><span>${comboCount >= 5 ? "Идеальная серия!" : "Точные ходы подряд"}</span>`;

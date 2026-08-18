@@ -5,6 +5,8 @@ function defaultProfile() {
     starsByLevel: {},
     dailyStars: {},
     totalStars: 0,
+    dailyStarTotal: 0,
+    cosmeticStarsPeak: 0,
     discovered: [],
     achievements: [],
     theme: "violet",
@@ -55,7 +57,7 @@ function defaultProfile() {
     tutorialComplete: false,
     legacyStarsMigrated: false,
     categoryAchievementModelMigrated: false,
-    settings: { sound: true, music: true, haptics: true, notifications: false, challengeReminders: true, dailyReminders: true, weeklyReminders: true, notificationPrompted: false, cardSourceMode: "all", startupScreen: "home" },
+    settings: { sound: true, music: true, haptics: true, notifications: false, challengeReminders: true, dailyReminders: true, weeklyReminders: true, notificationPrompted: false, cardSourceMode: "all", startupScreen: "home", appIcon: "classic" },
     stats: { ...DEFAULT_STATS },
     daily: { lastDate: null, currentStreak: 0, bestStreak: 0, completedDates: [], freezeWeek: null, weekRewards: {} },
   };
@@ -141,6 +143,8 @@ function reconcileCampaignProgress(p = profile) {
     cleanStars[level] = Math.max(1, Math.min(3, stars));
   }
   p.starsByLevel = cleanStars;
+  p.stats ||= {};
+  p.stats.tripleStarWins = Object.values(cleanStars).filter((stars) => Number(stars) === 3).length;
 
   // v6 legacy migration used currentLevel as proof and filled every previous level with one star.
   // If that counter was corrupted, it could manufacture hundreds of fake clears. Repair only the
@@ -280,9 +284,14 @@ function migrateMetaProfile() {
 }
 migrateMetaProfile();
 function recomputeStars() {
-  profile.totalStars =
-    Object.values(profile.starsByLevel || {}).reduce((a, b) => a + (+b || 0), 0) +
-    Object.values(profile.dailyStars || {}).reduce((a, b) => a + (+b || 0), 0);
+  const previous = Math.max(0, +profile.totalStars || 0),
+    campaign = Object.values(profile.starsByLevel || {}).reduce((a, b) => a + (+b || 0), 0),
+    daily = Object.values(profile.dailyStars || {}).reduce((a, b) => a + (+b || 0), 0);
+  profile.totalStars = campaign;
+  profile.dailyStarTotal = daily;
+  // Daily stars used to be folded into totalStars. Preserve the highest old
+  // cosmetic-unlock value so a migration never takes an already opened theme away.
+  profile.cosmeticStarsPeak = Math.max(+profile.cosmeticStarsPeak || 0, previous, campaign + daily);
 }
 function cardBackUnlocked(def, p = profile) {
   if (!def) return false;
@@ -339,6 +348,17 @@ function applySoundPack(id) {
   profile.soundPack = def && soundPackUnlocked(def) ? id : "classic";
   document.body.dataset.soundPack = profile.soundPack;
 }
+function applyAppIcon(id = profile?.settings?.appIcon) {
+  const def = typeof appIconDef === "function" ? appIconDef(id) : APP_ICON_DEFS[0];
+  profile.settings ||= {};
+  profile.settings.appIcon = def.id;
+  const manifest = document.querySelector('link[rel="manifest"]'), apple = document.querySelector('link[rel="apple-touch-icon"]'), favicon = document.querySelector('link[rel="icon"]');
+  if (manifest) manifest.href = def.manifest;
+  if (apple) apple.href = def.apple;
+  if (favicon) { favicon.href = def.favicon; favicon.type = "image/svg+xml"; }
+  document.body.dataset.appIcon = def.id;
+  return def.id;
+}
 function applyFrame(id) {
   const def = FRAME_DEFS.find((x) => x.id === id);
   profile.frame = def && frameUnlocked(def) ? def.id : "none";
@@ -376,6 +396,7 @@ function saveProfile(options = {}) {
   applyTitle(profile.titleId);
   applyFrame(profile.frame);
   applySoundPack(profile.soundPack);
+  applyAppIcon(profile.settings.appIcon);
   if (!options.skipCloud && typeof scheduleAccountSync === "function") scheduleAccountSync();
 }
 function scheduleProfileSave(delay = 2200) {
@@ -399,7 +420,7 @@ function track(name, data = {}) {
 }
 function applyTheme(id) {
   const def = THEME_DEFS.find((t) => t.id === id),
-    allowed = def && profile.totalStars >= def.stars;
+    allowed = def && Math.max(profile.totalStars || 0, profile.cosmeticStarsPeak || 0) >= def.stars;
   const theme = allowed ? id : "violet";
   profile.theme = theme;
   document.body.dataset.theme = theme;
@@ -411,3 +432,4 @@ applyEffect(profile.effect);
 applyTitle(profile.titleId);
 applyFrame(profile.frame);
 applySoundPack(profile.soundPack);
+applyAppIcon(profile.settings.appIcon);

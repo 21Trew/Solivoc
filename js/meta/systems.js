@@ -493,7 +493,7 @@ async function createRemoteChallenge(meta = {}) {
 function challengeShortLink(entryOrCode) {
   const code = normalizeChallengeCode(entryOrCode?.code || entryOrCode);
   const origin = /^https?:$/.test(location.protocol) ? location.origin : "https://solivoc.vercel.app";
-  return `${origin.replace(/\/$/, "")}/?c=${code}`;
+  return `${origin.replace(/\/$/, "")}/d/${code}`;
 }
 async function challengeInviteFile(entry) {
   const canvas = document.createElement("canvas");
@@ -581,9 +581,10 @@ async function shareChallengeEntry(entry) {
   try {
     const file = await challengeInviteFile(entry);
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
-      // Do not pass a separate `url`: Telegram and some other apps otherwise
-      // create a second message/link preview. The link stays in the image caption.
-      await navigator.share({ text: fileText, files: [file] });
+      // Keep one compact share payload: the invitation card already contains the
+      // short address visually, while `text` keeps the same clickable link in the
+      // message/caption. A separate `url` can create a duplicate preview in apps.
+      await navigator.share({ title: "Словасьянс — дуэль", text, files: [file] });
     } else if (navigator.share && /^https?:$/.test(location.protocol)) {
       await navigator.share({ text });
     } else if (navigator.clipboard?.writeText) {

@@ -197,7 +197,7 @@ function profileShowcaseMarkup() {
   const featured=(profile.featuredAchievements||[]).map((id)=>ACHIEVEMENTS.find((a)=>a.id===id)).filter(Boolean).slice(0,3),
     rank=playerRank(profile), duels=duelHistorySummary();
   return `<section class="profile-showcase hub-section"><div class="hub-section-head"><h3>Визитка игрока</h3><small>${escapeHtml(rank.name)}</small></div>
-    <div class="profile-showcase-grid"><div><span>Любимая категория</span><b>${profile.favoriteCategory?`${categoryDisplayIcon(profile.favoriteCategory)} ${escapeHtml(profileFavoriteLabel())}`:"—"}</b></div><div><span>Ежедневная серия</span><b>🔥 ${profile.daily.currentStreak||0}</b></div><div><span>Дуэли</span><b>${duels.wins}:${duels.losses}</b></div><div><span>Всего звёзд</span><b>★ ${profile.totalStars||0}</b></div></div>
+    <div class="profile-showcase-grid"><div><span>Любимая категория</span><b>${profile.favoriteCategory?`${categoryDisplayIcon(profile.favoriteCategory)} ${escapeHtml(profileFavoriteLabel())}`:"—"}</b></div><div><span>Ежедневная серия</span><b>🔥 ${profile.daily.currentStreak||0}</b></div><div><span>Дуэли</span><b>${duels.wins}:${duels.losses}</b></div><div><span>Звёзды уровней</span><b>★ ${profile.totalStars||0}</b></div></div>
     <div class="featured-achievements">${featured.length?featured.map((a)=>`<span title="${escapeHtml(a.title)}"><i>${a.icon}</i><b>${escapeHtml(a.title)}</b></span>`).join(""):`<small>Выбери до 3 достижений в редакторе профиля</small>`}</div>
   </section>`;
 }
@@ -218,6 +218,8 @@ function leaderboardValues() {
 }
 function leaderboardPayload(){return{playerId:profile.playerId||"",name:profile.playerName||"Игрок",avatar:profile.avatarEmoji||"🙂",values:leaderboardValues()};}
 let leaderboardSyncAt=0;
+const LEADERBOARD_CACHE_TTL=120000;
+let leaderboardCache={at:0,boards:{},promise:null};
 async function syncLeaderboardNonBlocking(force=false){
   if(!/^https?:$/.test(location.protocol)||navigator.onLine===false||!profile.playerId||!(typeof accountSignedIn==="function"&&accountSignedIn()))return false;
   if(!force&&Date.now()-leaderboardSyncAt<30000)return false;leaderboardSyncAt=Date.now();
@@ -231,25 +233,55 @@ function leaderboardValueLabel(board,value){
   if(board==="combo")return `×${value}`;
   return String(value);
 }
+function dedupeOwnLeaderboardRows(entries=[]){
+  const list=Array.isArray(entries)?entries:[], meId=String(profile.playerId||""), meName=String(profile.playerName||"Игрок").trim().toLowerCase(), meAvatar=String(profile.avatarEmoji||"🙂");
+  const hasCurrent=!!meId&&list.some((x)=>String(x.playerId||"")===meId);
+  return list.filter((x)=>{
+    const isCurrent=String(x.playerId||"")===meId;
+    if(isCurrent||!hasCurrent)return true;
+    const looksLikeLegacy=String(x.name||"").trim().toLowerCase()===meName&&String(x.avatar||"")===meAvatar;
+    return !looksLikeLegacy;
+  }).map((x,index)=>({...x,rank:index+1}));
+}
+function renderLeaderboardEntries(board,entries){
+  const list=$("#leaderboardList");if(!list)return;
+  const clean=dedupeOwnLeaderboardRows(entries);
+  list.innerHTML=clean.length?clean.map((x)=>`<div class="leaderboard-row ${x.playerId===profile.playerId?"me":""}"><b>${x.rank}</b><span>${escapeHtml(x.avatar||"🙂")}</span><div><strong>${escapeHtml(x.name||"Игрок")}</strong>${x.playerId===profile.playerId?"<small>Это ты</small>":""}</div><em>${escapeHtml(leaderboardValueLabel(board,x.value))}</em></div>`).join(""):`<div class="empty-state">Здесь пока нет результатов. Сыграй первым!</div>`;
+}
+async function fetchLeaderboardSnapshot(force=false){
+  if(!force&&leaderboardCache.at&&Date.now()-leaderboardCache.at<LEADERBOARD_CACHE_TTL)return leaderboardCache.boards;
+  if(leaderboardCache.promise)return leaderboardCache.promise;
+  leaderboardCache.promise=(async()=>{
+    const c=new AbortController(),t=setTimeout(()=>c.abort(),3200);
+    try{
+      const r=await fetch("/api/leaderboard?board=all",{cache:"no-store",signal:c.signal});
+      if(!r.ok)throw new Error("leaderboard unavailable");
+      const data=await r.json(),boards=data?.boards&&typeof data.boards==="object"?data.boards:{};
+      leaderboardCache={at:Date.now(),boards,promise:null};
+      return boards;
+    } finally {clearTimeout(t);if(leaderboardCache.promise)leaderboardCache.promise=null;}
+  })();
+  return leaderboardCache.promise;
+}
 async function loadLeaderboardBoard(board){
   const list=$("#leaderboardList");if(!list)return;
-  list.innerHTML=`<div class="empty-state">Загружаю лидеров…</div>`;
   if(navigator.onLine===false||!/^https?:$/.test(location.protocol)){list.innerHTML=`<div class="empty-state">Лидеры доступны при подключении к интернету. Сама игра продолжает работать офлайн.</div>`;return;}
-  await syncLeaderboardNonBlocking(true);
-  try{
-    const c=new AbortController(),t=setTimeout(()=>c.abort(),2200),r=await fetch(`/api/leaderboard?board=${encodeURIComponent(board)}`,{cache:"no-store",signal:c.signal});clearTimeout(t);
-    if(!r.ok)throw new Error("leaderboard unavailable");const data=await r.json(),entries=Array.isArray(data.entries)?data.entries:[];
-    list.innerHTML=entries.length?entries.map((x)=>`<div class="leaderboard-row ${x.playerId===profile.playerId?"me":""}"><b>${x.rank}</b><span>${escapeHtml(x.avatar||"🙂")}</span><div><strong>${escapeHtml(x.name||"Игрок")}</strong>${x.playerId===profile.playerId?"<small>Это ты</small>":""}</div><em>${escapeHtml(leaderboardValueLabel(board,x.value))}</em></div>`).join(""):`<div class="empty-state">Здесь пока нет результатов. Сыграй первым!</div>`;
-  }catch{list.innerHTML=`<div class="empty-state">Не удалось загрузить лидеров. Игра офлайн остаётся доступна.</div>`;}
+  if(Array.isArray(leaderboardCache.boards?.[board]))renderLeaderboardEntries(board,leaderboardCache.boards[board]);
+  else list.innerHTML=`<div class="empty-state">Загружаю лидеров…</div>`;
+  try{const boards=await fetchLeaderboardSnapshot(false);renderLeaderboardEntries(board,boards?.[board]||[]);}catch{if(!Array.isArray(leaderboardCache.boards?.[board]))list.innerHTML=`<div class="empty-state">Не удалось загрузить лидеров. Игра офлайн остаётся доступна.</div>`;}
 }
 function closeLeaderboardModal(){const m=$("#leaderboardModal");if(!m)return;m.classList.remove("show");m.setAttribute("aria-hidden","true");}
 function openLeaderboardModal(board="stars"){
   const modal=$("#leaderboardModal"),tabs=$("#leaderboardTabs");if(!modal||!tabs)return false;
-  const select=(id)=>{const valid=LEADERBOARD_DEFS.some((x)=>x.id===id)?id:"stars";tabs.querySelectorAll("[data-leaderboard]").forEach((b)=>b.classList.toggle("active",b.dataset.leaderboard===valid));loadLeaderboardBoard(valid);};
+  let activeBoard=LEADERBOARD_DEFS.some((x)=>x.id===board)?board:"stars";
+  const select=(id)=>{activeBoard=LEADERBOARD_DEFS.some((x)=>x.id===id)?id:"stars";tabs.querySelectorAll("[data-leaderboard]").forEach((b)=>b.classList.toggle("active",b.dataset.leaderboard===activeBoard));loadLeaderboardBoard(activeBoard);};
   tabs.innerHTML=LEADERBOARD_DEFS.map((x)=>`<button type="button" data-leaderboard="${x.id}">${x.icon} ${x.label}</button>`).join("");
   tabs.querySelectorAll("[data-leaderboard]").forEach((btn)=>btn.onclick=()=>select(btn.dataset.leaderboard));
   $("#leaderboardClose").onclick=closeLeaderboardModal;modal.onclick=(e)=>{if(e.target===modal)closeLeaderboardModal();};
-  modal.classList.add("show");modal.setAttribute("aria-hidden","false");select(board);return true;
+  modal.classList.add("show");modal.setAttribute("aria-hidden","false");select(activeBoard);
+  // Sync once per opening cycle. Tabs only read the single cached snapshot.
+  syncLeaderboardNonBlocking(false).then((changed)=>{if(!changed)return;leaderboardCache.at=0;fetchLeaderboardSnapshot(true).then((boards)=>{if(modal.classList.contains("show"))renderLeaderboardEntries(activeBoard,boards?.[activeBoard]||[]);}).catch(()=>{});});
+  return true;
 }
 
 function completedDuelEntries() {
