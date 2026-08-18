@@ -41,14 +41,24 @@ function rankRewardsRoadmapMarkup(limit = 5) {
   }
   return `<section class="hub-section rank-roadmap"><div class="hub-section-head"><div><h3>Награды за ранг</h3><small>что откроется дальше</small></div><strong>Ранг ${xp.level}</strong></div><div class="rank-roadmap-list">${rows.join("")}</div></section>`;
 }
+function loginRewardDays(p = profile) {
+  const retentionDays = Math.max(0, +(p?.retention?.totalOpenDays || 0));
+  const openDays = Array.isArray(p?.retention?.openDays) ? p.retention.openDays.length : 0;
+  const dailyDays = Array.isArray(p?.daily?.completedDates) ? p.daily.completedDates.length : 0;
+  const streak = Math.max(0, +(p?.daily?.bestStreak || 0), +(p?.daily?.currentStreak || 0));
+  return Math.max(retentionDays, openDays, dailyDays, streak);
+}
 function loginRewardsMarkup() {
-  const days = profile.retention?.totalOpenDays || 0;
+  const days = loginRewardDays(profile);
+  if (profile.retention) profile.retention.totalOpenDays = Math.max(profile.retention.totalOpenDays || 0, days);
   const next = LOGIN_REWARD_DEFS.find((reward) => days < reward.days);
   return `<section class="hub-section login-rewards"><div class="hub-section-head"><div><h3>Награды за входы</h3><small>считаются разные дни, а не серия подряд</small></div><strong>${ruCount(days, "день", "дня", "дней")}</strong></div><div class="login-reward-grid">${LOGIN_REWARD_DEFS.map((reward)=>{const done=days>=reward.days, left=Math.max(0,reward.days-days);return `<div class="login-reward ${done?"done":""}"><i>${reward.emoji}</i><span><b>${reward.title}</b><small>${done?`Аватар ${reward.emoji} получен ✓`:`Аватар ${reward.emoji} · ещё ${ruCount(left, "день", "дня", "дней")}`}</small></span></div>`;}).join("")}</div>${next?`<p class="login-next">Следующая награда через <b>${ruCount(next.days-days, "день", "дня", "дней")}</b></p>`:`<p class="login-next complete">Все награды за входы открыты ✓</p>`}</section>`;
 }
 
 function awardXp(amount, reason = "", { notifyRank = true } = {}) {
   amount = Math.max(0, Math.round(+amount || 0));
+  const bday = typeof birthdayWeekInfo === "function" ? birthdayWeekInfo(profile) : { active: false };
+  if (bday.active) amount += Math.max(1, Math.round(amount * 0.15));
   if (!amount) return 0;
   const beforeLevel = playerXpLevel(profile), beforeRankDef = playerRank(profile), beforeXp = +profile.xp || 0;
   profile.xp = Math.max(0, beforeXp + amount);
@@ -154,6 +164,7 @@ function retentionSessionStart() {
     profile.retention.openDays.push(today);
     profile.retention.totalOpenDays = Math.max(+profile.retention.totalOpenDays || 0, profile.retention.openDays.length - 1) + 1;
   }
+  profile.retention.totalOpenDays = Math.max(profile.retention.totalOpenDays || 0, loginRewardDays(profile));
   if (profile.retention.openDays.length > 120) profile.retention.openDays = profile.retention.openDays.slice(-120);
   const returning = !!profile.retention.lastOpenDate && profile.retention.lastOpenDate !== today;
   profile.retention.lastOpenDate = today;

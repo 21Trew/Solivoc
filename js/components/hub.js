@@ -409,6 +409,7 @@ function renderProfileEditorForm(modal, content) {
   const frame = FRAME_DEFS.find((f) => f.id === profile.frame) || FRAME_DEFS[0];
   content.innerHTML = `<div class="profile-editor-head compact"><div class="profile-editor-avatar-preview" data-frame="${frame.id}" style="--frame-h:${frame.hue || 250}">${escapeHtml(profile.avatarEmoji || "🙂")}</div><div><small>РЕДАКТИРОВАНИЕ</small><h2>${escapeHtml(profile.playerName || "Игрок")}</h2></div></div>
     <div class="profile-editor-identity"><label class="profile-field"><span>Имя</span><input id="profileEditorName" maxlength="20" value="${escapeHtml(profile.playerName || "Игрок")}" autocomplete="off" spellcheck="false"></label><label class="profile-field"><span>Любимая категория</span><select id="profileFavoriteCategory"><option value="">Не выбрана</option>${discoveredAllCategoryIds?.().map((id)=>`<option value="${id}" ${profile.favoriteCategory===id?"selected":""}>${categoryDisplayIcon?.(id)||"✦"} ${escapeHtml(categoryDisplayName?.(id)||id)}</option>`).join("")||""}</select></label></div>
+    <label class="profile-field"><span>Дата рождения</span><input id="profileBirthDate" type="date" value="${escapeHtml(profile.birthDate || "")}" ${profile.birthDate ? "disabled" : ""}><small>${profile.birthDate ? `Дата зафиксирована: ${escapeHtml((typeof birthDateDisplay === "function" ? birthDateDisplay(profile.birthDate) : profile.birthDate) || profile.birthDate)}` : "Её можно указать только один раз. В день рождения ты получишь уникального маскота и неделю приятных бонусов."}</small></label>
     <details class="profile-compact-section"><summary><span>Аватар</span><small>${escapeHtml(profile.avatarEmoji || "🙂")} · выбрать</small></summary>${avatarEmojiMarkup(profile.avatarEmoji)}</details>
     <details class="profile-compact-section"><summary><span>Титул</span><small>${escapeHtml(titleCurrent().name)}</small></summary>${titlePillsMarkup(profile.titleId)}</details>
     <details class="profile-compact-section"><summary><span>Избранные достижения</span><small>до 3</small></summary><div class="featured-picker">${(profile.achievements||[]).map((id)=>ACHIEVEMENTS.find((a)=>a.id===id)).filter(Boolean).map((a)=>`<button type="button" class="featured-pick ${(profile.featuredAchievements||[]).includes(a.id)?"selected":""}" data-featured-achievement="${a.id}"><i>${escapeHtml(a.icon)}</i><span>${escapeHtml(a.title)}</span></button>`).join("")||`<small>Сначала получи достижение</small>`}</div></details>
@@ -435,6 +436,8 @@ function renderProfileEditorForm(modal, content) {
     if(availableAvatarEmojis(profile).includes(avatar)) profile.avatarEmoji=avatar;
     if(title&&titleUnlocked(title)) profile.titleId=title.id;
     profile.favoriteCategory=$("#profileFavoriteCategory")?.value||"";
+    const birthInput = $("#profileBirthDate")?.value || "";
+    if (!profile.birthDate && /^\d{4}-\d{2}-\d{2}$/.test(birthInput)) profile.birthDate = birthInput;
     profile.featuredAchievements=String(modal.dataset.featured||"").split(",").filter((id)=>profile.achievements.includes(id)).slice(0,3);
     saveProfile();
     showToast("Профиль сохранён");

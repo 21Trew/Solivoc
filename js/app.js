@@ -21,7 +21,7 @@ function showCompanionBubble(text, ms = 5200) {
   }
   const card = bubble.querySelector(".companion-bubble-card");
   if (!card) return;
-  card.textContent = text;
+  card.innerHTML = `<span>${escapeHtml(String(text || ""))}</span>`;
   bubble.hidden = false;
   bubble.style.left = `10px`;
   bubble.style.top = `10px`;
@@ -450,6 +450,7 @@ async function boot() {
     if (typeof accountSignedIn === "function" && accountSignedIn()) grantStarterCompanions?.({ notify: false });
     syncBossCompanionsFromProgress?.({ notify: false });
     syncAchievementCompanions?.({ notify: false });
+    syncBirthdayRewards?.();
     saveProfile?.({ skipCloud: true });
     setSplashProgress?.(55,"Собираю прогресс…");
     migrateCategoryMasteryProgress?.();
@@ -459,6 +460,7 @@ async function boot() {
     await syncServerDataOnBoot();
     syncBossCompanionsFromProgress?.({ notify: false });
     syncAchievementCompanions?.({ notify: false });
+    syncBirthdayRewards?.();
     saveProfile?.({ skipCloud: true });
     runQualityAudit?.();
 

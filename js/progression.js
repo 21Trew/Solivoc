@@ -20,19 +20,19 @@ function awardLevelXpWithCombo(baseXp, reason) {
 
 let specialIntroStartCallback = null;
 function specialLevelInfoLines(special) {
-  if (!special) return [];
-  const lines = [];
+  if (!special) return { desc: "", rule: "", quote: "" };
   const desc = String(special.desc || "").trim();
-  if (desc) lines.push(desc);
-  if (special.noHints && special.maxRecycles === 1) lines.push("Подсказки отключены, а колоду можно вернуть только один раз.");
-  else if (special.noHints) lines.push("Подсказки отключены — полагайся только на ассоциации.");
-  else if (Number.isFinite(special.maxUndos)) lines.push(`Доступно только ${ruCount(special.maxUndos, "отмена", "отмены", "отмен")}.`);
-  else if (Number.isFinite(special.maxRecycles)) lines.push(`Колоду можно вернуть только ${ruCount(special.maxRecycles, "раз", "раза", "раз")}.`);
-  else if (special.lockedSlot) lines.push("Один слот откроется после первой собранной категории.");
-  else if (special.mysteryCategories) lines.push("Названия категорий будут открываться по ходу решения.");
-  else if (special.bigMix) lines.push("В раскладе больше категорий и карточек, чем обычно.");
-  if (special.bossTaunt) lines.push(`«${special.bossTaunt}»`);
-  return [...new Set(lines.map((x)=>String(x).trim()).filter(Boolean))].slice(0, 2);
+  let rule = "";
+  if (!special.boss) {
+    if (special.noHints && special.maxRecycles === 1) rule = "Подсказки отключены, а колоду можно вернуть только 1 раз.";
+    else if (special.noHints) rule = "Подсказки отключены — полагайся только на ассоциации.";
+    else if (Number.isFinite(special.maxUndos)) rule = `Можно отменить ${special.maxUndos} ${ruPlural(special.maxUndos, "ход", "хода", "ходов")}.`;
+    else if (Number.isFinite(special.maxRecycles)) rule = `Колоду можно вернуть только ${special.maxRecycles} ${ruPlural(special.maxRecycles, "раз", "раза", "раз")}.`;
+    else if (special.lockedSlot) rule = "Последний слот откроется после 1 собранной категории.";
+    else if (special.mysteryCategories) rule = "Названия категорий будут открываться по ходу решения.";
+    else if (special.bigMix) rule = "Категорий и карточек здесь больше, чем в обычном уровне.";
+  }
+  return { desc, rule, quote: special.bossTaunt ? `«${special.bossTaunt}»` : "" };
 }
 function closeSpecialLevelIntro({ start = false } = {}) {
   const modal = $("#specialLevelModal");
@@ -47,14 +47,19 @@ function showSpecialLevelIntro(special, onStart) {
   const modal = $("#specialLevelModal");
   if (!modal || !special) { onStart?.(); return; }
   specialIntroStartCallback = typeof onStart === "function" ? onStart : null;
-  $("#specialLevelIcon").textContent = special.icon || "✦";
+  const iconEl = $("#specialLevelIcon");
+  if (iconEl) {
+    const companion = special.bossCompanionId ? companionDef(special.bossCompanionId) : null;
+    iconEl.innerHTML = companion ? `<img src="${companionAsset(companion)}" alt="${escapeHtml(companion.name)}">` : `<span>${escapeHtml(special.icon || "✦")}</span>`;
+  }
   $("#specialLevelEyebrow").textContent = special.boss ? "ФИНАЛ ГЛАВЫ" : "ОСОБЫЙ УРОВЕНЬ";
   $("#specialLevelTitle").textContent = special.title || "Испытание";
   const lines = specialLevelInfoLines(special);
-  const descEl=$("#specialLevelDesc"), ruleEl=$("#specialLevelRule");
-  descEl.textContent = lines[0] || "Особый расклад — правило видно до старта.";
-  ruleEl.textContent = lines[1] || "";
-  ruleEl.hidden = !lines[1];
+  const descEl=$("#specialLevelDesc"), quoteEl=$("#specialLevelQuote"), ruleEl=$("#specialLevelRule");
+  descEl.textContent = lines.desc || "Особый расклад — правило видно до старта.";
+  if (quoteEl) { quoteEl.textContent = lines.quote || ""; quoteEl.hidden = !lines.quote; }
+  ruleEl.textContent = lines.rule || "";
+  ruleEl.hidden = !lines.rule;
   $("#specialLevelStart").textContent = special.boss ? "Начать финал →" : "Начать испытание →";
   $("#specialLevelStart").onclick = () => closeSpecialLevelIntro({ start: true });
   modal.classList.add("show");
@@ -293,7 +298,7 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
     perfect = stars === 3,
     moves = state.run.moves || 0;
 
-  const cleanPraise = ["Идеальное прохождение!", "Безупречно!", "Ни единой ошибки!", "Вот это точность!", "Чистая победа!", "Сыграно идеально!"];
+  const cleanPraise = ["Идеальное прохождение!", "Безупречно!", "Ни единой ошибки!", "Вот это точность!", "Чистая победа!", "Сыграно идеально!", "Просто блеск!", "Ты разнёс этот уровень!"];
   const titles = {
     daily: "Ежедневный расклад пройден!",
     challenge: "Дуэль завершена!",
@@ -304,7 +309,7 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
     time: "Готово вовремя!", moves: "Лимит ходов соблюдён!", combo: "Комбо собрано!", noMistakes: cleanPraise[Math.floor(Math.random()*cleanPraise.length)], onePass: "Колода пройдена за один круг!", custom: "Твои правила выполнены!",
   };
   $("#winTitle").textContent =
-    state.failed ? "Почти! Попробуй ещё раз" : state.mode === "tutorial" ? `Обучение ${state.tutorialStep}/3` : titles[state.mode] || `Уровень ${state.level} пройден`;
+    state.failed ? "Почти! Попробуй ещё раз" : state.mode === "tutorial" ? `Обучение ${state.tutorialStep}/3` : (perfect && state.mode === "regular" ? cleanPraise[Math.floor(Math.random()*cleanPraise.length)] : (titles[state.mode] || `Уровень ${state.level} пройден`));
 
   const companion = typeof ensureCompanionSelection === "function" ? ensureCompanionSelection(profile) : (typeof companionDef === "function" ? companionDef(profile?.settings?.companion) : null);
   const companionImage = $("#winCompanionImage"), companionText = $("#winCompanionText");
@@ -350,12 +355,11 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
 
   const recordEl = $("#winRecord");
   if (recordEl) {
-    const metric = typeof ruleMetricText === "function" ? ruleMetricText(state) : "";
-    const recordText = metric ? `${metric}${record?.isNew?" · рекорд":""}` : record?.isNew
-      ? `↯ ${ruCount(moves, "ход", "хода", "ходов")} · Новый рекорд`
-      : `↯ ${ruCount(moves, "ход", "хода", "ходов")}`;
+    const metricModes = ["time","moves","combo","onePass","custom","challenge","marathon"];
+    const metric = metricModes.includes(state.mode) && typeof ruleMetricText === "function" ? ruleMetricText(state) : "";
+    const recordText = metric ? `${metric}${record?.isNew?" · рекорд":""}` : "";
     recordEl.textContent = recordText;
-    recordEl.hidden = state.mode === "noMistakes" || recordText.includes("Без ошибок");
+    recordEl.hidden = !recordText;
     recordEl.classList.toggle("new-record", !!record?.isNew);
   }
 
@@ -363,14 +367,14 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
   const totalXp = Math.max(0, +(state.run?.xpEarned || 0));
   const baseXp = Math.max(0, Math.min(totalXp, +(state.run?.xpBaseEarned || totalXp)));
   const bonusXp = Math.max(0, totalXp - baseXp);
-  if (xpEl) xpEl.innerHTML = `<b data-win-xp-counter>+${baseXp} XP</b>`;
+  if (xpEl) xpEl.innerHTML = `<b data-win-xp-counter>+${baseXp} XP</b><span class="win-xp-seq" id="winXpSeq"></span>`;
   const goalsEl = $("#winGoals");
   if (goalsEl && typeof nearGoalsMarkup === "function") goalsEl.innerHTML = nearGoalsMarkup(2);
 
   const shareBtn = $("#winShare");
   if (shareBtn) {
     shareBtn.hidden = state.mode === "tutorial";
-    shareBtn.textContent = state.mode === "challenge" ? "⚔ Поделиться дуэлью" : "↗ Поделиться уровнем";
+    shareBtn.textContent = state.mode === "challenge" ? "⚔ Поделиться дуэлью" : "↗ Поделиться";
   }
 
   const unlockEl = $("#winUnlock");
@@ -386,7 +390,7 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
             : state.mode === "challenge"
               ? state.challengeRole === "guest" ? "Результат отправляется сопернику" : state.challengeRole === "creator" ? "Твой результат сохранён. Ждём соперника." : "Результат сохранён для этой дуэли"
               : "";
-  if (unlockEl) { unlockEl.textContent = unlockText; unlockEl.hidden = !unlockText; }
+  if (unlockEl) { unlockEl.textContent = unlockText; unlockEl.hidden = true; }
   $("#next").textContent =
     state.mode === "tutorial"
       ? state.tutorialStep < 3
@@ -411,29 +415,44 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
   modal.setAttribute("aria-hidden", "false");
   modal.classList.add("show");
 
-  if (!state.failed && bonusXp > 0) {
+  if (!state.failed) {
     const timer = setTimeout(() => {
       if (!modal.classList.contains("show")) return;
-      const popup = $("#xpBonusBurst"), counter = $("[data-win-xp-counter]");
-      const details = [];
-      if ((state.run?.comboXpBonus || 0) > 0) details.push(`комбо ×${state.run.comboXpCombo || 0}`);
-      if (bonusDone) details.push(`бонус «${state.bonusObjective?.title || "цель"}»`);
-      if (popup) {
-        popup.querySelector("b").textContent = `+${bonusXp} XP`;
-        popup.querySelector("span").textContent = details.join(" · ") || "бонус за прохождение";
-        popup.classList.remove("show"); void popup.offsetWidth; popup.classList.add("show");
-        setTimeout(() => popup.classList.remove("show"), 1500);
-      }
-      if (counter) {
-        const started = performance.now(), duration = 720;
+      const popup = $("#xpBonusBurst"), counter = $("[data-win-xp-counter]"), seq = $("#winXpSeq");
+      const bonuses = [];
+      const comboBonus = Math.max(0, state.run?.comboXpBonus || 0);
+      const objectiveBonus = bonusDone ? 35 : 0;
+      const birthdayActive = typeof birthdayWeekInfo === "function" ? birthdayWeekInfo(profile).active : false;
+      const birthdayBonus = birthdayActive ? Math.max(1, Math.round((baseXp + comboBonus) * 0.15)) + (objectiveBonus ? Math.max(1, Math.round(objectiveBonus * 0.15)) : 0) : 0;
+      if (comboBonus > 0) bonuses.push({ amount: comboBonus, label: `за комбо ×${state.run.comboXpCombo || 0}` });
+      if (objectiveBonus > 0) bonuses.push({ amount: objectiveBonus, label: `за бонус «${state.bonusObjective?.title || "цель"}»` });
+      if (birthdayBonus > 0) bonuses.push({ amount: birthdayBonus, label: "за праздничную неделю" });
+      let current = baseXp;
+      const animateCounter = (from, to, duration = 420) => {
+        const started = performance.now();
         const tick = (now) => {
           const p = Math.min(1, (now - started) / duration), eased = 1 - Math.pow(1-p, 3);
-          counter.textContent = `+${Math.round(baseXp + (totalXp-baseXp)*eased)} XP`;
+          counter.textContent = `+${Math.round(from + (to - from) * eased)} XP`;
           if (p < 1 && modal.classList.contains("show")) requestAnimationFrame(tick);
         };
         requestAnimationFrame(tick);
-      }
-      playSfx?.("combo", .8); haptic?.([10,18,12]);
+      };
+      bonuses.filter((bonus) => bonus.amount > 0).forEach((bonus, index) => {
+        const innerTimer = setTimeout(() => {
+          if (!modal.classList.contains("show")) return;
+          if (seq) { seq.textContent = `+${bonus.amount} XP ${bonus.label}`; seq.classList.remove("show"); void seq.offsetWidth; seq.classList.add("show"); }
+          if (popup) {
+            popup.querySelector("b").textContent = `+${bonus.amount} XP`;
+            popup.querySelector("span").textContent = bonus.label;
+            popup.classList.remove("show"); void popup.offsetWidth; popup.classList.add("show");
+            setTimeout(() => popup.classList.remove("show"), 1500);
+          }
+          animateCounter(current, current + bonus.amount);
+          current += bonus.amount;
+          playSfx?.("combo", .8); haptic?.([10,18,12]);
+        }, index * 740);
+        winRevealTimers.push(innerTimer);
+      });
     }, 850);
     winRevealTimers.push(timer);
   }

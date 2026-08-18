@@ -18,7 +18,7 @@ function render() {
     slot.dataset.zone = "slot";
     slot.dataset.index = i;
     if (g) {
-      const card = cardNode(g, "movable");
+      const card = cardNode(g, "");
       card.dataset.source = "slot";
       card.dataset.index = i;
       slot.appendChild(card);

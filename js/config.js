@@ -3,9 +3,9 @@ let BANK = [];
 const SAVE_KEY = "worditaire-state-v10";
 const SAVE_BACKUP_KEY = "worditaire-state-v10-backup";
 const OLD_SAVE_KEY = "assoc-klondike-v7";
-const PROFILE_KEY = "worditaire-profile-v6";
-const PREV_PROFILE_KEY = "worditaire-profile-v5";
-const LEGACY_PROFILE_KEYS = ["worditaire-profile-v4", "worditaire-profile-v3", "worditaire-profile-v2"];
+const PROFILE_KEY = "worditaire-profile-v7";
+const PREV_PROFILE_KEY = "worditaire-profile-v6";
+const LEGACY_PROFILE_KEYS = ["worditaire-profile-v5", "worditaire-profile-v4", "worditaire-profile-v3", "worditaire-profile-v2"];
 const ANALYTICS_KEY = "worditaire-analytics-v1";
 const RECENT_KEY = "assoc-recent-categories-v2";
 const MAX_CARD_WORD_LEN = 10,
@@ -33,16 +33,17 @@ function appIconDef(id) { return APP_ICON_DEFS.find((x) => x.id === id) || APP_I
 const COMPANION_DEFS = Object.freeze([
   { id: "owl", name: "Мудрая сова", image: "./icons/mascot-owl.svg", role: "Научный наставник", unlockLabel: "За регистрацию аккаунта", starter: true, personality: "спокойная, любознательная и немного профессорская", lore: "Мудрая сова любит объяснять сложное простыми словами. Она подмечает закономерности, делится научными фактами и всегда подталкивает к вдумчивой победе." },
   { id: "cat", name: "Кот-учёный", image: "./icons/mascot-cat.svg", role: "Весёлый напарник", unlockLabel: "За регистрацию аккаунта", starter: true, personality: "ироничный, тёплый и очень харизматичный", lore: "Кот-учёный обожает похвалу, каламбуры и красивые победы. Он встречает успех мягкой самоиронией и превращает каждый уровень в маленькое приключение." },
-  { id: "fox", name: "Хитрый лис", emoji: "🦊", role: "Ловкий стратег", unlockChapter: 3, bossReward: true, rewardText: "Приручён после финала главы 3", personality: "быстрый, остроумный и чуть ехидный", lore: "Хитрый лис любит запутывать соперника и проверять, умеешь ли ты замечать тонкие связи. После победы он признаёт умного игрока своим." },
-  { id: "bear", name: "Сильный медведь", emoji: "🐻", role: "Надёжный защитник", unlockChapter: 6, bossReward: true, rewardText: "Приручён после финала главы 6", personality: "спокойный, основательный и уверенный", lore: "Сильный медведь не любит суету. Он уважает выдержку, точность и победы, которые добыты без паники." },
-  { id: "raven", name: "Умный ворон", emoji: "🐦‍⬛", role: "Колкий умник", unlockChapter: 9, bossReward: true, rewardText: "Приручён после финала главы 9", personality: "язвительный, наблюдательный и очень сообразительный", lore: "Умный ворон замечает ошибки раньше всех и обожает острые фразы. Но ещё больше он уважает игрока, который умеет удивлять." },
-  { id: "wolf", name: "Серый волк", emoji: "🐺", role: "Упрямый следопыт", unlockChapter: 12, bossReward: true, rewardText: "Приручён после финала главы 12", personality: "собранный, настойчивый и прямой", lore: "Серый волк идёт по следу до конца. Он любит тех, кто не сдаётся после первой же сложной комбинации." },
-  { id: "tiger", name: "Грозный тигр", emoji: "🐯", role: "Гордый соперник", unlockChapter: 15, bossReward: true, rewardText: "Приручён после финала главы 15", personality: "эффектный, громкий и соревновательный", lore: "Грозный тигр появляется там, где нужен вызов посерьёзнее. Он уважает только тех, кто не пугается давления." },
-  { id: "panda", name: "Спокойная панда", emoji: "🐼", role: "Невозмутимый тактик", unlockChapter: 18, bossReward: true, rewardText: "Приручён после финала главы 18", personality: "неторопливая, мягкая и сосредоточенная", lore: "Спокойная панда напоминает: не каждая победа должна быть шумной. Иногда лучший ход — самый тихий и точный." },
-  { id: "frog", name: "Ловкая лягушка", emoji: "🐸", role: "Зелёная выдумщица", unlockChapter: 21, bossReward: true, rewardText: "Приручена после финала главы 21", personality: "смешливая, резкая и непредсказуемая", lore: "Ловкая лягушка любит неожиданные решения и нестандартные ассоциации. С ней игра всегда становится чуть веселее." },
-  { id: "octopus", name: "Умный осьминог", emoji: "🐙", role: "Мастер сложных ходов", unlockChapter: 24, bossReward: true, rewardText: "Приручён после финала главы 24", personality: "спокойный, системный и многозадачный", lore: "Умный осьминог умеет держать в голове сразу несколько вариантов. Он ценит порядок мысли и длинные цепочки верных решений." },
-  { id: "gandalf", name: "Гендальф", emoji: "🧙‍♂️", role: "Легендарный босс", unlockChapter: 100, bossReward: true, rewardText: "Приручён после финала главы 100", personality: "величественный, суровый и мудрый", lore: "Гендальф встречает только тех, кто добрался до сотой главы. Его уважение нужно заслужить — и эта победа запоминается надолго." },
-  { id: "clip", name: "Скрепка", emoji: "📎", role: "Легендарный советчик", achievementId: "retro90", rewardText: "Открыта за достижение «Я из 90-х»", personality: "деловая, смешная и ностальгическая", lore: "Скрепка с глазами словно сбежала из старого компьютера девяностых. Она любит советы, ретро-настроение и большие коллекции пройденных режимов." },
+  { id: "fox", name: "Хитрый лис", image: "./icons/mascot-fox.svg", emoji: "🦊", role: "Ловкий стратег", unlockChapter: 3, bossReward: true, rewardText: "Приручён после финала главы 3", personality: "быстрый, остроумный и чуть ехидный", lore: "Хитрый лис любит запутывать соперника и проверять, умеешь ли ты замечать тонкие связи. После победы он признаёт умного игрока своим." },
+  { id: "bear", name: "Сильный медведь", image: "./icons/mascot-bear.svg", emoji: "🐻", role: "Надёжный защитник", unlockChapter: 6, bossReward: true, rewardText: "Приручён после финала главы 6", personality: "спокойный, основательный и уверенный", lore: "Сильный медведь не любит суету. Он уважает выдержку, точность и победы, которые добыты без паники." },
+  { id: "raven", name: "Умный ворон", image: "./icons/mascot-raven.svg", emoji: "🐦‍⬛", role: "Колкий умник", unlockChapter: 9, bossReward: true, rewardText: "Приручён после финала главы 9", personality: "язвительный, наблюдательный и очень сообразительный", lore: "Умный ворон замечает ошибки раньше всех и обожает острые фразы. Но ещё больше он уважает игрока, который умеет удивлять." },
+  { id: "wolf", name: "Серый волк", image: "./icons/mascot-wolf.svg", emoji: "🐺", role: "Упрямый следопыт", unlockChapter: 12, bossReward: true, rewardText: "Приручён после финала главы 12", personality: "собранный, настойчивый и прямой", lore: "Серый волк идёт по следу до конца. Он любит тех, кто не сдаётся после первой же сложной комбинации." },
+  { id: "tiger", name: "Грозный тигр", image: "./icons/mascot-tiger.svg", emoji: "🐯", role: "Гордый соперник", unlockChapter: 15, bossReward: true, rewardText: "Приручён после финала главы 15", personality: "эффектный, громкий и соревновательный", lore: "Грозный тигр появляется там, где нужен вызов посерьёзнее. Он уважает только тех, кто не пугается давления." },
+  { id: "panda", name: "Спокойная панда", image: "./icons/mascot-panda.svg", emoji: "🐼", role: "Невозмутимый тактик", unlockChapter: 18, bossReward: true, rewardText: "Приручён после финала главы 18", personality: "неторопливая, мягкая и сосредоточенная", lore: "Спокойная панда напоминает: не каждая победа должна быть шумной. Иногда лучший ход — самый тихий и точный." },
+  { id: "frog", name: "Ловкая лягушка", image: "./icons/mascot-frog.svg", emoji: "🐸", role: "Зелёная выдумщица", unlockChapter: 21, bossReward: true, rewardText: "Приручена после финала главы 21", personality: "смешливая, резкая и непредсказуемая", lore: "Ловкая лягушка любит неожиданные решения и нестандартные ассоциации. С ней игра всегда становится чуть веселее." },
+  { id: "octopus", name: "Умный осьминог", image: "./icons/mascot-octopus.svg", emoji: "🐙", role: "Мастер сложных ходов", unlockChapter: 24, bossReward: true, rewardText: "Приручён после финала главы 24", personality: "спокойный, системный и многозадачный", lore: "Умный осьминог умеет держать в голове сразу несколько вариантов. Он ценит порядок мысли и длинные цепочки верных решений." },
+  { id: "gandalf", name: "Гендальф", image: "./icons/mascot-gandalf.svg", emoji: "🧙‍♂️", role: "Легендарный босс", unlockChapter: 100, bossReward: true, rewardText: "Приручён после финала главы 100", personality: "величественный, суровый и мудрый", lore: "Гендальф встречает только тех, кто добрался до сотой главы. Его уважение нужно заслужить — и эта победа запоминается надолго." },
+  { id: "clip", name: "Скрепка", image: "./icons/mascot-clip.svg", emoji: "📎", role: "Легендарный советчик", achievementId: "retro90", rewardText: "Открыта за достижение «Я из 90-х»", personality: "деловая, смешная и ностальгическая", lore: "Скрепка с глазами словно сбежала из старого компьютера девяностых. Она любит советы, ретро-настроение и большие коллекции пройденных режимов." },
+  { id: "birthday", name: "Праздничная капибара", image: "./icons/mascot-birthday.svg", role: "Именинный маскот", unlockLabel: "Открывается в день рождения", rewardText: "Открыта в день рождения", personality: "очень доброжелательная, уютная и праздничная", lore: "Праздничная капибара приходит только на день рождения игрока. Она приносит поздравления, неделю бонусов и напоминает, что повод порадовать себя тоже важен." },
 ]);
 function companionDef(id) { return COMPANION_DEFS.find((x) => x.id === id) || COMPANION_DEFS[0]; }
 function companionUnlocked(def, p = profile) {
@@ -216,6 +217,52 @@ function companionWinLine(id = profile?.settings?.companion, perfect = false) {
   if (companionId === "gandalf") return perfect ? "Гендальф склоняет посох: ты действительно прошёл." : "Гендальф признаёт силу твоего хода.";
   if (companionId === "clip") return perfect ? "Скрепка сияет: это прохождение достойно лучших 90-х." : "Скрепка подмигивает: отличный файл... то есть уровень.";
   return companionFact("owl");
+}
+
+function birthDateDisplay(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return "";
+  const [year, month, day] = String(value).split("-");
+  return `${day}.${month}.${year}`;
+}
+function isBirthdayDate(birthDate, date = new Date()) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(birthDate || ""))) return false;
+  const [, month, day] = String(birthDate).split("-").map(Number);
+  return month === date.getMonth() + 1 && day === date.getDate();
+}
+function birthdayWeekInfo(p = profile, date = new Date()) {
+  const birthDate = p?.birthDate;
+  if (!isBirthdayDate(birthDate, date) && !p?.birthdayWeek?.start) return { active: false, daysLeft: 0 };
+  const start = p?.birthdayWeek?.start ? new Date(p.birthdayWeek.start) : null;
+  const end = p?.birthdayWeek?.end ? new Date(p.birthdayWeek.end) : null;
+  if (!start || !end) return { active: false, daysLeft: 0 };
+  const today = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const finish = new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime();
+  if (today > finish) return { active: false, daysLeft: 0 };
+  return { active: true, daysLeft: Math.max(0, Math.round((finish - today) / 86400000)), start, end };
+}
+function startBirthdayWeek(date = new Date()) {
+  if (!profile?.birthDate) return false;
+  const year = date.getFullYear();
+  profile.birthdayWeek ||= { lastCelebratedYear: 0, start: "", end: "" };
+  if (profile.birthdayWeek.lastCelebratedYear === year) return false;
+  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+  profile.birthdayWeek.start = localDateKey(start);
+  profile.birthdayWeek.end = localDateKey(end);
+  profile.birthdayWeek.lastCelebratedYear = year;
+  unlockCompanion("birthday", { notify: true, select: false });
+  profile.notifications ||= [];
+  if (typeof DEVELOPER_MESSAGES !== "undefined" && Array.isArray(profile.developerMailSeen)) {
+    const msgId = `birthday-${year}`;
+    profile.developerMailDeleted = (profile.developerMailDeleted || []).filter((id) => String(id) !== msgId);
+  }
+  saveProfile?.();
+  return true;
+}
+function syncBirthdayRewards(date = new Date()) {
+  if (!profile?.birthDate) return false;
+  if (isBirthdayDate(profile.birthDate, date)) return startBirthdayWeek(date);
+  return false;
 }
 
 const APP_ICON_FRAME_DEFS = Object.freeze([
@@ -620,7 +667,10 @@ function associationCollectionCategories(id) {
       : collection.id === "transport" ? "transport"
       : collection.id === "safety" ? "safety"
       : collection.id,
-    conflictGroups: VISUAL_WORD_CONFLICT_GROUPS[collection.id] || [],
+    conflictGroups: [
+      ...(VISUAL_WORD_CONFLICT_GROUPS[collection.id] || []),
+      ...(collection.id === "safety" && cat.id === "cyber" ? ["tech_work"] : []),
+    ],
     words: cat.cards.map(([emoji]) => emoji),
     visualLabels: Object.fromEntries(cat.cards),
   }));
@@ -711,7 +761,7 @@ const SPECIAL_LEVELS = [
   { id: "no-hints", icon: "◈", title: "Без подсказок", desc: "Подсказки отключены", offset: 5, noHints: true },
   { id: "precise", icon: "◇", title: "Точный расклад", desc: "Доступна только одна отмена", offset: 10, maxUndos: 1 },
   { id: "one-recycle", icon: "↻", title: "Одна прокрутка", desc: "Колоду можно вернуть только один раз", offset: 15, maxRecycles: 1 },
-  { id: "big-mix", icon: "✦", title: "Большая коллекция", desc: "Больше категорий и слов", offset: 20, bigMix: true },
+  { id: "big-mix", icon: "✦", title: "Большой набор", desc: "Больше категорий и слов", offset: 20, bigMix: true },
 ];
 
 const THEME_DEFS = [

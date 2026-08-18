@@ -13,8 +13,7 @@ function getDragPayload(card) {
     return c ? { source, groups: [{ cards: [c], faceUp: true }] } : null;
   }
   if (source === "slot") {
-    const si = +card.dataset.index;
-    return { source, si, groups: [state.slots[si]] };
+    return null;
   }
   return null;
 }
