@@ -606,7 +606,7 @@ function base64UrlToUint8Array(value) {
 async function pushApi(body) {
   const controller = new AbortController(), timer = setTimeout(()=>controller.abort(), 5500);
   try {
-    const res = await fetch("/api/push",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),cache:"no-store",signal:controller.signal});
+    const res = await apiFetch("/api/push",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),cache:"no-store",signal:controller.signal});
     const data = await res.json().catch(()=>({}));
     if (!res.ok) { const err=new Error(data.message||data.error||`Push ${res.status}`); err.status=res.status; throw err; }
     return data;
@@ -638,7 +638,7 @@ async function registerPushNotifications(challengeEntry = null) {
   const reg = await navigator.serviceWorker.ready;
   let sub = await reg.pushManager.getSubscription();
   if (!sub) {
-    const keyRes = await fetch("/api/push?action=key",{cache:"no-store"}), keyData = await keyRes.json();
+    const keyRes = await apiFetch("/api/push?action=key",{cache:"no-store"}), keyData = await keyRes.json();
     if (!keyRes.ok || !keyData.publicKey) throw new Error("VAPID key is not configured");
     sub = await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToUint8Array(keyData.publicKey)});
   }

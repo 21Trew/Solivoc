@@ -7,6 +7,9 @@
     "nodemailer": "^9.0.3"
   },
   "scripts": {
-    "vapid": "web-push generate-vapid-keys --json"
+    "vapid": "web-push generate-vapid-keys --json",
+    "build:timeweb": "node scripts/build-timeweb.mjs",
+    "build:yandex": "node scripts/build-yandex.mjs",
+    "build:deploy": "npm run build:timeweb && npm run build:yandex"
   }
 }

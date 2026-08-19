@@ -1,4 +1,4 @@
-const CACHE = "worditaire-v48";
+const CACHE = "worditaire-v49";
 const CORE = [
   "./",
   "./index.html",
@@ -61,6 +61,9 @@ const CORE = [
   "./styles/responsive.css",
   "./data/categories.js",
   "./data/categories.json",
+  "./js/host-routing.js",
+  "./js/runtime-config.js",
+  "./js/api-client.js",
   "./js/config.js",
   "./js/profile.js",
   "./js/auth.js",

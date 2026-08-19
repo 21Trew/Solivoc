@@ -305,7 +305,7 @@ function registerPwa() {
         try {
           await reg.update().catch(() => {});
           if (reg.waiting) showUpdate(reg.waiting);
-          const response = await fetch(`/api/version?t=${now}`, { cache: "no-store", credentials: "same-origin" });
+          const response = await apiFetch(`/api/version?t=${now}`, { cache: "no-store" });
           if (!response.ok) return false;
           const data = await response.json().catch(() => ({}));
           const serverBuild = String(data?.build || "");
@@ -486,7 +486,7 @@ async function fetchServerBootstrap() {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 1800);
   try {
-    const response = await fetch("/api/bootstrap", { cache: "no-store", signal: controller.signal });
+    const response = await apiFetch("/api/bootstrap", { cache: "no-store", signal: controller.signal });
     if (!response.ok) return null;
     const data = await response.json();
     if (data && typeof data === "object") window.SERVER_BOOTSTRAP = data;

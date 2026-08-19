@@ -229,3 +229,24 @@ ANALYTICS_ADMIN_TOKEN=<длинный случайный секрет>
 - TXT `_dmarc` → `v=DMARC1;p=none`
 
 После стабилизации доставки DMARC-политику можно ужесточить отдельно. В самом Postbox для текущего сценария безопаснее ограничить разрешённого отправителя значением `auth` (то есть `auth@solivoc.ru`).
+
+## Миграция: Timeweb Static + Yandex Cloud Functions
+
+Проект подготовлен к поэтапному переезду без остановки текущего Vercel-деплоя.
+
+- Корневая структура по-прежнему совместима с текущим Vercel-размещением.
+- `npm run build:timeweb` генерирует `timeweb-static/` — только публичные HTML/CSS/JS/PWA-файлы, без серверного `api/` и конфигурационных файлов.
+- В `timeweb-static/js/runtime-config.js` API направлен на `https://api.solivoc.ru`.
+- Клиентские запросы к API идут через `apiFetch()`: на Vercel остаётся same-origin, на Timeweb используются `credentials: include` для `api.solivoc.ru`.
+- `yandex/index.mjs` адаптирует Yandex API Gateway/Cloud Functions к существующим Web `Request`/`Response`-обработчикам из `api/*.mjs`.
+- `npm run build:yandex` генерирует `yandex-function/` — отдельный компактный пакет функции с точкой входа `index.handler`.
+- `yandex/api-gateway.template.yaml` — шаблон API Gateway для `/api/{endpoint}` и `/d/{code}` с `payload_format_version: 2.0`.
+- `APP_ORIGINS` содержит дополнительные разрешённые origin через запятую. Основные `https://solivoc.ru`, `https://www.solivoc.ru`, `https://admin.solivoc.ru` разрешены по умолчанию.
+
+Во время проверки Timeweb на техническом домене добавьте этот origin в `APP_ORIGINS` функции. Для production-функции задайте `NODE_ENV=production`, чтобы сессионная cookie всегда была `Secure`.
+
+Для Timeweb App Platform выберите тип `HTML/CSS/JS` и укажите путь до директории проекта `timeweb-static`. Этот формат отдаёт готовые файлы из указанной директории без сборки на стороне Timeweb.
+
+Перед загрузкой функции можно выполнить `npm run build:yandex` и загрузить содержимое `yandex-function/` в Cloud Functions.
+
+До переключения DNS Vercel можно оставить рабочим. После успешной проверки Timeweb + `api.solivoc.ru` старые Vercel-specific файлы и временный `timeweb-static/` build-процесс можно будет почистить отдельным коммитом.

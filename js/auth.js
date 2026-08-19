@@ -199,11 +199,10 @@ async function accountRequest(path, options = {}) {
   const controller = options.signal ? null : new AbortController();
   const timer = controller ? setTimeout(() => controller.abort(), options.timeout || 8000) : null;
   try {
-    const response = await fetch(path, {
+    const response = await apiFetch(path, {
       ...options,
       signal: options.signal || controller?.signal,
       cache: "no-store",
-      credentials: "same-origin",
       headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     });
     const data = await response.json().catch(() => ({}));
@@ -450,7 +449,7 @@ async function restoreAccountSessionOnBoot() {
   if (accountState.pendingLogout) { await completePendingServerLogout(); return false; }
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 1200);
   try {
-    const response = await fetch("/api/auth", { cache: "no-store", credentials: "same-origin", signal: controller.signal });
+    const response = await apiFetch("/api/auth", { cache: "no-store", signal: controller.signal });
     const data = await response.json().catch(() => ({}));
     if (response.status === 401) {
       if (accountState.status === "signed_in") { accountState.status = "signed_out"; persistAccountState(); }

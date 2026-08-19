@@ -1,0 +1,37 @@
+openapi: 3.0.0
+info:
+  title: Solivoc API
+  version: 1.0.0
+paths:
+  /api/{endpoint}:
+    x-yc-apigateway-any-method:
+      summary: Solivoc API endpoint
+      operationId: solivocApi
+      parameters:
+        - name: endpoint
+          in: path
+          required: true
+          schema:
+            type: string
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: <FUNCTION_ID>
+        service_account_id: <SERVICE_ACCOUNT_ID>
+        tag: $latest
+        payload_format_version: "2.0"
+  /d/{code}:
+    x-yc-apigateway-any-method:
+      summary: Public duel share page
+      operationId: duelShare
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: <FUNCTION_ID>
+        service_account_id: <SERVICE_ACCOUNT_ID>
+        tag: $latest
+        payload_format_version: "2.0"

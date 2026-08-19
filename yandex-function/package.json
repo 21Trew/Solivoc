@@ -1,0 +1,8 @@
+{
+  "name": "slovasyans-yandex-function",
+  "private": true,
+  "dependencies": {
+    "web-push": "^3.6.7",
+    "nodemailer": "^9.0.3"
+  }
+}
