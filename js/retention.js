@@ -298,8 +298,22 @@ function recordDailyModeGame(s=state) {
   saveProfile();
 }
 function dailyModeQuestsMarkup() {
-  const q=normalizeDailyQuests(), defs=activeDailyQuestDefs();
-  return `<section class="hub-section daily-quests"><div class="hub-section-head"><div><h3>Ежедневные задания</h3><small>3 режима · по 5 побед</small></div></div><div class="daily-quest-grid">${defs.map(def=>{const v=Math.min(def.target,+q.progress[def.id]||0),done=v>=def.target;return `<button class="daily-quest ${done?"done":""}" data-daily-quest-mode="${def.id}"><b>${def.label}</b><div class="daily-quest-meta"><small>+${def.rewardXp} XP</small><span>${v}/${def.target}${done?" ✓":""}</span></div></button>`;}).join("")}</div></section>`;
+  const q=normalizeDailyQuests(), defs=activeDailyQuestDefs(), today=todayKey(), doneDaily=(profile.daily?.completedDates||[]).includes(today);
+  return `<section class="hub-section daily-quests"><div class="hub-section-head"><div><h3>Ежедневные задания</h3><small>3 режима · по 5 побед</small></div></div><div class="daily-quest-grid">${defs.map(def=>{const v=Math.min(def.target,+q.progress[def.id]||0),done=v>=def.target;return `<button class="daily-quest ${done?"done":""}" data-daily-quest-mode="${def.id}"><b>${def.label}</b><div class="daily-quest-meta"><small>+${def.rewardXp} XP</small><span>${v}/${def.target}${done?" ✓":""}</span></div></button>`;}).join("")}</div><button class="daily-main-quest ${doneDaily?"done":""}" data-game-mode="daily"><span><i>☀</i><b>Ежедневный расклад</b><small>${doneDaily?"Сегодня уже пройден — можно улучшить результат":"Один общий расклад на сегодня"}</small></span><strong>${doneDaily?"✓":"Играть →"}</strong></button></section>`;
+}
+
+const PWA_INSTALL_REWARD_XP = 250;
+function pwaStandaloneDetected() {
+  return !!(window.matchMedia?.("(display-mode: standalone)")?.matches || navigator.standalone === true);
+}
+function claimPwaInstallReward({ notify = true } = {}) {
+  if (!pwaStandaloneDetected() || profile.installRewardClaimed) return false;
+  profile.installRewardClaimed = true;
+  awardXp(PWA_INSTALL_REWARD_XP, "Установка Словасьянса", { notifyRank: false });
+  saveProfile();
+  if (notify) queueAchievementNotifications?.([{ icon:"📲", title:"Словасьянс установлен", desc:`Спасибо! Награда за установку: +${PWA_INSTALL_REWARD_XP} XP` }]);
+  track?.("pwa_install_reward", { xp:PWA_INSTALL_REWARD_XP });
+  return true;
 }
 function challengeEligibleState(s=state) { return !!s && s.mode !== "challenge" && s.mode !== "tutorial"; }
 function recordChallengeEligibleProgress(s=state, stars=0) {

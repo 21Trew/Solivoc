@@ -427,6 +427,7 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
       completed: 0,
       totalCategories: chosen.length,
       categoryIds: chosen.map((c) => c.id),
+      dealBlueprint: cards.map((card) => ({ ...card, uid: undefined })),
       categoryCooldownIds: cooldownIds,
       collectionId: mode === "collection" ? associationCollectionById(collectionId).id : null,
       cardSourceMode: sourceMode,
@@ -494,6 +495,7 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
     completed: 0,
     totalCategories: chosen.length,
     categoryIds: chosen.map((c) => c.id),
+    dealBlueprint: cards.map((card) => ({ ...card, uid: undefined })),
     categoryCooldownIds: cooldownIds,
     collectionId: mode === "collection" ? associationCollectionById(collectionId).id : null,
     cardSourceMode: sourceMode,
@@ -525,54 +527,70 @@ function buildGeneratedLevel(level, { mode = "regular", seed = null, challengeCo
   }
   return fallbackState;
 }
+function reshuffleStateFromBlueprint(source = state) {
+  const blueprint = Array.isArray(source?.dealBlueprint) ? source.dealBlueprint.filter((card)=>card?.cat && card?.type) : [];
+  if (!source || blueprint.length < 4 || source.mode === "challenge" || source.mode === "tutorial") return null;
+  const baseSeed = `${source.seed || source.mode || "round"}:reshuffle:${Date.now()}:${Math.random()}`;
+  for (let attempt = 0; attempt < 18; attempt++) {
+    const rng = makeRng(`${baseSeed}:${attempt}`), cards = blueprint.map((card)=>({ ...card, uid: uid() })), deck = shuffle(cards, rng), cols = Math.max(3, +source.cols || 4),
+      layoutCount = Math.min(Math.floor(deck.length / 2), cols * 6), layoutCards = deck.splice(0, layoutCount), counts = randomColumnCounts(layoutCount, cols, rng), columns = [];
+    let cursor = 0;
+    for (const count of counts) {
+      const chunk = layoutCards.slice(cursor, cursor + count); cursor += count;
+      columns.push(chunk.map((card, i)=>({ cards:[card], faceUp:i===count-1 })));
+    }
+    const candidate = normalizeState({
+      ...source,
+      seed: `${baseSeed}:${attempt}`,
+      columns,
+      stock: deck,
+      waste: [],
+      slots: Array(cols).fill(null),
+      completed: 0,
+      rewarded: false,
+      failed: false,
+      failureReason: "",
+      dealBlueprint: blueprint.map((card)=>({ ...card })),
+      run: { hints:0, undos:0, errors:0, autoMoves:0, moves:0, recycles:0, comboCurrent:0, maxCombo:0, maxDragCombo:0, startedAt:Date.now(), pausedAt:0, pausedDurationMs:0 },
+      restartCount: Math.max(0,+source.restartCount||0)+1,
+    });
+    if (!isPlayableGeneratedState(candidate)) continue;
+    if (source.riskDeal || isLikelySolvable(candidate)) return candidate;
+  }
+  return null;
+}
 function findCat(title) {
   return BANK.find((c) => c.title === title) || BANK[0];
 }
 function makeTutorial(step = 1) {
-  const titles = ["Фрукты", "Море", "Небо"],
+  step=Math.max(1,Math.min(4,+step||1));
+  const titles = ["Фрукты", "Море", "Небо", "Инструменты"],
     cat = findCat(titles[step - 1]),
     words = cat.words.slice(0, 3),
     cards = words.map((w) => ({ uid: uid(), cat: cat.id, label: w, type: "word", total: 3 })),
     cc = { uid: uid(), cat: cat.id, label: cat.title, type: "category", total: 3 };
-  let columns,
-    stock,
-    slots = Array(3).fill(null);
+  let columns, stock, slots = Array(3).fill(null);
   if (step === 1) {
-    columns = [
-      [{ cards: [cc], faceUp: true }],
-      [{ cards: [cards[0]], faceUp: true }],
-      [{ cards: [cards[1]], faceUp: true }],
-    ];
-    stock = [cards[2]];
+    columns = [[{ cards:[cc], faceUp:true }],[{ cards:[cards[0]],faceUp:true }],[{ cards:[cards[1]],faceUp:true }]];
+    stock=[cards[2]];
   } else if (step === 2) {
-    slots[1] = { cards: [cc], faceUp: true };
-    columns = [
-      [{ cards: [cards[0]], faceUp: true }],
-      [{ cards: [cards[1]], faceUp: true }],
-      [{ cards: [cards[2]], faceUp: true }],
-    ];
-    stock = [];
+    slots[1]={cards:[cc],faceUp:true};
+    columns=[[{cards:[cards[0]],faceUp:true}],[{cards:[cards[1]],faceUp:true}],[{cards:[cards[2]],faceUp:true}]];
+    stock=[];
+  } else if (step === 3) {
+    slots[1]={cards:[cc],faceUp:true};
+    columns=[[{cards:[cards[0]],faceUp:true}],[{cards:[cards[1]],faceUp:true}],[{cards:[cards[2]],faceUp:true}]];
+    stock=[];
   } else {
-    slots[1] = { cards: [cc], faceUp: true };
-    columns = [[], [], []];
-    stock = [...cards].reverse();
+    slots[1]={cards:[cc],faceUp:true};
+    columns=[[],[],[]];
+    stock=[...cards].reverse();
   }
   return {
-    level: step,
-    mode: "tutorial",
-    tutorialStep: step,
-    seed: `tutorial:${step}`,
-    cols: 3,
-    columns,
-    stock,
-    waste: [],
-    slots,
-    completed: 0,
-    totalCategories: 1,
-    categoryIds: [cat.id],
-    run: { hints: 0, undos: 0, errors: 0, autoMoves: 0, moves: 0, recycles: 0, comboCurrent: 0, maxCombo: 0, startedAt: Date.now(), pausedAt: 0, pausedDurationMs: 0 },
-    special: null,
-    rewarded: false,
+    level:step, mode:"tutorial", tutorialStep:step, tutorialActions:{}, seed:`tutorial:${step}`,
+    cols:3, columns, stock, waste:[], slots, completed:0, totalCategories:1, categoryIds:[cat.id],
+    run:{hints:0,undos:0,errors:0,autoMoves:0,moves:0,recycles:0,comboCurrent:0,maxCombo:0,startedAt:Date.now(),pausedAt:0,pausedDurationMs:0},
+    special:null, rewarded:false,
   };
 }
 function normalizeState(s) {

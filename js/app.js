@@ -98,6 +98,7 @@ function bindAppEvents() {
     state.run.undos = undoCount;
     profile.stats.undos++;
     track("undo", { mode: state.mode });
+    if (state.mode === "tutorial") noteTutorialAction?.("undo");
     resetCombo();
     playSfx("drop", 0.65);
     render();
@@ -133,18 +134,18 @@ function bindAppEvents() {
       else if (p.source === "waste") q = ".waste .card.movable";
       const n = q ? document.querySelector(q) : null;
       n?.classList.add("hint");
-      pointCompanionAt(n, companionDef(profile.settings.companion).id === "cat" ? "Мяу! Вот эта карта." : "Подсказка: начни с этой карты.");
+      pointCompanionAt(n, companionHintLine?.() || "Начни с этой карты.");
       setTimeout(() => n?.classList.remove("hint"), 1400);
       const actionText = hint.zone === "slot" ? "в категорию" : "на связанную стопку";
       showToast(`Ход: ${groupLabel(p.groups[0])} → ${actionText}`);
     } else if (hint?.action === "draw") {
       stockEl.classList.add("hint-stock");
-      pointCompanionAt(stockEl, "Загляни в колоду!");
+      pointCompanionAt(stockEl, `${companionHintLine?.() || "Есть зацепка."} Загляни в колоду.`);
       setTimeout(() => stockEl.classList.remove("hint-stock"), 1100);
       showToast("Открой следующую карту колоды");
     } else if (hint?.action === "recycle") {
       stockEl.classList.add("hint-stock");
-      pointCompanionAt(stockEl, "Верни сброс сюда.");
+      pointCompanionAt(stockEl, `${companionHintLine?.() || "Есть зацепка."} Верни сброс в колоду.`);
       setTimeout(() => stockEl.classList.remove("hint-stock"), 1100);
       showToast("Верни сброс в колоду");
     } else {
@@ -158,7 +159,7 @@ function bindAppEvents() {
     resetCombo();
     const action = () => {
       if (state.mode === "tutorial") {
-        if (state.tutorialStep < 3) makeLevel(state.tutorialStep + 1, { mode: "tutorial", step: state.tutorialStep + 1 });
+        if (state.tutorialStep < 4) makeLevel(state.tutorialStep + 1, { mode: "tutorial", step: state.tutorialStep + 1 });
         else makeLevel(profile.currentLevel || 1);
       } else if (state.mode === "daily") makeLevel(profile.currentLevel || 1);
       else if (state.mode === "challenge") openHub("modes");
@@ -483,6 +484,7 @@ async function boot() {
     syncBossCompanionsFromProgress?.({ notify: false });
     syncAchievementCompanions?.({ notify: false });
     syncBirthdayRewards?.();
+    claimPwaInstallReward?.({ notify:false });
     saveProfile?.({ skipCloud: true });
     setSplashProgress?.(55,"Собираю прогресс…");
     migrateCategoryMasteryProgress?.();
@@ -493,6 +495,7 @@ async function boot() {
     syncBossCompanionsFromProgress?.({ notify: false });
     syncAchievementCompanions?.({ notify: false });
     syncBirthdayRewards?.();
+    claimPwaInstallReward?.({ notify:false });
     saveProfile?.({ skipCloud: true });
     runQualityAudit?.();
 

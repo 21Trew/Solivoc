@@ -36,6 +36,8 @@ function defaultProfile() {
     companionsUnlocked: [],
     birthDate: "",
     birthdayWeek: { lastCelebratedYear: 0, start: "", end: "" },
+    installRewardClaimed: false,
+    installGuideSeen: false,
     developerMailSeen: [],
     developerMailDeleted: [],
     patchSeenVersion: "",
@@ -158,7 +160,10 @@ function reconcileCampaignProgress(p = profile) {
   // unmistakable synthetic tail: no recorded clears there, every synthetic star is exactly one,
   // and chapter-final history says the player was much earlier in the campaign.
   const rawCurrent = Math.max(1, Math.trunc(Number(p.currentLevel) || 1));
+  const storedCompleted = Math.max(0, Math.trunc(Number(p.stats?.levelsCompleted) || 0));
   const storedFinals = Math.max(0, Math.trunc(Number(p.stats?.chapterFinalsCompleted) || 0));
+  const previousTotalStars = Math.max(0, Math.trunc(Number(p.totalStars) || 0));
+  let syntheticTailRemoved = false;
   const recordedLevels = new Set(Object.entries(p.levelRecords || {})
     .filter(([key, record]) => Number(key) >= 1 && (Number(record?.stars) > 0 || Number(record?.moves) > 0))
     .map(([key]) => Math.trunc(Number(key)))
@@ -175,6 +180,7 @@ function reconcileCampaignProgress(p = profile) {
     if (tail.length >= CHAPTER_SIZE * 2 && tail.every((stars) => stars === 1)) {
       const removedLevels = Object.keys(cleanStars).filter((level) => Number(level) > credibleThrough).length;
       for (const level of Object.keys(cleanStars)) if (Number(level) > credibleThrough) delete cleanStars[level];
+      syntheticTailRemoved = true;
       // The old XP migration awarded 45 XP per fabricated completed level. Remove only that
       // known synthetic contribution, and only once; all XP earned from real play is preserved.
       if (removedLevels > 0 && p.xpMigrated && !p.campaignRepairXpAdjusted) {
@@ -186,10 +192,34 @@ function reconcileCampaignProgress(p = profile) {
 
   let completedThrough = 0;
   while (Number(cleanStars[completedThrough + 1]) > 0) completedThrough++;
+  // A later earned star or a persistent level record is proof that all preceding campaign
+  // levels were already passed. Fill only those missing historical clears with one star.
+  const highestStarLevel = Math.max(0, ...Object.keys(cleanStars).map(Number).filter(Number.isFinite));
+  const highestRecordLevel = Math.max(0, ...[...recordedLevels]);
+  const progressFloor = Math.max(0, Math.trunc(Number(p.campaignProgressFloor) || 0));
+  const versionedFloor = !syntheticTailRemoved && Number(p.campaignProgressVersion || 0) >= 2 ? Math.max(storedCompleted, rawCurrent - 1) : 0;
+  const evidenceThrough = Math.max(completedThrough, highestStarLevel, highestRecordLevel, progressFloor, versionedFloor);
+  const hadMissingStarHistory = evidenceThrough > Object.keys(cleanStars).length;
+  if (evidenceThrough > completedThrough && evidenceThrough <= 10000) {
+    for (let level = 1; level <= evidenceThrough; level++) if (!cleanStars[level]) cleanStars[level] = 1;
+    completedThrough = evidenceThrough;
+  }
+  if (hadMissingStarHistory && completedThrough > 0) {
+    let runningTotal = Object.values(cleanStars).reduce((sum, value) => sum + Math.max(1, Math.min(3, Number(value) || 1)), 0);
+    const target = Math.min(completedThrough * 3, Math.max(runningTotal, previousTotalStars));
+    for (let level = 1; level <= completedThrough && runningTotal < target; level++) {
+      const room = 3 - (Number(cleanStars[level]) || 1);
+      if (room <= 0) continue;
+      const add = Math.min(room, target - runningTotal);
+      cleanStars[level] += add;
+      runningTotal += add;
+    }
+  }
   p.currentLevel = completedThrough + 1;
   p.stats ||= { ...DEFAULT_STATS };
   p.stats.levelsCompleted = completedThrough;
   p.stats.chapterFinalsCompleted = Math.floor(completedThrough / CHAPTER_SIZE);
+  p.stats.tripleStarWins = Object.values(cleanStars).filter((stars) => Number(stars) === 3).length;
   p.campaignProgressVersion = 2;
   return completedThrough;
 }
@@ -292,13 +322,19 @@ function migrateMetaProfile() {
 migrateMetaProfile();
 function recomputeStars() {
   const previous = Math.max(0, +profile.totalStars || 0),
-    campaign = Object.values(profile.starsByLevel || {}).reduce((a, b) => a + (+b || 0), 0),
-    daily = Object.values(profile.dailyStars || {}).reduce((a, b) => a + (+b || 0), 0);
-  profile.totalStars = campaign;
+    completed = Math.max(0, +profile.stats?.levelsCompleted || 0),
+    clean = {};
+  for (let level = 1; level <= completed; level++) {
+    const stars = Math.max(0, Math.min(3, Math.trunc(+profile.starsByLevel?.[level] || 0)));
+    if (stars > 0) clean[level] = stars;
+  }
+  profile.starsByLevel = clean;
+  const campaign = Object.values(clean).reduce((a, b) => a + (+b || 0), 0),
+    daily = Object.values(profile.dailyStars || {}).reduce((a, b) => a + Math.max(0, Math.min(3, +b || 0)), 0);
+  profile.totalStars = Math.min(campaign, completed * 3);
   profile.dailyStarTotal = daily;
-  // Daily stars used to be folded into totalStars. Preserve the highest old
-  // cosmetic-unlock value so a migration never takes an already opened theme away.
-  profile.cosmeticStarsPeak = Math.max(+profile.cosmeticStarsPeak || 0, previous, campaign + daily);
+  profile.stats.tripleStarWins = Object.values(clean).filter((stars) => stars === 3).length;
+  profile.cosmeticStarsPeak = Math.max(+profile.cosmeticStarsPeak || 0, previous, profile.totalStars + daily);
 }
 function cardBackUnlocked(def, p = profile) {
   if (!def) return false;

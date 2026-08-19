@@ -42,19 +42,23 @@ function makeLevel(level = 1, opts = {}) {
     });
   } else {
     setTimeout(() => scheduleDeadlockCheck(900), 250);
+    if (state.mode !== "tutorial") setTimeout(() => showCompanionBubble?.(companionStartLine?.(), 3600), 620);
   }
 }
 function restartCurrentLevel() {
   if (!state) return;
   if (state.mode === "tutorial") return makeLevel(state.tutorialStep, { mode: "tutorial", step: state.tutorialStep });
   if (state.mode === "challenge") return makeLevel(state.level, { mode: "challenge", seed: state.seed, challengeCode: state.challengeCode, challengeRole: state.challengeRole, challengeCreatorName: state.challengeCreatorName, challengeCreatorAvatar: state.challengeCreatorAvatar, challengeCreatorResult: state.challengeCreatorResult, challengeGuestToken: state.challengeGuestToken, duelMode: state.duelMode, duelModeChoice: state.duelModeChoice, seriesId: state.seriesId, seriesRound: state.seriesRound, seriesScoreCreator: state.seriesScoreCreator, seriesScoreGuest: state.seriesScoreGuest, cardSourceMode: state.cardSourceMode });
-  if (state.mode === "marathon") return makeLevel(state.level, { mode: "marathon", seed: state.seed, marathonRound: state.marathonRound, marathonId: state.marathonId, cardSourceMode: state.cardSourceMode });
-  if (state.mode === "calm") return makeLevel(state.level || 1, { mode: "calm", seed: state.seed, cardSourceMode: state.cardSourceMode });
-  if (state.mode === "collection") return makeLevel(state.level || 1, { mode: "collection", seed: state.seed, collectionId: state.collectionId });
-  if (state.mode === "regular" && state.riskDeal) return makeLevel(state.level, { mode: "regular", seed: `level:${state.level}:retry:${Date.now()}`, cardSourceMode: state.cardSourceMode, categoryCooldownIds: state.categoryCooldownIds, specialIntro: false, forceSolvable: true });
-  return makeLevel(state.level, { mode: state.mode, seed: state.seed, cardSourceMode: state.cardSourceMode, categoryCooldownIds: state.categoryCooldownIds, specialIntro: false, customRules: state.customRules || null });
+  const reshuffled = typeof reshuffleStateFromBlueprint === "function" ? reshuffleStateFromBlueprint(state) : null;
+  if (reshuffled) {
+    state = reshuffled; history = []; resetCombo(); initialDealPending = true; recordLevelKnowledge?.(state); render(); updateCoach(); setBackgroundMusic?.(musicModeForState?.(state)||"game"); markStateChanged?.();
+    setTimeout(()=>showCompanionBubble?.(companionStartLine?.(),3200),520);
+    return true;
+  }
+  return makeLevel(state.level, { mode: state.mode, seed: `${state.seed}:retry:${Date.now()}`, cardSourceMode: state.cardSourceMode, categoryCooldownIds: state.categoryCooldownIds, specialIntro: false, customRules: state.customRules || null, forceSolvable: true });
 }
 const MAX_UNDO_SNAPSHOTS = 10;
+const IOS_UNDO_SNAPSHOTS = 6;
 let stateSaveTimer = null, lastPersistedStateJson = "", lastBackupAt = 0;
 function snapshot() {
   try { return JSON.stringify(state); } catch { return null; }
@@ -69,7 +73,8 @@ function pushHistory() {
   const snap = snapshot();
   if (!snap) return;
   history.push(snap);
-  if (history.length > MAX_UNDO_SNAPSHOTS) history.splice(0, history.length - MAX_UNDO_SNAPSHOTS);
+  const limit = typeof stabilityConstrainedMode === "function" && stabilityConstrainedMode() ? IOS_UNDO_SNAPSHOTS : MAX_UNDO_SNAPSHOTS;
+  if (history.length > limit) history.splice(0, history.length - limit);
 }
 function persistStateNow() {
   clearTimeout(stateSaveTimer);
@@ -101,7 +106,7 @@ function save(options = {}) {
   const immediate = options === true || options?.immediate === true;
   if (immediate) return persistStateNow();
   clearTimeout(stateSaveTimer);
-  stateSaveTimer = setTimeout(persistStateNow, 480);
+  stateSaveTimer = setTimeout(persistStateNow, 220);
   return true;
 }
 function scheduleSave() { return save(); }

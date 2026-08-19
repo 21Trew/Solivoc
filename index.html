@@ -7,7 +7,7 @@
       content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"
     />
     <meta name="theme-color" content="#29205d" />
-    <meta name="slovasyans-build" content="v27-2026-08-18" />
+    <meta name="slovasyans-build" content="v28-2026-08-19" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -157,7 +157,7 @@
         <div class="modal-actions">
           <button class="win-next" id="next">Следующий уровень →</button>
           <div class="modal-secondary-actions">
-            <button class="secondary" id="winShare" hidden>↗ Поделиться</button>
+            <button class="secondary" id="winShare" hidden>Поделиться</button>
             <button class="secondary" id="winRestart">↻ Заново</button>
             <button class="secondary" id="winMenu">☰ Меню</button>
           </div>
@@ -278,6 +278,17 @@
         <button id="companionInfoClose" class="companion-info-close" aria-label="Закрыть">×</button>
         <div id="companionInfoBody"></div>
         <button id="companionInfoChoose" class="companion-info-choose">Выбрать напарником</button>
+      </div>
+    </div>
+    <div class="install-guide-modal" id="installGuideModal" aria-hidden="true">
+      <div class="install-guide-card" role="dialog" aria-modal="true" aria-label="Установка Словасьянса">
+        <button id="installGuideClose" class="install-guide-close" aria-label="Закрыть">×</button>
+        <div class="install-guide-icon">📲</div>
+        <small>УСТАНОВКА ИГРЫ</small>
+        <h2>Словасьянс на экране «Домой»</h2>
+        <p>Так игра запускается на весь экран, работает удобнее и сохраняет офлайн-ресурсы.</p>
+        <ol id="installGuideSteps"></ol>
+        <div class="install-guide-reward" id="installGuideReward">Награда за установку: +250 XP</div>
       </div>
     </div>
     <div class="xp-bonus-burst" id="xpBonusBurst" aria-live="polite"><small>БОНУСНЫЙ ОПЫТ</small><b>+0 XP</b><span></span></div>

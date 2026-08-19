@@ -244,7 +244,10 @@ function normalizeCampaignProfile(profile) {
   // client before deriving canonical campaign counters, so stale cloud data cannot
   // reintroduce a synthetic tail during account sync.
   const rawCurrent = Math.max(1, Math.trunc(Number(profile?.currentLevel) || 1));
+  const storedCompleted = Math.max(0, Math.trunc(Number(profile?.stats?.levelsCompleted) || 0));
   const storedFinals = Math.max(0, Math.trunc(Number(profile?.stats?.chapterFinalsCompleted) || 0));
+  const previousTotal = Math.max(0, Number(profile.totalStars) || 0);
+  let syntheticTailRemoved = false;
   const recordedLevels = new Set(Object.entries(profile?.levelRecords || {})
     .filter(([key, record]) => Number(key) >= 1 && (Number(record?.stars) > 0 || Number(record?.moves) > 0))
     .map(([key]) => Math.trunc(Number(key)))
@@ -255,6 +258,7 @@ function normalizeCampaignProfile(profile) {
     const tailLevels = Object.keys(stars).map(Number).filter((level) => level > credibleThrough);
     if (tailLevels.length >= CAMPAIGN_CHAPTER_SIZE * 2 && tailLevels.every((level) => stars[level] === 1)) {
       for (const level of tailLevels) delete stars[level];
+      syntheticTailRemoved = true;
       if (profile.xpMigrated && !profile.campaignRepairXpAdjusted) {
         profile.xp = Math.max(0, (Number(profile.xp) || 0) - tailLevels.length * 45);
         profile.campaignRepairXpAdjusted = true;
@@ -264,8 +268,25 @@ function normalizeCampaignProfile(profile) {
 
   let completedThrough = 0;
   while (Number(stars[completedThrough + 1]) > 0) completedThrough++;
-  const previousTotal = Math.max(0, Number(profile.totalStars) || 0);
-  const campaignStars = Object.values(stars).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+  const highestStarLevel = Math.max(0, ...Object.keys(stars).map(Number).filter(Number.isFinite));
+  const highestRecordLevel = Math.max(0, ...[...recordedLevels]);
+  const progressFloor = Math.max(0, Math.trunc(Number(profile.campaignProgressFloor) || 0));
+  const versionedFloor = !syntheticTailRemoved && Number(profile.campaignProgressVersion || 0) >= 2 ? Math.max(storedCompleted, rawCurrent - 1) : 0;
+  const evidenceThrough = Math.max(completedThrough, highestStarLevel, highestRecordLevel, progressFloor, versionedFloor);
+  const hadMissingStarHistory = evidenceThrough > Object.keys(stars).length;
+  if (evidenceThrough > completedThrough && evidenceThrough <= 10000) {
+    for (let level = 1; level <= evidenceThrough; level++) if (!stars[level]) stars[level] = 1;
+    completedThrough = evidenceThrough;
+  }
+  if (hadMissingStarHistory && completedThrough > 0) {
+    let runningTotal = Object.values(stars).reduce((sum, value) => sum + Math.max(1, Math.min(3, Number(value) || 1)), 0);
+    const target = Math.min(completedThrough * 3, Math.max(runningTotal, previousTotal));
+    for (let level = 1; level <= completedThrough && runningTotal < target; level++) {
+      const room = 3 - (Number(stars[level]) || 1); if (room <= 0) continue;
+      const add = Math.min(room, target - runningTotal); stars[level] += add; runningTotal += add;
+    }
+  }
+  const campaignStars = Math.min(completedThrough * 3, Object.values(stars).reduce((sum, value) => sum + Math.max(0, Math.min(3, Number(value) || 0)), 0));
   const dailyStars = Object.values(profile?.dailyStars || {}).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
   profile.starsByLevel = stars;
   profile.currentLevel = completedThrough + 1;
@@ -292,6 +313,9 @@ export function mergeProfiles(current, incoming, userId, { preferIncomingPrefere
     merged.starsByLevel = jsonClone(a.starsByLevel || {});
     if (a.campaignRepairXpAdjusted) { merged.xp = Math.max(0, Number(a.xp) || 0); merged.campaignRepairXpAdjusted = true; }
   }
+  const validBirth = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ""));
+  if (validBirth(a.birthDate)) merged.birthDate = a.birthDate;
+  else if (validBirth(b.birthDate)) merged.birthDate = b.birthDate;
   if (preferIncomingPreferences) {
     for (const key of PREFERENCE_ROOTS) {
       if (Object.prototype.hasOwnProperty.call(b, key)) merged[key] = jsonClone(b[key]);

@@ -20,19 +20,27 @@ function awardLevelXpWithCombo(baseXp, reason) {
 
 let specialIntroStartCallback = null;
 function specialLevelInfoLines(special) {
-  if (!special) return { desc: "", rule: "", quote: "" };
-  const desc = String(special.desc || "").trim();
-  let rule = "";
-  if (!special.boss) {
-    if (special.noHints && special.maxRecycles === 1) rule = "Подсказки отключены, а колоду можно вернуть только 1 раз.";
-    else if (special.noHints) rule = "Подсказки отключены — полагайся только на ассоциации.";
-    else if (Number.isFinite(special.maxUndos)) rule = `Можно отменить ${special.maxUndos} ${ruPlural(special.maxUndos, "ход", "хода", "ходов")}.`;
-    else if (Number.isFinite(special.maxRecycles)) rule = `Колоду можно вернуть только ${special.maxRecycles} ${ruPlural(special.maxRecycles, "раз", "раза", "раз")}.`;
-    else if (special.lockedSlot) rule = "Последний слот откроется после 1 собранной категории.";
-    else if (special.mysteryCategories) rule = "Названия категорий будут открываться по ходу решения.";
-    else if (special.bigMix) rule = "Категорий и карточек здесь больше, чем в обычном уровне.";
-  }
-  return { desc, rule, quote: special.bossTaunt ? `«${special.bossTaunt}»` : "" };
+  if (!special) return { desc:"", rule:"", quote:"" };
+  return {
+    desc: String(special.desc || "").trim(),
+    rule: "",
+    quote: special.bossTaunt ? `«${special.bossTaunt}»` : "",
+  };
+}
+function showLevelConditionsIntro(data, onStart) {
+  const modal=$("#specialLevelModal"); if(!modal){onStart?.();return;}
+  specialIntroStartCallback=typeof onStart==="function"?onStart:null;
+  const iconEl=$("#specialLevelIcon"); if(iconEl) iconEl.innerHTML=`<span>${escapeHtml(data?.icon||"◆")}</span>`;
+  $("#specialLevelEyebrow").textContent=data?.eyebrow||"УСЛОВИЯ РЕЖИМА";
+  $("#specialLevelTitle").textContent=data?.title||"Перед стартом";
+  const desc=$("#specialLevelDesc"), quote=$("#specialLevelQuote"), rule=$("#specialLevelRule");
+  if(desc)desc.textContent=data?.desc||"Проверь условия перед стартом.";
+  if(quote){quote.textContent="";quote.hidden=true;}
+  if(rule){rule.textContent=data?.rule||"";rule.hidden=!data?.rule;}
+  $("#specialLevelStart").textContent="Начать →";
+  $("#specialLevelStart").onclick=()=>closeSpecialLevelIntro({start:true});
+  modal.classList.add("show"); modal.setAttribute("aria-hidden","false");
+  playSfx?.("combo",.35); haptic?.(6);
 }
 function closeSpecialLevelIntro({ start = false } = {}) {
   const modal = $("#specialLevelModal");
@@ -58,8 +66,7 @@ function showSpecialLevelIntro(special, onStart) {
   const descEl=$("#specialLevelDesc"), quoteEl=$("#specialLevelQuote"), ruleEl=$("#specialLevelRule");
   descEl.textContent = lines.desc || "Особый расклад — правило видно до старта.";
   if (quoteEl) { quoteEl.textContent = lines.quote || ""; quoteEl.hidden = !lines.quote; }
-  ruleEl.textContent = lines.rule || "";
-  ruleEl.hidden = !lines.rule;
+  if (ruleEl) { ruleEl.textContent = ""; ruleEl.hidden = true; }
   $("#specialLevelStart").textContent = special.boss ? "Начать финал →" : "Начать испытание →";
   $("#specialLevelStart").onclick = () => closeSpecialLevelIntro({ start: true });
   modal.classList.add("show");
@@ -258,7 +265,7 @@ function finishLevel() {
     if(typeof awardXp==="function")awardLevelXpWithCombo(35+stars*7,modeLabel);
   } else if (state.mode === "tutorial") {
     track("tutorial_completed", { step: state.tutorialStep });
-    if (state.tutorialStep === 3) { profile.tutorialComplete = true; track("tutorial_all_complete"); }
+    if (state.tutorialStep === 4) { profile.tutorialComplete = true; track("tutorial_all_complete"); }
   }
 
   recordChallengeEligibleProgress?.(state, stars);
@@ -309,7 +316,7 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
     time: "Готово вовремя!", moves: "Лимит ходов соблюдён!", combo: "Комбо собрано!", noMistakes: cleanPraise[Math.floor(Math.random()*cleanPraise.length)], onePass: "Колода пройдена за один круг!", custom: "Твои правила выполнены!",
   };
   $("#winTitle").textContent =
-    state.failed ? "Почти! Попробуй ещё раз" : state.mode === "tutorial" ? `Обучение ${state.tutorialStep}/3` : (perfect && state.mode === "regular" ? cleanPraise[Math.floor(Math.random()*cleanPraise.length)] : (titles[state.mode] || `Уровень ${state.level} пройден`));
+    state.failed ? "Почти! Попробуй ещё раз" : state.mode === "tutorial" ? `Обучение ${state.tutorialStep}/4` : (perfect && state.mode === "regular" ? cleanPraise[Math.floor(Math.random()*cleanPraise.length)] : (titles[state.mode] || `Уровень ${state.level} пройден`));
 
   const companion = typeof ensureCompanionSelection === "function" ? ensureCompanionSelection(profile) : (typeof companionDef === "function" ? companionDef(profile?.settings?.companion) : null);
   const companionImage = $("#winCompanionImage"), companionText = $("#winCompanionText");
@@ -334,7 +341,7 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
           : state.mode === "marathon"
             ? state.marathonSuccess ? `Серия продолжается: ${state.marathonRound} ★★★ подряд` : `Результат серии: ${ruCount(Math.max(0, (state.marathonRound || 1) - 1), "идеальный расклад", "идеальных расклада", "идеальных раскладов")}`
             : state.mode === "tutorial"
-              ? state.tutorialStep < 3 ? "Переходим к следующей механике." : "Обучение закончено. Теперь начинается настоящая игра."
+              ? state.tutorialStep < 4 ? "Переходим к следующей механике." : "Обучение закончено. Теперь начинается настоящая игра."
               : "";
   if (winTextEl) {
     winTextEl.textContent = winTextValue;
@@ -374,7 +381,7 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
   const shareBtn = $("#winShare");
   if (shareBtn) {
     shareBtn.hidden = state.mode === "tutorial";
-    shareBtn.textContent = state.mode === "challenge" ? "⚔ Поделиться дуэлью" : "↗ Поделиться";
+    shareBtn.textContent = state.mode === "challenge" ? "Дуэль" : "Поделиться";
   }
 
   const unlockEl = $("#winUnlock");
@@ -393,7 +400,7 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
   if (unlockEl) { unlockEl.textContent = unlockText; unlockEl.hidden = true; }
   $("#next").textContent =
     state.mode === "tutorial"
-      ? state.tutorialStep < 3
+      ? state.tutorialStep < 4
         ? "Дальше →"
         : "Начать игру →"
       : state.mode === "daily"
@@ -453,6 +460,15 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
         }, index * 740);
         winRevealTimers.push(innerTimer);
       });
+      const totalBonus = Math.max(0, totalXp - baseXp);
+      if (totalBonus > 0) {
+        const totalTimer = setTimeout(() => {
+          if (!modal.classList.contains("show") || !seq) return;
+          seq.textContent = `Всего бонусом: +${totalBonus} XP`;
+          seq.classList.remove("show"); void seq.offsetWidth; seq.classList.add("show");
+        }, Math.max(420, bonuses.filter((bonus)=>bonus.amount>0).length * 740 + 180));
+        winRevealTimers.push(totalTimer);
+      }
     }, 850);
     winRevealTimers.push(timer);
   }
@@ -481,23 +497,36 @@ function showWin(stars, newAchievements = [], record = null, bonusDone = false) 
   });
 }
 
+function noteTutorialAction(action) {
+  if (state?.mode !== "tutorial" || !action) return;
+  state.tutorialActions ||= {};
+  state.tutorialActions[action] = true;
+  updateCoach();
+  markStateChanged?.();
+}
 function updateCoach() {
   if (state.mode !== "tutorial") {
     coach.classList.remove("show", "tutorial");
     return;
   }
   coach.classList.add("show", "tutorial");
-  const texts = {
-    1: ["Шаг 1 из 3", "Дважды нажми на карточку категории — она сама отправится в свободный слот сверху."],
-    2: [
-      "Шаг 2 из 3",
-      "Связанные слова можно складывать друг на друга или дважды нажимать, чтобы отправить их в открытую категорию.",
-    ],
-    3: [
-      "Шаг 3 из 3",
-      "Нажми на колоду, чтобы открыть карту. Двойной тап по сбросу отправит подходящее слово в категорию.",
-    ],
-  };
-  $("#coachStep").textContent = texts[state.tutorialStep][0];
-  $("#coachText").textContent = texts[state.tutorialStep][1];
+  const a=state.tutorialActions ||= {};
+  let text="";
+  if(state.tutorialStep===1) text=a.category
+    ? "Отлично! Категория закреплена сверху. Теперь собери в неё все связанные слова."
+    : "Найди карточку с названием категории и дважды нажми на неё — она отправится в свободный слот сверху.";
+  else if(state.tutorialStep===2) text=a.manual
+    ? "Ручной перенос засчитан. Продолжай складывать слова одной категории друг на друга или прямо в её слот."
+    : "Зажми слово и перетащи его на карточку той же ассоциации. Это основной ручной ход — именно такие ходы растят комбо.";
+  else if(state.tutorialStep===3) text=a.auto
+    ? "Двойной тап сработал. Он ищет открытую категорию или подходящую карточку этой же ассоциации."
+    : "Дважды нажми на слово: игра сама отправит его в открытую категорию или на подходящую карту ассоциации.";
+  else {
+    if(!a.stock) text="Нажми на колоду: верхняя карта сразу появится открытой в сбросе.";
+    else if(!a.undo) text="Теперь нажми «Отмена», чтобы вернуть последний ход. Это полезно, когда передумал.";
+    else if(!a.hint) text="Попробуй «Подсказку»: маскот покажет полезную карту. Подсказки влияют на звёзды обычных уровней.";
+    else text="Ты попробовал колоду, отмену и подсказку. Собери категорию — обучение завершится.";
+  }
+  $("#coachStep").textContent=`Шаг ${state.tutorialStep} из 4`;
+  $("#coachText").textContent=text;
 }

@@ -193,6 +193,7 @@ function drawStock() {
     return;
   }
   state.run.moves++;
+  if (state.mode === "tutorial") noteTutorialAction?.("stock");
   if (typeof checkActiveRuleFailure === "function" && checkActiveRuleFailure()) return;
   profile.stats.stockDraws++;
   track("stock_draw", { mode: state.mode });

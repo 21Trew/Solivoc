@@ -520,7 +520,7 @@ function accountVerificationMarkup(mode = "verify-email") {
     ? `Если аккаунт существует, шестизначный код отправлен на <b>${email}</b>.`
     : `Мы отправили шестизначный код на <b>${email}</b>.`;
   return `<div class="account-hero ${recovering ? "recovery" : "verify"}"><span>${recovering ? "↺" : "✉"}</span><div><small>${recovering ? "ВОССТАНОВЛЕНИЕ" : "ПОДТВЕРЖДЕНИЕ"}</small><h2>${recovering ? "Код для сброса пароля" : "Проверь почту"}</h2><p>${deliveryText}</p></div></div>
-    <form class="account-form" id="accountForm"><label>Код из письма<input class="account-code-input" id="accountVerificationCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" required></label>${passwordField}<small class="account-password-note" id="accountVerificationHint">Код действует 10 минут.</small><div class="account-error" id="accountError" aria-live="polite"></div><button class="account-primary" type="submit">${recovering ? "Сменить пароль и войти" : "Подтвердить и создать аккаунт"}</button></form>
+    <form class="account-form" id="accountForm"><label>Код из письма<div class="account-code-row"><input class="account-code-input" id="accountVerificationCode" inputmode="numeric" autocomplete="one-time-code" enterkeyhint="done" maxlength="6" pattern="[0-9]{6}" placeholder="000000" required><button type="button" class="account-paste-code" id="accountPasteCode">Вставить</button></div></label>${passwordField}<small class="account-password-note" id="accountVerificationHint">Код действует 10 минут. На iPhone код из письма может появиться над клавиатурой автоматически.</small><div class="account-error" id="accountError" aria-live="polite"></div><button class="account-primary" type="submit">${recovering ? "Сменить пароль и войти" : "Подтвердить и создать аккаунт"}</button></form>
     <div class="account-verification-actions"><button class="account-link" id="accountResendCode" type="button">Отправить код ещё раз</button><button class="account-link subtle" type="button" data-account-mode="${recovering ? "recover" : "register"}" data-account-reset-verification="1">← ${recovering ? "Изменить почту" : "Изменить почту или пароль"}</button></div>`;
 }
 
@@ -590,7 +590,36 @@ function renderAccountModal() {
     updateVerificationControls();
     accountVerificationTimer = setInterval(updateVerificationControls, 1000);
     const codeInput = document.querySelector("#accountVerificationCode");
-    codeInput?.addEventListener("input", () => { codeInput.value = codeInput.value.replace(/\D/g, "").slice(0, 6); });
+    let autoSubmitTimer = 0;
+    codeInput?.addEventListener("input", () => {
+      codeInput.value = codeInput.value.replace(/\D/g, "").slice(0, 6);
+      clearTimeout(autoSubmitTimer);
+      if (codeInput.value.length === 6) autoSubmitTimer = setTimeout(() => document.querySelector("#accountForm")?.requestSubmit(), 160);
+    });
+    codeInput?.addEventListener("paste", (event) => {
+      const text = event.clipboardData?.getData("text") || "";
+      const code = String(text).match(/(?:^|\D)(\d{6})(?:\D|$)/)?.[1] || "";
+      if (!code) return;
+      event.preventDefault(); codeInput.value = code; codeInput.dispatchEvent(new Event("input", { bubbles:true }));
+    });
+    let clipboardFocusTried = false;
+    codeInput?.addEventListener("focus", async () => {
+      if (clipboardFocusTried || codeInput.value) return;
+      clipboardFocusTried = true;
+      try {
+        const text = await navigator.clipboard?.readText?.();
+        const code = String(text || "").match(/(?:^|\D)(\d{6})(?:\D|$)/)?.[1] || "";
+        if (code) { codeInput.value = code; codeInput.dispatchEvent(new Event("input", { bubbles:true })); }
+      } catch {}
+    }, { once:true });
+    document.querySelector("#accountPasteCode")?.addEventListener("click", async () => {
+      try {
+        const text = await navigator.clipboard?.readText?.();
+        const code = String(text || "").match(/(?:^|\D)(\d{6})(?:\D|$)/)?.[1] || "";
+        if (!code) return showToast?.("В буфере нет шестизначного кода");
+        codeInput.value = code; codeInput.dispatchEvent(new Event("input", { bubbles:true })); codeInput.focus();
+      } catch { showToast?.("Разреши доступ к буферу и нажми «Вставить» ещё раз"); }
+    });
     document.querySelector("#accountResendCode")?.addEventListener("click", async (event) => {
       const button = event.currentTarget;
       const errorBox = document.querySelector("#accountError");

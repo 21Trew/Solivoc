@@ -226,8 +226,10 @@
     {
       "id": "sea",
       "title": "Море",
-      "conflictGroup": "water_nature",
-      "conflicts": [],
+      "conflictGroup": "coast_water",
+      "conflicts": [
+        "beach"
+      ],
       "words": [
         "Волна",
         "Коралл",
@@ -281,8 +283,10 @@
     {
       "id": "beach",
       "title": "Пляж",
-      "conflictGroup": "coast",
-      "conflicts": [],
+      "conflictGroup": "coast_water",
+      "conflicts": [
+        "sea"
+      ],
       "words": [
         "Песок",
         "Шезлонг",
@@ -290,7 +294,7 @@
         "Полотенце",
         "Купальник",
         "Ракушка",
-        "Прибой",
+        "Парео",
         "Крем",
         "Пляжбол",
         "Спасатель"

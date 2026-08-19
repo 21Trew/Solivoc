@@ -9,7 +9,8 @@ let hubChapterNumber = null,
   encyclopediaQuery = "",
   encyclopediaSort = "progress",
   achievementFilter = "all",
-  hubExpandedSections = new Set();
+  hubExpandedSections = new Set(),
+  lastProgressDuelRefreshAt = 0;
 
 function isStandalonePwa() {
   return window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true;
@@ -104,7 +105,7 @@ function modesTabMarkup() {
 }
 
 function homeTabMarkup() {
-  return `<section class="home-welcome mascot-welcome"><div class="home-welcome-copy"><small>ГЛАВНАЯ</small><h2>Продолжим?</h2><p>Серия, недельная цель и следующий лучший ход — на одном экране.</p></div><div class="mascot-pair" aria-label="Маскоты Словасьянса"><img src="./icons/mascot-owl.svg" alt="Мудрая сова"><img src="./icons/mascot-cat.svg" alt="Кот-учёный"></div></section>
+  return `<section class="home-welcome mascot-welcome"><div class="home-welcome-copy"><small>ГЛАВНАЯ</small><h2>Продолжим?</h2><p>Серия, недельная цель и следующий лучший ход — на одном экране.</p></div><button type="button" class="mascot-pair" data-open-mascots aria-label="Открыть своих маскотов"><img src="./icons/mascot-owl.svg" alt="Мудрая сова"><img src="./icons/mascot-cat.svg" alt="Кот-учёный"></button></section>
     ${typeof smartHomeMarkup === "function" ? smartHomeMarkup() : ""}
     ${typeof dailyCalendarMarkup === "function" ? dailyCalendarMarkup() : ""}
     ${typeof dailyModeQuestsMarkup === "function" ? dailyModeQuestsMarkup() : ""}
@@ -115,7 +116,8 @@ function homeTabMarkup() {
 function achievementCardMarkup(a) {
   const done = profile.achievements.includes(a.id), progress = achievementProgressData(a, profile), ratio = progress ? progress.value / progress.goal : done ? 1 : 0,
     icon = String(a.icon || "🏆"), iconClass = [...icon].length > 3 ? "icon-long" : [...icon].length > 2 ? "icon-medium" : "";
-  return `<div class="achievement ${done ? "done-achievement" : "locked"} ${a.rare ? "rare" : ""}"><div class="ico ${iconClass}" title="${escapeHtml(a.title)}">${escapeHtml(icon)}</div><div class="achievement-copy"><b>${escapeHtml(a.title)}</b><p>${escapeHtml(a.desc)}${a.rare ? " · редкое" : ""}</p>${progress ? `<div class="achievement-progress"><i style="width:${Math.min(1, ratio) * 100}%"></i></div><small>${progress.value}/${progress.goal}</small>` : ""}</div><span class="done">${done ? "✓" : ""}</span></div>`;
+  const rarity = a.legendary ? "легендарное" : a.rare ? "редкое" : "";
+  return `<div class="achievement ${done ? "done-achievement" : "locked"} ${a.legendary ? "legendary" : a.rare ? "rare" : ""}"><div class="ico ${iconClass}" title="${escapeHtml(a.title)}">${escapeHtml(icon)}</div><div class="achievement-copy"><b>${escapeHtml(a.title)}</b><p>${escapeHtml(a.desc)}${rarity ? ` · ${rarity}` : ""}</p>${progress ? `<div class="achievement-progress"><i style="width:${Math.min(1, ratio) * 100}%"></i></div><small>${progress.value}/${progress.goal}</small>` : ""}</div><span class="done">${done ? "✓" : ""}</span></div>`;
 }
 function progressTabMarkup() {
   const chaptersDone = completedChapterCount(profile), perfectChapters = perfectChapterCount(profile), discoveredCount = discoveredCategoryCount(profile);
@@ -123,7 +125,7 @@ function progressTabMarkup() {
     const done = profile.achievements.includes(a.id), p = achievementProgressData(a, profile);
     if (achievementFilter === "done") return done;
     if (achievementFilter === "near") return !done && !!p;
-    if (achievementFilter === "rare") return !!a.rare;
+    if (achievementFilter === "rare") return !!a.rare && !a.legendary;
     if (achievementFilter === "legendary") return !!a.legendary;
     return true;
   });
@@ -236,10 +238,10 @@ function openPictureModePicker() {
   if (!modal || !content) return;
   content.innerHTML = `<div class="picture-mode-head"><small>РЕЖИМ КАРТИНКИ</small><h2>Выбери набор</h2><p>В раскладе будут только карточки с изображениями.</p></div><div class="association-collection-grid">${associationCollectionCardsMarkup()}</div>`;
   content.querySelectorAll("[data-association-collection]").forEach((btn) => btn.onclick = () => {
-    const id = btn.dataset.associationCollection;
+    const id = btn.dataset.associationCollection, collection = associationCollectionById(id);
     closePictureModePicker();
-    closeHub();
-    makeLevel(1, { mode:"collection", collectionId:id, seed:`collection:${id}:${Date.now()}` });
+    const start=()=>{ closeHub(); makeLevel(1, { mode:"collection", collectionId:id, seed:`collection:${id}:${Date.now()}` }); };
+    if(typeof showLevelConditionsIntro==="function") showLevelConditionsIntro({ icon:collection?.icon||"▦", eyebrow:"РЕЖИМ «КАРТИНКИ»", title:collection?.name||"Картинки", desc:"В раскладе будут только карточки с изображениями.", rule:"Собирай изображения по смысловым категориям так же, как слова." }, start); else start();
   });
   $("#pictureModeClose").onclick = closePictureModePicker;
   modal.onclick = (e) => { if (e.target === modal) closePictureModePicker(); };
@@ -307,11 +309,31 @@ function avatarEmojiMarkup(selectedEmoji = profile.avatarEmoji) {
 function titlePillsMarkup(selectedTitle = profile.titleId) {
   return `<div class="title-pill-grid">${availableTitleDefs(profile).map((t)=>`<button type="button" class="title-pill ${selectedTitle===t.id?"selected":""}" data-profile-title="${t.id}"><i>${escapeHtml(t.icon)}</i><span>${escapeHtml(t.name)}</span></button>`).join("")}</div>`;
 }
+function birthdayDeveloperMessage() {
+  const year = +(profile?.birthdayWeek?.lastCelebratedYear || 0), info = typeof birthdayWeekInfo === "function" ? birthdayWeekInfo(profile) : { active:false };
+  if (!year || !info.active) return null;
+  const name = String(profile.playerName || "").trim();
+  return {
+    id:`birthday-${year}`,
+    version:`birthday-${year}`,
+    major:true,
+    date:birthDateDisplay?.(profile.birthDate) || "Сегодня",
+    title:`С днём рождения${name && name !== "Игрок" ? `, ${name}` : ""}! 🎂`,
+    intro:"Словасьянс приготовил для тебя маленький подарок — праздничная неделя уже началась.",
+    items:[
+      "Открыт уникальный маскот «Праздничная капибара».",
+      "В течение 7 дней за заработанный опыт начисляется дополнительный праздничный бонус.",
+      "Загляни в раздел «Стиль», чтобы познакомиться с новым напарником.",
+      `Праздничный бонус действует ещё ${ruCount(info.daysLeft + 1, "день", "дня", "дней")}.`,
+    ],
+  };
+}
 function allDeveloperMessages() {
   const remote = Array.isArray(window.SERVER_BOOTSTRAP?.developerMessages) ? window.SERVER_BOOTSTRAP.developerMessages : [];
   const local = typeof DEVELOPER_MESSAGES !== "undefined" ? DEVELOPER_MESSAGES : [];
+  const birthday = birthdayDeveloperMessage();
   const byId = new Map();
-  [...remote, ...local].forEach((message) => { if (message?.id && !byId.has(String(message.id))) byId.set(String(message.id), message); });
+  [...(birthday ? [birthday] : []), ...remote, ...local].forEach((message) => { if (message?.id && !byId.has(String(message.id))) byId.set(String(message.id), message); });
   return [...byId.values()];
 }
 function currentDeveloperMessages() {
@@ -324,10 +346,13 @@ function developerMailUnreadCount() {
 }
 function updateProfileMailBadge() {
   const badge = $("#profileDeveloperMailBadge"), count = developerMailUnreadCount();
-  if (!badge) return;
-  badge.textContent = count > 9 ? "9+" : count ? String(count) : "";
-  badge.hidden = count === 0;
+  if (badge) { badge.textContent = count > 9 ? "9+" : count ? String(count) : ""; badge.hidden = count === 0; }
   $("#profileDeveloperMail")?.classList.toggle("has-unread", count > 0);
+  [$("#hubProfileButton"), $("#gameProfileButton")].forEach((button)=>{
+    if (!button) return;
+    button.classList.toggle("has-mail-unread", count > 0);
+    if (count) button.dataset.mailCount = count > 9 ? "9+" : String(count); else delete button.dataset.mailCount;
+  });
 }
 function closeDeveloperMailModal() {
   const modal = $("#developerMailModal");
@@ -532,7 +557,7 @@ function settingsTabMarkup() {
       <button class="setting-toggle ${profile.settings.music?"on":""}" id="musicToggle"><b>♫ Музыка</b><span>${profile.settings.music?"Включена":"Выключена"}</span></button>
       <button class="setting-toggle ${profile.settings.haptics?"on":""}" id="hapticsToggle"><b>⌁ Вибрация</b><span>${profile.settings.haptics?"Включена":"Выключена"}</span></button>
     </div></div>
-    <div class="settings-subgroup"><div class="hub-subhead"><h4>Приложение</h4><small>установка и офлайн-режим</small></div><button class="setting-toggle install full-setting" id="installPwa" ${standalone?"disabled":""}><b>${installLabel}</b><span>${standalone?"Установлено как приложение":"Работает офлайн после установки"}</span></button></div>`;
+    <div class="settings-subgroup"><div class="hub-subhead"><h4>Приложение</h4><small>установка и офлайн-режим</small></div><button class="setting-toggle install full-setting" id="installPwa" ${standalone?"disabled":""}><b>${installLabel}</b><span>${standalone?`Установлено · награда ${profile.installRewardClaimed?"получена":"начислится при запуске"}`:`Работает офлайн · награда +${PWA_INSTALL_REWARD_XP||250} XP`}</span></button><button class="wide-secondary install-guide-open" id="installGuide">Как установить на экран «Домой»</button></div>`;
   const notificationsContent = `<div class="notification-state ${notificationStatus.cls}"><i></i><span>${notificationStatus.text}</span></div>
       <div class="settings-grid notification-grid">
         <button class="setting-toggle ${profile.settings.notifications?"on":""}" id="notificationToggle"><b>🔔 Все уведомления</b><span>${profile.settings.notifications?"Включены":"Выключены"}</span></button>
@@ -565,11 +590,66 @@ function renderHub() {
   hubContent.innerHTML = (views[hubTab] || homeTabMarkup)();
   hubNav.innerHTML = hubTabsMarkup();
   bindHubHandlers();
+  updateProfileMailBadge();
+  if (hubTab === "progress" && typeof accountSignedIn === "function" && accountSignedIn() && typeof fetchLeaderboardSnapshot === "function" && Date.now() - lastProgressDuelRefreshAt > 60000) {
+    lastProgressDuelRefreshAt = Date.now();
+    const before = `${profile.stats?.duelMatches||0}/${profile.stats?.duelWins||0}/${profile.stats?.duelRating||0}`;
+    fetchLeaderboardSnapshot(false).then(() => {
+      const after = `${profile.stats?.duelMatches||0}/${profile.stats?.duelWins||0}/${profile.stats?.duelRating||0}`;
+      if (hubTab === "progress" && before !== after && hub.classList.contains("show")) renderHub();
+    }).catch(()=>{});
+  }
 }
+function openInstallGuideModal() {
+  const modal=$("#installGuideModal"); if(!modal)return;
+  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  const steps=$("#installGuideSteps"), reward=$("#installGuideReward");
+  if(steps) steps.innerHTML=ios
+    ? `<li>Открой Словасьянс именно в <b>Safari</b>.</li><li>Нажми кнопку <b>«Поделиться»</b> внизу браузера.</li><li>Выбери <b>«На экран «Домой»»</b> и нажми «Добавить».</li><li>Запусти игру с нового ярлыка — награда начислится автоматически.</li>`
+    : `<li>Открой меню браузера <b>⋮</b>.</li><li>Выбери <b>«Установить приложение»</b> или «Добавить на главный экран».</li><li>Подтверди установку.</li><li>Запусти установленный Словасьянс — награда начислится автоматически.</li>`;
+  if(reward) reward.textContent=profile.installRewardClaimed?"✓ Награда за установку уже получена":`Награда за первую установку: +${typeof PWA_INSTALL_REWARD_XP!=="undefined"?PWA_INSTALL_REWARD_XP:250} XP`;
+  modal.classList.add("show"); modal.setAttribute("aria-hidden","false");
+  $("#installGuideClose").onclick=()=>{modal.classList.remove("show");modal.setAttribute("aria-hidden","true")};
+  modal.onclick=(e)=>{if(e.target===modal)$("#installGuideClose").click()};
+}
+function dailyQuestIntroInfo() {
+  const q=normalizeDailyQuests?.(), defs=activeDailyQuestDefs?.()||[];
+  const done=defs.reduce((sum,d)=>sum+Math.min(d.target,+q?.progress?.[d.id]||0),0), goal=defs.reduce((sum,d)=>sum+d.target,0);
+  const detail=defs.map((d)=>`${d.label}: ${Math.min(d.target,+q?.progress?.[d.id]||0)}/${d.target}`).join(" · ");
+  return { done, goal, left:Math.max(0,goal-done), detail };
+}
+function dailyQuestIntroText() { const info=dailyQuestIntroInfo(); return `${info.done}/${info.goal} выполнено · осталось ${info.left}`; }
+function modeIntroData(mode) {
+  const def=GAME_MODE_DEFS.find((x)=>x.id===mode)||{icon:"◆",label:"Особый режим"};
+  const copy={
+    daily:[`Ежедневные задания: ${dailyQuestIntroText()}`,`${dailyQuestIntroInfo().detail || "Пройди сегодняшний расклад"}. Результат ежедневного расклада можно улучшать повторными попытками.`],
+    marathon:["Серия идеальных раскладов","Нужно брать ★★★. Ошибка в серии завершит марафон."],
+    zen:["Спокойная игра","Без давления кампании: играй в своём темпе."],
+    time:["Успей до окончания таймера","Скорость важна, но ошибочные решения всё равно мешают."],
+    moves:["Уложись в лимит ходов","Каждый перенос и прокрутка колоды расходуют ход."],
+    combo:["Собирай ручные комбо","В комбо идут только успешные ручные переносы."],
+    noMistakes:["Ни одной ошибки","Первая неверная попытка завершает уровень."],
+    onePass:["Только 1 проход колоды","Сброс нельзя бесконечно возвращать в колоду."],
+    hardcore:["Максимальная сложность","Без подсказок и ошибок. С каждым раундом расклад становится жёстче."],
+  };
+  const [desc,rule]=copy[mode]||["Особые условия","Правила режима будут действовать на весь расклад."];
+  return {icon:def.icon,eyebrow:mode==="daily"?"ЕЖЕДНЕВНЫЙ РАСКЛАД":"УСЛОВИЯ РЕЖИМА",title:def.label,desc,rule};
+}
+function launchWithModeIntro(mode, start) {
+  if(mode==="regular"||mode==="duel"||mode==="pictures"||mode==="custom") return start();
+  const data=modeIntroData(mode);
+  if(typeof showLevelConditionsIntro==="function") showLevelConditionsIntro(data,start); else start();
+}
+function openMascotShelf() {
+  hubTab="appearance"; renderHub();
+  requestAnimationFrame(()=>setTimeout(()=>hubContent.querySelector(".companion-section")?.scrollIntoView({behavior:"smooth",block:"start"}),40));
+}
+
 function bindHubHandlers() {
   hubNav.querySelectorAll("[data-hub-tab]").forEach((btn)=>btn.onclick=()=>{hubTab=btn.dataset.hubTab; renderHub();});
   const on=(id,fn)=>{const el=$(id); if(el) el.onclick=fn;};
   on("#smartAction",()=>runSmartHomeAction?.());
+  hubContent.querySelectorAll("[data-open-mascots]").forEach((el)=>el.onclick=openMascotShelf);
   on("#hubProfileButton",()=>openProfileEditorModal());
   const resume = hubNav.querySelector("[data-hub-resume]");
   if (resume) resume.onclick = () => {
@@ -579,14 +659,17 @@ function bindHubHandlers() {
     else { render(); updateCoach(); setBackgroundMusic?.(musicModeForState?.(state) || "game"); }
   };
   const startHubMode=(mode,{quick=false}={})=>{
-    if(mode==="daily"){closeHub();makeLevel(0,{mode:"daily",seed:`daily:${todayKey()}`});return;}
-    if(mode==="marathon"){closeHub();const runId=`marathon:${Date.now().toString(36)}`;makeLevel(1,{mode:"marathon",seed:`${runId}:1`,marathonRound:1,marathonId:runId});return;}
-    if(mode==="zen"){closeHub();makeLevel(1,{mode:"calm",seed:`zen:${Date.now()}:${Math.random()}`});return;}
-    if(mode==="pictures"){if(quick){const defs=ASSOCIATION_COLLECTION_DEFS||[],i=defs.length?Math.floor(Math.random()*defs.length):0,id=defs[i]?.id||"animals";closeHub();makeLevel(1,{mode:"collection",collectionId:id,seed:`daily-picture:${todayKey()}:${Date.now()}:${id}`});}else openPictureModePicker();return;}
-    if(mode==="duel"){hubContent.querySelector(".duel-create")?.scrollIntoView({behavior:"smooth",block:"center"});return;}
-    if(mode==="custom"){openCustomRulesModal();return;}
-    if(mode==="hardcore"){closeHub();const runId=`hardcore:${Date.now().toString(36)}`;makeLevel(1,{mode:"hardcore",seed:`${runId}:1`});return;}
-    if(["regular","time","moves","combo","noMistakes","onePass"].includes(mode)){closeHub();makeLevel(mode==="regular"?(profile.currentLevel||1):25,{mode,seed:`${mode}:${Date.now()}:${Math.random()}`});return;}
+    const launch=()=>{
+      if(mode==="daily"){closeHub();makeLevel(0,{mode:"daily",seed:`daily:${todayKey()}`});return;}
+      if(mode==="marathon"){closeHub();const runId=`marathon:${Date.now().toString(36)}`;makeLevel(1,{mode:"marathon",seed:`${runId}:1`,marathonRound:1,marathonId:runId});return;}
+      if(mode==="zen"){closeHub();makeLevel(1,{mode:"calm",seed:`zen:${Date.now()}:${Math.random()}`});return;}
+      if(mode==="pictures"){if(quick){const defs=ASSOCIATION_COLLECTION_DEFS||[],i=defs.length?Math.floor(Math.random()*defs.length):0,id=defs[i]?.id||"animals",collection=associationCollectionById(id);const start=()=>{closeHub();makeLevel(1,{mode:"collection",collectionId:id,seed:`daily-picture:${todayKey()}:${Date.now()}:${id}`});};if(typeof showLevelConditionsIntro==="function")showLevelConditionsIntro({icon:collection?.icon||"▦",eyebrow:"РЕЖИМ «КАРТИНКИ»",title:collection?.name||"Картинки",desc:"Только изображения из выбранной темы.",rule:"Собирай изображения по смысловым категориям."},start);else start();}else openPictureModePicker();return;}
+      if(mode==="duel"){hubContent.querySelector(".duel-create")?.scrollIntoView({behavior:"smooth",block:"center"});return;}
+      if(mode==="custom"){openCustomRulesModal();return;}
+      if(mode==="hardcore"){closeHub();const runId=`hardcore:${Date.now().toString(36)}`;makeLevel(1,{mode:"hardcore",seed:`${runId}:1`});return;}
+      if(["regular","time","moves","combo","noMistakes","onePass"].includes(mode)){closeHub();makeLevel(mode==="regular"?(profile.currentLevel||1):25,{mode,seed:`${mode}:${Date.now()}:${Math.random()}`});return;}
+    };
+    launchWithModeIntro(mode,launch);
   };
   hubContent.querySelectorAll("[data-game-mode]").forEach((btn)=>btn.onclick=()=>startHubMode(btn.dataset.gameMode));
   hubContent.querySelectorAll("[data-daily-quest-mode]").forEach((btn)=>btn.onclick=()=>startHubMode(btn.dataset.dailyQuestMode,{quick:true}));
@@ -647,7 +730,8 @@ function bindHubHandlers() {
   on("#notificationTest",async()=>{const ok=await showSystemNotification?.("Словасьянс", "Тестовое уведомление работает ✓", {tag:"worditaire-test"}); if(!ok) showToast("Не удалось показать уведомление");});
   on("#exportSave",exportProgress); on("#importSave",importProgress);
   on("#copyStabilityDiagnostics",()=>copyStabilityDiagnostics?.());
-  on("#installPwa",async()=>{if(isStandalonePwa())return;if(deferredInstallPrompt){const prompt=deferredInstallPrompt;deferredInstallPrompt=null;await prompt.prompt();const result=await prompt.userChoice.catch(()=>null);track("pwa_prompt",{outcome:result?.outcome||"unknown"});renderHub();}else{const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);showToast(ios?'iPhone: Поделиться → На экран «Домой»':'Открой меню браузера → Установить приложение');}});
+  on("#installPwa",async()=>{if(isStandalonePwa())return;if(deferredInstallPrompt){const prompt=deferredInstallPrompt;deferredInstallPrompt=null;await prompt.prompt();const result=await prompt.userChoice.catch(()=>null);track("pwa_prompt",{outcome:result?.outcome||"unknown"});renderHub();}else openInstallGuideModal();});
+  on("#installGuide",openInstallGuideModal);
 }
 function openHub(tab = null) {
   if (tab) hubTab = tab;

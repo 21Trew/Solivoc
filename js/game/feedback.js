@@ -224,6 +224,7 @@ function resetCombo() {
   el?.classList.remove("show");
 }
 function registerCombo(productive = true, source = "manual") {
+  if (source !== "manual") return;
   if (!productive || state?.mode === "tutorial" || state?.mode === "calm") return;
   comboCount = Math.max(0, +(state?.run?.comboCurrent || 0)) + 1;
   if (state?.run) {
@@ -240,6 +241,7 @@ function registerCombo(productive = true, source = "manual") {
   el.classList.remove("show", "pop"); void el.offsetWidth; el.classList.add("show", "pop");
   playSfx("combo", 0.75 + Math.min(comboCount, 6) * 0.05);
   if (comboCount >= 3) haptic([7, 18, 9]);
+  if ([3,5,10,15,20,25,30].includes(comboCount)) showCompanionBubble?.(companionComboLine?.(), 2800);
   setTimeout(() => el.classList.remove("pop"), 420);
 }
 function feedbackWrongMove(nodes = [], target = null, message = "Сюда положить нельзя") {
@@ -250,6 +252,7 @@ function feedbackWrongMove(nodes = [], target = null, message = "Сюда пол
   }
   playSfx("error");
   haptic([18, 28, 16]);
+  if (state?.mode !== "tutorial") showCompanionBubble?.(companionErrorLine?.(), 3000);
   nodes.filter(Boolean).forEach((node) => {
     node.animate(
       [
@@ -412,6 +415,7 @@ window.addEventListener("beforeinstallprompt", (e) => {
 });
 window.addEventListener("appinstalled", () => {
   deferredInstallPrompt = null;
+  claimPwaInstallReward?.();
   showToast("Словасьянс установлен ✓");
   track("pwa_installed");
 });

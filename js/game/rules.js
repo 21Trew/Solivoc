@@ -121,11 +121,16 @@ function performDrop(p, target, options = {}) {
     else col.push(moving);
   }
   state.run.moves++;
+  if (state.mode === "tutorial") {
+    const manual = (options.comboSource || "manual") !== "auto";
+    if (manual && zone === "slot" && categoryCard(moving)) noteTutorialAction?.("category");
+    else if (manual) noteTutorialAction?.("manual");
+  }
   if (typeof checkActiveRuleFailure === "function" && checkActiveRuleFailure()) return true;
   if (options.comboEligible) {
     if (productive) registerCombo(true, options.comboSource || "manual");
     else resetCombo();
-  } else resetCombo();
+  } else if ((options.comboSource || "manual") !== "auto") resetCombo();
   playSfx("drop");
   haptic(9);
   render();

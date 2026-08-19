@@ -1,8 +1,14 @@
 /* Category-bank loading, validation and conflict rules. */
 let CATEGORY_BANK_REPORT = { categories: 0, ambiguousWords: [], explicitConflicts: 0, warnings: [] };
+const cardWordUnits = (value) => [...String(value || "").trim()].reduce((sum, ch) => {
+  if (/[ЖШЩМЫЮФЦWMW]/u.test(ch)) return sum + 1.28;
+  if (/[ИПНКХЧЪЫ]/u.test(ch)) return sum + 1.08;
+  if (/[ijl1І]/u.test(ch)) return sum + 0.6;
+  return sum + 1;
+}, 0);
 const fitsCardWord = (s, maxLen) => {
   s = String(s || "").trim();
-  return !!s && !/[\s\-‑]/.test(s) && s.length <= maxLen;
+  return !!s && !/[\s\-‑]/.test(s) && s.length <= maxLen && cardWordUnits(s) <= 9.7;
 };
 const fitsCardTitle = (s, maxLen) => {
   s = String(s || "").trim().replace(/\s+/g, " ");

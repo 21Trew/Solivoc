@@ -211,12 +211,12 @@ const LEADERBOARD_DEFS = Object.freeze([
 function leaderboardValues() {
   const modes=profile.modeStats||{}, stats=profile.stats||{}, challenge=profile.challengeMetrics||{};
   return {
-    stars:profile.totalStars||0, levels:challenge.levels||0, daily:stats.dailyCompleted||0, marathon:stats.bestMarathon||0,
+    stars:Math.min(profile.totalStars||0,(stats.levelsCompleted||0)*3), levels:stats.levelsCompleted||0, daily:stats.dailyCompleted||0, marathon:stats.bestMarathon||0,
     combo:Math.max(stats.maxCombo||0,stats.maxDragCombo||0,...Object.values(modes).map((x)=>+x?.bestCombo||0)), duel:stats.duelRating||0,
     time:modes.time?.bestTimeMs||0, moves:modes.moves?.bestMoves||0, onePass:modes.onePass?.completed||0,
   };
 }
-function leaderboardPayload(){return{playerId:profile.playerId||"",name:profile.playerName||"Игрок",avatar:profile.avatarEmoji||"🙂",values:leaderboardValues()};}
+function leaderboardPayload(){const d=syncDuelStats?.()||{};return{playerId:profile.playerId||"",name:profile.playerName||"Игрок",avatar:profile.avatarEmoji||"🙂",values:leaderboardValues(),duelStats:{matches:d.total||profile.stats.duelMatches||0,wins:d.wins||profile.stats.duelWins||0,losses:d.losses||profile.stats.duelLosses||0,draws:d.draws||profile.stats.duelDraws||0,gold:d.gold||profile.stats.duelGold||0,silver:d.silver||profile.stats.duelSilver||0,bronze:d.bronze||profile.stats.duelBronze||0,xp:d.duelXp||profile.stats.duelXp||0,rating:d.duelRating||profile.stats.duelRating||0}};}
 let leaderboardSyncAt=0;
 const LEADERBOARD_CACHE_TTL=120000;
 let leaderboardCache={at:0,boards:{},promise:null};
@@ -257,6 +257,10 @@ async function fetchLeaderboardSnapshot(force=false){
       const r=await fetch("/api/leaderboard?board=all",{cache:"no-store",signal:c.signal});
       if(!r.ok)throw new Error("leaderboard unavailable");
       const data=await r.json(),boards=data?.boards&&typeof data.boards==="object"?data.boards:{};
+      if(data?.me?.duelStats){
+        const d=data.me.duelStats,stats=profile.stats||{};
+        stats.duelMatches=Math.max(+stats.duelMatches||0,+d.matches||0);stats.duelWins=Math.max(+stats.duelWins||0,+d.wins||0);stats.duelLosses=Math.max(+stats.duelLosses||0,+d.losses||0);stats.duelDraws=Math.max(+stats.duelDraws||0,+d.draws||0);stats.duelGold=Math.max(+stats.duelGold||0,+d.gold||0);stats.duelSilver=Math.max(+stats.duelSilver||0,+d.silver||0);stats.duelBronze=Math.max(+stats.duelBronze||0,+d.bronze||0);stats.duelXp=Math.max(+stats.duelXp||0,+d.xp||0);stats.duelRating=Math.max(+stats.duelRating||0,+d.rating||0,+data.me.values?.duel||0);profile.stats=stats;saveProfile?.();
+      }
       leaderboardCache={at:Date.now(),boards,promise:null};
       return boards;
     } finally {clearTimeout(t);if(leaderboardCache.promise)leaderboardCache.promise=null;}
@@ -300,10 +304,11 @@ function duelHistorySummary() {
 }
 function syncDuelStats() {
   const summary=duelHistorySummary(),stats=profile.stats||(profile.stats={});
-  const gold=summary.wins,silver=summary.draws,bronze=summary.losses,duelXp=gold*4+silver*3+bronze*2,duelRating=gold*3+silver*2+bronze;
-  const changed=stats.duelMatches!==summary.total||stats.duelWins!==summary.wins||stats.duelLosses!==summary.losses||stats.duelDraws!==summary.draws||stats.duelGold!==gold||stats.duelSilver!==silver||stats.duelBronze!==bronze||stats.duelXp!==duelXp||stats.duelRating!==duelRating;
-  Object.assign(stats,{duelMatches:summary.total,duelWins:summary.wins,duelLosses:summary.losses,duelDraws:summary.draws,duelGold:gold,duelSilver:silver,duelBronze:bronze,duelXp,duelRating});
-  if(changed)saveProfile?.(); return {...summary,gold,silver,bronze,duelXp,duelRating};
+  const wins=Math.max(+stats.duelWins||0,summary.wins),losses=Math.max(+stats.duelLosses||0,summary.losses),draws=Math.max(+stats.duelDraws||0,summary.draws),total=Math.max(+stats.duelMatches||0,wins+losses+draws,summary.total);
+  const gold=Math.max(+stats.duelGold||0,wins),silver=Math.max(+stats.duelSilver||0,draws),bronze=Math.max(+stats.duelBronze||0,losses),duelXp=Math.max(+stats.duelXp||0,gold*4+silver*3+bronze*2),duelRating=Math.max(+stats.duelRating||0,gold*3+silver*2+bronze);
+  const changed=stats.duelMatches!==total||stats.duelWins!==wins||stats.duelLosses!==losses||stats.duelDraws!==draws||stats.duelGold!==gold||stats.duelSilver!==silver||stats.duelBronze!==bronze||stats.duelXp!==duelXp||stats.duelRating!==duelRating;
+  Object.assign(stats,{duelMatches:total,duelWins:wins,duelLosses:losses,duelDraws:draws,duelGold:gold,duelSilver:silver,duelBronze:bronze,duelXp,duelRating});
+  if(changed)saveProfile?.(); return {wins,losses,draws,total,gold,silver,bronze,duelXp,duelRating};
 }
 function duelOpponentKey(x) {
   if (x?.opponentId) return `id:${x.opponentId}`;
@@ -545,9 +550,10 @@ function runFirstRunOnboarding() {
     let step=0, avatar=profile.avatarEmoji||"🙂", name=profile.playerName==="Игрок"?"":profile.playerName;
     const pages=[
       ()=>`<div class="onboarding-step"><small>ДОБРО ПОЖАЛОВАТЬ</small><h2>Давай знакомиться!</h2><p>Имя и аватар будут видны друзьям в дуэлях.</p><label><span>Твоё имя</span><input id="onboardingName" maxlength="20" value="${escapeHtml(name)}" placeholder="Например, Альберт Эйнштейн" autocomplete="off"></label><div class="onboarding-avatar-picker"><button type="button" class="onboarding-avatar-scroll prev" data-avatar-scroll="prev" aria-label="Предыдущие аватары">‹</button><div class="onboarding-avatar-grid">${onboardingAvatarButtons(avatar)}</div><button type="button" class="onboarding-avatar-scroll next" data-avatar-scroll="next" aria-label="Следующие аватары">›</button></div><div class="onboarding-dots avatar-page-dots" data-avatar-dots></div></div>`,
-      ()=>`<div class="onboarding-step"><small>КАК ИГРАТЬ · 1/2</small><h2>Ищи смысловые связи</h2><p>Открытые карты одной категории складываются вместе. Можно тащить всю открытую стопку.</p><div class="onboarding-demo"><span>МОРЕ</span><b>ВОЛНА</b><b>ПРИБОЙ</b><b>ОКЕАН</b></div></div>`,
-      ()=>`<div class="onboarding-step"><small>КАК ИГРАТЬ · 2/2</small><h2>Собирай категории сверху</h2><p>Карточку категории отправь в свободный слот, затем собирай туда все связанные слова или картинки.</p><div class="onboarding-demo picture"><span>КИНО</span><b>🎬</b><b>🍿</b><b>🎟️</b><b>📽️</b></div></div>`,
-      ()=>`<div class="onboarding-step"><small>ГОТОВО</small><h2>Начнём с короткого обучения</h2><p>Три простых расклада покажут перенос категории, сбор стопок и работу колоды. Потом откроется весь Словасьянс.</p><div class="onboarding-ready"><i>✦</i><span>Слова</span><i>🖼️</i><span>Картинки</span><i>⚔</i><span>Дуэли</span></div></div>`,
+      ()=>`<div class="onboarding-step"><small>КАК ИГРАТЬ · 1/3</small><h2>Ищи смысловые связи</h2><p>Карты одной ассоциации складываются вместе. Ручные точные переносы растят комбо.</p><div class="onboarding-demo"><span>ФРУКТЫ</span><b>ЯБЛОКО</b><b>ГРУША</b><b>СЛИВА</b></div></div>`,
+      ()=>`<div class="onboarding-step"><small>КАК ИГРАТЬ · 2/3</small><h2>Используй быстрые ходы</h2><p>Двойной тап отправляет карту в открытую категорию или на подходящую карту ассоциации. Категории закрепляются в слотах сверху.</p><div class="onboarding-demo picture"><span>КИНО</span><b>🎬</b><b>🍿</b><b>🎟️</b><b>📽️</b></div></div>`,
+      ()=>`<div class="onboarding-step"><small>КАК ИГРАТЬ · 3/3</small><h2>Колода, отмена и подсказка</h2><p>Колода открывает новые карты. «Отмена» возвращает ход, а маскот через «Подсказку» покажет, куда смотреть. В обучении подсказки бесплатны.</p><div class="onboarding-ready"><i>↻</i><span>Колода</span><i>↶</i><span>Отмена</span><i>✦</i><span>Подсказка</span></div></div>`,
+      ()=>`<div class="onboarding-step"><small>ГОТОВО</small><h2>Теперь — 4 интерактивных шага</h2><p>Обучение будет следить за твоими действиями и менять подсказки по мере того, как ты пробуешь перенос, двойной тап, колоду, отмену и подсказку.</p><div class="onboarding-ready"><i>✦</i><span>Слова</span><i>🖼️</i><span>Картинки</span><i>⚔</i><span>Дуэли</span></div></div>`,
     ];
     const render=()=>{
       content.innerHTML=`${pages[step]()}${step===0?"":`<div class="onboarding-dots onboarding-step-dots">${pages.map((_,i)=>`<i class="${i===step?"active":""}"></i>`).join("")}</div>`}<div class="onboarding-actions">${step?`<button class="secondary" id="onboardingBack">Назад</button>`:""}<button class="primary" id="onboardingNext">${step===pages.length-1?"Начать обучение →":"Дальше →"}</button></div>`;

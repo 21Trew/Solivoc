@@ -39,7 +39,13 @@ function autoTargetForPayload(p) {
   }
   const cat = catOfGroup(moving),
     i = state.slots.findIndex((g) => g && categoryCard(g) && catOfGroup(g) === cat);
-  return i >= 0 ? document.querySelector(`.slot[data-index="${i}"]`) : null;
+  if (i >= 0) return document.querySelector(`.slot[data-index="${i}"]`);
+  for (let ci = 0; ci < state.columns.length; ci++) {
+    const col = state.columns[ci]; if (!col.length) continue;
+    const last = col[col.length - 1];
+    if (last.faceUp && catOfGroup(last) === cat && canDropTo(p, "column", ci)) return document.querySelector(`.column[data-index="${ci}"]`);
+  }
+  return null;
 }
 const nextPaint = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 let autoMoveLifecycleToken = 0;
@@ -111,7 +117,8 @@ async function animateAutoMove(card, payload, target) {
   state.run.autoMoves++;
   profile.stats.autoMoves++;
   track("auto_move", { mode: state.mode });
-  const moved = performDrop(payload, target, { comboEligible: true, comboSource: "auto" });
+  const moved = performDrop(payload, target, { comboEligible: false, comboSource: "auto" });
+  if (moved && state.mode === "tutorial") noteTutorialAction?.(cc ? "category" : "auto");
   if (!moved) {
     sources.forEach((n) => n.classList.remove("auto-source"));
     setSourceVacancy(vacancyNodes, false);

@@ -88,26 +88,9 @@ function animatePendingReveal() {
     .finally(() => el.classList.remove("reveal-card"));
 }
 function animatePendingStockDraw() {
-  if (!pendingStockDraw) return;
-  const info = pendingStockDraw;
+  // The waste card is rendered face-up immediately. Avoid the old flip animation:
+  // on iOS it briefly exposed the card back before the open card appeared.
   pendingStockDraw = null;
-  const el = wasteEl.querySelector(`.card[data-uid="${CSS.escape(info.uid || "")}"].movable`);
-  if (!el || motionReduced()) return;
-  const r = el.getBoundingClientRect(),
-    fx = info.from.left + info.from.width / 2 - (r.left + r.width / 2),
-    fy = info.from.top + info.from.height / 2 - (r.top + r.height / 2);
-  el.animate(
-    [
-      { transform: `translate3d(${fx}px,${fy}px,0) rotateY(0deg) rotate(-3deg)`, opacity: 0.8 },
-      {
-        transform: `translate3d(${fx * 0.5}px,${fy * 0.5}px,0) rotateY(88deg) rotate(-1deg)`,
-        opacity: 0.95,
-        offset: 0.42,
-      },
-      { transform: "translate3d(0,0,0) rotateY(0deg) rotate(0deg)", opacity: 1 },
-    ],
-    { duration: 260, easing: "cubic-bezier(.2,.8,.2,1)" },
-  ).finished.catch(() => {});
 }
 function animateRecycle() {
   if (!pendingRecycle) return;

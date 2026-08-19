@@ -1520,3 +1520,78 @@ body[data-theme="paper"] .home-welcome-copy p { color:#f0edf8 !important; }
 .companion-bubble-card span { display:block; }
 .hub-nav, .app .controls { position:relative; }
 .hub-nav::after, .app .controls::after { content:""; position:absolute; left:0; right:0; bottom:calc(env(safe-area-inset-bottom) * -1); height:env(safe-area-inset-bottom); background:inherit; pointer-events:none; }
+
+/* ===== v28 UX fixes ===== */
+.special-level-quote {
+  display:block; margin:12px auto 0; max-width:340px; padding:10px 13px;
+  border:1px solid #704ee030; border-radius:14px;
+  background:linear-gradient(135deg,#30275ef2,#1e2856f2);
+  color:#fff5b8 !important; text-shadow:0 1px 0 #0008; font-size:13px !important; line-height:1.38; font-weight:950;
+  box-shadow:0 8px 22px #27204d24;
+}
+.special-level-quote[hidden], .special-level-rule[hidden] { display:none !important; }
+.modal-secondary-actions { grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:6px !important; }
+.modal-secondary-actions .secondary { min-width:0 !important; padding-inline:3px !important; font-size:9px !important; letter-spacing:-.02em; white-space:nowrap !important; overflow:hidden; text-overflow:clip; }
+
+/* Keep the playing surface tied to the real iOS viewport rather than an old 100vh snapshot. */
+@media (max-width:900px) {
+  html, body { height:100%; min-height:100%; }
+  body:not(.hub-open) .app { position:fixed !important; inset:0 !important; width:100% !important; height:auto !important; min-height:0 !important; max-height:none !important; padding-bottom:0 !important; }
+  .app .controls { margin-bottom:0 !important; border-radius:18px 18px 0 0 !important; padding-bottom:max(7px,env(safe-area-inset-bottom)) !important; }
+  .app .controls::after { display:none !important; content:none !important; }
+  .hub-nav::after { display:none !important; content:none !important; }
+}
+
+.global-profile-button.has-mail-unread::after {
+  content:attr(data-mail-count); position:absolute; top:4px; left:48px; z-index:10;
+  min-width:18px; height:18px; padding:0 5px; display:grid; place-items:center;
+  border:2px solid #17314f; border-radius:999px; background:#ff526d; color:#fff;
+  font-size:9px; line-height:1; font-weight:950; box-shadow:0 4px 10px #12091c55;
+}
+.mascot-pair { border:0 !important; background:transparent !important; padding:0 !important; cursor:pointer; }
+
+.daily-main-quest {
+  grid-column:1/-1; width:100%; margin-top:8px; padding:10px 12px; min-height:58px;
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  border:1px solid #67d7ff36; border-radius:16px; background:linear-gradient(135deg,#1a63886f,#5452aa73); color:#fff; text-align:left;
+}
+.daily-main-quest > span { display:grid; grid-template-columns:30px 1fr; column-gap:8px; align-items:center; min-width:0; }
+.daily-main-quest i { grid-row:1/3; width:30px; height:30px; display:grid; place-items:center; border-radius:10px; background:#ffd96a22; font-style:normal; }
+.daily-main-quest b { font-size:11px; }
+.daily-main-quest small { font-size:9px; color:#c8c7df; }
+.daily-main-quest strong { white-space:nowrap; font-size:10px; color:#9eecff; }
+.daily-main-quest.done { border-color:#63deb061; background:linear-gradient(135deg,#17594788,#41488a70); }
+
+.achievement.legendary { border-color:#f5cb5b78 !important; background:linear-gradient(135deg,#49346e66,#2a2d645c) !important; }
+.achievement.legendary .ico { box-shadow:0 0 0 1px #ffdc7780,0 0 20px #ffd25328; }
+
+.encyclopedia-shell, .encyclopedia-pane, .encyclopedia-grid { min-width:0 !important; max-width:100% !important; }
+.encyclopedia-grid { overflow-x:hidden !important; width:100% !important; grid-template-columns:repeat(3,minmax(0,1fr)) !important; }
+.encyclopedia-grid .collection-item { min-width:0 !important; width:100% !important; overflow:hidden; }
+@media (max-width:380px){ .encyclopedia-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important;} }
+
+.install-guide-modal { position:fixed; inset:0; z-index:28000; display:grid; place-items:center; padding:18px; background:#090a1788; backdrop-filter:blur(10px); opacity:0; visibility:hidden; transition:.2s ease; }
+.install-guide-modal.show { opacity:1; visibility:visible; }
+.install-guide-card { position:relative; width:min(420px,100%); padding:22px 18px 18px; border-radius:24px; background:linear-gradient(180deg,#fffdf7,#eef7ff); color:#2d2a49; box-shadow:0 24px 60px #07091d55; }
+.install-guide-close { position:absolute; right:12px; top:12px; width:34px; height:34px; border:0; border-radius:50%; background:#ece8f8; color:#48416c; font-size:20px; }
+.install-guide-icon { font-size:40px; margin-bottom:7px; }
+.install-guide-card > small { color:#7565bd; font-size:9px; font-weight:950; letter-spacing:.14em; }
+.install-guide-card h2 { margin:5px 0 8px; font-size:22px; }
+.install-guide-card p { margin:0 0 10px; color:#69647c; font-size:12px; line-height:1.45; }
+.install-guide-card ol { margin:10px 0; padding-left:22px; display:grid; gap:8px; color:#4f4a67; font-size:12px; line-height:1.4; }
+.install-guide-reward { margin-top:12px; padding:11px; border-radius:14px; background:linear-gradient(135deg,#ffdf7930,#7b75ff22); color:#54478d; font-weight:950; text-align:center; font-size:12px; }
+.install-guide-open { margin-top:7px; }
+
+.account-code-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:7px; align-items:center; }
+.account-paste-code { min-height:44px; border:0; border-radius:12px; padding:0 12px; background:#eae6f8; color:#514a75; font-size:11px; font-weight:900; }
+
+/* v28 iPhone dock: fill the physical bottom edge without a floating gap. */
+@media (max-width:900px) {
+  html, body { height:100% !important; min-height:100% !important; padding-bottom:0 !important; }
+  .hub { height:100% !important; min-height:0 !important; }
+  .hub-shell { height:100% !important; min-height:0 !important; }
+  .hub-nav { margin-bottom:0 !important; padding-bottom:5px !important; border-radius:0 !important; }
+  .app .controls { margin-bottom:0 !important; padding-bottom:5px !important; border-radius:18px 18px 0 0 !important; }
+  .hub-nav::after, .app .controls::after { display:none !important; content:none !important; }
+}
+@media (max-width:370px) { .modal-secondary-actions .secondary { font-size:8.5px !important; padding-inline:2px !important; } }
