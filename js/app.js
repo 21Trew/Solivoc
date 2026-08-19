@@ -37,16 +37,49 @@ function showCompanionBubble(text, ms = 5200) {
   clearTimeout(showCompanionBubble.timer);
   showCompanionBubble.timer = setTimeout(() => { bubble.hidden = true; }, ms);
 }
-function clearMascotHintLine() { document.querySelector(".mascot-hint-line")?.remove(); $("#gameCompanion")?.classList.remove("pointing"); }
+function clearMascotHintLine() {
+  document.querySelectorAll(".mascot-hint-line,.mascot-hint-route").forEach((el) => el.remove());
+  document.querySelectorAll(".hint-source,.hint-target").forEach((el) => el.classList.remove("hint-source","hint-target"));
+  $("#gameCompanion")?.classList.remove("pointing");
+}
+function drawMascotHintLine(fromRect, toRect, className = "mascot-hint-line") {
+  const x1=fromRect.left+fromRect.width*.5, y1=fromRect.top+fromRect.height*.5;
+  const x2=toRect.left+toRect.width*.5, y2=toRect.top+toRect.height*.5;
+  const dx=x2-x1, dy=y2-y1, len=Math.max(24,Math.hypot(dx,dy));
+  const line=document.createElement("div");
+  line.className=className;
+  line.style.left=`${x1}px`; line.style.top=`${y1}px`; line.style.width=`${len}px`; line.style.transform=`rotate(${Math.atan2(dy,dx)*180/Math.PI}deg)`;
+  document.body.appendChild(line);
+}
 function pointCompanionAt(target, text = "Смотри сюда!") {
   clearMascotHintLine();
   const mascot = $("#gameCompanion"); if (!mascot || mascot.hidden || !target) return;
-  mascot.classList.add("pointing"); showCompanionBubble(text, 2200);
+  mascot.classList.add("pointing"); target.classList.add("hint-source"); showCompanionBubble(text, 2400);
   const a = mascot.getBoundingClientRect(), b = target.getBoundingClientRect();
-  const x1=a.left+a.width*.2, y1=a.top+a.height*.72, x2=b.left+b.width*.5, y2=b.top+b.height*.45;
-  const dx=x2-x1, dy=y2-y1, len=Math.max(24,Math.hypot(dx,dy));
-  const line=document.createElement("div"); line.className="mascot-hint-line"; line.style.left=`${x1}px`; line.style.top=`${y1}px`; line.style.width=`${len}px`; line.style.transform=`rotate(${Math.atan2(dy,dx)*180/Math.PI}deg)`;
-  document.body.appendChild(line); setTimeout(clearMascotHintLine, 1500);
+  drawMascotHintLine({left:a.left,width:a.width*.4,top:a.top+a.height*.55,height:a.height*.34}, b);
+  setTimeout(clearMascotHintLine, 2100);
+}
+function pointCompanionAtMove(source, target, text = "Вот этот ход.") {
+  clearMascotHintLine();
+  const mascot = $("#gameCompanion"); if (!mascot || mascot.hidden || !source || !target) return;
+  mascot.classList.add("pointing");
+  source.classList.add("hint-source"); target.classList.add("hint-target");
+  showCompanionBubble(text, 2800);
+  const a=mascot.getBoundingClientRect(), b=source.getBoundingClientRect(), c=target.getBoundingClientRect();
+  drawMascotHintLine({left:a.left,width:a.width*.4,top:a.top+a.height*.55,height:a.height*.34}, b);
+  drawMascotHintLine(b, c, "mascot-hint-route");
+  setTimeout(clearMascotHintLine, 2500);
+}
+function hintMoveElements(hint) {
+  if (!hint?.payload) return { source:null, target:null };
+  const p=hint.payload;
+  let source=null;
+  if (p.source === "column") {
+    source = document.querySelector(`.card[data-source="column"][data-col="${p.ci}"][data-group-index="${p.start}"]`)
+      || document.querySelector(`.card[data-source="column"][data-col="${p.ci}"]`);
+  } else if (p.source === "waste") source = document.querySelector(".waste .card.movable:last-of-type") || document.querySelector(".waste .card.movable");
+  const target = document.querySelector(`[data-zone="${hint.zone}"][data-index="${hint.index}"]`);
+  return { source, target };
 }
 
 function bindAppEvents() {
@@ -129,15 +162,24 @@ function bindAppEvents() {
     const hint = findHintMove();
     if (hint?.payload) {
       const p = hint.payload;
-      let q;
-      if (p.source === "column") q = `.card[data-source="column"][data-col="${p.ci}"]`;
-      else if (p.source === "waste") q = ".waste .card.movable";
-      const n = q ? document.querySelector(q) : null;
-      n?.classList.add("hint");
-      pointCompanionAt(n, companionHintLine?.() || "Начни с этой карты.");
-      setTimeout(() => n?.classList.remove("hint"), 1400);
-      const actionText = hint.zone === "slot" ? "в категорию" : "на связанную стопку";
-      showToast(`Ход: ${groupLabel(p.groups[0])} → ${actionText}`);
+      const { source, target } = hintMoveElements(hint);
+      if (!source || !target || !canDropTo(p, hint.zone, hint.index)) {
+        // The board may have rerendered between finding the move and resolving its DOM nodes.
+        // Do not point at a stale/random card: ask the player to draw instead if possible.
+        if (state.stock.length) {
+          stockEl.classList.add("hint-stock");
+          pointCompanionAt(stockEl, `${companionHintLine?.() || "Есть зацепка."} Загляни в колоду.`);
+          setTimeout(() => stockEl.classList.remove("hint-stock"), 1100);
+          showToast("Открой следующую карту колоды");
+        } else showDeadlock();
+      } else {
+        source.classList.add("hint");
+        const targetText = hint.zone === "slot" ? "сюда, в категорию" : "сюда, на подходящую карту";
+        pointCompanionAtMove(source, target, `${companionHintLine?.() || "Вижу хороший ход."} Перенеси эту карту ${targetText}.`);
+        setTimeout(() => source?.classList.remove("hint"), 2400);
+        const actionText = hint.zone === "slot" ? "в категорию" : "на связанную стопку";
+        showToast(`Ход: ${groupLabel(p.groups[0])} → ${actionText}`);
+      }
     } else if (hint?.action === "draw") {
       stockEl.classList.add("hint-stock");
       pointCompanionAt(stockEl, `${companionHintLine?.() || "Есть зацепка."} Загляни в колоду.`);

@@ -101,7 +101,7 @@ const developerMessages = [
 export async function GET() {
   return new Response(JSON.stringify({
     ok: true,
-    version: "v28",
+    version: "v29",
     serverTime: Date.now(),
     developerMessages,
   }), {

@@ -348,9 +348,13 @@ function updateProfileMailBadge() {
   const badge = $("#profileDeveloperMailBadge"), count = developerMailUnreadCount();
   if (badge) { badge.textContent = count > 9 ? "9+" : count ? String(count) : ""; badge.hidden = count === 0; }
   $("#profileDeveloperMail")?.classList.toggle("has-unread", count > 0);
-  [$("#hubProfileButton"), $("#gameProfileButton")].forEach((button)=>{
+  [
+    { button: $("#hubProfileButton"), badge: $("#hubProfileMailIndicator") },
+    { button: $("#gameProfileButton"), badge: $("#gameProfileMailIndicator") },
+  ].forEach(({button,badge})=>{
     if (!button) return;
     button.classList.toggle("has-mail-unread", count > 0);
+    if (badge) { badge.textContent = count > 9 ? "9+" : count ? String(count) : ""; badge.hidden = count === 0; }
     if (count) button.dataset.mailCount = count > 9 ? "9+" : String(count); else delete button.dataset.mailCount;
   });
 }

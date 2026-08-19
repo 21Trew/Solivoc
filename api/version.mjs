@@ -1,4 +1,4 @@
-const BUILD = "v28-2026-08-19";
+const BUILD = "v29-2026-08-19";
 
 export default function handler(_req, res) {
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");

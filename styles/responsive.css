@@ -1595,3 +1595,15 @@ body[data-theme="paper"] .home-welcome-copy p { color:#f0edf8 !important; }
   .hub-nav::after, .app .controls::after { display:none !important; content:none !important; }
 }
 @media (max-width:370px) { .modal-secondary-actions .secondary { font-size:8.5px !important; padding-inline:2px !important; } }
+
+/* ===== v29 hint/profile fixes ===== */
+.mascot-hint-route { position:fixed; height:3px; transform-origin:0 50%; z-index:10002; pointer-events:none; border-radius:99px; background:repeating-linear-gradient(90deg,#ffe36e 0 8px,transparent 8px 13px); filter:drop-shadow(0 0 4px #ffe36e88); animation:mascotHintLine 2.4s ease both; }
+.mascot-hint-route::after { content:""; position:absolute; right:-6px; top:50%; transform:translateY(-50%); border-left:11px solid #ffe36e; border-top:7px solid transparent; border-bottom:7px solid transparent; }
+.hint-source { outline:3px solid #7de8ff !important; outline-offset:3px; filter:drop-shadow(0 0 9px #7de8ffaa); }
+.hint-target { outline:3px solid #ffe36e !important; outline-offset:3px; box-shadow:0 0 0 5px #ffe36e22,0 0 18px #ffe36e70 !important; animation:hintTargetPulse .72s ease-in-out infinite alternate; }
+@keyframes hintTargetPulse { from{transform:scale(1)} to{transform:scale(1.035)} }
+.global-profile-name-row { min-width:0; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:7px; }
+.global-profile-name-row > b { min-width:0; }
+.profile-mail-indicator { justify-self:end; min-width:20px; height:20px; padding:0 6px; display:grid; place-items:center; border:2px solid #214263; border-radius:999px; background:#ff526d; color:#fff; font-size:9px; line-height:1; font-weight:950; box-shadow:0 4px 10px #12091c55; }
+.profile-mail-indicator[hidden] { display:none !important; }
+.global-profile-button.has-mail-unread::after { display:none !important; content:none !important; }

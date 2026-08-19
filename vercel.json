@@ -39,6 +39,20 @@
   ],
   "rewrites": [
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "admin.solivoc.ru"
+        }
+      ],
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
       "source": "/d/:code",
       "destination": "/api/duel-share?c=:code"
     }

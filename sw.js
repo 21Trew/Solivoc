@@ -1,4 +1,4 @@
-const CACHE = "worditaire-v47";
+const CACHE = "worditaire-v48";
 const CORE = [
   "./",
   "./index.html",
@@ -122,6 +122,9 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
+  // The game service worker owns the root scope. Admin pages must always go to
+  // the network instead of falling back to the cached game shell.
+  if (["/admin", "/admin.html", "/js/admin.js", "/styles/admin.css"].includes(url.pathname)) return;
 
   event.respondWith((async () => {
     // Keep HTML and JS from the same cache generation. Serving a fresh HTML
