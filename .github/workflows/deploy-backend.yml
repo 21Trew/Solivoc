@@ -50,51 +50,29 @@ jobs:
         run: |
           set -euo pipefail
 
-          oidc_response="$(curl --fail --silent --show-error \
-            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}")"
+          oidc_response="$(curl --fail --silent --show-error             -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"             "${ACTIONS_ID_TOKEN_REQUEST_URL}")"
           github_oidc_token="$(printf '%s' "$oidc_response" | jq -r '.value')"
 
-          exchange_response="$(curl --fail --silent --show-error \
-            --request POST \
-            'https://auth.yandex.cloud/oauth/token' \
-            --header 'Content-Type: application/x-www-form-urlencoded' \
-            --data-urlencode 'grant_type=urn:ietf:params:oauth:grant-type:token-exchange' \
-            --data-urlencode 'requested_token_type=urn:ietf:params:oauth:token-type:access_token' \
-            --data-urlencode "audience=${YC_SA_ID}" \
-            --data-urlencode "subject_token=${github_oidc_token}" \
-            --data-urlencode 'subject_token_type=urn:ietf:params:oauth:token-type:id_token')"
+          exchange_response="$(curl --fail --silent --show-error             --request POST             'https://auth.yandex.cloud/oauth/token'             --header 'Content-Type: application/x-www-form-urlencoded'             --data-urlencode 'grant_type=urn:ietf:params:oauth:grant-type:token-exchange'             --data-urlencode 'requested_token_type=urn:ietf:params:oauth:token-type:access_token'             --data-urlencode "audience=${YC_SA_ID}"             --data-urlencode "subject_token=${github_oidc_token}"             --data-urlencode 'subject_token_type=urn:ietf:params:oauth:token-type:id_token')"
           iam_token="$(printf '%s' "$exchange_response" | jq -r '.access_token')"
 
-          curl --fail --silent --show-error --get \
-            'https://serverless-functions.api.cloud.yandex.net/functions/v1/versions:byTag' \
-            -H "Authorization: Bearer ${iam_token}" \
-            --data-urlencode "functionId=${YC_FUNCTION_ID}" \
-            --data-urlencode 'tag=$latest' \
-            > "$RUNNER_TEMP/current-function.json"
+          curl --fail --silent --show-error --get             'https://serverless-functions.api.cloud.yandex.net/functions/v1/versions:byTag'             -H "Authorization: Bearer ${iam_token}"             --data-urlencode "functionId=${YC_FUNCTION_ID}"             --data-urlencode 'tag=$latest'             > "$RUNNER_TEMP/current-function.json"
 
-          jq 'if (.versions? | type) == "array" then .versions[0] else . end' \
-            "$RUNNER_TEMP/current-function.json" \
-            > "$RUNNER_TEMP/current-version.json"
+          jq 'if (.versions? | type) == "array" then .versions[0] else . end'             "$RUNNER_TEMP/current-function.json"             > "$RUNNER_TEMP/current-version.json"
 
-          jq -e '.id and .functionId and .runtime and .entrypoint and .resources.memory' \
-            "$RUNNER_TEMP/current-version.json" > /dev/null
+          jq -e '.id and .functionId and .runtime and .entrypoint and .resources.memory'             "$RUNNER_TEMP/current-version.json" > /dev/null
 
           previous_version_id="$(jq -r '.id' "$RUNNER_TEMP/current-version.json")"
           concurrency="$(jq -r '.concurrency // "0"' "$RUNNER_TEMP/current-version.json")"
           echo "Current function version: ${previous_version_id}"
           echo "Preserving concurrency: ${concurrency}"
 
-          # Mask existing plain environment values before doing anything else.
           while IFS= read -r secret_value; do
             [ -z "$secret_value" ] || echo "::add-mask::$secret_value"
           done < <(jq -r '.environment // {} | to_entries[] | .value' "$RUNNER_TEMP/current-version.json")
 
-          base64 -w 0 "$RUNNER_TEMP/solivoc-function.zip" \
-            > "$RUNNER_TEMP/solivoc-function.b64"
+          base64 -w 0 "$RUNNER_TEMP/solivoc-function.zip"             > "$RUNNER_TEMP/solivoc-function.b64"
 
-          # CreateVersion accepts these version-level settings. We copy them
-          # from the working $latest version and replace only the code payload.
           jq --rawfile content "$RUNNER_TEMP/solivoc-function.b64" '
             {
               functionId: .functionId,
@@ -125,15 +103,9 @@ jobs:
                   and .value != {}
                 )
               )
-          ' "$RUNNER_TEMP/current-version.json" \
-            > "$RUNNER_TEMP/create-version.json"
+          ' "$RUNNER_TEMP/current-version.json"             > "$RUNNER_TEMP/create-version.json"
 
-          create_response="$(curl --fail --silent --show-error \
-            --request POST \
-            'https://serverless-functions.api.cloud.yandex.net/functions/v1/versions' \
-            -H "Authorization: Bearer ${iam_token}" \
-            -H 'Content-Type: application/json' \
-            --data-binary "@$RUNNER_TEMP/create-version.json")"
+          create_response="$(curl --fail --silent --show-error             --request POST             'https://serverless-functions.api.cloud.yandex.net/functions/v1/versions'             -H "Authorization: Bearer ${iam_token}"             -H 'Content-Type: application/json'             --data-binary "@$RUNNER_TEMP/create-version.json")"
 
           operation_id="$(printf '%s' "$create_response" | jq -r '.id')"
           if [ -z "$operation_id" ] || [ "$operation_id" = "null" ]; then
@@ -145,11 +117,7 @@ jobs:
           new_version_id=""
           for attempt in $(seq 1 45); do
             sleep 2
-            latest_json="$(curl --fail --silent --show-error --get \
-              'https://serverless-functions.api.cloud.yandex.net/functions/v1/versions:byTag' \
-              -H "Authorization: Bearer ${iam_token}" \
-              --data-urlencode "functionId=${YC_FUNCTION_ID}" \
-              --data-urlencode 'tag=$latest')"
+            latest_json="$(curl --fail --silent --show-error --get               'https://serverless-functions.api.cloud.yandex.net/functions/v1/versions:byTag'               -H "Authorization: Bearer ${iam_token}"               --data-urlencode "functionId=${YC_FUNCTION_ID}"               --data-urlencode 'tag=$latest')"
 
             candidate="$(printf '%s' "$latest_json" | jq -r '
               if (.versions? | type) == "array"
@@ -163,11 +131,11 @@ jobs:
               break
             fi
 
-            echo "Waiting for new $latest version (${attempt}/45)..."
+            echo "Waiting for new \$latest version (${attempt}/45)..."
           done
 
           if [ -z "$new_version_id" ]; then
-            echo "New function version was not promoted to $latest in time."
+            echo "New function version was not promoted to \$latest in time."
             echo "Check Yandex Cloud operation: ${operation_id}"
             exit 1
           fi
@@ -183,9 +151,7 @@ jobs:
           set -euo pipefail
 
           for attempt in $(seq 1 20); do
-            if curl --fail --silent --show-error \
-              https://api.solivoc.ru/api/version \
-              > "$RUNNER_TEMP/solivoc-version.json"; then
+            if curl --fail --silent --show-error               https://api.solivoc.ru/api/version               > "$RUNNER_TEMP/solivoc-version.json"; then
               build="$(jq -r '.build // ""' "$RUNNER_TEMP/solivoc-version.json")"
               deployment="$(jq -r '.deployment // ""' "$RUNNER_TEMP/solivoc-version.json")"
               echo "API build: ${build}"
@@ -196,7 +162,7 @@ jobs:
               fi
             fi
 
-            echo "Waiting for API Gateway to serve the new $latest version (${attempt}/20)..."
+            echo "Waiting for API Gateway to serve the new \$latest version (${attempt}/20)..."
             sleep 3
           done
 
