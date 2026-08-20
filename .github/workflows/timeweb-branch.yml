@@ -1,17 +1,31 @@
-name: Publish Timeweb branch
+name: Deploy frontend
 
 on:
   push:
     branches:
       - main
+    paths:
+      - "index.html"
+      - "admin.html"
+      - "sw.js"
+      - "*.webmanifest"
+      - "data/**"
+      - "icons/**"
+      - "js/**"
+      - "styles/**"
+      - "scripts/build-timeweb.mjs"
+      - "package.json"
+      - ".github/workflows/timeweb-branch.yml"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  id-token: write
 
 jobs:
-  publish:
+  deploy:
     runs-on: ubuntu-latest
+    environment: Production
 
     steps:
       - name: Checkout main
@@ -22,19 +36,28 @@ jobs:
         with:
           node-version: 24
 
-      - name: Build static bundle
+      - name: Build frontend
         run: npm run build:timeweb
 
-      - name: Publish timeweb branch
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload to Yandex Object Storage
+        uses: yc-actions/yc-obj-storage-upload@v4
+        with:
+          yc-sa-id: ${{ vars.YC_SA_ID }}
+          bucket: ${{ vars.YC_BUCKET }}
+          root: ./timeweb-static
+          clear: false
+          skip-unchanged: true
+          fail-on-error: true
+          cache-control: |
+            *.html: no-cache
+            sw.js: no-cache
+            js/runtime-config.js: no-cache
+            *.js, *.css: no-cache
+            *.json, *.webmanifest: no-cache
+            *: public, max-age=3600
+
+      - name: Smoke test production
         run: |
-          cd timeweb-static
-          git init
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "deploy: update timeweb frontend"
-          git branch -M timeweb
-          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git push --force origin timeweb
+          curl --fail --silent --show-error \
+            --retry 5 --retry-delay 3 \
+            https://solivoc.ru/ > /dev/null
