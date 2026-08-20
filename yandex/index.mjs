@@ -99,7 +99,9 @@ function corsHeaders(request) {
 
 function preflight(request) {
   if (!corsOrigin(request)) return Response.json({ error: "origin_not_allowed" }, { status: 403 });
-  return new Response(null, { status: 204, headers: corsHeaders(request) });
+  // API Gateway owns the CORS response headers. Adding them here as well makes
+  // browsers see duplicate Access-Control-Allow-Origin values.
+  return new Response(null, { status: 204 });
 }
 
 async function routeRequest(request) {
@@ -134,7 +136,8 @@ async function toGatewayResponse(response, request) {
     const values = response.headers.getSetCookie();
     if (values?.length) cookies.splice(0, cookies.length, ...values);
   }
-  Object.assign(headers, corsHeaders(request));
+  // CORS headers are added by API Gateway. Keep the function response free of
+  // Access-Control-Allow-* headers to avoid duplicate values at the browser.
   const body = await response.text();
   const result = {
     statusCode: response.status,
