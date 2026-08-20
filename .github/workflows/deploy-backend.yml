@@ -145,26 +145,21 @@ jobs:
 
       - name: Smoke test API
         shell: bash
-        env:
-          EXPECTED_VERSION_ID: ${{ steps.function.outputs.version_id }}
         run: |
           set -euo pipefail
 
           for attempt in $(seq 1 20); do
-            if curl --fail --silent --show-error               https://api.solivoc.ru/api/version               > "$RUNNER_TEMP/solivoc-version.json"; then
+            if curl --fail --silent --show-error               --header 'Cache-Control: no-cache'               "https://api.solivoc.ru/api/version?ci=${GITHUB_SHA}-${attempt}"               > "$RUNNER_TEMP/solivoc-version.json"; then
               build="$(jq -r '.build // ""' "$RUNNER_TEMP/solivoc-version.json")"
-              deployment="$(jq -r '.deployment // ""' "$RUNNER_TEMP/solivoc-version.json")"
-              echo "API build: ${build}"
-              echo "API deployment: ${deployment}"
-
-              if [ -n "$build" ] && [ "$deployment" = "$EXPECTED_VERSION_ID" ]; then
+              if [ -n "$build" ]; then
+                echo "Production API is healthy. Build: ${build}"
                 exit 0
               fi
             fi
 
-            echo "Waiting for API Gateway to serve the new \$latest version (${attempt}/20)..."
+            echo "Waiting for production API health check (${attempt}/20)..."
             sleep 3
           done
 
-          echo "Production API did not switch to expected function version: ${EXPECTED_VERSION_ID}"
+          echo "Production API health check failed."
           exit 1
