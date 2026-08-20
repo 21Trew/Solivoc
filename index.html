@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#29205d" />
+    <meta name="slovasyans-build" content="v29-2026-08-19" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+    <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+    <title>Словасьянс — пасьянс ассоциаций</title>
+    <link rel="stylesheet" href="./styles/base.css" />
+    <link rel="stylesheet" href="./styles/meta.css" />
+    <link rel="stylesheet" href="./styles/responsive.css" />
+  </head>
+  <body>
+    <div class="splash" id="splash" aria-live="polite">
+      <div class="splash-orbit" aria-hidden="true">
+        <span class="splash-mini-card c1">МОРЕ</span>
+        <span class="splash-mini-card c2">ВОЛНА</span>
+        <span class="splash-mini-card c3">НЕБО</span>
+        <span class="splash-mini-card c4">ОБЛАКО</span>
+      </div>
+      <div class="splash-core">
+        <div class="splash-mark">✦</div>
+        <h1>Словасьянс</h1>
+        <p>пасьянс ассоциаций</p>
+        <div class="splash-progress"><i id="splashBar"></i></div>
+        <span class="splash-status" id="splashStatus">Собираем слова…</span>
+        <button class="splash-retry" id="splashRetry" hidden>Попробовать снова</button>
+      </div>
+    </div>
+    <div class="app">
+      <header class="hud">
+        <div class="top">
+          <button class="game-profile-button global-profile-button" id="gameProfileButton" type="button" aria-label="Открыть профиль">
+            <span class="global-profile-avatar" id="gameProfileAvatar">🙂</span>
+            <span class="global-profile-copy">
+              <span class="global-profile-name-row"><b id="gameProfileName">Игрок</b><span class="profile-mail-indicator" id="gameProfileMailIndicator" hidden></span></span>
+              <small id="gameProfileTitle">◇ Игрок</small>
+              <small id="gameProfileMeta">0/100 XP</small>
+            </span>
+            <span class="global-profile-rank" id="gameProfileRank">Ранг 1 · Новичок</span>
+          </button>
+          <div class="stats">
+            <span class="pill level-pill">Ур. <b id="level">1</b></span>
+            <span class="pill progress-pill" aria-label="Собрано категорий">✓ <b id="progressText">0/0</b></span>
+            <span class="pill moves-pill" aria-label="Ходы">↯ <b id="moveCount">0</b></span>
+            <span id="cols" hidden>4</span>
+          </div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
+          <span class="progress-label">
+            <span class="special-badge" id="specialBadge" hidden></span>
+            <span class="rule-metric" id="ruleMetric" hidden></span>
+          </span>
+        </div>
+        <div class="hud-third-row"><div class="bonus-objective-wrap" id="bonusObjective"></div><span class="combo-xp-status" id="comboXpStatus">Комбо ×0 · XP +0%</span></div>
+      </header>
+      <main class="game-scroll">
+        <div class="game">
+          <section class="draw-row">
+            <div class="draw-area">
+              <div class="stock" id="stock"></div>
+              <div class="waste empty" id="waste"></div>
+            </div>
+            <button class="game-companion" id="gameCompanion" type="button" aria-label="Факт от напарника">
+              <img id="gameCompanionImage" src="./icons/mascot-owl.svg" alt="">
+              <span class="companion-bubble" id="companionBubble" hidden></span>
+            </button>
+          </section>
+          <section class="category-row">
+            <div class="category-area" id="slotsAnchor"></div>
+          </section>
+          <section class="tableau" id="tableau"></section>
+        </div>
+      </main>
+      <footer class="controls">
+        <button id="menuButton">
+          <span class="ctrl-icon">☰</span>
+          <span>Меню</span>
+        </button>
+        <button id="undo">
+          <span class="ctrl-icon">↶</span>
+          <span>Отмена</span>
+        </button>
+        <button id="hint">
+          <span class="ctrl-icon">✦</span>
+          <span>Подсказка</span>
+        </button>
+        <button class="primary" id="restart">
+          <span class="ctrl-icon">↻</span>
+          <span>Заново</span>
+        </button>
+      </footer>
+    </div>
+    <div class="coach" id="coach">
+      <span class="coach-step" id="coachStep"></span>
+      <span id="coachText">Собирай связанные слова в стопки. Карточки категорий переноси в слоты сверху.</span>
+    </div>
+    <div class="combo-pop" id="comboPop" aria-live="polite"></div>
+    <div class="toast" id="toast"></div>
+    <div class="celebration" id="celebration"></div>
+    <div class="achievement-notice" id="achievementNotice">
+      <div class="achievement-notice-card">
+        <div class="achievement-notice-icon" id="achievementNoticeIcon">🏆</div>
+        <div>
+          <span class="achievement-notice-kicker">Новое достижение</span>
+          <strong class="achievement-notice-title" id="achievementNoticeTitle"></strong>
+          <span class="achievement-notice-desc" id="achievementNoticeDesc"></span>
+        </div>
+      </div>
+    </div>
+    <div class="rank-up-modal" id="rankUpModal" aria-hidden="true">
+      <div class="rank-up-card" role="dialog" aria-modal="true" aria-label="Новый ранг">
+        <div class="rank-up-burst" aria-hidden="true">✦</div>
+        <small>НОВЫЙ РАНГ</small>
+        <div class="rank-up-number" id="rankUpNumber">Ранг 2</div>
+        <h2 id="rankUpName">Связист</h2>
+        <div class="rank-up-rewards" id="rankUpRewards"></div>
+        <button id="rankUpClose">Забрать награду →</button>
+      </div>
+    </div>
+    <div class="deadlock-modal" id="deadlockModal" aria-hidden="true">
+      <div class="deadlock-card">
+        <div class="deadlock-icon">◇</div>
+        <h2>Ходов не осталось</h2>
+        <p>В текущем положении нет полезного продолжения.</p>
+        <div class="deadlock-actions">
+          <button id="deadlockUndo">↶ Отменить ход</button>
+          <button class="primary" id="deadlockRestart">↻ Заново</button>
+          <button class="secondary" id="deadlockClose">Остаться</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal win-modal" id="modal" aria-hidden="true">
+      <div class="modal-card win-modal-card">
+        <div class="win-icon">★</div>
+        <h2 id="winTitle">Уровень пройден!</h2>
+        <div class="win-companion" id="winCompanion">
+          <img id="winCompanionImage" src="./icons/mascot-owl.svg" alt="">
+          <p id="winCompanionText">Отличная партия!</p>
+        </div>
+        <p id="winText">Отличная партия!</p>
+        <div class="win-stars" id="winStars" aria-label="Награды за уровень"></div>
+        <div class="win-record" id="winRecord"></div>
+        <div class="win-xp" id="winXp"></div>
+        <div class="win-goals" id="winGoals"></div>
+        <div class="win-next-unlock" id="winUnlock" hidden></div>
+        <div class="modal-actions">
+          <button class="win-next" id="next">Следующий уровень →</button>
+          <div class="modal-secondary-actions">
+            <button class="secondary" id="winShare" hidden>Поделиться</button>
+            <button class="secondary" id="winRestart">↻ Заново</button>
+            <button class="secondary" id="winMenu">☰ Меню</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="duel-result-modal" id="duelResultModal" aria-hidden="true">
+      <div class="duel-result-card">
+        <button class="duel-close" id="duelClose" aria-label="Закрыть">×</button>
+        <div class="duel-result-icon" id="duelResultIcon">⚔</div>
+        <small class="duel-kicker">ДУЭЛЬ ЗАВЕРШЕНА</small>
+        <h2 id="duelResultTitle">Результат готов</h2>
+        <p id="duelResultSeries">Серия до 2 побед</p>
+        <div class="duel-score" id="duelScore">0 : 0</div>
+        <div class="duel-players"><div id="duelMe"></div><div id="duelFriend"></div></div>
+        <button class="duel-rematch" id="duelRematch">Реванш ⇄</button>
+      </div>
+    </div>
+    <div class="duel-history-modal" id="duelHistoryModal" aria-hidden="true">
+      <div class="duel-history-card" role="dialog" aria-modal="true" aria-label="История дуэлей с игроком">
+        <button class="duel-history-close" id="duelHistoryClose" aria-label="Закрыть">×</button>
+        <div class="duel-history-profile"><span id="duelHistoryAvatar">🙂</span><div><small>ИСТОРИЯ ДУЭЛЕЙ</small><h2 id="duelHistoryName">Друг</h2><p id="duelHistorySummary"></p></div></div>
+        <div class="duel-history-matches" id="duelHistoryMatches"></div>
+        <button class="duel-history-rematch" id="duelHistoryRematch">Новая дуэль →</button>
+      </div>
+    </div>
+    <div class="notification-prompt" id="notificationPrompt" aria-live="polite">
+      <div class="notification-prompt-card">
+        <div class="notification-prompt-icon">🔔</div>
+        <div><b>Узнать, когда друг сыграет?</b><span>Разреши только полезные уведомления: ответы на дуэли, ежедневный расклад и финал недели.</span></div>
+        <div class="notification-prompt-actions"><button id="notificationAllow">Разрешить</button><button id="notificationLater">Не сейчас</button></div>
+      </div>
+    </div>
+    <div class="leaderboard-modal" id="leaderboardModal" aria-hidden="true">
+      <div class="leaderboard-card" role="dialog" aria-modal="true" aria-label="Лидеры">
+        <button class="leaderboard-close" id="leaderboardClose" aria-label="Закрыть">×</button>
+        <div class="leaderboard-head"><span>🏅</span><div><small>ТАБЛИЦЫ РЕЗУЛЬТАТОВ</small><h2>Лидеры</h2></div></div>
+        <div class="leaderboard-tabs" id="leaderboardTabs"></div>
+        <div class="leaderboard-list" id="leaderboardList"></div>
+      </div>
+    </div>
+    <div class="custom-rules-modal" id="customRulesModal" aria-hidden="true">
+      <div class="custom-rules-card" role="dialog" aria-modal="true" aria-labelledby="customRulesTitle">
+        <button class="custom-rules-close" id="customRulesClose" aria-label="Закрыть">×</button>
+        <div class="custom-rules-head"><span>⚙</span><div><small>РЕЖИМ</small><h2 id="customRulesTitle">Мои правила</h2><p>Выбери только нужные ограничения. Значение 0 отключает лимит.</p></div></div>
+        <div class="custom-rules-grid">
+          <label>Время, сек.<input id="customTime" type="number" min="0" max="900" value="0"></label>
+          <label>Ходы<input id="customMoves" type="number" min="0" max="400" value="0"></label>
+          <label>Комбо ×<input id="customCombo" type="number" min="0" max="40" value="0"></label>
+          <label class="custom-check"><input id="customNoMistakes" type="checkbox"> До первой ошибки</label>
+          <label class="custom-check"><input id="customOnePass" type="checkbox"> Один проход колоды</label>
+        </div>
+        <div class="custom-rules-actions"><button class="secondary" id="customRulesCancel">Отмена</button><button class="primary" id="customRulesStart">Начать игру →</button></div>
+      </div>
+    </div>
+    <div class="picture-mode-modal" id="pictureModeModal" aria-hidden="true">
+      <div class="picture-mode-card" role="dialog" aria-modal="true" aria-label="Расклады по картинкам">
+        <button class="picture-mode-close" id="pictureModeClose" aria-label="Закрыть">×</button>
+        <div id="pictureModeContent"></div>
+      </div>
+    </div>
+    <div class="profile-editor-modal" id="profileEditorModal" aria-hidden="true">
+      <div class="profile-editor-card" role="dialog" aria-modal="true" aria-label="Профиль игрока">
+        <button class="profile-editor-mail" id="profileDeveloperMail" aria-label="Почта разработчика">✉<span id="profileDeveloperMailBadge"></span></button>
+        <button class="profile-editor-close" id="profileEditorClose" aria-label="Закрыть">×</button>
+        <div class="profile-editor-content" id="profileEditorContent"></div>
+      </div>
+    </div>
+    <div class="account-modal" id="accountModal" aria-hidden="true">
+      <div class="account-card" role="dialog" aria-modal="true" aria-label="Аккаунт игрока">
+        <button class="account-close" id="accountClose" aria-label="Закрыть">×</button>
+        <div class="account-content" id="accountContent"></div>
+      </div>
+    </div>
+    <div class="developer-mail-modal" id="developerMailModal" aria-hidden="true">
+      <div class="developer-mail-card" role="dialog" aria-modal="true" aria-label="Почта разработчика">
+        <button class="developer-mail-close" id="developerMailClose" aria-label="Закрыть">×</button>
+        <div class="developer-mail-head"><span>✉</span><div><small>ПОЧТА РАЗРАБОТЧИКА</small><h2>Новости Словасьянса</h2></div></div>
+        <div class="developer-mail-list" id="developerMailList"></div>
+      </div>
+    </div>
+    <div class="patch-notes-modal" id="patchNotesModal" aria-hidden="true">
+      <div class="patch-notes-card" role="dialog" aria-modal="true" aria-label="Что нового">
+        <div class="patch-notes-burst">✦</div>
+        <div id="patchNotesContent"></div>
+      </div>
+    </div>
+    <div class="special-level-modal" id="specialLevelModal" aria-hidden="true">
+      <div class="special-level-card" role="dialog" aria-modal="true" aria-label="Особый уровень">
+        <div class="special-level-icon" id="specialLevelIcon">◆</div>
+        <small id="specialLevelEyebrow">ОСОБЫЙ УРОВЕНЬ</small>
+        <h2 id="specialLevelTitle">Испытание</h2>
+        <p id="specialLevelDesc"></p>
+        <div class="special-level-quote" id="specialLevelQuote" hidden></div>
+        <div class="special-level-rule" id="specialLevelRule"></div>
+        <button id="specialLevelStart">Начать испытание →</button>
+      </div>
+    </div>
+    <div class="onboarding-modal" id="onboardingModal" aria-hidden="true">
+      <div class="onboarding-card" role="dialog" aria-modal="true" aria-label="Первый запуск">
+        <div class="onboarding-logo"><span>✦</span><b>Словасьянс</b></div>
+        <div id="onboardingContent"></div>
+      </div>
+    </div>
+    <div class="weekly-digest-modal" id="weeklyDigestModal" aria-hidden="true">
+      <div class="weekly-digest-card" role="dialog" aria-modal="true" aria-label="Итоги недели">
+        <button id="weeklyDigestClose" class="weekly-digest-close" aria-label="Закрыть">×</button>
+        <div class="weekly-digest-icon">📊</div>
+        <small>ТВОЯ НЕДЕЛЯ</small>
+        <h2>Посмотрим, что изменилось</h2>
+        <div class="weekly-digest-grid" id="weeklyDigestGrid"></div>
+        <div class="weekly-digest-xp" id="weeklyDigestXp">+0 XP за неделю</div>
+        <button class="weekly-digest-next" id="weeklyDigestNext">Новая неделя →</button>
+      </div>
+    </div>
+    <div class="companion-info-modal" id="companionInfoModal" aria-hidden="true">
+      <div class="companion-info-card" role="dialog" aria-modal="true" aria-label="Маскот-напарник">
+        <button id="companionInfoClose" class="companion-info-close" aria-label="Закрыть">×</button>
+        <div id="companionInfoBody"></div>
+        <button id="companionInfoChoose" class="companion-info-choose">Выбрать напарником</button>
+      </div>
+    </div>
+    <div class="install-guide-modal" id="installGuideModal" aria-hidden="true">
+      <div class="install-guide-card" role="dialog" aria-modal="true" aria-label="Установка Словасьянса">
+        <button id="installGuideClose" class="install-guide-close" aria-label="Закрыть">×</button>
+        <div class="install-guide-icon">📲</div>
+        <small>УСТАНОВКА ИГРЫ</small>
+        <h2>Словасьянс на экране «Домой»</h2>
+        <p>Так игра запускается на весь экран, работает удобнее и сохраняет офлайн-ресурсы.</p>
+        <ol id="installGuideSteps"></ol>
+        <div class="install-guide-reward" id="installGuideReward">Награда за установку: +250 XP</div>
+      </div>
+    </div>
+    <div class="xp-bonus-burst" id="xpBonusBurst" aria-live="polite"><small>БОНУСНЫЙ ОПЫТ</small><b>+0 XP</b><span></span></div>
+    <div class="update-banner" id="updateBanner" aria-hidden="true">
+      <div><b>Доступно обновление</b><span>Новая версия Словасьянса готова</span></div>
+      <button id="updateNow">Обновить</button>
+    </div>
+    <div class="hub" id="hub">
+      <div class="hub-shell">
+        <div class="hub-head">
+          <button class="hub-profile-button global-profile-button" id="hubProfileButton" type="button" aria-label="Открыть профиль">
+            <span class="global-profile-avatar" id="hubProfileAvatar">🙂</span>
+            <span class="global-profile-copy">
+              <span class="global-profile-name-row"><b id="hubProfileName">Игрок</b><span class="profile-mail-indicator" id="hubProfileMailIndicator" hidden></span></span>
+              <small id="hubProfileTitle">◇ Игрок</small>
+              <span class="hub-profile-xp" aria-label="Прогресс уровня"><i id="hubProfileXpBar"></i></span>
+            </span>
+            <span class="global-profile-rank" id="hubProfileRank"><b>Ранг 1</b><small>Новичок</small><small>0/100 XP</small></span>
+          </button>
+        </div>
+        <div class="hub-scroll" id="hubContent"></div>
+        <div class="hub-nav" id="hubNav"></div>
+      </div>
+    </div>
+    <script src="./js/host-routing.js"></script>
+    <script src="./js/runtime-config.js"></script>
+    <script src="./js/api-client.js"></script>
+    <script src="./data/categories.js"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/profile.js"></script>
+    <script src="./js/auth.js"></script>
+    <script src="./js/data.js"></script>
+    <script src="./js/runtime.js"></script>
+    <script src="./js/stability.js"></script>
+    <script src="./js/ui/constants.js"></script>
+    <script src="./js/components/ui.js"></script>
+    <script src="./js/generator.js"></script>
+    <script src="./js/meta/systems.js"></script>
+    <script src="./js/retention.js"></script>
+    <script src="./js/engagement.js"></script>
+    <script src="./js/animations.js"></script>
+    <script src="./js/game/feedback.js"></script>
+    <script src="./js/game/state.js"></script>
+    <script src="./js/components/cards.js"></script>
+    <script src="./js/components/board.js"></script>
+    <script src="./js/game/rules.js"></script>
+    <script src="./js/game/drag.js"></script>
+    <script src="./js/progression.js"></script>
+    <script src="./js/components/hub.js"></script>
+    <script src="./js/app.js"></script>
+  </body>
+</html>

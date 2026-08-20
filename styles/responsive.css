@@ -1,0 +1,1609 @@
+/* ===== Responsive mobile-game pass ===== */
+:root {
+     /* Five columns always fit; on normal phones cards grow from the old 54px to ~60–64px. */
+     --cw: clamp(54px, 17vw, 64px);
+     --ch: calc(var(--cw) * 1.55);
+     --gap: clamp(4px, 1.2vw, 6px);
+     --radius: clamp(14px, 3.8vw, 16px);
+   }
+   .app {
+     width: 100%;
+     max-width: 460px;
+     height: 100vh;
+     height: 100dvh;
+     padding: max(10px, env(safe-area-inset-top)) max(7px, env(safe-area-inset-right))
+       max(9px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+     gap: clamp(7px, 1.45dvh, 11px);
+   }
+   .game-scroll {
+     border-radius: clamp(20px, 5.5vw, 25px);
+   }
+   .game {
+     padding: clamp(8px, 2.4vw, 11px) clamp(6px, 2.15vw, 10px) clamp(7px, 2vw, 9px);
+   }
+   .draw-row {
+     gap: clamp(8px, 2.4vw, 11px);
+     padding: clamp(7px, 2vw, 9px) clamp(7px, 2vw, 9px);
+     margin-bottom: clamp(11px, 1.8dvh, 15px);
+     border-radius: clamp(17px, 4.7vw, 20px);
+   }
+   .draw-label {
+     font-size: clamp(8px, 2.25vw, 9px);
+   }
+   .category-row {
+     padding-bottom: clamp(11px, 1.7dvh, 14px);
+     margin-bottom: clamp(10px, 1.6dvh, 13px);
+   }
+   .card {
+     font-size: clamp(13px, 3.55vw, 14px);
+     padding: clamp(7px, 2.2vw, 9px) clamp(5px, 1.5vw, 6px);
+   }
+   .card.category {
+     gap: clamp(6px, 1.7vw, 8px);
+   }
+   .card.category .name {
+     min-height: clamp(18px, 5vw, 21px);
+     font-size: clamp(11px, 3.1vw, 13px);
+     padding: 3px 2px;
+   }
+   .card.category .count {
+     font-size: clamp(10.5px, 2.8vw, 11.5px);
+     line-height: clamp(19px, 5.2vw, 21px);
+     height: clamp(19px, 5.2vw, 21px);
+     min-width: clamp(35px, 9.8vw, 39px);
+   }
+   .card.face-down::before {
+     inset: clamp(6px, 1.8vw, 8px);
+   }
+   .card.face-down::after {
+     width: clamp(29px, 8vw, 34px);
+     height: clamp(29px, 8vw, 34px);
+     font-size: clamp(14px, 3.8vw, 16px);
+   }
+   .pile-count,
+   .stock-count {
+     right: 4px;
+     bottom: 4px;
+     min-width: clamp(21px, 6vw, 24px);
+     height: clamp(21px, 6vw, 24px);
+     font-size: clamp(9px, 2.6vw, 10px);
+   }
+   .controls {
+     grid-template-columns: repeat(4, minmax(0, 1fr));
+     gap: clamp(5px, 1.4vw, 7px);
+     padding: clamp(4px, 1.2vw, 6px);
+     border-radius: clamp(17px, 4.7vw, 20px);
+   }
+   .controls button {
+     min-height: clamp(48px, 6.3dvh, 56px);
+     border-radius: clamp(13px, 3.8vw, 16px);
+     font-size: clamp(10px, 2.85vw, 11.5px);
+     padding: 0 clamp(3px, 1vw, 6px);
+     line-height: 1.05;
+   }
+   .top {
+     min-height: clamp(42px, 6.2dvh, 48px);
+   }
+   .brand {
+     min-height: 42px;
+   }
+   .brand-mark {
+     width: clamp(34px, 9.6vw, 40px);
+     height: clamp(34px, 9.6vw, 40px);
+     border-radius: clamp(11px, 3vw, 13px);
+     font-size: clamp(18px, 5vw, 21px);
+   }
+   .brand b {
+     font-size: clamp(17px, 4.65vw, 19px);
+   }
+   .brand small {
+     font-size: clamp(8px, 2.15vw, 8.5px);
+   }
+   .pill {
+     height: clamp(30px, 8vw, 33px);
+     padding: 0 clamp(7px, 2vw, 9px);
+     font-size: clamp(9px, 2.45vw, 10px);
+   }
+   .pill b {
+     font-size: clamp(10px, 2.7vw, 11px);
+   }
+   .progress-track {
+     height: clamp(6px, 1.8vw, 7px);
+   }
+   .progress-label {
+     font-size: clamp(8px, 2.1vw, 9px);
+   }
+   .toast {
+     bottom: max(82px, calc(env(safe-area-inset-bottom) + 72px));
+     font-size: clamp(10px, 2.8vw, 11px);
+   }
+   .hub-shell {
+     width: min(460px, 100%);
+   }
+   .hub-head {
+     padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 10px
+       max(14px, env(safe-area-inset-left));
+   }
+   .hub-scroll {
+     padding: 14px max(12px, env(safe-area-inset-right)) 18px
+       max(12px, env(safe-area-inset-left));
+   }
+   .hub-nav {
+     padding-left: max(12px, env(safe-area-inset-left));
+     padding-right: max(12px, env(safe-area-inset-right));
+   }
+
+   /* Compact phones: preserve five playable columns instead of shrinking the whole UI indiscriminately. */
+   @media (max-width: 350px) {
+     :root {
+       --cw: 54px;
+       --gap: 4px;
+       --radius: 14px;
+     }
+     .app {
+       padding-left: max(5px, env(safe-area-inset-left));
+       padding-right: max(5px, env(safe-area-inset-right));
+     }
+     .game {
+       padding-left: 5px;
+       padding-right: 5px;
+     }
+     .brand {
+       gap: 6px;
+     }
+     .brand-mark {
+       width: 32px;
+       height: 32px;
+       font-size: 17px;
+     }
+     .brand b {
+       font-size: 15px;
+     }
+     .brand small {
+       display: none;
+     }
+     .stats {
+       gap: 3px;
+     }
+     .pill {
+       height: 28px;
+       padding: 0 6px;
+       font-size: 8px;
+     }
+     .pill b {
+       font-size: 9px;
+     }
+     .controls {
+       gap: 4px;
+     }
+     .controls button {
+       font-size: 9.5px;
+       padding: 0 2px;
+     }
+     .draw-label {
+       font-size: 7.5px;
+       letter-spacing: 0.09em;
+     }
+   }
+
+   /* Emergency fit for unusually narrow webviews/legacy small phones. */
+   @media (max-width: 309px) {
+     :root {
+       --cw: calc((100vw - 34px) / 5);
+       --gap: 3px;
+       --radius: 12px;
+     }
+     .app {
+       padding-left: max(4px, env(safe-area-inset-left));
+       padding-right: max(4px, env(safe-area-inset-right));
+     }
+     .game {
+       padding-left: 5px;
+       padding-right: 5px;
+     }
+     .stats {
+       gap: 2px;
+     }
+     .pill {
+       padding: 0 4px;
+     }
+     .controls button {
+       font-size: 8.5px;
+     }
+   }
+
+   /* Short screens: cards stay large; only cascade depth and vertical chrome compress. */
+   @media (max-height: 740px) {
+     .app {
+       gap: 6px;
+     }
+     .game {
+       padding-top: 7px;
+     }
+     .draw-row {
+       margin-bottom: 8px;
+       padding-top: 6px;
+       padding-bottom: 6px;
+     }
+     .category-row {
+       margin-bottom: 7px;
+       padding-bottom: 8px;
+     }
+     .controls button {
+       min-height: 44px;
+     }
+     .hud {
+       gap: 6px;
+     }
+     .top {
+       min-height: 38px;
+     }
+     .progress-wrap {
+       gap: 6px;
+     }
+     .coach {
+       top: 92px;
+     }
+   }
+   @media (max-height: 620px) {
+     .app {
+       gap: 4px;
+     }
+     .game {
+       padding-top: 5px;
+       padding-bottom: 5px;
+     }
+     .draw-row {
+       margin-bottom: 6px;
+       padding: 5px 6px;
+     }
+     .category-row {
+       margin-bottom: 5px;
+       padding-bottom: 6px;
+     }
+     .controls {
+       padding: 3px;
+     }
+     .controls button {
+       min-height: 40px;
+       font-size: 9.5px;
+     }
+     .brand small {
+       display: none;
+     }
+     .progress-label > span:last-child {
+       display: none;
+     }
+   }
+
+   /* Landscape phones use available width while keeping the same card geometry. */
+   @media (orientation: landscape) and (max-height: 520px) {
+     .app {
+       max-width: 600px;
+       padding-top: max(5px, env(safe-area-inset-top));
+       padding-bottom: max(5px, env(safe-area-inset-bottom));
+     }
+     .hub-shell {
+       width: min(600px, 100%);
+     }
+     .hud {
+       gap: 3px;
+     }
+     .top {
+       min-height: 32px;
+     }
+     .progress-wrap {
+       display: none;
+     }
+     .brand-mark {
+       width: 30px;
+       height: 30px;
+       font-size: 16px;
+     }
+     .brand b {
+       font-size: 15px;
+     }
+     .brand small {
+       display: none;
+     }
+     .pill {
+       height: 27px;
+     }
+     .controls button {
+       min-height: 38px;
+     }
+     .draw-row {
+       margin-bottom: 5px;
+     }
+     .category-row {
+       margin-bottom: 4px;
+       padding-bottom: 5px;
+     }
+   }
+
+   /* Tablet/desktop: keep a deliberate phone-game canvas instead of stretching into a dashboard. */
+   @media (min-width: 700px) {
+     .app {
+       border-left: 1px solid #ffffff10;
+       border-right: 1px solid #ffffff10;
+     }
+   }
+
+   /* ===== Mobile game scale pass v2 =====
+Scale the physical pieces from the ACTUAL number of tableau columns.
+Three-column rounds should feel like a card game, not a five-column web grid. */
+   :root {
+     --cw: 64px;
+     --card-ratio: 1.42;
+     --ch: calc(var(--cw) * var(--card-ratio));
+     --gap: 7px;
+   }
+   html[data-cols="3"] {
+     --cw: clamp(78px, 22vw, 92px);
+     --card-ratio: 1.46;
+     --gap: clamp(8px, 2.2vw, 10px);
+     --radius: clamp(16px, 4vw, 18px);
+   }
+   html[data-cols="4"] {
+     --cw: clamp(72px, 20vw, 84px);
+     --card-ratio: 1.38;
+     --gap: clamp(6px, 1.8vw, 8px);
+     --radius: clamp(14px, 3.6vw, 16px);
+   }
+   html[data-cols="5"] {
+     --cw: clamp(60px, 17.2vw, 72px);
+     --card-ratio: 1.32;
+     --gap: clamp(4px, 1.15vw, 5px);
+     --radius: clamp(13px, 3.2vw, 15px);
+   }
+
+   /* More legible, game-like top HUD. */
+   .hud {
+     gap: clamp(9px, 1.35dvh, 13px);
+   }
+   .top {
+     min-height: clamp(52px, 6.8dvh, 61px);
+     gap: clamp(9px, 2.2vw, 12px);
+   }
+   .brand {
+     gap: clamp(9px, 2.4vw, 12px);
+   }
+   .brand-mark {
+     width: clamp(42px, 10.8vw, 48px);
+     height: clamp(42px, 10.8vw, 48px);
+     border-radius: clamp(13px, 3.5vw, 16px);
+     font-size: clamp(21px, 5.5vw, 25px);
+     box-shadow:
+       0 8px 20px #00000038,
+       inset 0 1px #fff9;
+   }
+   .brand b {
+     font-size: clamp(20px, 5.1vw, 23px);
+     line-height: 1;
+     letter-spacing: -0.035em;
+   }
+   .brand small {
+     margin-top: 4px;
+     font-size: clamp(9px, 2.3vw, 10px);
+     letter-spacing: 0.115em;
+   }
+   .stats {
+     gap: clamp(5px, 1.35vw, 7px);
+   }
+   .pill {
+     height: clamp(35px, 8.9vw, 40px);
+     padding: 0 clamp(9px, 2.35vw, 12px);
+     font-size: clamp(10.5px, 2.7vw, 12px);
+     border-width: 1px;
+   }
+   .pill b {
+     font-size: clamp(11.5px, 2.95vw, 13px);
+   }
+   .progress-track {
+     height: clamp(7px, 1.9vw, 9px);
+   }
+   .progress-label {
+     font-size: clamp(9px, 2.25vw, 10px);
+     font-weight: 800;
+   }
+   .progress-stars {
+     font-size: 1.12em;
+   }
+
+   /* Let the play pieces dominate the screen. */
+   .game {
+     padding: clamp(11px, 2.8vw, 14px) clamp(8px, 2.2vw, 11px) clamp(9px, 2.2vw, 11px);
+   }
+   .draw-row {
+     gap: clamp(9px, 2.4vw, 12px);
+     padding: clamp(9px, 2.25vw, 11px);
+     margin-bottom: clamp(15px, 2dvh, 19px);
+     border-radius: clamp(20px, 5vw, 24px);
+   }
+   .draw-label {
+     font-size: clamp(9.5px, 2.45vw, 11px);
+     letter-spacing: 0.11em;
+   }
+   .category-row {
+     padding-bottom: clamp(15px, 1.9dvh, 18px);
+     margin-bottom: clamp(14px, 1.8dvh, 17px);
+   }
+   .card {
+     font-size: clamp(14px, 3.6vw, 16px);
+     padding: clamp(8px, 2vw, 11px) clamp(5px, 1.45vw, 7px);
+     box-shadow:
+       0 5px 0 #09092325,
+       0 10px 22px #0406174d,
+       inset 0 1px #fff,
+       inset 0 -12px 20px rgba(34, 38, 58, 0.05);
+   }
+   .card.category {
+     gap: clamp(7px, 1.7vw, 10px);
+   }
+   .card.category .name {
+     min-height: clamp(21px, 5.4vw, 27px);
+     font-size: clamp(12px, 3vw, 15px);
+     padding: 4px 3px;
+     border-radius: 9px;
+   }
+   .card.category .count {
+     font-size: clamp(11px, 2.8vw, 13px);
+     line-height: clamp(22px, 5.5vw, 26px);
+     height: clamp(22px, 5.5vw, 26px);
+     min-width: clamp(39px, 10vw, 46px);
+     padding: 0 8px;
+   }
+   .slot.empty::after,
+.slot.drag-vacated::after {
+     font-size: clamp(25px, 6.5vw, 32px);
+   }
+   .waste.empty::after,
+.waste.drag-vacated::after {
+     font-size: clamp(8.5px, 2.25vw, 10px);
+   }
+   .stock.empty::after {
+     font-size: clamp(27px, 6.8vw, 34px);
+   }
+   .pile-count,
+   .stock-count {
+     min-width: clamp(24px, 6.2vw, 29px);
+     height: clamp(24px, 6.2vw, 29px);
+     font-size: clamp(10px, 2.55vw, 12px);
+     border-width: 2px;
+   }
+
+   /* Bottom bar: tactile controls with icon + readable label. */
+   .controls {
+     gap: clamp(7px, 1.7vw, 9px);
+     padding: clamp(6px, 1.45vw, 8px);
+     border-radius: clamp(21px, 5vw, 25px);
+     background: #09091f49;
+   }
+   .controls button {
+     min-height: clamp(60px, 7.6dvh, 68px);
+     border-radius: clamp(16px, 4vw, 19px);
+     font-size: clamp(12px, 3.05vw, 14px);
+     padding: 0 clamp(4px, 1vw, 7px);
+     display: flex;
+     flex-direction: column;
+     align-items: center;
+     justify-content: center;
+     gap: 3px;
+     line-height: 1;
+     font-weight: 900;
+     box-shadow:
+       inset 0 1px #ffffff16,
+       0 4px 10px #05051822;
+   }
+   .controls .ctrl-icon {
+     font-size: clamp(17px, 4.3vw, 20px);
+     line-height: 1;
+     flex: 0 0 auto;
+   }
+   .controls #menuButton {
+     box-shadow:
+       inset 0 1px #ffffff1e,
+       0 5px 13px #05051835;
+   }
+   .controls #hint {
+     box-shadow:
+       0 7px 17px #06051c3d,
+       inset 0 1px #fff;
+   }
+   .controls .primary {
+     box-shadow:
+       0 8px 20px #00000038,
+       inset 0 1px #ffffff66;
+   }
+   .toast {
+     bottom: max(94px, calc(env(safe-area-inset-bottom) + 84px));
+     font-size: clamp(11px, 2.85vw, 12.5px);
+     padding: 11px 16px;
+   }
+
+   /* Three-column rounds get extra typographic presence. */
+   html[data-cols="3"] .card.category .name {
+     font-size: clamp(14px, 3.7vw, 17px);
+   }
+   html[data-cols="3"] .card.category .count {
+     font-size: clamp(12px, 3.1vw, 14px);
+   }
+   html[data-cols="3"] .draw-label {
+     font-size: clamp(10px, 2.6vw, 12px);
+   }
+   html[data-cols="3"] .card.face-down::after {
+     width: clamp(36px, 9vw, 42px);
+     height: clamp(36px, 9vw, 42px);
+     font-size: clamp(17px, 4.2vw, 20px);
+     border-radius: 12px;
+   }
+
+   /* Small widths: keep hierarchy, only compress what is necessary. */
+   @media (max-width: 370px) {
+     html[data-cols="3"] {
+       --cw: clamp(72px, 22vw, 84px);
+       --gap: 7px;
+     }
+     html[data-cols="4"] {
+       --cw: clamp(68px, 20.5vw, 76px);
+       --gap: 5px;
+     }
+     html[data-cols="5"] {
+       --cw: clamp(57px, 17.4vw, 63px);
+       --gap: 3px;
+     }
+     .brand-mark {
+       width: 38px;
+       height: 38px;
+       font-size: 20px;
+     }
+     .brand b {
+       font-size: 18px;
+     }
+     .brand small {
+       font-size: 8.5px;
+     }
+     .pill {
+       height: 33px;
+       padding: 0 7px;
+       font-size: 9.5px;
+     }
+     .pill b {
+       font-size: 10.5px;
+     }
+     .controls {
+       gap: 5px;
+       padding: 5px;
+     }
+     .controls button {
+       min-height: 58px;
+       font-size: 11.5px;
+       gap: 2px;
+     }
+     .controls .ctrl-icon {
+       font-size: 16px;
+     }
+   }
+   @media (max-width: 335px) {
+     .brand small {
+       display: none;
+     }
+     .brand b {
+       font-size: 17px;
+     }
+     .brand-mark {
+       width: 36px;
+       height: 36px;
+     }
+     .stats {
+       gap: 3px;
+     }
+     .pill {
+       padding: 0 5px;
+       font-size: 8.8px;
+     }
+     .pill b {
+       font-size: 9.5px;
+     }
+     .controls button {
+       font-size: 10px;
+     }
+     .controls .ctrl-icon {
+       font-size: 13px;
+     }
+   }
+
+   /* Low-height devices compress spacing/cascade, not the game pieces. */
+   @media (max-height: 740px) {
+     .hud {
+       gap: 6px;
+     }
+     .top {
+       min-height: 44px;
+     }
+     .draw-row {
+       margin-bottom: 9px;
+       padding-top: 7px;
+       padding-bottom: 7px;
+     }
+     .category-row {
+       margin-bottom: 8px;
+       padding-bottom: 9px;
+     }
+     .controls button {
+       min-height: 52px;
+     }
+   }
+   @media (max-height: 620px) {
+     .top {
+       min-height: 38px;
+     }
+     .brand-mark {
+       width: 34px;
+       height: 34px;
+     }
+     .brand b {
+       font-size: 17px;
+     }
+     .brand small {
+       display: none;
+     }
+     .pill {
+       height: 29px;
+     }
+     .controls button {
+       min-height: 45px;
+       font-size: 10px;
+     }
+     .controls .ctrl-icon {
+       font-size: 13px;
+     }
+   }
+
+   /* ===== Physical card interaction pass =====
+Every lower card exposes one title-height strip. Open and closed cards use
+the same global --stack-step value. */
+   /* Every card below the front card exposes only one title-height strip. */
+   .card.open-under {
+     padding-bottom: 0;
+     overflow: hidden;
+   }
+   .card.open-under:not(.category) {
+     align-items: flex-start;
+     justify-content: center;
+     padding: 5px 3px 0;
+     line-height: 1;
+     white-space: nowrap;
+   }
+   .card.category.open-under {
+     align-items: stretch;
+     justify-content: flex-start;
+     gap: 0;
+     padding: 4px 3px 0;
+   }
+   .card.category.open-under .name {
+     flex: 0 0 auto;
+     min-height: 0;
+     height: auto;
+     padding: 2px 2px;
+     line-height: 1;
+     white-space: nowrap;
+   }
+   .card.category.open-under .count {
+     display: none;
+   }
+
+   /* Drag preview is a real visual clone of the picked stack. Its grip point is
+maintained in JS, so the card never jumps under the finger. */
+   .drag-stack {
+     position: fixed;
+     z-index: 9999;
+     pointer-events: none;
+     transform: rotate(var(--drag-tilt, 0deg));
+     filter: drop-shadow(0 18px 20px #0008);
+     will-change: left, top;
+     overflow: visible;
+   }
+   .drag-stack > .card {
+     position: absolute !important;
+     margin: 0 !important;
+     transition: none !important;
+     transform: none !important;
+     pointer-events: none !important;
+   }
+   .drag-stack .drag-count {
+     display: none;
+   }
+
+   /* Deal/reveal micro-interactions. */
+   .card.deal-card {
+     will-change: transform, opacity, filter;
+   }
+   .card.reveal-card {
+     transform-origin: center center;
+     backface-visibility: hidden;
+     will-change: transform, opacity;
+   }
+   .stock.deal-pulse .card {
+     animation: deckPulse 0.42s cubic-bezier(0.2, 0.8, 0.2, 1);
+   }
+   @keyframes deckPulse {
+     0%,
+     100% {
+       transform: translateY(0) scale(1);
+     }
+     45% {
+       transform: translateY(-4px) scale(1.035);
+     }
+   }
+
+   
+   
+   @media (max-height: 620px) {
+     .card.open-under:not(.category) {
+       padding-top: 4px;
+     }
+     .card.category.open-under {
+       padding-top: 3px;
+     }
+   }
+
+/* Dynamic vertical fit: only active when JS detects that a real stack would overflow. */
+html[data-stack-fit="tight"] .card.open-under:not(.category) { padding-top: 2px; line-height: .95; }
+html[data-stack-fit="tight"] .card.category.open-under { padding-top: 2px; }
+html[data-stack-fit="tight"] .card.category.open-under .name { padding-top: 1px; padding-bottom: 1px; }
+
+
+/* Hub v2 narrow-screen refinements. */
+@media (max-width: 370px) {
+  .hub-tabs { gap:3px; }
+  .hub-tabs button { min-height:45px; border-radius:11px; }
+  .hub-tabs button span { font-size:6.5px; }
+  .mode-grid { gap:6px; }
+  .mode-card { min-height:80px; padding:9px; }
+  .profile-hero { grid-template-columns:42px minmax(0,1fr) auto; padding:10px; gap:8px; }
+  .profile-avatar { width:42px; height:42px; }
+  .effect-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .encyclopedia-meta { grid-template-columns:1fr; }
+  .save-tools { grid-template-columns:1fr; }
+}
+
+
+/* Bottom game-hub navigation. */
+@media (max-width: 370px) {
+  .hub-nav { padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); }
+  .hub-tabs { gap:4px; }
+  .hub-tabs button { min-height:50px; border-radius:13px; }
+  .hub-tabs button i { font-size:15px; }
+  .hub-tabs button span { font-size:7px; }
+}
+@media (max-height: 700px) {
+  .hub-tabs button { min-height:48px; }
+  .hub-nav { padding-top:6px; }
+}
+
+/* ===== Retention UI responsive ===== */
+@media (max-width: 370px) {
+  .smart-action { grid-template-columns:40px minmax(0,1fr); }
+  .smart-icon { width:40px; height:40px; }
+  .smart-action button { grid-column:1/-1; width:100%; }
+  .profile-hero { grid-template-columns:42px minmax(0,1fr); }
+  .profile-meta { grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; }
+  .daily-days { gap:3px; }
+  .daily-day { padding-inline:1px; }
+  .daily-day i { width:18px; height:18px; }
+  .frame-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .duel-players { grid-template-columns:1fr; }
+}
+@media (max-height: 690px) {
+  .bonus-objective-chip { min-height:20px; padding-top:2px; padding-bottom:2px; }
+  .bonus-objective-chip small { display:none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .splash::before,.splash-mark,.splash-mini-card,.duel-result-icon { animation:none !important; }
+}
+
+/* Picture association cards stay readable in the exposed cascade strip. */
+.card.visual-association-card.open-under {
+  padding:2px 4px;
+  align-items:flex-start;
+  justify-content:center;
+}
+.card.visual-association-card.open-under .visual-association-emoji {
+  width:100%;
+  height:var(--stack-step);
+  font-size:clamp(16px,calc(var(--stack-step) * .72),21px);
+  line-height:var(--stack-step);
+}
+@media (max-width:370px) {
+  .association-collection-card { padding:8px; }
+  .association-collection-preview i { width:33px; height:42px; font-size:18px; }
+}
+
+/* Profile editor / accordion refinements. */
+@media (max-width: 370px) {
+  .profile-hero { grid-template-columns:42px minmax(0,1fr) auto; }
+  .profile-meta { grid-column:auto; display:block; text-align:right; }
+  .profile-meta strong { font-size:8px; }
+  .profile-meta span { font-size:7px; }
+  .profile-editor-card { border-radius:20px; }
+  .profile-editor-content { padding:15px 12px 12px; }
+  .profile-editor-head { grid-template-columns:46px minmax(0,1fr); }
+  .profile-editor-avatar-preview { width:46px; height:46px; border-radius:14px; }
+  .title-pill-grid { grid-template-columns:1fr 1fr; gap:6px; }
+  .title-pill { min-height:45px; padding:6px 7px; grid-template-columns:27px minmax(0,1fr); gap:6px; }
+  .title-pill i { width:27px; height:27px; }
+  .title-pill span { font-size:7.8px; }
+  .collapsible-section > summary { min-height:50px; padding:10px 11px; }
+  .collapsible-content { padding:0 11px 11px; }
+}
+
+@media (max-width:370px) {
+  .visual-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .picture-collection { gap:4px; }
+  .picture-collection span { font-size:16px; border-radius:8px; }
+  .card-source-options button span { font-size:7px; }
+}
+
+/* Product polish v8 responsive */
+@media (max-width: 370px) {
+  .onboarding-card,.weekly-digest-card { padding:16px; border-radius:23px; }
+  .onboarding-step h2,.weekly-digest-card h2 { font-size:22px; }
+  .onboarding-avatar-page { grid-template-rows:repeat(2,46px); }
+  .onboarding-avatar { width:46px; height:46px; font-size:20px; }
+  .onboarding-demo span,.onboarding-demo b { width:62px; height:88px; }
+  .weekly-digest-grid { grid-template-columns:repeat(2,1fr); }
+  .profile-showcase-grid { grid-template-columns:1fr 1fr; }
+  .featured-picker { grid-template-columns:1fr; }
+}
+@media (max-height: 650px) {
+  .onboarding-card,.weekly-digest-card { max-height:96dvh; padding:14px; }
+  .onboarding-logo { margin-bottom:10px; }
+  .onboarding-step p { margin-bottom:10px; }
+  .onboarding-demo { min-height:110px; padding:8px 4px; transform:scale(.88); transform-origin:center; }
+  .onboarding-dots { margin:10px 0; }
+}
+
+/* Stable card geometry: width is fixed by column count; vertical fit compresses smoothly. */
+.slot, .stock, .waste, .column, .card {
+  transition-property: width, height, min-height, border-radius, filter, box-shadow, opacity, transform;
+  transition-duration: .2s, .2s, .2s, .2s, .14s, .14s, .14s, .14s;
+  transition-timing-function: cubic-bezier(.2,.8,.2,1);
+}
+.drag-stack .card, .drag-stack .drag-main { transition: none !important; }
+
+/* Persistent profile header sizing. */
+@media (max-width: 420px) {
+  .game-profile-button { max-width: 44vw; grid-template-columns: 35px minmax(0,1fr); gap:7px; }
+  .game-profile-button .global-profile-avatar { width:35px; height:35px; border-radius:11px; font-size:19px; }
+  .game-profile-button .global-profile-copy b { font-size:12px; }
+  .game-profile-button .global-profile-copy small { font-size:7.5px; }
+}
+@media (max-width: 350px) {
+  .game-profile-button { max-width: 41vw; grid-template-columns:32px minmax(0,1fr); gap:6px; }
+  .game-profile-button .global-profile-avatar { width:32px; height:32px; font-size:17px; }
+  .game-profile-button .global-profile-copy b { font-size:11px; }
+  .game-profile-button .global-profile-copy small { font-size:7px; }
+}
+
+/* ===== Readability pass v15 ===== */
+@media (max-width: 420px) {
+  .hub-scroll { padding-inline: 11px; }
+  .hub-section { padding: 12px; }
+  .hub-section h3 { font-size: 15px; }
+  .hub-section small, .hub-subhead small { font-size: 9px; }
+  .hub-tabs button span { font-size: 8px; }
+  .hub-tabs button i { font-size: 17px; }
+  .global-profile-copy b { font-size: 15px; }
+  .hub-profile-button .global-profile-copy b { font-size: 15px; }
+  .hub-profile-button .global-profile-copy small { font-size: 9px; }
+  .game-profile-button .global-profile-copy b { font-size: 12.5px; }
+  .game-profile-button .global-profile-copy small { font-size: 8px; }
+  .mode-card b { font-size: 12px; }
+  .mode-card span { font-size: 9px; }
+  .mode-card em { font-size: 8px; }
+  .weekly-copy b { font-size: 13px; }
+  .weekly-copy span { font-size: 9.5px; }
+  .weekly-copy small { font-size: 8px; }
+  .weekly-copy em { font-size: 9px; }
+  .achievement b { font-size: 11px; }
+  .achievement p { font-size: 9px; }
+  .achievement-copy small { font-size: 8px; }
+  .stat-box span { font-size: 8.5px; }
+  .profile-editor-identity { grid-template-columns: 1fr; }
+  .profile-compact-section .title-pill-grid { grid-template-columns: 1fr 1fr; }
+  .login-reward-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .login-reward b { font-size: 8.5px; }
+}
+@media (max-width: 370px) {
+  .hub-tabs button span { font-size: 7.5px; }
+  .global-profile-copy small { font-size: 8.5px; }
+  .hub-profile-button .global-profile-copy small { font-size: 8.5px; }
+  .mode-grid { grid-template-columns: 1fr 1fr; }
+  .mode-card { min-height: 98px; padding: 10px; }
+  .weekly-card { grid-template-columns: 48px minmax(0,1fr); padding: 12px; }
+  .weekly-icon { width: 48px; height: 48px; font-size: 16px; }
+  .rank-roadmap-item { grid-template-columns: 30px 48px minmax(0,1fr); gap:7px; }
+  .login-reward-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+
+/* Six-item bottom navigation. */
+@media (max-width: 420px) {
+  .hub-tabs { gap:4px; }
+  .hub-tabs button { min-height:53px; padding-inline:1px; }
+  .hub-tabs button i { font-size:17px; }
+  .hub-tabs button span { font-size:7.8px; letter-spacing:-.01em; }
+}
+@media (max-width: 350px) {
+  .hub-tabs button span { font-size:7.2px; }
+}
+
+
+/* v16: fixed card geometry. No runtime height/width morphing during a round. */
+html[data-cols="3"] { --cw:clamp(78px,22vw,90px); --card-ratio:1.34; --stack-step:21px; }
+html[data-cols="4"] { --cw:clamp(70px,20vw,80px); --card-ratio:1.30; --stack-step:19px; }
+html[data-cols="5"] { --cw:clamp(59px,17.1vw,68px); --card-ratio:1.26; --stack-step:17px; }
+.slot,.stock,.waste,.column,.card { transition-property:filter,box-shadow,opacity,transform !important; transition-duration:.14s !important; }
+@media (max-width:370px) {
+  html[data-cols="3"] { --cw:76px; --card-ratio:1.32; --stack-step:19px; }
+  html[data-cols="4"] { --cw:68px; --card-ratio:1.28; --stack-step:18px; }
+  html[data-cols="5"] { --cw:57px; --card-ratio:1.24; --stack-step:16px; }
+}
+
+/* v16.1: one stable card size for every 3/4/5-column round.
+   Geometry depends only on viewport width, never on column count or stack height. */
+:root,
+html[data-cols="3"],
+html[data-cols="4"],
+html[data-cols="5"] {
+  --cw: min(68px, calc((100vw - 52px) / 5));
+  --card-ratio: 1.22;
+  --ch: calc(var(--cw) * var(--card-ratio));
+  --stack-step: 17px;
+  --gap: 4px;
+  --radius: 13px;
+}
+@media (min-width: 430px) {
+  :root,
+  html[data-cols="3"],
+  html[data-cols="4"],
+  html[data-cols="5"] {
+    --cw: 68px;
+    --ch: 83px;
+    --stack-step: 17px;
+    --gap: 5px;
+  }
+}
+@media (max-width: 340px) {
+  :root,
+  html[data-cols="3"],
+  html[data-cols="4"],
+  html[data-cols="5"] {
+    --cw: calc((100vw - 40px) / 5);
+    --ch: calc(var(--cw) * 1.2);
+    --stack-step: 15px;
+    --gap: 3px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hub-tabs { grid-template-columns: repeat(6,minmax(0,1fr)); gap:3px; }
+  .hub-tabs button { min-height:54px; padding-inline:2px; }
+  .hub-tabs button i { font-size:16px; }
+  .hub-tabs button span { font-size:7.2px; }
+  .picture-mode-card { padding:16px 14px; border-radius:21px; }
+}
+
+@media (max-width: 520px) {
+  .hub-nav { padding-left:max(4px,env(safe-area-inset-left)) !important; padding-right:max(4px,env(safe-area-inset-right)) !important; }
+  .hub-tabs { gap:3px !important; }
+}
+
+/* ===== v31 gameplay/content pass ===== */
+/* During a solitaire round the board gets the full top width; profile stays in the hub. */
+.app #gameProfileButton { display:none !important; }
+.app .top { justify-content:flex-end; }
+.app .stats { width:100%; justify-content:space-between; }
+
+/* Three-line profile copy with rank information pinned to the right. */
+.global-profile-button { grid-template-columns:auto minmax(0,1fr) auto !important; column-gap:9px; }
+.global-profile-copy { display:grid; grid-template-rows:repeat(3,minmax(0,auto)); align-content:center; }
+.global-profile-copy b,.global-profile-copy small { margin:0 !important; line-height:1.18; }
+.global-profile-copy small + small { margin-top:2px !important; }
+.global-profile-rank { align-self:center; justify-self:end; max-width:105px; color:#d8d4f2; font-size:9px; font-weight:900; line-height:1.15; text-align:right; }
+.hub-profile-button { grid-template-columns:42px minmax(0,1fr) auto !important; }
+.hub-profile-xp { left:52px; }
+
+/* Longer adaptive cards: width follows viewport, height follows both width and available height. */
+:root,
+html[data-cols="3"],html[data-cols="4"],html[data-cols="5"] {
+  --cw: clamp(58px, min(17.2vw, 8.6dvh), 72px);
+  --card-ratio: clamp(1.34, calc(1.25 + 0.12 * (100dvh / 100vw)), 1.48);
+  --ch: calc(var(--cw) * var(--card-ratio));
+}
+@media (min-width:430px) {
+  :root,html[data-cols="3"],html[data-cols="4"],html[data-cols="5"] { --cw:clamp(66px,8.2dvh,74px); }
+}
+@media (max-height:650px) {
+  :root,html[data-cols="3"],html[data-cols="4"],html[data-cols="5"] { --cw:clamp(54px,7.9dvh,64px); --card-ratio:1.34; }
+}
+.rule-metric { white-space:nowrap; }
+
+/* Card backs are selected cosmetics, never theme-dependent. These final rules intentionally
+   outrank older theme selectors so switching themes cannot silently change a chosen back. */
+body { --selected-back:linear-gradient(145deg,#4730a8,#6d50e5 52%,#263e9b); --selected-back-border:#b9a9ff; --selected-back-mark:"✦"; }
+body[data-card-back="classic"]{--selected-back:linear-gradient(145deg,#4730a8,#6d50e5 52%,#263e9b);--selected-back-border:#b9a9ff;--selected-back-mark:"✦"}
+body[data-card-back="prism"]{--selected-back:conic-gradient(from 40deg,#7c5cff,#43d9ff,#ff69b4,#ffd76a,#7c5cff);--selected-back-border:#fff;--selected-back-mark:"◇"}
+body[data-card-back="constellation"]{--selected-back:radial-gradient(circle at 25% 20%,#fff 0 1px,transparent 2px),radial-gradient(circle at 72% 35%,#fff 0 1px,transparent 2px),linear-gradient(145deg,#081a45,#203a78);--selected-back-border:#89c8ff;--selected-back-mark:"✧"}
+body[data-card-back="trophy"]{--selected-back:linear-gradient(145deg,#6a4a12,#c89224 50%,#5c370c);--selected-back-border:#ffe18a;--selected-back-mark:"🏆"}
+body[data-card-back="mosaic"]{--selected-back:repeating-linear-gradient(45deg,#3842a7 0 9px,#784bc2 9px 18px,#2e8cc6 18px 27px);--selected-back-border:#c5d8ff;--selected-back-mark:"◆"}
+body[data-card-back="velvet"]{--selected-back:linear-gradient(145deg,#3f153f,#742c68 52%,#2a102f);--selected-back-border:#e8a9df;--selected-back-mark:"❖"}
+body[data-card-back="glacier"]{--selected-back:linear-gradient(150deg,#d9fbff,#67b9d9 48%,#2a709d);--selected-back-border:#efffff;--selected-back-mark:"❄"}
+body[data-card-back="lotus"]{--selected-back:linear-gradient(145deg,#173c2e,#3b7650 52%,#163328);--selected-back-border:#b8e6a0;--selected-back-mark:"🎋"}
+body[data-card-back="duelist"]{--selected-back:linear-gradient(135deg,#141a31,#3d4a70 52%,#70582d);--selected-back-border:#e5c778;--selected-back-mark:"⚔"}
+body[data-card-back="anniversary"]{--selected-back:radial-gradient(circle at 50% 30%,#fff5a350,transparent 28%),linear-gradient(145deg,#153c56,#3a5c8b 54%,#6d3c73);--selected-back-border:#ffe69a;--selected-back-mark:"🏅"}
+body[data-card-back="crown"]{--selected-back:linear-gradient(145deg,#30235f,#7553b8 55%,#9a6a20);--selected-back-border:#ffe59d;--selected-back-mark:"♛"}
+body[data-card-back="ember"]{--selected-back:radial-gradient(circle at 50% 80%,#ffbf4c66,transparent 30%),linear-gradient(145deg,#40100d,#9c2f1c 55%,#e56a1e);--selected-back-border:#ffc06f;--selected-back-mark:"🔥"}
+body[data-card-back="master"]{--selected-back:linear-gradient(145deg,#0c3040,#176f76 52%,#1da69c);--selected-back-border:#8dfff0;--selected-back-mark:"×10"}
+body[data-card-back="atlas"]{--selected-back:linear-gradient(145deg,#173b55,#2d7180 52%,#6d7a43);--selected-back-border:#bfe4b8;--selected-back-mark:"◎"}
+body[data-card-back="chronicle"]{--selected-back:linear-gradient(145deg,#392744,#78526e 52%,#b78659);--selected-back-border:#edd2b0;--selected-back-mark:"☀"}
+body[data-card-back="phoenix"]{--selected-back:radial-gradient(circle at 50% 70%,#ffd55d66,transparent 30%),linear-gradient(145deg,#41102b,#b62d42 50%,#e88520);--selected-back-border:#ffd07a;--selected-back-mark:"◆"}
+body[data-card-back="legend"]{--selected-back:linear-gradient(145deg,#1a1738,#5d408e 48%,#a1772c);--selected-back-border:#f3d98d;--selected-back-mark:"✦"}
+body[data-card-back="obsidian"]{--selected-back:linear-gradient(145deg,#090b14,#232a38 48%,#080a0f);--selected-back-border:#718096;--selected-back-mark:"◆"}
+body[data-card-back="midnight-grid"]{--selected-back:linear-gradient(#68a7ff20 1px,transparent 1px),linear-gradient(90deg,#68a7ff20 1px,transparent 1px),linear-gradient(145deg,#071329,#142850);--selected-back-border:#6bb6ff;--selected-back-mark:"▦"}
+body[data-card-back="sunrise"]{--selected-back:radial-gradient(circle at 50% 105%,#fff2a9 0 20%,#ffad5d 21% 38%,transparent 39%),linear-gradient(180deg,#7658b8,#db7096 58%,#f2a25c);--selected-back-border:#ffe1a6;--selected-back-mark:"☀"}
+body[data-card-back="lion"]{--selected-back:radial-gradient(circle at 50% 45%,#c98d2f55,transparent 33%),linear-gradient(145deg,#4b2d13,#9c681f 55%,#4a2b10);--selected-back-border:#f0c66e;--selected-back-mark:"🦁"}
+body[data-card-back="parrot"]{--selected-back:linear-gradient(145deg,#0b574c,#1c9671 48%,#ca404d);--selected-back-border:#e8f28a;--selected-back-mark:"🦜"}
+body[data-card-back="grand-trophy"]{--selected-back:radial-gradient(circle at 50% 30%,#fff5a36b,transparent 30%),linear-gradient(145deg,#38245f,#6b4c9c 48%,#b27a22);--selected-back-border:#ffe783;--selected-back-mark:"🏆"}
+body[data-card-back] .card.face-down {
+  background:var(--selected-back) !important;
+  border-color:var(--selected-back-border) !important;
+  box-shadow:inset 0 1px #fff5,0 5px 14px #0004 !important;
+}
+body[data-card-back] .card.face-down::before { background:none !important; border:1px solid color-mix(in srgb,var(--selected-back-border) 42%,transparent) !important; }
+body[data-card-back] .card.face-down::after { content:var(--selected-back-mark) !important; display:grid !important; place-items:center; width:auto !important; height:auto !important; min-width:30px; min-height:30px; transform:none !important; border:0 !important; color:#fff !important; background:transparent !important; font-size:clamp(15px,4vw,22px) !important; font-weight:950; text-shadow:0 2px 8px #0008; }
+.cardback-preview { overflow:hidden; }
+.cardback-preview.back-midnight-grid{background:linear-gradient(#68a7ff25 1px,transparent 1px),linear-gradient(90deg,#68a7ff25 1px,transparent 1px),linear-gradient(145deg,#071329,#142850);border-color:#6bb6ff}.cardback-preview.back-midnight-grid::after{content:"▦"}
+.cardback-preview.back-sunrise{background:linear-gradient(180deg,#7658b8,#db7096 58%,#f2a25c);border-color:#ffe1a6}.cardback-preview.back-sunrise::after{content:"☀"}
+.cardback-preview.back-lion{background:linear-gradient(145deg,#4b2d13,#9c681f,#4a2b10);border-color:#f0c66e}.cardback-preview.back-lion::after{content:"🦁"}
+.cardback-preview.back-parrot{background:linear-gradient(145deg,#0b574c,#1c9671,#ca404d);border-color:#e8f28a}.cardback-preview.back-parrot::after{content:"🦜"}
+.cardback-preview.back-grand-trophy{background:linear-gradient(145deg,#38245f,#6b4c9c,#b27a22);border-color:#ffe783}.cardback-preview.back-grand-trophy::after{content:"🏆"}
+.cardback-preview.back-midnight-grid::after,.cardback-preview.back-sunrise::after,.cardback-preview.back-lion::after,.cardback-preview.back-parrot::after,.cardback-preview.back-grand-trophy::after{position:relative;z-index:2;font-size:18px}
+
+/* Cosmetic shelves show two rows until explicitly expanded. */
+.cosmetic-section .cosmetic-clip { overflow:hidden; max-height:205px; transition:max-height .24s ease; }
+.cosmetic-section.expanded .cosmetic-clip { max-height:1400px; }
+.cosmetic-expand { width:100%; margin-top:9px; min-height:38px; border:1px solid #ffffff14; border-radius:12px; background:#ffffff08; color:#c9c6e8; font-size:10px; font-weight:900; }
+.sound-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+.sound-tile { min-height:86px; display:grid; place-items:center; gap:3px; padding:8px; border:1px solid #ffffff14; border-radius:14px; background:#ffffff08; color:#fff; }
+.sound-tile i{font-size:22px;font-style:normal}.sound-tile b{font-size:10px}.sound-tile span{font-size:8px;color:#aaa6cf}.sound-tile.selected{outline:2px solid #fff;outline-offset:-3px}.sound-tile.locked{opacity:.45}
+
+/* Daily quests and duel controls. */
+.daily-quest-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+.daily-quest { padding:9px; border:1px solid #ffffff12; border-radius:13px; background:#ffffff07; display:grid; gap:5px; }
+.daily-quest b{font-size:10px}.daily-quest span{font-size:8px;color:#aaa6cf}.daily-quest em{height:4px;border-radius:99px;background:#ffffff10;overflow:hidden}.daily-quest em i{display:block;height:100%;background:linear-gradient(90deg,#6bd9ef,#8b6aff)}.daily-quest.done{border-color:#74e5a950;background:#5be39b0d}
+.duel-medal-bar { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+.duel-medal-bar span { padding:6px 8px; border-radius:10px; background:#ffffff09; border:1px solid #ffffff10; font-size:9px; }
+.duel-create-controls { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.duel-create-controls select,.duel-create-controls button { min-width:0; min-height:42px; border:1px solid #ffffff16; border-radius:12px; background:#171936; color:#fff; padding:8px; font:inherit; font-size:9px; font-weight:850; }
+.duel-create-controls button { grid-column:1/-1; background:linear-gradient(135deg,#7159f5,#417ddf); }
+.mode-nearest { display:block; margin-top:6px; color:#9bdff0 !important; font-size:7.5px !important; line-height:1.25; }
+
+/* Four additional victory cosmetics. */
+.effect-fireworks i,.spark-fireworks { border-radius:50%; box-shadow:0 0 12px currentColor; }
+.effect-ribbons i,.spark-ribbons { width:16px;height:4px;border-radius:99px; }
+.effect-stars i::after,.spark-stars::after { content:"★"; color:#fff4a8; font-size:13px; }
+.effect-crown-rain i::after,.spark-crown-rain::after { content:"♛"; color:#ffe27d; font-size:15px; }
+.spark-ribbons { background:linear-gradient(90deg,#ff8db8,#8fe9ff) !important; }
+.spark-stars,.spark-crown-rain { width:16px !important;height:16px !important;background:transparent !important;overflow:visible; }
+
+/* Volumetric result stars. */
+.win-star-symbol { display:inline-block; color:#ffd95a; text-shadow:0 1px 0 #fff2a8,0 2px 0 #d49a25,0 4px 7px #0007,0 0 12px #ffd65b55; filter:drop-shadow(0 3px 2px #0005); transform:perspective(100px) rotateX(-8deg); }
+.win-star-item.missed .win-star-symbol { color:#77728a; text-shadow:0 1px 0 #aaa5bd,0 3px 5px #0005; opacity:.48; }
+
+@media (max-width:370px){.daily-quest-grid{grid-template-columns:1fr}.global-profile-rank{max-width:82px;font-size:8px}}
+/* Exactly two visible cosmetic rows while collapsed (tile heights differ by shelf). */
+.cosmetic-section[data-cosmetic-section="themes"]:not(.expanded) .cosmetic-clip{max-height:141px}
+.cosmetic-section[data-cosmetic-section="backs"]:not(.expanded) .cosmetic-clip{max-height:219px}
+.cosmetic-section[data-cosmetic-section="frames"]:not(.expanded) .cosmetic-clip{max-height:171px}
+.cosmetic-section[data-cosmetic-section="effects"]:not(.expanded) .cosmetic-clip{max-height:187px}
+.cosmetic-section[data-cosmetic-section="sounds"]:not(.expanded) .cosmetic-clip{max-height:179px}
+
+
+/* iOS/PWA stability budget: keep the gradients, remove GPU-expensive live blur layers. */
+body[data-resource-mode="constrained"] * {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+body[data-resource-mode="constrained"] .drag-ghost,
+body[data-resource-mode="constrained"] .card,
+body[data-resource-mode="constrained"] .win-modal-card {
+  will-change: auto !important;
+}
+body[data-resource-mode="constrained"] .card {
+  transition-property: transform, opacity !important;
+}
+
+/* ===== v21.3 gameplay HUD cleanup (final cascade) ===== */
+.hud [hidden] { display: none !important; }
+.app .hud { gap: 6px; }
+.app .top { min-height: 34px; }
+.app .stats { width: 100%; justify-content: space-between; align-items: center; gap: 8px; overflow: hidden; }
+.app .stats .pill { height: 34px; padding: 0 12px; font-size: 12px; flex: 0 0 auto; }
+.app .stats .pill b { font-size: 13px; }
+.app .progress-wrap { grid-template-columns: minmax(72px, 1fr) auto; gap: 8px; padding-inline: 1px; }
+.app .progress-label { justify-content: flex-end; flex-wrap: nowrap; max-width: min(66vw, 360px); }
+.app .progress-label:not(:has(> :not([hidden]))) { display: none; }
+.app .special-badge,
+.app .rule-metric,
+.app .combo-xp-status {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 1.15;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app .rule-metric { max-width: min(34vw, 180px); color: #d9d5ff; background: #ffffff0a; border: 1px solid #ffffff14; font-weight: 800; }
+.app .bonus-objective-wrap { justify-content: flex-start; }
+.app .bonus-objective-chip { min-height: 30px; padding: 6px 10px; font-size: 11px; white-space: normal; line-height: 1.2; }
+.app .bonus-objective-chip small { display: inline; font-size: 10px; line-height: 1.2; }
+
+@media (max-width: 390px) {
+  .app .stats { gap: 4px; }
+  .app .stats .pill { height: 32px; padding-inline: 9px; font-size: 11px; }
+  .app .stats .pill b { font-size: 12px; }
+  .app .progress-label { max-width: 70vw; }
+  .app .special-badge, .app .rule-metric, .app .combo-xp-status { font-size: 9px; }
+}
+
+/* ===== v22 readability, compact quests and modal polish ===== */
+/* Gameplay: the third HUD row is bonus objective + an always-visible combo counter. */
+.hud-third-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+}
+.app .hud-third-row .bonus-objective-wrap { min-width:0; justify-content:flex-start; overflow:hidden; }
+.app .hud-third-row .bonus-objective-chip { min-width:0; max-width:100%; }
+.app .hud-third-row .combo-xp-status {
+  display:inline-flex;
+  flex:0 0 auto;
+  min-height:30px;
+  max-width:44vw;
+  padding:6px 9px;
+  border:1px solid #ffe39155;
+  border-radius:999px;
+  background:linear-gradient(135deg,#3b315ecc,#664270d6);
+  color:#fff3bb;
+  font-size:10.5px;
+  line-height:1.1;
+  font-weight:950;
+  text-transform:none;
+  letter-spacing:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  box-shadow:none;
+}
+
+/* Profile: the whole card scrolls, so mail/close controls naturally leave the viewport. */
+.profile-editor-card {
+  overflow:auto !important;
+  overscroll-behavior:contain;
+}
+.profile-editor-content {
+  max-height:none !important;
+  overflow:visible !important;
+}
+.profile-editor-actions {
+  position:static !important;
+  bottom:auto !important;
+  margin:12px 0 0 !important;
+  padding:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+.profile-editor-actions button,
+.profile-card-actions button { box-shadow:none !important; text-shadow:none; }
+
+/* Developer mail: toolbar is content, not chrome; no sticky dark fade. */
+.developer-mail-toolbar {
+  position:static !important;
+  top:auto !important;
+  z-index:auto !important;
+  margin:0 0 9px;
+  padding:9px 10px !important;
+  border:1px solid #ffffff18;
+  border-radius:13px;
+  background:#ffffff09 !important;
+  box-shadow:none !important;
+}
+.developer-mail-toolbar span { color:#e3e0f3 !important; font-size:10.5px !important; }
+.developer-mail-toolbar button { font-size:10px !important; box-shadow:none !important; }
+
+/* Three daily quests stay in one compact row on phones. */
+.daily-quest-grid { grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:6px !important; }
+.daily-quest {
+  min-width:0;
+  min-height:94px;
+  align-content:start;
+  padding:9px 8px !important;
+  gap:5px !important;
+  border-color:#ffffff22 !important;
+  background:#171b42a8 !important;
+}
+.daily-quest b { min-width:0; font-size:10.5px !important; line-height:1.15; overflow:hidden; text-overflow:ellipsis; }
+.daily-quest span { color:#e5e1f2 !important; font-size:10px !important; font-weight:850; }
+.daily-quest small { color:#bbb7d9 !important; font-size:9.5px !important; }
+.daily-quest.done { background:#164b4396 !important; border-color:#7ee5b65c !important; }
+@media (max-width:370px) {
+  .daily-quest-grid { grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:4px !important; }
+  .daily-quest { padding:8px 5px !important; }
+  .daily-quest b { font-size:9.8px !important; }
+  .daily-quest span, .daily-quest small { font-size:9px !important; }
+  .app .hud-third-row .combo-xp-status { max-width:47vw; padding-inline:7px; font-size:9.5px; }
+}
+
+/* Readability baseline: remove the 7–8 px UI text that was hard to read on phones. */
+.hub-section h3 { font-size:17px !important; }
+.hub-section h4, .hub-subhead h4 { font-size:14px !important; }
+.hub-section small, .hub-subhead small, .hub-section p, .settings-note, .empty-state { font-size:10.5px !important; line-height:1.38; }
+.hub-tabs button span { font-size:9px !important; font-weight:900; }
+.global-profile-copy > b { font-size:17px !important; }
+.global-profile-copy > small { font-size:10px !important; }
+.global-profile-rank b { font-size:11.5px !important; }
+.global-profile-rank small { font-size:9.5px !important; }
+.weekly-copy small, .daily-calendar-head small, .profile-editor-head small, .profile-field > span,
+.leaderboard-head small, .developer-mail-head small, .profile-account-strip small { font-size:9.5px !important; }
+.weekly-copy > b { font-size:15px !important; }
+.weekly-copy > span, .weekly-copy > em { font-size:10.5px !important; line-height:1.3; }
+.mode-card p, .mode-card small, .mode-card .mode-nearest, .achievement p, .achievement-copy small,
+.setting-toggle span, .startup-options button span small, .theme-tile span, .cardback-tile > span:last-child,
+.effect-tile span, .sound-tile span, .collection-item, .profile-showcase-grid span { font-size:10px !important; line-height:1.3; }
+.setting-toggle b, .startup-options button span b, .theme-tile b, .cardback-tile b, .effect-tile b, .sound-tile b,
+.achievement b, .profile-showcase-grid b { font-size:11.5px !important; }
+.leaderboard-tabs button { font-size:10.5px !important; }
+.leaderboard-row > div strong { font-size:12px !important; }
+.leaderboard-row > div small { font-size:9px !important; }
+.leaderboard-row > em { font-size:11px !important; }
+.controls button span:not(.ctrl-icon) { font-size:11px !important; }
+.pill { font-size:11px; }
+.pill b { font-size:12px; }
+
+/* Strong surfaces and text contrast, especially for Frost/Paper themes. */
+.hub-section,
+.daily-calendar,
+.weekly-card,
+.smart-action,
+.profile-showcase,
+.mode-card {
+  border-color:#ffffff24 !important;
+}
+.home-welcome-copy p,
+.hub-section small,
+.hub-subhead small,
+.weekly-copy > span,
+.weekly-copy > em,
+.smart-copy span,
+.mode-card p,
+.mode-card small { color:#dedbea !important; }
+body[data-theme="frost"] .hub-section,
+body[data-theme="frost"] .daily-calendar,
+body[data-theme="frost"] .weekly-card,
+body[data-theme="frost"] .smart-action,
+body[data-theme="frost"] .mode-card,
+body[data-theme="frost"] .profile-showcase,
+body[data-theme="paper"] .hub-section,
+body[data-theme="paper"] .daily-calendar,
+body[data-theme="paper"] .weekly-card,
+body[data-theme="paper"] .smart-action,
+body[data-theme="paper"] .mode-card,
+body[data-theme="paper"] .profile-showcase {
+  background:#1a2251cc !important;
+  border-color:#ffffff38 !important;
+  box-shadow:inset 0 1px #ffffff16 !important;
+}
+body[data-theme="frost"] .home-welcome-copy,
+body[data-theme="paper"] .home-welcome-copy {
+  padding:10px 12px;
+  border:1px solid #ffffff32;
+  border-radius:16px;
+  background:#18204aa8;
+}
+body[data-theme="frost"] .home-welcome-copy p,
+body[data-theme="paper"] .home-welcome-copy p { color:#f0edf8 !important; }
+
+/* Two original mascots are deliberately compact: identity without stealing the home screen. */
+.mascot-welcome { display:grid; grid-template-columns:minmax(0,1fr) 98px; align-items:center; gap:8px; min-height:82px; }
+.mascot-pair { position:relative; height:76px; min-width:94px; }
+.mascot-pair img { position:absolute; width:58px; height:58px; object-fit:contain; filter:drop-shadow(0 7px 10px #11142f55); }
+.mascot-pair img:first-child { left:0; top:0; transform:rotate(-4deg); }
+.mascot-pair img:last-child { right:0; bottom:0; transform:rotate(5deg); }
+
+/* App icon chooser. */
+.app-icon-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.app-icon-tile { min-width:0; display:grid; justify-items:center; gap:5px; padding:10px 5px; border:1px solid #ffffff1d; border-radius:15px; background:#10153870; color:#fff; text-align:center; }
+.app-icon-tile img { width:54px; height:54px; border-radius:14px; box-shadow:0 7px 16px #080a1c42; }
+.app-icon-tile b { font-size:10.5px; line-height:1.15; }
+.app-icon-tile span { color:#c8c4df; font-size:9.5px; }
+.app-icon-tile.selected { border-color:#8fe8ff8a; outline:2px solid #88dcff50; background:#4771b52d; }
+.app-icon-note { margin:10px 0 0 !important; color:#cbc8df !important; }
+
+/* Hard/special level intro: light, cheerful and only one or two information rows. */
+.special-level-modal {
+  background:radial-gradient(circle at 15% 8%,#fff29b66,transparent 32%),radial-gradient(circle at 85% 14%,#7cecff66,transparent 31%),#6b70bc8f !important;
+}
+.special-level-card {
+  background:linear-gradient(160deg,#fffef8 0%,#fff5fb 50%,#eefbff 100%) !important;
+  border-color:#ffffff !important;
+  color:#292746 !important;
+  box-shadow:0 24px 60px #29346a45 !important;
+}
+.special-level-card::before { background:radial-gradient(circle at 9% 6%,#ffd45947,transparent 26%),radial-gradient(circle at 91% 8%,#65ddff38,transparent 26%) !important; }
+.special-level-icon { background:linear-gradient(145deg,#ffe46e,#ff8ab6 54%,#7c75ff) !important; color:#3e2d55 !important; box-shadow:0 10px 26px #8a6eaa35 !important; }
+.special-level-card > small { color:#7b55bd !important; font-size:10.5px !important; }
+.special-level-card h2 { color:#292746 !important; font-size:25px !important; }
+.special-level-card p { color:#625f76 !important; font-size:13.5px !important; font-weight:700; }
+.special-level-rule { margin:12px 0 16px !important; padding:11px 13px !important; border-color:#8d78c62d !important; background:linear-gradient(135deg,#8d70ff12,#5bdfff15) !important; color:#413d5b !important; font-size:12.5px !important; box-shadow:none !important; }
+.special-level-rule[hidden] { display:none !important; }
+.special-level-card button { min-height:52px !important; background:linear-gradient(135deg,#7f61ff,#537fff 52%,#36b8df) !important; box-shadow:0 10px 24px #5e6acb35 !important; font-size:14.5px !important; }
+
+
+/* v22.1 final type scale: metadata never drops to micro-text on a phone. */
+.brand small, .progress-label, .draw-label, .achievement-notice-kicker,
+.stat-box span, .daily-badge, .coach .coach-step, .special-badge, .combo-pop span,
+.chapter-level-stars, .achievement-filters button, .title-chip, .text-button,
+.encyclopedia-title small, .encyclopedia-meta span, .word-collection span,
+.bank-health-grid span, .bank-health p, .update-banner span, .owned-challenge-code span,
+.owned-challenge-results, .owned-challenge-results strong, .challenge-result-row span,
+.challenge-result-row small, .smart-copy small, .daily-day span, .daily-milestones b,
+.daily-milestones small, .near-goals-head span, .near-goal span, .mastery-progress span,
+.frame-tile span, .challenge-series-line, .duel-kicker, .duel-result-card > p,
+.notification-prompt-card span, .association-collection-copy small, .association-collection-meta,
+.notification-state, .title-pill span, .encyclopedia-type-tabs button span,
+.visual-category-group-head span, .collection-item.visual-item span, .collection-item.visual-item em,
+.card-source-options button span, .duel-history-list em, .encyclopedia-sort > span,
+.qa-checks small, .analytics-health small, .duel-tabs button span, .duel-direction,
+.login-reward b, .login-reward small, .profile-compact-section > summary > small,
+.profile-card-identity small, .picture-mode-head small, .developer-mail-head small,
+.developer-message-meta b, .duel-rating-note, .custom-rules-head small,
+.profile-account-strip small, .profile-account-strip em, .account-hero small, .account-cloud-card small {
+  font-size:9.5px !important;
+  line-height:1.28 !important;
+}
+.profile-field input, .profile-field select, .achievement-filters button, .text-button,
+.card-source-options button, .encyclopedia-type-tabs button, .duel-tabs button { font-size:10.5px !important; }
+.daily-milestones b, .near-goal b, .stat-box b, .profile-compact-section > summary > span { font-size:11px !important; }
+
+/* The profile/mail close buttons belong to scrollable card content, not a sticky viewport layer. */
+.profile-editor-card > .profile-editor-mail,
+.profile-editor-card > .profile-editor-close { position:absolute !important; }
+
+/* Bottom action bars are flat controls; remove the old dark fade/shadow completely. */
+.profile-editor-actions::before, .profile-editor-actions::after,
+.developer-mail-toolbar::before, .developer-mail-toolbar::after { content:none !important; display:none !important; }
+
+/* ===== Companion + icon rewards v22 ===== */
+.draw-row { position:relative; width:100%; min-height:calc(var(--ch) + 18px); padding-right:92px !important; }
+.draw-label { display:none !important; }
+.game-companion { position:absolute; right:0; top:50%; transform:translateY(-50%); width:82px; height:82px; border:0; border-radius:0; background:transparent; display:grid; place-items:center; padding:0; overflow:visible; box-shadow:none; z-index:6; }
+.game-companion[hidden] { display:none !important; }
+.game-companion img { width:78px; height:78px; object-fit:contain; filter:drop-shadow(0 8px 12px #06091f50); transition:transform .18s ease; }
+.game-companion:active img { transform:scale(.94); }
+.game-companion.pointing img { animation:companionPoint .62s ease-in-out 2; transform-origin:30% 80%; }
+@keyframes companionPoint { 0%,100%{transform:rotate(0)} 50%{transform:rotate(-9deg) translate(-2px,2px)} }
+.companion-bubble { position:absolute; right:2px; bottom:calc(100% + 7px); width:min(260px,72vw); max-width:72vw; padding:10px 12px; border-radius:14px 14px 6px 14px; background:#fff; color:#292641; font-size:10.5px; line-height:1.4; font-weight:800; text-align:left; box-shadow:0 9px 28px #07091f42; pointer-events:none; white-space:normal; word-break:break-word; overflow:visible; }
+.companion-bubble-floating { position:fixed; z-index:21000; width:min(260px,72vw); max-width:72vw; }
+.mascot-hint-line { position:fixed; height:4px; transform-origin:0 50%; z-index:9999; pointer-events:none; border-radius:99px; background:linear-gradient(90deg,#ffe36e,#7de8ff); box-shadow:0 0 10px #8de8ff88; animation:mascotHintLine 1.5s ease both; }
+.mascot-hint-line::after { content:""; position:absolute; right:-5px; top:50%; transform:translateY(-50%); border-left:10px solid #7de8ff; border-top:7px solid transparent; border-bottom:7px solid transparent; }
+@keyframes mascotHintLine { 0%{opacity:0;scale:.65 1} 15%,80%{opacity:1;scale:1 1} 100%{opacity:0} }
+.win-companion { display:grid; grid-template-columns:54px minmax(0,1fr); align-items:center; gap:8px; margin:2px 0 8px; padding:8px 10px; border:1px solid #dad4ec; border-radius:15px; background:linear-gradient(135deg,#fff7d8,#eef8ff); text-align:left; }
+.win-companion[hidden] { display:none !important; }
+.win-companion img { width:50px; height:50px; object-fit:contain; }
+.win-companion p { margin:0 !important; color:#393550 !important; font-size:11px !important; line-height:1.32; font-weight:850; }
+.companion-slider { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(122px,140px); gap:10px; overflow-x:auto; padding-bottom:4px; scroll-snap-type:x proximity; }
+.companion-tile { min-width:0; min-height:156px; padding:10px 10px 12px; border:1px solid #ffffff1d; border-radius:18px; background:#11163887; color:#fff; display:grid; grid-template-rows:auto auto 1fr auto; align-items:start; text-align:left; gap:8px; scroll-snap-align:start; }
+.companion-tile img { width:76px; height:76px; object-fit:contain; justify-self:center; }
+.companion-tile span { min-width:0; display:grid; gap:4px; justify-items:start; }
+.companion-tile b { font-size:11.5px; line-height:1.15; } .companion-tile small { font-size:9.5px !important; color:#c9c5df; line-height:1.3; }
+.companion-tile em { font-style:normal; text-align:center; font-size:9.5px; color:#9de9ff; align-self:end; }
+.companion-tile.selected { border-color:#8fe8ff8a; background:#4771b52d; outline:2px solid #88dcff35; box-shadow:0 12px 24px #06091f20; }
+.companion-slider-note { margin:8px 2px 0; color:#bfb8d6; font-size:10px; line-height:1.35; }
+.companion-info-modal { position:fixed; inset:0; background:#090a1785; backdrop-filter:blur(10px); display:grid; place-items:center; z-index:25020; padding:18px; opacity:0; visibility:hidden; transition:.22s ease; }
+.companion-info-modal.show { opacity:1; visibility:visible; }
+.companion-info-card { position:relative; width:min(420px,100%); border-radius:24px; padding:20px 18px 18px; background:linear-gradient(180deg,#fbf9ff,#eef6ff); color:#282647; box-shadow:0 22px 52px #05081942; }
+.companion-info-close { position:absolute; top:12px; right:12px; width:34px; height:34px; border:0; border-radius:50%; background:#ece7fb; color:#3b3762; font-size:20px; }
+.companion-info-hero { display:grid; grid-template-columns:88px minmax(0,1fr); gap:12px; align-items:center; }
+.companion-info-hero img { width:88px; height:88px; object-fit:contain; }
+.companion-info-hero small { display:block; color:#6e6893; font-size:10px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+.companion-info-hero h2 { margin:4px 0 6px; font-size:24px; line-height:1.08; color:#292746; }
+.companion-info-hero p, .companion-info-section p { margin:0; color:#5f5b79; font-size:13px; line-height:1.45; font-weight:700; }
+.companion-info-section { margin-top:12px; padding:12px 13px; border-radius:16px; background:linear-gradient(135deg,#8d70ff12,#5bdfff12); border:1px solid #8d78c62d; }
+.companion-info-section b { display:block; margin-bottom:6px; color:#38345c; font-size:12px; }
+.companion-info-choose { width:100%; min-height:50px; margin-top:14px; border:0; border-radius:16px; background:linear-gradient(135deg,#7f61ff,#537fff 52%,#36b8df); color:#fff; font-size:14px; font-weight:950; box-shadow:0 10px 24px #5e6acb35; }
+.companion-info-choose:disabled { opacity:.6; box-shadow:none; }
+.app-icon-frame-head { margin-top:12px; }
+.app-icon-frame-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+.app-icon-frame-tile { min-width:0; padding:7px 3px; border:1px solid #ffffff1a; border-radius:13px; background:#10153870; color:#fff; display:grid; justify-items:center; gap:4px; }
+.app-icon-frame-tile img { width:46px; height:46px; border-radius:12px; }
+.app-icon-frame-tile b { font-size:9.5px; } .app-icon-frame-tile small { font-size:8.5px !important; text-align:center; color:#c7c2dd; }
+.app-icon-frame-tile.selected { border-color:#ffe5839b; background:#816b2528; outline:2px solid #ffe27736; }
+.app-icon-frame-tile.locked { opacity:.46; filter:saturate(.45); }
+/* Daily quests: two compact rows, no progress bar. */
+.daily-quests .hub-section-head { margin-bottom:6px !important; }
+.daily-quest-grid { grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:6px !important; }
+.daily-quest { min-height:58px !important; padding:8px 7px !important; display:grid !important; grid-template-rows:auto auto; align-content:center; gap:7px !important; }
+.daily-quest > b { min-width:0; font-size:10px !important; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:left; }
+.daily-quest-meta { display:flex; align-items:center; justify-content:space-between; gap:6px; min-width:0; }
+.daily-quest-meta small { color:#c7c2dd !important; font-size:9px !important; font-weight:850; white-space:nowrap; }
+.daily-quest-meta span { color:#e5e1f2 !important; font-size:9.5px !important; font-weight:900; white-space:nowrap; }
+.daily-quest.done { background:#164b4396 !important; border-color:#7ee5b65c !important; }
+@media (max-width:370px){ .draw-row{padding-right:78px !important}.game-companion{width:72px;height:72px}.game-companion img{width:66px;height:66px}.app-icon-frame-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.app-icon-frame-tile b{font-size:8.5px}.daily-quest{padding:7px 5px !important}.daily-quest>b{font-size:9.2px !important}.daily-quest-meta small,.daily-quest-meta span{font-size:8.6px !important}.companion-slider{grid-auto-columns:minmax(112px,124px)}.companion-tile{min-height:146px;padding:9px 8px 11px}.companion-tile img{width:70px;height:70px} }
+
+
+/* ===== v25 victory, mascot bubble, hardcore and iPhone bottom bar ===== */
+.companion-bubble-floating {
+  position:fixed !important; z-index:26020 !important; width:min(280px,76vw) !important; max-width:calc(100vw - 20px) !important;
+  height:auto !important; min-height:0 !important; overflow:visible !important; pointer-events:none;
+}
+.companion-bubble-card {
+  display:block !important; width:100% !important; height:auto !important; min-height:44px !important;
+  padding:11px 13px !important; border-radius:15px 15px 6px 15px !important;
+  background:#fff !important; color:#292641 !important; box-shadow:0 10px 30px #07091f4a !important;
+  font-size:11px !important; line-height:1.42 !important; font-weight:850 !important; text-align:left !important;
+  white-space:normal !important; overflow:visible !important; overflow-wrap:anywhere !important; word-break:normal !important;
+}
+.win-modal-card #winText[hidden], .win-record[hidden], .win-next-unlock[hidden] { display:none !important; }
+.win-modal-card .win-next { min-height:60px !important; border-radius:18px !important; font-size:16px !important; box-shadow:0 12px 28px #5266db36 !important; }
+.win-goals .near-goals { padding:10px !important; }
+.win-goals .near-goals-head { margin-bottom:8px; }
+.win-goals .near-goals-head b { font-size:12px !important; }
+.win-goals .near-goals-head span { font-size:9px !important; }
+.win-goals .near-goal-row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+.win-goals .near-goal { min-width:0; grid-template-columns:30px minmax(0,1fr) !important; gap:7px !important; padding:8px !important; align-items:center; }
+.win-goals .near-goal > i { width:30px !important; height:30px !important; }
+.win-goals .near-goal b { font-size:9px !important; line-height:1.2; }
+.win-goals .near-goal span { font-size:8px !important; line-height:1.2; }
+.win-goals .near-goal em { margin-top:5px !important; }
+.xp-bonus-burst {
+  position:fixed; left:50%; top:50%; z-index:27000; min-width:190px; max-width:calc(100vw - 32px);
+  transform:translate(-50%,-42%) scale(.82); opacity:0; visibility:hidden; pointer-events:none;
+  padding:16px 20px; border:1px solid #fff9; border-radius:22px; text-align:center;
+  background:radial-gradient(circle at 50% 0,#fff4a5 0 12%,transparent 44%),linear-gradient(145deg,#7657ff,#487eff 55%,#33bfd8);
+  color:#fff; box-shadow:0 22px 55px #11184d70,0 0 35px #ffd86655;
+}
+.xp-bonus-burst small { display:block; font-size:9px; font-weight:950; letter-spacing:.14em; color:#fff4b0; }
+.xp-bonus-burst b { display:block; margin:4px 0 3px; font-size:28px; line-height:1; }
+.xp-bonus-burst span { display:block; font-size:10px; font-weight:800; color:#f1efff; }
+.xp-bonus-burst.show { visibility:visible; animation:xpBonusBurst 1.5s cubic-bezier(.2,.9,.2,1) both; }
+@keyframes xpBonusBurst { 0%{opacity:0;transform:translate(-50%,-36%) scale(.72)} 18%{opacity:1;transform:translate(-50%,-50%) scale(1.06)} 28%,72%{opacity:1;transform:translate(-50%,-50%) scale(1)} 100%{opacity:0;transform:translate(-50%,-62%) scale(.94)} }
+.mode-card.hardcore, .mode-card[data-mode="hardcore"] { border-color:#ff777744 !important; background:linear-gradient(145deg,#40172cb8,#1a173bb8) !important; }
+@supports (padding: max(0px)) {
+  .app { padding-bottom:0 !important; }
+  .app .controls {
+    margin-bottom:0 !important; padding-bottom:max(4px,env(safe-area-inset-bottom)) !important;
+    border-bottom:0 !important; border-radius:18px 18px 0 0 !important;
+    background:linear-gradient(180deg,#11112fe8,#09091ff5) !important;
+  }
+}
+@media (max-width:370px) {
+  .win-goals .near-goal-row { gap:5px; }
+  .win-goals .near-goal { padding:7px 6px !important; grid-template-columns:26px minmax(0,1fr) !important; }
+  .win-goals .near-goal > i { width:26px !important; height:26px !important; }
+}
+
+/* ===== v26 polish ===== */
+.special-level-icon { width:88px !important; height:88px !important; border-radius:24px !important; overflow:hidden; }
+.special-level-icon img { width:100%; height:100%; object-fit:cover; display:block; }
+.special-level-icon span { width:100%; height:100%; display:grid; place-items:center; }
+.special-level-quote { margin:10px auto 0; max-width:330px; color:#ffe6a6; font-size:13px; line-height:1.4; font-weight:900; }
+.win-companion { overflow:visible; }
+.win-companion img { animation:winMascotBob 2.1s ease-in-out infinite; transform-origin:50% 72%; }
+@keyframes winMascotBob { 0%,100%{transform:translateY(0) rotate(0deg)} 25%{transform:translateY(-2px) rotate(-2deg)} 50%{transform:translateY(-5px) rotate(1.5deg)} 75%{transform:translateY(-1px) rotate(2deg)} }
+.win-xp { flex-direction:column; gap:2px !important; }
+.win-xp b, .win-xp [data-win-xp-counter] { font-size:24px !important; line-height:1.1 !important; }
+.win-xp-seq { display:block; min-height:18px; color:#7b78a0; font-size:12px; font-weight:850; opacity:0; transform:translateY(4px); }
+.win-xp-seq.show { animation:winXpSeqReveal .62s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes winXpSeqReveal { 0%{opacity:0;transform:translateY(5px)} 20%,80%{opacity:1;transform:none} 100%{opacity:.72;transform:none} }
+.modal-secondary-actions { grid-template-columns:repeat(3,minmax(0,1fr)) !important; }
+#winShare.secondary { white-space:nowrap; }
+.companion-bubble-card { background:linear-gradient(135deg,#fffdf3,#eff8ff) !important; border:1px solid #d7dff2 !important; box-shadow:0 14px 34px #120f3250 !important; }
+.companion-bubble-card span { display:block; }
+.hub-nav, .app .controls { position:relative; }
+.hub-nav::after, .app .controls::after { content:""; position:absolute; left:0; right:0; bottom:calc(env(safe-area-inset-bottom) * -1); height:env(safe-area-inset-bottom); background:inherit; pointer-events:none; }
+
+/* ===== v28 UX fixes ===== */
+.special-level-quote {
+  display:block; margin:12px auto 0; max-width:340px; padding:10px 13px;
+  border:1px solid #704ee030; border-radius:14px;
+  background:linear-gradient(135deg,#30275ef2,#1e2856f2);
+  color:#fff5b8 !important; text-shadow:0 1px 0 #0008; font-size:13px !important; line-height:1.38; font-weight:950;
+  box-shadow:0 8px 22px #27204d24;
+}
+.special-level-quote[hidden], .special-level-rule[hidden] { display:none !important; }
+.modal-secondary-actions { grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:6px !important; }
+.modal-secondary-actions .secondary { min-width:0 !important; padding-inline:3px !important; font-size:9px !important; letter-spacing:-.02em; white-space:nowrap !important; overflow:hidden; text-overflow:clip; }
+
+/* Keep the playing surface tied to the real iOS viewport rather than an old 100vh snapshot. */
+@media (max-width:900px) {
+  html, body { height:100%; min-height:100%; }
+  body:not(.hub-open) .app { position:fixed !important; inset:0 !important; width:100% !important; height:auto !important; min-height:0 !important; max-height:none !important; padding-bottom:0 !important; }
+  .app .controls { margin-bottom:0 !important; border-radius:18px 18px 0 0 !important; padding-bottom:max(7px,env(safe-area-inset-bottom)) !important; }
+  .app .controls::after { display:none !important; content:none !important; }
+  .hub-nav::after { display:none !important; content:none !important; }
+}
+
+.global-profile-button.has-mail-unread::after {
+  content:attr(data-mail-count); position:absolute; top:4px; left:48px; z-index:10;
+  min-width:18px; height:18px; padding:0 5px; display:grid; place-items:center;
+  border:2px solid #17314f; border-radius:999px; background:#ff526d; color:#fff;
+  font-size:9px; line-height:1; font-weight:950; box-shadow:0 4px 10px #12091c55;
+}
+.mascot-pair { border:0 !important; background:transparent !important; padding:0 !important; cursor:pointer; }
+
+.daily-main-quest {
+  grid-column:1/-1; width:100%; margin-top:8px; padding:10px 12px; min-height:58px;
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  border:1px solid #67d7ff36; border-radius:16px; background:linear-gradient(135deg,#1a63886f,#5452aa73); color:#fff; text-align:left;
+}
+.daily-main-quest > span { display:grid; grid-template-columns:30px 1fr; column-gap:8px; align-items:center; min-width:0; }
+.daily-main-quest i { grid-row:1/3; width:30px; height:30px; display:grid; place-items:center; border-radius:10px; background:#ffd96a22; font-style:normal; }
+.daily-main-quest b { font-size:11px; }
+.daily-main-quest small { font-size:9px; color:#c8c7df; }
+.daily-main-quest strong { white-space:nowrap; font-size:10px; color:#9eecff; }
+.daily-main-quest.done { border-color:#63deb061; background:linear-gradient(135deg,#17594788,#41488a70); }
+
+.achievement.legendary { border-color:#f5cb5b78 !important; background:linear-gradient(135deg,#49346e66,#2a2d645c) !important; }
+.achievement.legendary .ico { box-shadow:0 0 0 1px #ffdc7780,0 0 20px #ffd25328; }
+
+.encyclopedia-shell, .encyclopedia-pane, .encyclopedia-grid { min-width:0 !important; max-width:100% !important; }
+.encyclopedia-grid { overflow-x:hidden !important; width:100% !important; grid-template-columns:repeat(3,minmax(0,1fr)) !important; }
+.encyclopedia-grid .collection-item { min-width:0 !important; width:100% !important; overflow:hidden; }
+@media (max-width:380px){ .encyclopedia-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important;} }
+
+.install-guide-modal { position:fixed; inset:0; z-index:28000; display:grid; place-items:center; padding:18px; background:#090a1788; backdrop-filter:blur(10px); opacity:0; visibility:hidden; transition:.2s ease; }
+.install-guide-modal.show { opacity:1; visibility:visible; }
+.install-guide-card { position:relative; width:min(420px,100%); padding:22px 18px 18px; border-radius:24px; background:linear-gradient(180deg,#fffdf7,#eef7ff); color:#2d2a49; box-shadow:0 24px 60px #07091d55; }
+.install-guide-close { position:absolute; right:12px; top:12px; width:34px; height:34px; border:0; border-radius:50%; background:#ece8f8; color:#48416c; font-size:20px; }
+.install-guide-icon { font-size:40px; margin-bottom:7px; }
+.install-guide-card > small { color:#7565bd; font-size:9px; font-weight:950; letter-spacing:.14em; }
+.install-guide-card h2 { margin:5px 0 8px; font-size:22px; }
+.install-guide-card p { margin:0 0 10px; color:#69647c; font-size:12px; line-height:1.45; }
+.install-guide-card ol { margin:10px 0; padding-left:22px; display:grid; gap:8px; color:#4f4a67; font-size:12px; line-height:1.4; }
+.install-guide-reward { margin-top:12px; padding:11px; border-radius:14px; background:linear-gradient(135deg,#ffdf7930,#7b75ff22); color:#54478d; font-weight:950; text-align:center; font-size:12px; }
+.install-guide-open { margin-top:7px; }
+
+.account-code-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:7px; align-items:center; }
+.account-paste-code { min-height:44px; border:0; border-radius:12px; padding:0 12px; background:#eae6f8; color:#514a75; font-size:11px; font-weight:900; }
+
+/* v28 iPhone dock: fill the physical bottom edge without a floating gap. */
+@media (max-width:900px) {
+  html, body { height:100% !important; min-height:100% !important; padding-bottom:0 !important; }
+  .hub { height:100% !important; min-height:0 !important; }
+  .hub-shell { height:100% !important; min-height:0 !important; }
+  .hub-nav { margin-bottom:0 !important; padding-bottom:5px !important; border-radius:0 !important; }
+  .app .controls { margin-bottom:0 !important; padding-bottom:5px !important; border-radius:18px 18px 0 0 !important; }
+  .hub-nav::after, .app .controls::after { display:none !important; content:none !important; }
+}
+@media (max-width:370px) { .modal-secondary-actions .secondary { font-size:8.5px !important; padding-inline:2px !important; } }
+
+/* ===== v29 hint/profile fixes ===== */
+.mascot-hint-route { position:fixed; height:3px; transform-origin:0 50%; z-index:10002; pointer-events:none; border-radius:99px; background:repeating-linear-gradient(90deg,#ffe36e 0 8px,transparent 8px 13px); filter:drop-shadow(0 0 4px #ffe36e88); animation:mascotHintLine 2.4s ease both; }
+.mascot-hint-route::after { content:""; position:absolute; right:-6px; top:50%; transform:translateY(-50%); border-left:11px solid #ffe36e; border-top:7px solid transparent; border-bottom:7px solid transparent; }
+.hint-source { outline:3px solid #7de8ff !important; outline-offset:3px; filter:drop-shadow(0 0 9px #7de8ffaa); }
+.hint-target { outline:3px solid #ffe36e !important; outline-offset:3px; box-shadow:0 0 0 5px #ffe36e22,0 0 18px #ffe36e70 !important; animation:hintTargetPulse .72s ease-in-out infinite alternate; }
+@keyframes hintTargetPulse { from{transform:scale(1)} to{transform:scale(1.035)} }
+.global-profile-name-row { min-width:0; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:7px; }
+.global-profile-name-row > b { min-width:0; }
+.profile-mail-indicator { justify-self:end; min-width:20px; height:20px; padding:0 6px; display:grid; place-items:center; border:2px solid #214263; border-radius:999px; background:#ff526d; color:#fff; font-size:9px; line-height:1; font-weight:950; box-shadow:0 4px 10px #12091c55; }
+.profile-mail-indicator[hidden] { display:none !important; }
+.global-profile-button.has-mail-unread::after { display:none !important; content:none !important; }
