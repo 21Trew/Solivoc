@@ -91,7 +91,7 @@ function corsHeaders(request) {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Credentials": "true",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,X-Admin-Key,X-Solivoc-Owner-Token,X-Solivoc-Guest-Token,Authorization",
+    "Access-Control-Allow-Headers": "Content-Type,X-Solivoc-Owner-Token,X-Solivoc-Guest-Token,Authorization",
     "Access-Control-Max-Age": "600",
     "Vary": "Origin",
   };

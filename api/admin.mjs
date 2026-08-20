@@ -1,19 +1,77 @@
-import { timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { checkRateLimit, sameOrigin, sha256, verifySecret } from "./_auth-lib.mjs";
 import { redis } from "./_push-lib.mjs";
 
 const BOARDS=["stars","levels","daily","marathon","combo","duel","time","moves","onePass"];
 const CHAPTER_SIZE=10;
+const ADMIN_SESSION_TTL=8*60*60;
+const ADMIN_COOKIE="solivoc_admin_session";
+const ADMIN_LOGIN_FAILURES=6;
+const ADMIN_LOGIN_WINDOW=15*60;
 const clamp=(v,min=0,max=1e9)=>Math.max(min,Math.min(max,Number(v)||0));
-const json=(data,status=200)=>Response.json(data,{status,headers:{"Cache-Control":"no-store, max-age=0"}});
+const json=(data,status=200,extraHeaders={})=>Response.json(data,{status,headers:{"Cache-Control":"no-store, max-age=0","Content-Type":"application/json; charset=utf-8",...extraHeaders}});
 const parse=(raw)=>{try{return raw?JSON.parse(raw):null}catch{return null}};
 const playerKey=(id)=>`worditaire:leaderboard:player:${id}`;
 const profileVersionKey=(id)=>`worditaire:auth:profile-version:${id}`;
 const boardKey=(id)=>`worditaire:leaderboard:v1:${id}`;
-function authorized(request){
-  const expected=String(process.env.ADMIN_SECRET||"");
-  const actual=String(request.headers.get("x-admin-key")||"");
-  if(!expected||!actual||expected.length!==actual.length)return false;
-  try{return timingSafeEqual(Buffer.from(expected),Buffer.from(actual));}catch{return false;}
+const normalizedAdminLogin=()=>String(process.env.ADMIN_LOGIN||"").trim().toLowerCase();
+const configuredPasswordHash=()=>String(process.env.ADMIN_PASSWORD_HASH||"").trim();
+const configuredPassword=()=>String(process.env.ADMIN_PASSWORD||"");
+function adminConfigured(){return !!normalizedAdminLogin()&&!!(configuredPasswordHash()||configuredPassword());}
+function constantTimeText(a,b){
+  const left=createHash("sha256").update(String(a||"")).digest();
+  const right=createHash("sha256").update(String(b||"")).digest();
+  return timingSafeEqual(left,right);
+}
+function adminCredentialVersion(){
+  const passwordMarker=configuredPasswordHash()||sha256(configuredPassword());
+  return sha256(`${normalizedAdminLogin()}\n${passwordMarker}`);
+}
+function cookieValue(request,name){
+  for(const part of String(request.headers.get("cookie")||"").split(";")){
+    const index=part.indexOf("=");if(index<1)continue;
+    if(part.slice(0,index).trim()!==name)continue;
+    const raw=part.slice(index+1).trim();
+    try{return decodeURIComponent(raw)}catch{return raw}
+  }
+  return "";
+}
+function adminSessionKey(token){return `worditaire:admin:session:${sha256(token)}`;}
+function adminCookie(request,token,maxAge=ADMIN_SESSION_TTL){
+  let secure="";try{secure=new URL(request.url).protocol==="https:"?"; Secure":""}catch{}
+  return `${ADMIN_COOKIE}=${encodeURIComponent(token||"")}; Path=/api/admin; HttpOnly; SameSite=Strict; Max-Age=${Math.max(0,maxAge)}${secure}`;
+}
+async function createAdminSession(){
+  const token=randomBytes(32).toString("base64url");
+  await redis(["SET",adminSessionKey(token),JSON.stringify({version:adminCredentialVersion(),createdAt:Date.now()}),"EX",ADMIN_SESSION_TTL]);
+  return token;
+}
+async function currentAdminSession(request){
+  const token=cookieValue(request,ADMIN_COOKIE);if(!token)return null;
+  const raw=await redis(["GET",adminSessionKey(token)]);if(!raw)return null;
+  const stored=parse(raw);
+  if(!stored?.version||!constantTimeText(stored.version,adminCredentialVersion())){await redis(["DEL",adminSessionKey(token)]).catch(()=>{});return null;}
+  return {token,stored};
+}
+async function deleteAdminSession(request){
+  const token=cookieValue(request,ADMIN_COOKIE);
+  if(token)await redis(["DEL",adminSessionKey(token)]).catch(()=>{});
+}
+function loginFailureKey(login){return `worditaire:admin:login-fail:${sha256(String(login||"").trim().toLowerCase())}`;}
+async function loginBlocked(login){return (Number(await redis(["GET",loginFailureKey(login)]))||0)>=ADMIN_LOGIN_FAILURES;}
+async function recordLoginFailure(login){
+  const key=loginFailureKey(login),count=Number(await redis(["INCR",key]))||0;
+  if(count===1)await redis(["EXPIRE",key,ADMIN_LOGIN_WINDOW]);
+  return count;
+}
+async function clearLoginFailures(login){await redis(["DEL",loginFailureKey(login)]).catch(()=>{});}
+async function validAdminCredentials(login,password){
+  const actualLogin=String(login||"").trim().toLowerCase();
+  const loginOk=constantTimeText(actualLogin,normalizedAdminLogin());
+  let passwordOk=false;
+  if(configuredPasswordHash())passwordOk=await verifySecret(String(password||""),configuredPasswordHash());
+  else passwordOk=constantTimeText(String(password||""),configuredPassword());
+  return loginOk&&passwordOk;
 }
 async function scanKeys(pattern,limit=5000){
   let cursor="0",out=[];
@@ -137,8 +195,43 @@ async function repairAll(){
 }
 async function summary(){
   const [profiles,records]=await Promise.all([scanKeys("worditaire:auth:profile:*",5000),leaderboardRecords()]);
-  return {profiles:profiles.length,leaderboardRecords:records.length,adminConfigured:!!process.env.ADMIN_SECRET,players:records.map(x=>({id:x.id,name:String(x.rec.name||"Игрок"),levels:+x.rec.values?.levels||0,stars:+x.rec.values?.stars||0,duel:+x.rec.values?.duel||0,account:!!x.rec.accountKey})).sort((a,b)=>b.stars-a.stars).slice(0,300)};
+  return {profiles:profiles.length,leaderboardRecords:records.length,adminConfigured:adminConfigured(),players:records.map(x=>({id:x.id,name:String(x.rec.name||"Игрок"),levels:+x.rec.values?.levels||0,stars:+x.rec.values?.stars||0,duel:+x.rec.values?.duel||0,account:!!x.rec.accountKey})).sort((a,b)=>b.stars-a.stars).slice(0,300)};
 }
 export function OPTIONS(){return json({ok:true});}
-export async function GET(request){if(!authorized(request))return json({error:"unauthorized"},401);try{return json({ok:true,...await summary()});}catch(error){console.error("admin GET",error);return json({error:"server_error",message:String(error?.message||error)},500);}}
-export async function POST(request){if(!authorized(request))return json({error:"unauthorized"},401);try{const body=await request.json().catch(()=>({}));if(body.action==="repair_all")return json({ok:true,...await repairAll()});if(body.action==="dedupe")return json({ok:true,deduped:await dedupeLeaderboard()});return json({error:"unknown_action"},400);}catch(error){console.error("admin POST",error);return json({error:"server_error",message:String(error?.message||error)},500);}}
+export async function GET(request){
+  if(!sameOrigin(request))return json({error:"bad_origin"},403);
+  try{
+    if(!adminConfigured())return json({error:"admin_not_configured"},503);
+    if(!(await currentAdminSession(request)))return json({authenticated:false,error:"unauthorized"},401);
+    const url=new URL(request.url);
+    if(url.searchParams.get("session")==="1")return json({ok:true,authenticated:true});
+    return json({ok:true,authenticated:true,...await summary()});
+  }catch(error){console.error("admin GET",error);return json({error:"server_error",message:String(error?.message||error)},500);}
+}
+export async function POST(request){
+  if(!sameOrigin(request))return json({error:"bad_origin"},403);
+  try{
+    const body=await request.json().catch(()=>({}));
+    const action=String(body.action||"");
+    if(action==="login"){
+      if(!adminConfigured())return json({error:"admin_not_configured"},503);
+      if(!(await checkRateLimit(request,"admin-login",12,ADMIN_LOGIN_WINDOW)))return json({error:"rate_limited"},429,{"Retry-After":String(ADMIN_LOGIN_WINDOW)});
+      const login=String(body.login||"").trim().toLowerCase();
+      const password=String(body.password||"");
+      if(login.length>120||password.length>256||await loginBlocked(login))return json({error:"rate_limited"},429,{"Retry-After":String(ADMIN_LOGIN_WINDOW)});
+      if(!(await validAdminCredentials(login,password))){await recordLoginFailure(login);return json({error:"invalid_credentials"},401);}
+      await clearLoginFailures(login);
+      const token=await createAdminSession();
+      return json({ok:true,authenticated:true},200,{"Set-Cookie":adminCookie(request,token)});
+    }
+    if(action==="logout"){
+      await deleteAdminSession(request);
+      return json({ok:true,authenticated:false},200,{"Set-Cookie":adminCookie(request,"",0)});
+    }
+    if(!adminConfigured())return json({error:"admin_not_configured"},503);
+    if(!(await currentAdminSession(request)))return json({authenticated:false,error:"unauthorized"},401);
+    if(action==="repair_all")return json({ok:true,...await repairAll()});
+    if(action==="dedupe")return json({ok:true,deduped:await dedupeLeaderboard()});
+    return json({error:"unknown_action"},400);
+  }catch(error){console.error("admin POST",error);return json({error:"server_error",message:String(error?.message||error)},500);}
+}

@@ -1,2 +1,65 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="robots" content="noindex,nofollow"><title>Словасьянс · Админка</title><link rel="stylesheet" href="./styles/admin.css"></head><body><main class="admin-shell"><header><div><small>СЛОВАСЬЯНС</small><h1>Админка</h1><p>Диагностика аккаунтов, прогресса и таблиц лидеров.</p></div><a href="/">← В игру</a></header><section class="admin-auth"><label>ADMIN_SECRET<input id="adminKey" type="password" autocomplete="off" placeholder="Ключ из серверных переменных"></label><button id="adminConnect">Подключиться</button></section><section id="adminPanel" hidden><div class="admin-actions"><button id="adminRepair">Пересчитать прогресс всех игроков</button><button id="adminDedupe">Убрать безопасные дубли лидерборда</button><button id="adminRefresh">Обновить данные</button></div><div id="adminStatus" class="admin-status"></div><div id="adminSummary" class="admin-summary"></div><div class="admin-table-wrap"><table><thead><tr><th>Игрок</th><th>ID</th><th>Уровни</th><th>Звёзды</th><th>Дуэли</th></tr></thead><tbody id="adminPlayers"></tbody></table></div></section></main><script src="./js/runtime-config.js"></script><script src="./js/api-client.js"></script><script src="./js/admin.js"></script></body></html>
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.solivoc.ru; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>Словасьянс · Админка</title>
+  <link rel="stylesheet" href="./styles/admin.css">
+</head>
+<body>
+  <main class="admin-shell">
+    <header>
+      <div>
+        <small>СЛОВАСЬЯНС</small>
+        <h1>Админка</h1>
+        <p>Диагностика аккаунтов, прогресса и таблиц лидеров.</p>
+      </div>
+      <a href="/">← В игру</a>
+    </header>
+
+    <section id="adminAuth" class="admin-auth">
+      <form id="adminLoginForm" class="admin-login-form" autocomplete="on">
+        <label>
+          Логин
+          <input id="adminLogin" name="username" type="text" autocomplete="username" maxlength="120" required>
+        </label>
+        <label>
+          Пароль
+          <span class="admin-password-field">
+            <input id="adminPassword" name="password" type="password" autocomplete="current-password" maxlength="256" required>
+            <button id="adminPasswordToggle" class="admin-password-toggle" type="button" aria-label="Показать пароль" aria-pressed="false">Показать</button>
+          </span>
+        </label>
+        <button id="adminConnect" type="submit">Войти</button>
+      </form>
+      <div id="adminLoginStatus" class="admin-login-status" role="status" aria-live="polite"></div>
+    </section>
+
+    <section id="adminPanel" hidden>
+      <div class="admin-session-bar">
+        <span>Защищённая админ-сессия активна</span>
+        <button id="adminLogout" type="button">Выйти</button>
+      </div>
+      <div class="admin-actions">
+        <button id="adminRepair" type="button">Пересчитать прогресс всех игроков</button>
+        <button id="adminDedupe" type="button">Убрать безопасные дубли лидерборда</button>
+        <button id="adminRefresh" type="button">Обновить данные</button>
+      </div>
+      <div id="adminStatus" class="admin-status" role="status" aria-live="polite"></div>
+      <div id="adminSummary" class="admin-summary"></div>
+      <div class="admin-table-wrap">
+        <table>
+          <thead><tr><th>Игрок</th><th>ID</th><th>Уровни</th><th>Звёзды</th><th>Дуэли</th></tr></thead>
+          <tbody id="adminPlayers"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script src="./js/runtime-config.js"></script>
+  <script src="./js/api-client.js"></script>
+  <script src="./js/admin.js"></script>
+</body>
+</html>
