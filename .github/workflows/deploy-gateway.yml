@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - "yandex/api-gateway.template.yaml"
+      - "scripts/render-api-gateway.mjs"
+      - ".github/workflows/deploy-gateway.yml"
   workflow_dispatch:
 
 permissions:
@@ -33,8 +35,7 @@ jobs:
         run: |
           node scripts/render-api-gateway.mjs "$RUNNER_TEMP/solivoc-api-gateway.yaml"
 
-      - name: Resolve current gateway name
-        id: gateway
+      - name: Deploy API Gateway specification
         shell: bash
         env:
           YC_SA_ID: ${{ vars.YC_SA_ID }}
@@ -48,25 +49,62 @@ jobs:
           exchange_response="$(curl --fail --silent --show-error             --request POST             'https://auth.yandex.cloud/oauth/token'             --header 'Content-Type: application/x-www-form-urlencoded'             --data-urlencode 'grant_type=urn:ietf:params:oauth:grant-type:token-exchange'             --data-urlencode 'requested_token_type=urn:ietf:params:oauth:token-type:access_token'             --data-urlencode "audience=${YC_SA_ID}"             --data-urlencode "subject_token=${github_oidc_token}"             --data-urlencode 'subject_token_type=urn:ietf:params:oauth:token-type:id_token')"
           iam_token="$(printf '%s' "$exchange_response" | jq -r '.access_token')"
 
-          gateway_json="$(curl --fail --silent --show-error             -H "Authorization: Bearer ${iam_token}"             "https://serverless-apigateway.api.cloud.yandex.net/apigateways/v1/apigateways/${YC_GATEWAY_ID}")"
-          gateway_name="$(printf '%s' "$gateway_json" | jq -r '.name')"
+          jq -n             --rawfile spec "$RUNNER_TEMP/solivoc-api-gateway.yaml"             '{
+              updateMask: "openapi_spec",
+              openapiSpec: $spec
+            }'             > "$RUNNER_TEMP/update-gateway.json"
 
-          if [ -z "$gateway_name" ] || [ "$gateway_name" = "null" ]; then
-            echo "Could not resolve API Gateway name"
+          update_response="$(curl --fail --silent --show-error             --request PATCH             "https://serverless-apigateway.api.cloud.yandex.net/apigateways/v1/apigateways/${YC_GATEWAY_ID}"             -H "Authorization: Bearer ${iam_token}"             -H 'Content-Type: application/json'             --data-binary "@$RUNNER_TEMP/update-gateway.json")"
+
+          operation_id="$(printf '%s' "$update_response" | jq -r '.id')"
+          if [ -z "$operation_id" ] || [ "$operation_id" = "null" ]; then
+            echo "Yandex did not return an operation ID"
+            printf '%s\n' "$update_response"
             exit 1
           fi
 
-          echo "name=${gateway_name}" >> "$GITHUB_OUTPUT"
+          echo "API Gateway update operation: ${operation_id}"
 
-      - name: Deploy API Gateway specification
-        uses: yc-actions/yc-api-gateway-deploy@v2
-        with:
-          yc-sa-id: ${{ vars.YC_SA_ID }}
-          gateway-name: ${{ steps.gateway.outputs.name }}
-          folder-id: ${{ vars.YC_FOLDER_ID }}
-          spec-file: ${{ runner.temp }}/solivoc-api-gateway.yaml
+          for attempt in $(seq 1 45); do
+            operation_json="$(curl --fail --silent --show-error               -H "Authorization: Bearer ${iam_token}"               "https://operation.api.cloud.yandex.net/operations/${operation_id}")"
+
+            done_flag="$(printf '%s' "$operation_json" | jq -r '.done // false')"
+            if [ "$done_flag" = "true" ]; then
+              error_message="$(printf '%s' "$operation_json" | jq -r '.error.message // ""')"
+              if [ -n "$error_message" ]; then
+                echo "API Gateway update failed: ${error_message}"
+                printf '%s\n' "$operation_json" | jq '.error'
+                exit 1
+              fi
+
+              echo "API Gateway specification updated successfully"
+              exit 0
+            fi
+
+            echo "Waiting for API Gateway update (${attempt}/45)..."
+            sleep 2
+          done
+
+          echo "API Gateway update operation timed out: ${operation_id}"
+          exit 1
 
       - name: Smoke test API
+        shell: bash
         run: |
-          curl --fail --silent --show-error             --retry 8 --retry-delay 3             https://api.solivoc.ru/api/version > /tmp/solivoc-version.json
-          jq -e '.build' /tmp/solivoc-version.json > /dev/null
+          set -euo pipefail
+
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent --show-error               --header 'Cache-Control: no-cache'               "https://api.solivoc.ru/api/version?gateway_ci=${GITHUB_SHA}-${attempt}"               > "$RUNNER_TEMP/solivoc-version.json"; then
+              build="$(jq -r '.build // ""' "$RUNNER_TEMP/solivoc-version.json")"
+              if [ -n "$build" ]; then
+                echo "API Gateway is healthy. Build: ${build}"
+                exit 0
+              fi
+            fi
+
+            echo "Waiting for API Gateway health check (${attempt}/20)..."
+            sleep 3
+          done
+
+          echo "API Gateway health check failed."
+          exit 1
