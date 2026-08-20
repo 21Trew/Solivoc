@@ -29,10 +29,10 @@ jobs:
 
     steps:
       - name: Checkout main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
 
@@ -58,6 +58,4 @@ jobs:
 
       - name: Smoke test production
         run: |
-          curl --fail --silent --show-error \
-            --retry 5 --retry-delay 3 \
-            https://solivoc.ru/ > /dev/null
+          curl --fail --silent --show-error             --retry 5 --retry-delay 3             https://solivoc.ru/ > /dev/null
