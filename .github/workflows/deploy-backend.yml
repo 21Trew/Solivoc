@@ -9,6 +9,7 @@ on:
       - "yandex/index.mjs"
       - "scripts/build-yandex.mjs"
       - "package.json"
+      - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
 
 permissions:
@@ -32,8 +33,16 @@ jobs:
       - name: Build backend bundle
         run: npm run build:yandex
 
-      - name: Read current function configuration
-        id: current
+      - name: Create deploy archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd yandex-function
+          zip -qr "$RUNNER_TEMP/solivoc-function.zip" . -x "*.DS_Store"
+          test -s "$RUNNER_TEMP/solivoc-function.zip"
+
+      - name: Deploy function preserving current configuration
+        id: function
         shell: bash
         env:
           YC_SA_ID: ${{ vars.YC_SA_ID }}
@@ -41,95 +50,155 @@ jobs:
         run: |
           set -euo pipefail
 
-          oidc_response="$(curl --fail --silent --show-error             -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"             "${ACTIONS_ID_TOKEN_REQUEST_URL}")"
+          oidc_response="$(curl --fail --silent --show-error \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}")"
           github_oidc_token="$(printf '%s' "$oidc_response" | jq -r '.value')"
 
-          exchange_response="$(curl --fail --silent --show-error             --request POST             'https://auth.yandex.cloud/oauth/token'             --header 'Content-Type: application/x-www-form-urlencoded'             --data-urlencode 'grant_type=urn:ietf:params:oauth:grant-type:token-exchange'             --data-urlencode 'requested_token_type=urn:ietf:params:oauth:token-type:access_token'             --data-urlencode "audience=${YC_SA_ID}"             --data-urlencode "subject_token=${github_oidc_token}"             --data-urlencode 'subject_token_type=urn:ietf:params:oauth:token-type:id_token')"
+          exchange_response="$(curl --fail --silent --show-error \
+            --request POST \
+            'https://auth.yandex.cloud/oauth/token' \
+            --header 'Content-Type: application/x-www-form-urlencoded' \
+            --data-urlencode 'grant_type=urn:ietf:params:oauth:grant-type:token-exchange' \
+            --data-urlencode 'requested_token_type=urn:ietf:params:oauth:token-type:access_token' \
+            --data-urlencode "audience=${YC_SA_ID}" \
+            --data-urlencode "subject_token=${github_oidc_token}" \
+            --data-urlencode 'subject_token_type=urn:ietf:params:oauth:token-type:id_token')"
           iam_token="$(printf '%s' "$exchange_response" | jq -r '.access_token')"
 
-          curl --fail --silent --show-error --get             'https://serverless-functions.api.cloud.yandex.net/functions/v1/versions:byTag'             -H "Authorization: Bearer ${iam_token}"             --data-urlencode "functionId=${YC_FUNCTION_ID}"             --data-urlencode 'tag=$latest'             > /tmp/solivoc-current-function.json
+          curl --fail --silent --show-error --get \
+            'https://serverless-functions.api.cloud.yandex.net/functions/v1/versions:byTag' \
+            -H "Authorization: Bearer ${iam_token}" \
+            --data-urlencode "functionId=${YC_FUNCTION_ID}" \
+            --data-urlencode 'tag=$latest' \
+            > "$RUNNER_TEMP/current-function.json"
 
-          jq 'if (.versions? | type) == "array" then .versions[0] else . end'             /tmp/solivoc-current-function.json > /tmp/solivoc-current-version.json
+          jq 'if (.versions? | type) == "array" then .versions[0] else . end' \
+            "$RUNNER_TEMP/current-function.json" \
+            > "$RUNNER_TEMP/current-version.json"
 
-          jq -e '.id and .runtime and .entrypoint' /tmp/solivoc-current-version.json > /dev/null
+          jq -e '.id and .functionId and .runtime and .entrypoint and .resources.memory' \
+            "$RUNNER_TEMP/current-version.json" > /dev/null
 
-          unsupported="$(jq -r '
-            [
-              (if ((.namedServiceAccounts // {}) | length) > 0 then "namedServiceAccounts" else empty end),
-              (if ((.storageMounts // []) | length) > 0 then "storageMounts" else empty end),
-              (if ((.mounts // []) | length) > 0 then "mounts" else empty end),
-              (if ((.tmpfsSize // "0") | tostring | tonumber? // 0) > 0 then "tmpfsSize" else empty end),
-              (if ((.concurrency // "0") | tostring | tonumber? // 0) > 0 then "concurrency" else empty end)
-            ] | join(",")
-          ' /tmp/solivoc-current-version.json)"
-          if [ -n "$unsupported" ]; then
-            echo "Current function uses configuration that this workflow intentionally will not overwrite: $unsupported"
+          previous_version_id="$(jq -r '.id' "$RUNNER_TEMP/current-version.json")"
+          concurrency="$(jq -r '.concurrency // "0"' "$RUNNER_TEMP/current-version.json")"
+          echo "Current function version: ${previous_version_id}"
+          echo "Preserving concurrency: ${concurrency}"
+
+          # Mask existing plain environment values before doing anything else.
+          while IFS= read -r secret_value; do
+            [ -z "$secret_value" ] || echo "::add-mask::$secret_value"
+          done < <(jq -r '.environment // {} | to_entries[] | .value' "$RUNNER_TEMP/current-version.json")
+
+          base64 -w 0 "$RUNNER_TEMP/solivoc-function.zip" \
+            > "$RUNNER_TEMP/solivoc-function.b64"
+
+          # CreateVersion accepts these version-level settings. We copy them
+          # from the working $latest version and replace only the code payload.
+          jq --rawfile content "$RUNNER_TEMP/solivoc-function.b64" '
+            {
+              functionId: .functionId,
+              runtime: .runtime,
+              description: (.description // ""),
+              entrypoint: .entrypoint,
+              resources: .resources,
+              executionTimeout: (.executionTimeout // "5s"),
+              serviceAccountId: (.serviceAccountId // ""),
+              content: $content,
+              environment: (.environment // {}),
+              namedServiceAccounts: (.namedServiceAccounts // {}),
+              concurrency: (.concurrency // "0"),
+              connectivity: (.connectivity // {}),
+              secrets: (.secrets // []),
+              logOptions: (.logOptions // {}),
+              storageMounts: (.storageMounts // []),
+              asyncInvocationConfig: (.asyncInvocationConfig // {}),
+              tmpfsSize: (.tmpfsSize // "0"),
+              mounts: (.mounts // []),
+              metadataOptions: (.metadataOptions // {})
+            }
+            | with_entries(
+                select(
+                  .value != null
+                  and .value != ""
+                  and .value != []
+                  and .value != {}
+                )
+              )
+          ' "$RUNNER_TEMP/current-version.json" \
+            > "$RUNNER_TEMP/create-version.json"
+
+          create_response="$(curl --fail --silent --show-error \
+            --request POST \
+            'https://serverless-functions.api.cloud.yandex.net/functions/v1/versions' \
+            -H "Authorization: Bearer ${iam_token}" \
+            -H 'Content-Type: application/json' \
+            --data-binary "@$RUNNER_TEMP/create-version.json")"
+
+          operation_id="$(printf '%s' "$create_response" | jq -r '.id')"
+          if [ -z "$operation_id" ] || [ "$operation_id" = "null" ]; then
+            echo "Yandex did not return an operation ID"
+            exit 1
+          fi
+          echo "CreateVersion operation: ${operation_id}"
+
+          new_version_id=""
+          for attempt in $(seq 1 45); do
+            sleep 2
+            latest_json="$(curl --fail --silent --show-error --get \
+              'https://serverless-functions.api.cloud.yandex.net/functions/v1/versions:byTag' \
+              -H "Authorization: Bearer ${iam_token}" \
+              --data-urlencode "functionId=${YC_FUNCTION_ID}" \
+              --data-urlencode 'tag=$latest')"
+
+            candidate="$(printf '%s' "$latest_json" | jq -r '
+              if (.versions? | type) == "array"
+              then (.versions[0].id // "")
+              else (.id // "")
+              end
+            ')"
+
+            if [ -n "$candidate" ] && [ "$candidate" != "$previous_version_id" ]; then
+              new_version_id="$candidate"
+              break
+            fi
+
+            echo "Waiting for new $latest version (${attempt}/45)..."
+          done
+
+          if [ -z "$new_version_id" ]; then
+            echo "New function version was not promoted to $latest in time."
+            echo "Check Yandex Cloud operation: ${operation_id}"
             exit 1
           fi
 
-          runtime="$(jq -r '.runtime' /tmp/solivoc-current-version.json)"
-          entrypoint="$(jq -r '.entrypoint' /tmp/solivoc-current-version.json)"
-          memory_bytes="$(jq -r '.resources.memory // "134217728"' /tmp/solivoc-current-version.json)"
-          memory_mb="$(( memory_bytes / 1048576 ))"
-          timeout_raw="$(jq -r '.executionTimeout // "5s"' /tmp/solivoc-current-version.json)"
-          timeout_seconds="${timeout_raw%s}"
-          timeout_seconds="${timeout_seconds%%.*}"
-          service_account="$(jq -r '.serviceAccountId // ""' /tmp/solivoc-current-version.json)"
-          network_id="$(jq -r '.connectivity.networkId // ""' /tmp/solivoc-current-version.json)"
-          logs_disabled="$(jq -r '.logOptions.disabled // false' /tmp/solivoc-current-version.json)"
-          logs_group_id="$(jq -r '.logOptions.logGroupId // ""' /tmp/solivoc-current-version.json)"
-          log_level="$(jq -r '(.logOptions.minLevel // "") | ascii_downcase' /tmp/solivoc-current-version.json)"
-
-          while IFS= read -r secret_value; do
-            [ -z "$secret_value" ] || echo "::add-mask::$secret_value"
-          done < <(jq -r '.environment // {} | to_entries[] | .value' /tmp/solivoc-current-version.json)
-
-          {
-            echo "runtime=${runtime}"
-            echo "entrypoint=${entrypoint}"
-            echo "memory=${memory_mb}Mb"
-            echo "timeout=${timeout_seconds}"
-            echo "service_account=${service_account}"
-            echo "network_id=${network_id}"
-            echo "logs_disabled=${logs_disabled}"
-            echo "logs_group_id=${logs_group_id}"
-            echo "log_level=${log_level}"
-
-            echo 'environment<<__SOLIVOC_ENV__'
-            jq -r '.environment // {} | to_entries[] | "\(.key)=\(.value)"' /tmp/solivoc-current-version.json
-            echo '__SOLIVOC_ENV__'
-
-            echo 'secrets<<__SOLIVOC_SECRETS__'
-            jq -r '.secrets // [] | .[] | select(.environmentVariable != null) |
-              "\(.environmentVariable)=\(.id)/\(.versionId)/\(.key)"' /tmp/solivoc-current-version.json
-            echo '__SOLIVOC_SECRETS__'
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Deploy Yandex Cloud Function
-        id: function
-        uses: yc-actions/yc-sls-function@v5
-        with:
-          yc-sa-id: ${{ vars.YC_SA_ID }}
-          folder-id: ${{ vars.YC_FOLDER_ID }}
-          function-name: ${{ vars.YC_FUNCTION_NAME }}
-          runtime: ${{ steps.current.outputs.runtime }}
-          entrypoint: ${{ steps.current.outputs.entrypoint }}
-          memory: ${{ steps.current.outputs.memory }}
-          execution-timeout: ${{ steps.current.outputs.timeout }}
-          service-account: ${{ steps.current.outputs.service_account }}
-          network-id: ${{ steps.current.outputs.network_id }}
-          logs-disabled: ${{ steps.current.outputs.logs_disabled }}
-          logs-group-id: ${{ steps.current.outputs.logs_group_id }}
-          log-level: ${{ steps.current.outputs.log_level }}
-          environment: ${{ steps.current.outputs.environment }}
-          secrets: ${{ steps.current.outputs.secrets }}
-          source-root: ./yandex-function
-          include: |
-            .
-          exclude: |
-            **/.DS_Store
+          echo "New function version: ${new_version_id}"
+          echo "version_id=${new_version_id}" >> "$GITHUB_OUTPUT"
 
       - name: Smoke test API
+        shell: bash
+        env:
+          EXPECTED_VERSION_ID: ${{ steps.function.outputs.version_id }}
         run: |
-          curl --fail --silent --show-error             --retry 8 --retry-delay 3             https://api.solivoc.ru/api/version > /tmp/solivoc-version.json
-          jq -e '.build' /tmp/solivoc-version.json > /dev/null
+          set -euo pipefail
+
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent --show-error \
+              https://api.solivoc.ru/api/version \
+              > "$RUNNER_TEMP/solivoc-version.json"; then
+              build="$(jq -r '.build // ""' "$RUNNER_TEMP/solivoc-version.json")"
+              deployment="$(jq -r '.deployment // ""' "$RUNNER_TEMP/solivoc-version.json")"
+              echo "API build: ${build}"
+              echo "API deployment: ${deployment}"
+
+              if [ -n "$build" ] && [ "$deployment" = "$EXPECTED_VERSION_ID" ]; then
+                exit 0
+              fi
+            fi
+
+            echo "Waiting for API Gateway to serve the new $latest version (${attempt}/20)..."
+            sleep 3
+          done
+
+          echo "Production API did not switch to expected function version: ${EXPECTED_VERSION_ID}"
+          exit 1
