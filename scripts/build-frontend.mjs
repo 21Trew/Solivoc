@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const out = path.join(root, "dist-frontend");
 const staticDirs = ["data", "icons", "js", "styles"];
-const rootFiles = ["index.html", "admin.html", "sw.js"];
+const rootFiles = ["index.html", "admin.html", "admin-backup.html", "sw.js"];
 
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });

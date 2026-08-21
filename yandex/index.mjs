@@ -2,6 +2,7 @@ import * as account from "../api/account.mjs";
 import * as admin from "../api/admin.mjs";
 import * as analytics from "../api/analytics.mjs";
 import * as auth from "../api/auth.mjs";
+import * as backup from "../api/backup.mjs";
 import * as bootstrap from "../api/bootstrap.mjs";
 import * as challenges from "../api/challenges.mjs";
 import * as duelShare from "../api/duel-share.mjs";
@@ -15,6 +16,7 @@ const ROUTES = new Map([
   ["admin", admin],
   ["analytics", analytics],
   ["auth", auth],
+  ["backup", backup],
   ["bootstrap", bootstrap],
   ["challenges", challenges],
   ["leaderboard", leaderboard],
