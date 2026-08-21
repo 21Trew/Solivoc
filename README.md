@@ -138,7 +138,7 @@ CRON_SECRET=<длинный случайный секрет>
 
 `VAPID_SUBJECT` необязателен, но лучше указать свой `mailto:` или HTTPS URL. `CRON_SECRET` обязателен для `/api/reminders`: без него endpoint намеренно отвечает `503` и не запускает массовую отправку. Endpoint принимает секрет только в заголовке `Authorization: Bearer <CRON_SECRET>`.
 
-Production API для push работает через Yandex Cloud Functions. Плановый вызов `/api/reminders` пока остаётся на Vercel Cron в `vercel.json` на `16:00 UTC` (19:00 по UTC+3) как временная зависимость до переноса расписания в Yandex Cloud. Ответ друга на дуэль отправляется сервером сразу после завершения партии, если игрок разрешил Push.
+Production API для push работает через Yandex Cloud Functions. Ежедневный запуск `/api/reminders` выполняет Yandex Timer Trigger `solivoc-reminders` в `16:00 UTC` (19:00 по UTC+3); его конфигурация поддерживается workflow `.github/workflows/deploy-reminders-trigger.yml`. Ответ друга на дуэль отправляется сервером сразу после завершения партии, если игрок разрешил Push.
 
 
 ## Профиль, картинки и уведомления
@@ -203,9 +203,12 @@ ANALYTICS_ADMIN_TOKEN=<длинный случайный секрет>
 
 Серверные endpoints:
 
-- `POST /api/auth` — `register_start`, `register_resend`, `register_verify`, `login`, `logout`, `recover_start`, `recover_resend`, `recover_verify`
+- `POST /api/auth` — `register_start`, `register_resend`, `register_verify`, `login`, `logout`, `recover_start`, `recover_resend`, `recover_verify`, `delete_account`
 - `GET /api/auth` — проверка HttpOnly-сессии
 - `GET/POST /api/account` — чтение и объединение облачного профиля
+- `GET /api/account?players=...` — пакетная проверка существования соперников для истории дуэлей
+
+Удаление аккаунта требует действующий пароль. Сервер удаляет персональные данные аккаунта и временные серверные дуэли пользователя, но завершённая история у других игроков остаётся в их профиле и отображает удалённого соперника как «Аккаунт удалён».
 
 Для аккаунтов используется то же Redis-совместимое хранилище, что и для сетевых функций проекта. Cloud Function нужны переменные `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` (или совместимые `KV_REST_API_URL` + `KV_REST_API_TOKEN`).
 
@@ -230,14 +233,16 @@ ANALYTICS_ADMIN_TOKEN=<длинный случайный секрет>
 
 После стабилизации доставки DMARC-политику можно ужесточить отдельно. В самом Postbox для текущего сценария безопаснее ограничить разрешённого отправителя значением `auth` (то есть `auth@solivoc.ru`).
 
+
 ## Production-инфраструктура и деплой
 
 Источник истины — ветка `main` репозитория GitHub. Production разворачивается автоматически через GitHub Actions и OIDC без постоянных ключей Yandex Cloud:
 
 - `.github/workflows/deploy-frontend.yml` собирает `dist-frontend/` командой `npm run build:frontend` и синхронизирует публичный frontend в Yandex Object Storage;
 - `.github/workflows/deploy-backend.yml` собирает `yandex-function/`, создаёт новую версию `solivoc-api` в Yandex Cloud Functions с сохранением production-конфигурации и выполняет smoke-test;
-- `.github/workflows/deploy-gateway.yml` рендерит `yandex/api-gateway.template.yaml`, обновляет существующий API Gateway и выполняет smoke-test `https://api.solivoc.ru`;
-- `yandex/index.mjs` адаптирует события API Gateway к существующим Web `Request`/`Response`-обработчикам из `api/*.mjs`;
+- `.github/workflows/deploy-gateway.yml` рендерит `yandex/api-gateway.template.yaml`, обновляет существующий Yandex API Gateway и проверяет `https://api.solivoc.ru`;
+- `.github/workflows/deploy-reminders-trigger.yml` поддерживает Yandex Timer Trigger `solivoc-reminders` для ежедневных push-напоминаний;
+- `yandex/index.mjs` адаптирует события API Gateway к Web `Request`/`Response`-обработчикам из `api/*.mjs`;
 - `APP_ORIGINS` задаёт дополнительные разрешённые origins. Основные `https://solivoc.ru`, `https://www.solivoc.ru`, `https://admin.solivoc.ru` разрешены по умолчанию.
 
 `dist-frontend/` и `yandex-function/` — генерируемые директории: они не хранятся в Git и создаются только при локальной сборке или в CI.
@@ -245,20 +250,22 @@ ANALYTICS_ADMIN_TOKEN=<длинный случайный секрет>
 Текущая production-схема:
 
 ```text
+REG.RU → регистрация домена solivoc.ru
+   │
+Cloudflare → DNS / edge / admin.solivoc.ru
+   │
 GitHub main
-├─ frontend → Yandex Object Storage → solivoc.ru
-├─ backend  → Yandex Cloud Functions → solivoc-api
-└─ gateway  → Yandex API Gateway → api.solivoc.ru
+├─ frontend  → Yandex Object Storage → solivoc.ru
+├─ backend   → Yandex Cloud Functions → solivoc-api
+├─ gateway   → Yandex API Gateway → api.solivoc.ru
+└─ reminders → Yandex Timer Trigger
+
+Redis REST → аккаунты, прогресс, дуэли, leaderboard, push и аналитика
+Yandex Postbox → письма регистрации и восстановления
 ```
 
-`admin.solivoc.ru` обслуживается через Cloudflare и ведёт на production-админку. DNS и edge-правила управляются вне репозитория.
+REG.RU используется как регистратор домена. DNS и edge-правила находятся в Cloudflare и управляются вне репозитория. В репозитории не должно быть Timeweb- или Vercel-deployment-конфигов.
 
-### Временная зависимость от Vercel
+### Legacy-перенос с Vercel
 
-Основной frontend и API больше не зависят от Vercel. `vercel.json` пока сохраняется только потому, что ежедневный cron `/api/reminders` ещё не перенесён в Yandex Cloud. До полного отключения Vercel необходимо:
-
-1. перенести расписание `/api/reminders` в Yandex Cloud;
-2. перенести/проверить production security headers (`CSP`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`) на фактическом edge/hosting-слое;
-3. после проверки удалить Vercel-интеграцию и `vercel.json`.
-
-До выполнения этих трёх пунктов Vercel не считается источником production-трафика, но его cron остаётся служебной временной зависимостью.
+`js/host-routing.js` намеренно содержит `solivoc.vercel.app`: это не production-зависимость, а временный мост для переноса старого `localStorage`/PWA-прогресса с прежнего origin на `https://solivoc.ru`. Его можно удалить отдельным обновлением только после того, как поддержка миграции старых пользователей больше не нужна.

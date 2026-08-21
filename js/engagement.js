@@ -26,7 +26,7 @@ async function flushRemoteAnalytics() {
   const batch = queue.slice(0, 30), controller = new AbortController(), timer = setTimeout(()=>controller.abort(), 4500);
   remoteAnalyticsBusy = true;
   try {
-    const response = await fetch("/api/analytics", {
+    const response = await apiFetch("/api/analytics", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clientId: profile.analyticsClientId, events: batch }),
@@ -223,7 +223,7 @@ let leaderboardCache={at:0,boards:{},promise:null};
 async function syncLeaderboardNonBlocking(force=false){
   if(!/^https?:$/.test(location.protocol)||navigator.onLine===false||!profile.playerId||!(typeof accountSignedIn==="function"&&accountSignedIn()))return false;
   if(!force&&Date.now()-leaderboardSyncAt<30000)return false;leaderboardSyncAt=Date.now();
-  try{const c=new AbortController(),t=setTimeout(()=>c.abort(),1800);const r=await fetch("/api/leaderboard",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(leaderboardPayload()),signal:c.signal,cache:"no-store"});clearTimeout(t);return r.ok;}catch{return false;}
+  try{const c=new AbortController(),t=setTimeout(()=>c.abort(),1800);const r=await apiFetch("/api/leaderboard",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(leaderboardPayload()),signal:c.signal,cache:"no-store"});clearTimeout(t);return r.ok;}catch{return false;}
 }
 function leaderboardValueLabel(board,value){
   if(board==="time")return `${Math.floor(value/60000)}:${String(Math.floor(value/1000)%60).padStart(2,"0")}`;
@@ -254,7 +254,7 @@ async function fetchLeaderboardSnapshot(force=false){
   leaderboardCache.promise=(async()=>{
     const c=new AbortController(),t=setTimeout(()=>c.abort(),3200);
     try{
-      const r=await fetch("/api/leaderboard?board=all",{cache:"no-store",signal:c.signal});
+      const r=await apiFetch("/api/leaderboard?board=all",{cache:"no-store",signal:c.signal});
       if(!r.ok)throw new Error("leaderboard unavailable");
       const data=await r.json(),boards=data?.boards&&typeof data.boards==="object"?data.boards:{};
       if(data?.me?.duelStats){
@@ -314,7 +314,7 @@ async function refreshDeletedDuelOpponents(force=false){
     const next=new Set();
     for(let i=0;i<ids.length;i+=60){
       const chunk=ids.slice(i,i+60),c=new AbortController(),t=setTimeout(()=>c.abort(),3500);
-      try{const r=await fetch(`/api/account?players=${encodeURIComponent(chunk.join(","))}`,{cache:"no-store",credentials:"same-origin",signal:c.signal});if(!r.ok)continue;const data=await r.json().catch(()=>({}));for(const id of chunk)if(data?.players?.[id]?.deleted)next.add(id);}catch{}finally{clearTimeout(t);}
+      try{const r=await apiFetch(`/api/account?players=${encodeURIComponent(chunk.join(","))}`,{cache:"no-store",signal:c.signal});if(!r.ok)continue;const data=await r.json().catch(()=>({}));for(const id of chunk)if(data?.players?.[id]?.deleted)next.add(id);}catch{}finally{clearTimeout(t);}
     }
     const before=[...deletedDuelOpponentIds].sort().join("|"),after=[...next].sort().join("|");
     deletedDuelOpponentIds=next;duelOpponentStatusAt=Date.now();return before!==after;

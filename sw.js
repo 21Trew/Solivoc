@@ -1,4 +1,4 @@
-const CACHE = "worditaire-v49";
+const CACHE = "worditaire-v57";
 const CORE = [
   "./",
   "./index.html",
@@ -61,6 +61,9 @@ const CORE = [
   "./styles/responsive.css",
   "./data/categories.js",
   "./data/categories.json",
+  "./js/host-routing.js",
+  "./js/runtime-config.js",
+  "./js/api-client.js",
   "./js/config.js",
   "./js/profile.js",
   "./js/auth.js",
@@ -85,7 +88,14 @@ const CORE = [
   "./js/app.js"
 ];
 
+const NETWORK_FIRST = new Set([
+  "/js/host-routing.js",
+  "/js/runtime-config.js",
+]);
+
 self.addEventListener("install", (event) => {
+  // Keep updates explicit. The app already has a visible update banner and
+  // sends SKIP_WAITING only after the player asks to update.
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(CORE)));
 });
 
@@ -127,6 +137,18 @@ self.addEventListener("fetch", (event) => {
   if (["/admin", "/admin.html", "/js/admin.js", "/styles/admin.css"].includes(url.pathname)) return;
 
   event.respondWith((async () => {
+    if (NETWORK_FIRST.has(url.pathname)) {
+      try {
+        const response = await fetch(event.request, { cache: "no-store" });
+        if (shouldCache(event.request, url, response)) {
+          try { await caches.open(CACHE).then((cache) => cache.put(event.request, response.clone())); } catch {}
+        }
+        return response;
+      } catch {
+        return (await caches.match(event.request)) || Response.error();
+      }
+    }
+
     // Keep HTML and JS from the same cache generation. Serving a fresh HTML
     // document together with old cached scripts can break the app between
     // deployments. SW update discovery still happens through register(), and

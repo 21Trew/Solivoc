@@ -220,7 +220,7 @@ async function challengeApi(method, path = "", body = null, { keepalive = false,
     // in the URL because it is intentionally shareable.
     if (ownerToken) headers["X-Solivoc-Owner-Token"] = String(ownerToken);
     if (guestToken) headers["X-Solivoc-Guest-Token"] = String(guestToken);
-    const response = await fetch(`${CHALLENGE_API}${path}`, {
+    const response = await apiFetch(`${CHALLENGE_API}${path}`, {
       method,
       headers: Object.keys(headers).length ? headers : undefined,
       body: body ? JSON.stringify(body) : undefined,
@@ -542,7 +542,7 @@ async function createRemoteChallenge(meta = {}) {
 }
 function challengeShortLink(entryOrCode) {
   const code = normalizeChallengeCode(entryOrCode?.code || entryOrCode);
-  const origin = /^https?:$/.test(location.protocol) ? location.origin : "https://solivoc.vercel.app";
+  const origin = solivocApiBase() || (/^https?:$/.test(location.protocol) ? location.origin : "https://solivoc.ru");
   return `${origin.replace(/\/$/, "")}/d/${code}`;
 }
 async function challengeInviteFile(entry) {
@@ -913,7 +913,7 @@ migrateCompletedDuelHistory();
 
 
 function appShareLink() {
-  const origin = /^https?:$/.test(location.protocol) ? location.origin : "https://solivoc.vercel.app";
+  const origin = /^https?:$/.test(location.protocol) ? location.origin : "https://solivoc.ru";
   return `${origin.replace(/\/$/, "")}/`;
 }
 function resultShareTitle(s = state) {

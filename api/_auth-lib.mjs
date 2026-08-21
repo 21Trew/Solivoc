@@ -91,12 +91,25 @@ export async function checkRateLimit(request, bucket, limit = 12, windowSec = 90
   return count <= limit;
 }
 
+function allowedAppOrigins() {
+  const defaults = ["https://solivoc.ru", "https://www.solivoc.ru", "https://admin.solivoc.ru"];
+  const configured = String(process.env.APP_ORIGINS || "")
+    .split(",")
+    .map((value) => value.trim().replace(/\/$/, ""))
+    .filter(Boolean);
+  return new Set([...defaults, ...configured]);
+}
+
 export function sameOrigin(request) {
   const fetchSite = String(request.headers.get("sec-fetch-site") || "").toLowerCase();
   if (fetchSite === "cross-site") return false;
-  const origin = request.headers.get("origin");
+  const origin = String(request.headers.get("origin") || "").replace(/\/$/, "");
   if (!origin) return true;
-  try { return origin === new URL(request.url).origin; } catch { return false; }
+  try {
+    if (origin === new URL(request.url).origin) return true;
+    if (/^http:\/\/(localhost|127\.0\.1)(:\d+)?$/i.test(origin)) return true;
+    return allowedAppOrigins().has(origin);
+  } catch { return false; }
 }
 
 function parseCookies(request) {
@@ -112,7 +125,7 @@ function parseCookies(request) {
 }
 
 export function sessionCookie(token, maxAge = SESSION_TTL) {
-  const secure = (process.env.VERCEL || process.env.NODE_ENV === "production") ? "; Secure" : "";
+  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
   return `solivoc_session=${encodeURIComponent(token || "")}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.max(0, maxAge)}${secure}`;
 }
 
