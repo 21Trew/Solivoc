@@ -59,3 +59,4 @@ jobs:
       - name: Smoke test production
         run: |
           curl --fail --silent --show-error             --retry 5 --retry-delay 3             https://solivoc.ru/ > /dev/null
+          curl --fail --silent --show-error             --retry 5 --retry-delay 3             "https://solivoc.ru/js/admin.js?v=20260821-1" | grep -q 'adminBackup'
