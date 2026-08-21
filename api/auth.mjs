@@ -5,6 +5,7 @@ import {
   profileKey, profileVersionKey, sameOrigin, sessionCookie, sha256, userKey, validPassword, verifySecret, writeJsonKey
 } from "./_auth-lib.mjs";
 import { sendPasswordResetCode, sendRegistrationCode } from "./_mail-lib.mjs";
+import { deleteAccountData } from "./_account-delete-lib.mjs";
 import { redis } from "./_push-lib.mjs";
 
 const CODE_TTL = 10 * 60;
@@ -217,6 +218,26 @@ export async function POST(request) {
     if (action === "logout") {
       await deleteSession(request);
       return json({ ok: true }, 200, { "Set-Cookie": requestSessionCookie(request, "", 0) });
+    }
+
+    if (action === "delete_account") {
+      if (!(await checkRateLimit(request, "account-delete", 5, 15 * 60))) {
+        return json({ error: "rate_limited" }, 429);
+      }
+      const session = await currentSession(request);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const password = String(body.password || "");
+      const passwordOk = validPassword(password)
+        && await verifySecret(password, session.user?.passwordHash || DUMMY_PASSWORD_HASH);
+      if (!passwordOk) return json({ error: "invalid_credentials" }, 401);
+
+      const deleted = await deleteAccountData(session.userId, session.user?.email || "");
+      if (!deleted.deleted) return json({ error: "account_not_found" }, 404);
+      return json(
+        { ok: true, deleted: true, userId: deleted.userId },
+        200,
+        { "Set-Cookie": requestSessionCookie(request, "", 0) },
+      );
     }
 
     const allowedActions = [

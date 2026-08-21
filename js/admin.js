@@ -61,8 +61,16 @@ function escapeHtml(value) {
 function render(data) {
   adminData = data;
   showPanel();
-  $("#adminSummary").innerHTML = `<div><b>${data.profiles ?? data.repaired ?? 0}</b><br><span>облачных профилей</span></div><div><b>${data.leaderboardRecords ?? data.players?.length ?? 0}</b><br><span>записей лидерборда</span></div>${data.deduped != null ? `<div><b>${data.deduped}</b><br><span>дублей удалено</span></div>` : ""}`;
-  $("#adminPlayers").innerHTML = (data.players || []).map((player) => `<tr><td>${escapeHtml(player.name || "Игрок")}</td><td>${escapeHtml(player.id || "")}</td><td>${player.levels || 0}</td><td>${player.stars || 0}</td><td>${player.duels ?? player.duel ?? 0}</td></tr>`).join("");
+  $("#adminSummary").innerHTML = `<div><b>${data.accounts ?? 0}</b><br><span>аккаунтов</span></div><div><b>${data.profiles ?? data.repaired ?? 0}</b><br><span>облачных профилей</span></div><div><b>${data.leaderboardRecords ?? data.players?.length ?? 0}</b><br><span>записей лидерборда</span></div>${data.deduped != null ? `<div><b>${data.deduped}</b><br><span>дублей удалено</span></div>` : ""}`;
+  $("#adminPlayers").innerHTML = (data.players || []).map((player) => `<tr>
+    <td>${escapeHtml(player.name || "Игрок")}</td>
+    <td>${player.email ? escapeHtml(player.email) : '<span class="admin-muted">—</span>'}</td>
+    <td><code>${escapeHtml(player.id || "")}</code></td>
+    <td>${player.levels || 0}</td>
+    <td>${player.stars || 0}</td>
+    <td>${player.duels ?? player.duel ?? 0}</td>
+    <td>${player.account ? `<button class="admin-delete-account" type="button" data-delete-account="${escapeHtml(player.id || "")}" data-delete-email="${escapeHtml(player.email || "")}" data-delete-name="${escapeHtml(player.name || "Игрок")}">Удалить</button>` : '<span class="admin-muted">legacy</span>'}</td>
+  </tr>`).join("");
 }
 
 async function refresh() {
@@ -163,5 +171,35 @@ $("#adminDedupe").onclick = async () => {
     setAdminStatus(errorMessage(error), true);
   }
 };
+
+
+$("#adminPlayers").addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-delete-account]");
+  if (!button) return;
+  const userId = String(button.dataset.deleteAccount || "");
+  const email = String(button.dataset.deleteEmail || "");
+  const name = String(button.dataset.deleteName || "Игрок");
+  const label = email || userId;
+  if (!confirm(`Удалить аккаунт ${name} (${label})?
+
+Будут удалены облачный профиль, лидерборд, серверные дуэли и все активные сессии. Действие необратимо.`)) return;
+
+  button.disabled = true;
+  button.textContent = "Удаляю…";
+  setAdminStatus(`Удаляю ${label}…`);
+  try {
+    const data = await requestAdmin("", {
+      method: "POST",
+      body: JSON.stringify({ action: "delete_account", userId }),
+    });
+    render(data);
+    setAdminStatus(`Аккаунт ${label} удалён`);
+  } catch (error) {
+    if (error.status === 401) return showLogin("Сессия истекла. Войди снова.");
+    button.disabled = false;
+    button.textContent = "Удалить";
+    setAdminStatus(errorMessage(error), true);
+  }
+});
 
 restoreSession();

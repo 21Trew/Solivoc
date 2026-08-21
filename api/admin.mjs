@@ -1,6 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { checkRateLimit, sameOrigin, sha256, verifySecret } from "./_auth-lib.mjs";
 import { redis } from "./_push-lib.mjs";
+import { deleteAccountData } from "./_account-delete-lib.mjs";
 
 const BOARDS=["stars","levels","daily","marathon","combo","duel","time","moves","onePass"];
 const CHAPTER_SIZE=10;
@@ -194,8 +195,42 @@ async function repairAll(){
   return {repaired,starsChanged,levelsChanged,duelsMerged,deduped,players:players.sort((a,b)=>b.stars-a.stars).slice(0,300)};
 }
 async function summary(){
-  const [profiles,records]=await Promise.all([scanKeys("worditaire:auth:profile:*",5000),leaderboardRecords()]);
-  return {profiles:profiles.length,leaderboardRecords:records.length,adminConfigured:adminConfigured(),players:records.map(x=>({id:x.id,name:String(x.rec.name||"Игрок"),levels:+x.rec.values?.levels||0,stars:+x.rec.values?.stars||0,duel:+x.rec.values?.duel||0,account:!!x.rec.accountKey})).sort((a,b)=>b.stars-a.stars).slice(0,300)};
+  const [profileKeys,userKeys,records]=await Promise.all([
+    scanKeys("worditaire:auth:profile:*",5000),
+    scanKeys("worditaire:auth:user:*",5000),
+    leaderboardRecords(),
+  ]);
+  const [profileRows,userRows]=await Promise.all([getMany(profileKeys),getMany(userKeys)]);
+  const profilesById=new Map();
+  for(const row of profileRows){const id=row.key.split(":").at(-1),profile=parse(row.raw);if(profile)profilesById.set(id,profile);}
+  const leaderboardById=new Map(records.map((row)=>[row.id,row.rec]));
+  const accounts=[],accountIds=new Set();
+  for(const row of userRows){
+    const id=row.key.split(":").at(-1),user=parse(row.raw);if(!user?.email)continue;
+    accountIds.add(id);
+    const profile=profilesById.get(id)||{},lb=leaderboardById.get(id)||{},stats=profile.stats||{};
+    accounts.push({
+      id,
+      email:String(user.email||"").slice(0,160),
+      name:String(profile.playerName||lb.name||"Игрок").slice(0,20),
+      levels:+lb.values?.levels||+stats.levelsCompleted||0,
+      stars:+lb.values?.stars||+profile.totalStars||0,
+      duel:+lb.duelStats?.matches||+stats.duelMatches||0,
+      account:true,
+      createdAt:+user.createdAt||0,
+    });
+  }
+  const legacy=records.filter((row)=>!accountIds.has(row.id)).map((row)=>({
+    id:row.id,email:"",name:String(row.rec.name||"Игрок"),levels:+row.rec.values?.levels||0,
+    stars:+row.rec.values?.stars||0,duel:+row.rec.duelStats?.matches||0,account:false,createdAt:0,
+  }));
+  return {
+    profiles:profileKeys.length,
+    accounts:accounts.length,
+    leaderboardRecords:records.length,
+    adminConfigured:adminConfigured(),
+    players:[...accounts,...legacy].sort((a,b)=>(b.account-a.account)||(b.stars-a.stars)).slice(0,500),
+  };
 }
 export function OPTIONS(){return json({ok:true});}
 export async function GET(request){
@@ -232,6 +267,14 @@ export async function POST(request){
     if(!(await currentAdminSession(request)))return json({authenticated:false,error:"unauthorized"},401);
     if(action==="repair_all")return json({ok:true,...await repairAll()});
     if(action==="dedupe")return json({ok:true,deduped:await dedupeLeaderboard()});
+    if(action==="delete_account"){
+      if(!(await checkRateLimit(request,"admin-delete-account",30,15*60)))return json({error:"rate_limited"},429);
+      const userId=String(body.userId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64);
+      if(!userId)return json({error:"invalid_user_id"},400);
+      const deleted=await deleteAccountData(userId);
+      if(!deleted.deleted)return json({error:"account_not_found"},404);
+      return json({ok:true,deleted:true,deletedAccount:deleted,...await summary()});
+    }
     return json({error:"unknown_action"},400);
   }catch(error){console.error("admin POST",error);return json({error:"server_error",message:String(error?.message||error)},500);}
 }

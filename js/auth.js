@@ -395,6 +395,35 @@ async function logoutAccount() {
   renderGlobalProfileHeaders?.();
   syncLeaderboardNonBlocking?.();
 }
+async function deleteAccount(password) {
+  if (!accountSignedIn()) throw Object.assign(new Error("unauthorized"), { code: "unauthorized" });
+  if (!accountCanUseServer()) throw Object.assign(new Error("offline"), { code: "offline" });
+  const oldId = accountState.userId;
+  await accountRequest("/api/auth", {
+    method: "POST",
+    body: JSON.stringify({ action: "delete_account", password }),
+    timeout: 15000,
+  });
+
+  clearTimeout(accountSyncTimer);
+  accountState = { status: "guest", userId: "", email: "", version: 0, lastSyncAt: 0, pendingLogout: false };
+  persistAccountState();
+  if (oldId) {
+    try { localStorage.removeItem(`${ACCOUNT_BACKUP_PREFIX}${oldId}`); } catch {}
+  }
+  accountApplyingCloud = true;
+  try {
+    profile = freshGuestProfileFromDevice(profile);
+    try {
+      if (typeof SAVE_KEY !== "undefined") localStorage.removeItem(SAVE_KEY);
+      if (typeof OLD_SAVE_KEY !== "undefined") localStorage.removeItem(OLD_SAVE_KEY);
+    } catch {}
+    saveProfile({ skipCloud: true });
+  } finally { accountApplyingCloud = false; }
+  clearAccountVerification();
+  renderGlobalProfileHeaders?.();
+  return true;
+}
 async function completePendingServerLogout() {
   if (!accountState.pendingLogout || !accountCanUseServer()) return false;
   try {
@@ -475,8 +504,8 @@ function accountSyncTimeLabel() {
   catch { return "Прогресс синхронизирован"; }
 }
 
-function accountPasswordField({ label = "Пароль", autocomplete = "current-password" } = {}) {
-  return `<label>${label}<span class="account-password-field"><input id="accountPassword" type="password" autocomplete="${authEsc(autocomplete)}" minlength="8" maxlength="128" required><button class="account-password-toggle" type="button" aria-label="Показать пароль" aria-pressed="false" title="Показать пароль"><svg class="account-password-eye account-password-eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.75"></circle></svg><svg class="account-password-eye account-password-eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"></path><path d="M10.6 6.15A10.8 10.8 0 0 1 12 6c6 0 9.5 6 9.5 6a15 15 0 0 1-2.2 2.9M6.25 6.35C3.8 8.15 2.5 12 2.5 12s3.5 6 9.5 6c1.25 0 2.38-.26 3.4-.67"></path><path d="M9.9 9.9A3 3 0 0 0 14.1 14.1"></path></svg></button></span></label>`;
+function accountPasswordField({ label = "Пароль", autocomplete = "current-password", id = "accountPassword", required = true } = {}) {
+  return `<label>${label}<span class="account-password-field"><input id="${authEsc(id)}" type="password" autocomplete="${authEsc(autocomplete)}" minlength="8" maxlength="128" ${required ? "required" : ""}><button class="account-password-toggle" type="button" aria-label="Показать пароль" aria-pressed="false" title="Показать пароль"><svg class="account-password-eye account-password-eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.75"></circle></svg><svg class="account-password-eye account-password-eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"></path><path d="M10.6 6.15A10.8 10.8 0 0 1 12 6c6 0 9.5 6 9.5 6a15 15 0 0 1-2.2 2.9M6.25 6.35C3.8 8.15 2.5 12 2.5 12s3.5 6 9.5 6c1.25 0 2.38-.26 3.4-.67"></path><path d="M9.9 9.9A3 3 0 0 0 14.1 14.1"></path></svg></button></span></label>`;
 }
 
 function bindAccountPasswordToggle() {
@@ -509,7 +538,17 @@ function accountSignedInMarkup() {
   return `<div class="account-hero signed"><span>✓</span><div><small>АККАУНТ ПОДКЛЮЧЁН</small><h2>${authEsc(accountState.email || "Игрок")}</h2><p>${authEsc(accountStatusHint())}</p></div></div>
     <div class="account-cloud-card"><div><span>Облачное сохранение</span><b>${navigator.onLine === false ? "Офлайн" : "Включено"}</b><small>${authEsc(accountSyncTimeLabel())}</small></div><button id="accountSyncNow" ${navigator.onLine === false ? "disabled" : ""}>Синхронизировать</button></div>
     <p class="account-note">Одиночная игра продолжает работать без интернета. После возвращения сети прогресс объединится с облачной копией.</p>
-    <div class="account-actions"><button class="account-danger" id="accountLogout" type="button">Выйти из аккаунта</button></div>`;
+    <div class="account-actions">
+      <button class="account-danger" id="accountLogout" type="button">Выйти из аккаунта</button>
+      <button class="account-delete-open" id="accountDeleteOpen" type="button">Удалить аккаунт</button>
+    </div>
+    <div class="account-delete-panel" id="accountDeletePanel" hidden>
+      <b>Удалить аккаунт безвозвратно?</b>
+      <p>Будут удалены аккаунт, облачный прогресс, записи лидерборда и серверные дуэли. На этом устройстве игра начнётся с нового гостевого профиля.</p>
+      ${accountPasswordField({ label: "Пароль для подтверждения", autocomplete: "current-password", id: "accountDeletePassword", required: false })}
+      <div class="account-error" id="accountDeleteError" aria-live="polite"></div>
+      <button class="account-delete-confirm" id="accountDeleteConfirm" type="button" ${navigator.onLine === false ? "disabled" : ""}>Удалить навсегда</button>
+    </div>`;
 }
 function accountVerificationMarkup(mode = "verify-email") {
   const recovering = mode === "recover-verify";
@@ -683,6 +722,36 @@ function renderAccountModal() {
   };
   document.querySelector("#accountSyncNow")?.addEventListener("click", async (event) => { const b=event.currentTarget;b.disabled=true;b.textContent="Синхронизирую…";const ok=await flushAccountSync();renderAccountModal();showToast?.(ok?"Прогресс синхронизирован":"Синхронизация пока недоступна"); });
   document.querySelector("#accountLogout")?.addEventListener("click", async (event) => { const b=event.currentTarget;b.disabled=true;b.textContent="Выхожу…";await logoutAccount();clearAccountVerification();modal.dataset.mode="register";renderAccountModal();showToast?.("Теперь ты играешь как гость"); });
+  document.querySelector("#accountDeleteOpen")?.addEventListener("click", () => {
+    const panel = document.querySelector("#accountDeletePanel"), button = document.querySelector("#accountDeleteOpen");
+    if (!panel) return;
+    panel.hidden = false;
+    if (button) button.hidden = true;
+    document.querySelector("#accountDeletePassword")?.focus();
+  });
+  document.querySelector("#accountDeleteConfirm")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    const password = document.querySelector("#accountDeletePassword")?.value || "";
+    const errorBox = document.querySelector("#accountDeleteError");
+    if (errorBox) errorBox.textContent = "";
+    if (password.length < 8) {
+      if (errorBox) errorBox.textContent = "Введи текущий пароль от аккаунта.";
+      return;
+    }
+    if (!confirm("Удалить аккаунт и весь связанный с ним серверный прогресс? Это действие нельзя отменить.")) return;
+    button.disabled = true;
+    button.textContent = "Удаляю…";
+    try {
+      await deleteAccount(password);
+      showToast?.("Аккаунт удалён");
+      closeAccountModal();
+      setTimeout(() => location.reload(), 250);
+    } catch (error) {
+      if (errorBox) errorBox.textContent = authErrorText(error);
+      button.disabled = false;
+      button.textContent = "Удалить навсегда";
+    }
+  });
 }
 
 function bindAccountUi() {
