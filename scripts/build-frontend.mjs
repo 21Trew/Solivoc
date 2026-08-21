@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const out = path.join(root, "timeweb-static");
+const out = path.join(root, "dist-frontend");
 const staticDirs = ["data", "icons", "js", "styles"];
 const rootFiles = ["index.html", "admin.html", "sw.js"];
 
@@ -16,7 +16,7 @@ for (const entry of await readdir(root)) {
 }
 await writeFile(
   path.join(out, "js", "runtime-config.js"),
-  '/* Timeweb deployment runtime values. */\nwindow.SOLIVOC_API_BASE = "https://api.solivoc.ru";\n',
+  '/* Production frontend runtime values. */\nwindow.SOLIVOC_API_BASE = "https://api.solivoc.ru";\n',
   "utf8",
 );
-console.log(`Timeweb static bundle generated: ${path.relative(root, out)}`);
+console.log(`Frontend bundle generated: ${path.relative(root, out)}`);

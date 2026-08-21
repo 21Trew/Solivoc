@@ -13,9 +13,9 @@ on:
       - "icons/**"
       - "js/**"
       - "styles/**"
-      - "scripts/build-timeweb.mjs"
+      - "scripts/build-frontend.mjs"
       - "package.json"
-      - ".github/workflows/timeweb-branch.yml"
+      - ".github/workflows/deploy-frontend.yml"
   workflow_dispatch:
 
 permissions:
@@ -37,14 +37,14 @@ jobs:
           node-version: 24
 
       - name: Build frontend
-        run: npm run build:timeweb
+        run: npm run build:frontend
 
       - name: Upload to Yandex Object Storage
         uses: yc-actions/yc-obj-storage-upload@v4
         with:
           yc-sa-id: ${{ vars.YC_SA_ID }}
           bucket: ${{ vars.YC_BUCKET }}
-          root: ./timeweb-static
+          root: ./dist-frontend
           clear: false
           skip-unchanged: true
           fail-on-error: true

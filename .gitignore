@@ -1,0 +1,10 @@
+# Local dependencies
+node_modules/
+
+# Generated deployment bundles
+dist-frontend/
+yandex-function/
+
+# Local noise
+.DS_Store
+*.log

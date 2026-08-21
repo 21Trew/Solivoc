@@ -79,9 +79,9 @@
 
 ## Сетевые дуэли
 
-Система дуэлей использует короткие одноразовые коды из 6 символов и Vercel Function `api/challenges.mjs`.
+Система дуэлей использует короткие одноразовые коды из 6 символов. Production endpoint `api/challenges.mjs` выполняется в Yandex Cloud Functions и доступен через `https://api.solivoc.ru`.
 
-Для production на Vercel нужно один раз подключить Redis-хранилище (рекомендуется Upstash Redis через Vercel Marketplace). API автоматически читает любую из пар переменных:
+Для сетевого состояния нужен Redis-совместимый backend. Cloud Function автоматически читает любую из пар переменных окружения:
 
 - `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`
 - `KV_REST_API_URL` + `KV_REST_API_TOKEN`
@@ -119,7 +119,7 @@
 - выборочные системные уведомления;
 - экран загрузки приложения.
 
-### Системные уведомления на Vercel
+### Системные уведомления
 
 Redis использует те же Upstash-переменные, что и дуэли. Дополнительно создай VAPID-ключи один раз:
 
@@ -127,7 +127,7 @@ Redis использует те же Upstash-переменные, что и д�
 npx web-push generate-vapid-keys --json
 ```
 
-Добавь в Vercel Environment Variables:
+Добавь в серверные переменные окружения Cloud Function:
 
 ```text
 VAPID_PUBLIC_KEY=...
@@ -138,7 +138,7 @@ CRON_SECRET=<длинный случайный секрет>
 
 `VAPID_SUBJECT` необязателен, но лучше указать свой `mailto:` или HTTPS URL. `CRON_SECRET` обязателен для `/api/reminders`: без него endpoint намеренно отвечает `503` и не запускает массовую отправку. Endpoint принимает секрет только в заголовке `Authorization: Bearer <CRON_SECRET>`.
 
-После этого сделай redeploy. В `vercel.json` уже добавлен ежедневный cron `/api/reminders` на `16:00 UTC` (19:00 по UTC+3). Он отправляет только незакрытый ежедневный расклад и, по воскресеньям, незавершённое недельное испытание. Ответ друга на дуэль отправляется сервером сразу после завершения партии, если игрок разрешил Push.
+Production API для push работает через Yandex Cloud Functions. Плановый вызов `/api/reminders` пока остаётся на Vercel Cron в `vercel.json` на `16:00 UTC` (19:00 по UTC+3) как временная зависимость до переноса расписания в Yandex Cloud. Ответ друга на дуэль отправляется сервером сразу после завершения партии, если игрок разрешил Push.
 
 
 ## Профиль, картинки и уведомления
@@ -166,13 +166,13 @@ CRON_SECRET=<длинный случайный секрет>
 
 Клиент хранит подробную локальную историю в `worditaire-analytics-v1` и дополнительно отправляет на `/api/analytics` только анонимный `clientId`, имя события и timestamp. Имя игрока, слова расклада и содержимое карточек не отправляются.
 
-Для защищённого просмотра агрегатов добавь в Vercel:
+Для защищённого просмотра агрегатов добавь в серверные переменные окружения Cloud Function:
 
 ```text
 ANALYTICS_ADMIN_TOKEN=<длинный случайный секрет>
 ```
 
-После redeploy статистику за последние 7 дней можно получить запросом `GET /api/analytics?days=7` с `Authorization: Bearer <token>`. Без `ANALYTICS_ADMIN_TOKEN` чтение статистики отключено, запись событий продолжает работать.
+После деплоя backend статистику за последние 7 дней можно получить запросом `GET /api/analytics?days=7` с `Authorization: Bearer <token>`. Без `ANALYTICS_ADMIN_TOKEN` чтение статистики отключено, запись событий продолжает работать.
 
 Основные funnel-события: `first_open`, `onboarding_complete`, `tutorial_all_complete`, `funnel_level_1_complete`, `funnel_level_2_complete`, `funnel_level_5_complete`, `retention_d1`, `retention_d7`, а также создание/принятие/завершение duel.
 
@@ -207,21 +207,21 @@ ANALYTICS_ADMIN_TOKEN=<длинный случайный секрет>
 - `GET /api/auth` — проверка HttpOnly-сессии
 - `GET/POST /api/account` — чтение и объединение облачного профиля
 
-Для аккаунтов используется тот же Upstash Redis / Vercel KV, что и для сетевых функций проекта. Нужны существующие переменные `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` (или совместимые `KV_REST_API_URL` + `KV_REST_API_TOKEN`).
+Для аккаунтов используется то же Redis-совместимое хранилище, что и для сетевых функций проекта. Cloud Function нужны переменные `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` (или совместимые `KV_REST_API_URL` + `KV_REST_API_TOKEN`).
 
 Новые аккаунты создаются только после подтверждения email шестизначным одноразовым кодом. Код живёт 10 минут, хранится в Redis только как `scrypt`-хэш, имеет ограничение числа попыток и повторной отправки. Пароль тоже не хранится в открытом виде: во время ожидания кода в Redis лежит только его `scrypt`-хэш.
 
 Восстановление пароля также работает через шестизначный одноразовый код на подтверждённую почту. Старые резервные коды больше не выдаются и не принимаются. При успешной смене пароля увеличивается `sessionVersion`, поэтому старые сессии на других устройствах перестают проходить проверку. Для старых аккаунтов поле `recoveryHash`, если оно осталось в Redis, удаляется при следующем восстановлении пароля по email.
 
-Отправка кодов работает через Yandex Cloud Postbox по SMTP. В Vercel должны быть заданы серверные переменные:
+Отправка кодов работает через Yandex Cloud Postbox по SMTP. В переменных окружения production Cloud Function должны быть заданы:
 
 - `POSTBOX_SMTP_USER` — идентификатор API-ключа сервисного аккаунта с ролью `postbox.sender` и scope `yc.postbox.send`
 - `POSTBOX_SMTP_PASSWORD` — секрет API-ключа
 - `POSTBOX_FROM_EMAIL` — подтверждённый отправитель на домене, например `auth@solivoc.ru`
 
-Клиент никогда не получает SMTP-секреты: они читаются только Vercel Function. На отправку кодов регистрации и восстановления действует общий лимит по IP, email и общий защитный потолок, чтобы не выжечь квоту Postbox. Восстановление не раскрывает существование аккаунта: запрос кода возвращает одинаковый успешный ответ и для неизвестного email, но письмо в этом случае не отправляется. Для входа дополнительно действует rate limit по email, а проверка пароля для неизвестного пользователя выполняется против фиктивного `scrypt`-хэша, чтобы уменьшить разницу по времени ответа.
+Клиент никогда не получает SMTP-секреты: они читаются только production Cloud Function. На отправку кодов регистрации и восстановления действует общий лимит по IP, email и общий защитный потолок, чтобы не выжечь квоту Postbox. Восстановление не раскрывает существование аккаунта: запрос кода возвращает одинаковый успешный ответ и для неизвестного email, но письмо в этом случае не отправляется. Для входа дополнительно действует rate limit по email, а проверка пароля для неизвестного пользователя выполняется против фиктивного `scrypt`-хэша, чтобы уменьшить разницу по времени ответа.
 
-Сессия хранится в `HttpOnly; SameSite=Lax` cookie; на production/Vercel cookie дополнительно помечается `Secure`. При обнаружении устаревшей сессии её Redis-ключ удаляется. POST-запросы аккаунта проверяют `Origin` и отклоняют `Sec-Fetch-Site: cross-site`.
+Сессия хранится в `HttpOnly; SameSite=Lax` cookie; на production cookie дополнительно помечается `Secure`. При обнаружении устаревшей сессии её Redis-ключ удаляется. POST-запросы аккаунта проверяют `Origin` и отклоняют `Sec-Fetch-Site: cross-site`.
 
 Для домена отправителя рекомендуется настроить SPF и DMARC вместе с уже обязательным DKIM:
 
@@ -230,23 +230,35 @@ ANALYTICS_ADMIN_TOKEN=<длинный случайный секрет>
 
 После стабилизации доставки DMARC-политику можно ужесточить отдельно. В самом Postbox для текущего сценария безопаснее ограничить разрешённого отправителя значением `auth` (то есть `auth@solivoc.ru`).
 
-## Миграция: Timeweb Static + Yandex Cloud Functions
+## Production-инфраструктура и деплой
 
-Проект подготовлен к поэтапному переезду без остановки текущего Vercel-деплоя.
+Источник истины — ветка `main` репозитория GitHub. Production разворачивается автоматически через GitHub Actions и OIDC без постоянных ключей Yandex Cloud:
 
-- Корневая структура по-прежнему совместима с текущим Vercel-размещением.
-- `npm run build:timeweb` генерирует `timeweb-static/` — только публичные HTML/CSS/JS/PWA-файлы, без серверного `api/` и конфигурационных файлов.
-- В `timeweb-static/js/runtime-config.js` API направлен на `https://api.solivoc.ru`.
-- Клиентские запросы к API идут через `apiFetch()`: на Vercel остаётся same-origin, на Timeweb используются `credentials: include` для `api.solivoc.ru`.
-- `yandex/index.mjs` адаптирует Yandex API Gateway/Cloud Functions к существующим Web `Request`/`Response`-обработчикам из `api/*.mjs`.
-- `npm run build:yandex` генерирует `yandex-function/` — отдельный компактный пакет функции с точкой входа `index.handler`.
-- `yandex/api-gateway.template.yaml` — шаблон API Gateway для `/api/{endpoint}` и `/d/{code}` с `payload_format_version: 2.0`.
-- `APP_ORIGINS` содержит дополнительные разрешённые origin через запятую. Основные `https://solivoc.ru`, `https://www.solivoc.ru`, `https://admin.solivoc.ru` разрешены по умолчанию.
+- `.github/workflows/deploy-frontend.yml` собирает `dist-frontend/` командой `npm run build:frontend` и синхронизирует публичный frontend в Yandex Object Storage;
+- `.github/workflows/deploy-backend.yml` собирает `yandex-function/`, создаёт новую версию `solivoc-api` в Yandex Cloud Functions с сохранением production-конфигурации и выполняет smoke-test;
+- `.github/workflows/deploy-gateway.yml` рендерит `yandex/api-gateway.template.yaml`, обновляет существующий API Gateway и выполняет smoke-test `https://api.solivoc.ru`;
+- `yandex/index.mjs` адаптирует события API Gateway к существующим Web `Request`/`Response`-обработчикам из `api/*.mjs`;
+- `APP_ORIGINS` задаёт дополнительные разрешённые origins. Основные `https://solivoc.ru`, `https://www.solivoc.ru`, `https://admin.solivoc.ru` разрешены по умолчанию.
 
-Во время проверки Timeweb на техническом домене добавьте этот origin в `APP_ORIGINS` функции. Для production-функции задайте `NODE_ENV=production`, чтобы сессионная cookie всегда была `Secure`.
+`dist-frontend/` и `yandex-function/` — генерируемые директории: они не хранятся в Git и создаются только при локальной сборке или в CI.
 
-Для Timeweb App Platform выберите тип `HTML/CSS/JS` и укажите путь до директории проекта `timeweb-static`. Этот формат отдаёт готовые файлы из указанной директории без сборки на стороне Timeweb.
+Текущая production-схема:
 
-Перед загрузкой функции можно выполнить `npm run build:yandex` и загрузить содержимое `yandex-function/` в Cloud Functions.
+```text
+GitHub main
+├─ frontend → Yandex Object Storage → solivoc.ru
+├─ backend  → Yandex Cloud Functions → solivoc-api
+└─ gateway  → Yandex API Gateway → api.solivoc.ru
+```
 
-До переключения DNS Vercel можно оставить рабочим. После успешной проверки Timeweb + `api.solivoc.ru` старые Vercel-specific файлы и временный `timeweb-static/` build-процесс можно будет почистить отдельным коммитом.
+`admin.solivoc.ru` обслуживается через Cloudflare и ведёт на production-админку. DNS и edge-правила управляются вне репозитория.
+
+### Временная зависимость от Vercel
+
+Основной frontend и API больше не зависят от Vercel. `vercel.json` пока сохраняется только потому, что ежедневный cron `/api/reminders` ещё не перенесён в Yandex Cloud. До полного отключения Vercel необходимо:
+
+1. перенести расписание `/api/reminders` в Yandex Cloud;
+2. перенести/проверить production security headers (`CSP`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`) на фактическом edge/hosting-слое;
+3. после проверки удалить Vercel-интеграцию и `vercel.json`.
+
+До выполнения этих трёх пунктов Vercel не считается источником production-трафика, но его cron остаётся служебной временной зависимостью.
