@@ -1,4 +1,4 @@
-const CACHE = "worditaire-v51";
+const CACHE = "worditaire-v52";
 const CORE = [
   "./",
   "./index.html",
@@ -94,12 +94,9 @@ const NETWORK_FIRST = new Set([
 ]);
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches
-      .open(CACHE)
-      .then((cache) => cache.addAll(CORE))
-      .then(() => self.skipWaiting()),
-  );
+  // Keep updates explicit. The app already has a visible update banner and
+  // sends SKIP_WAITING only after the player asks to update.
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(CORE)));
 });
 
 self.addEventListener("message", (event) => {
