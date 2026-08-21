@@ -111,19 +111,26 @@ jobs:
                 --output /dev/null \
                 --header 'Origin: https://solivoc.ru' \
                 --header 'Access-Control-Request-Method: POST' \
-                --header 'Access-Control-Request-Headers: content-type, cache-control' \
+                --header 'Access-Control-Request-Headers: content-type, cache-control, x-solivoc-owner-token, x-solivoc-guest-token' \
                 'https://api.solivoc.ru/api/admin' || true
 
               actual_origin="$(header_value 'Access-Control-Allow-Origin' "$actual_headers")"
               actual_credentials="$(header_value 'Access-Control-Allow-Credentials' "$actual_headers" | tr '[:upper:]' '[:lower:]')"
               preflight_origin="$(header_value 'Access-Control-Allow-Origin' "$preflight_headers")"
               preflight_credentials="$(header_value 'Access-Control-Allow-Credentials' "$preflight_headers" | tr '[:upper:]' '[:lower:]')"
+              preflight_allowed_headers="$(header_value 'Access-Control-Allow-Headers' "$preflight_headers" | tr '[:upper:]' '[:lower:]' | tr -d ' ')"
+              duel_headers_ok=false
+              if [[ ",${preflight_allowed_headers}," == *",x-solivoc-owner-token,"* ]] \
+                && [[ ",${preflight_allowed_headers}," == *",x-solivoc-guest-token,"* ]]; then
+                duel_headers_ok=true
+              fi
 
               if [ -n "$build" ] \
                 && [ "$actual_origin" = "https://solivoc.ru" ] \
                 && [ "$actual_credentials" = "true" ] \
                 && [ "$preflight_origin" = "https://solivoc.ru" ] \
-                && [ "$preflight_credentials" = "true" ]; then
+                && [ "$preflight_credentials" = "true" ] \
+                && [ "$duel_headers_ok" = "true" ]; then
                 echo "API Gateway and credentialed CORS are healthy. Build: ${build}"
                 exit 0
               fi
@@ -133,6 +140,7 @@ jobs:
               echo "  actual_credentials=${actual_credentials:-missing}"
               echo "  preflight_origin=${preflight_origin:-missing}"
               echo "  preflight_credentials=${preflight_credentials:-missing}"
+              echo "  preflight_allowed_headers=${preflight_allowed_headers:-missing}"
             fi
 
             sleep 3

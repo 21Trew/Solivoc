@@ -14,6 +14,15 @@ const AUTH_MAIL_DAILY_LIMIT = 180;
 const AUTH_MAIL_ROLLING_MONTH_LIMIT = 1800;
 const DUMMY_PASSWORD_HASH = "s2:5elS335qSlz8bHnQ8mH52A:LG4krNk_ezI-y9ZCSPG5fqC8HU-Y9Sn48nrdSDWm0D_NtWHr2bRktSw3Rak_n4Eth9HE_JUrE3wi3joSatEm-A";
 
+function requestSessionCookie(request, token, maxAge) {
+  // _auth-lib historically keyed Secure off Vercel/NODE_ENV. Production now
+  // runs in Yandex Cloud, so derive the flag from the actual request URL.
+  const base = sessionCookie(token, maxAge).replace(/;\s*Secure/gi, "");
+  let secure = "";
+  try { secure = new URL(request.url).protocol === "https:" ? "; Secure" : ""; } catch {}
+  return `${base}${secure}`;
+}
+
 function publicUser(user) {
   return user ? { id: user.id, email: user.email, createdAt: user.createdAt || 0 } : null;
 }
@@ -167,7 +176,7 @@ async function createRegisteredAccount(email, passwordHash, profile) {
       response: json(
         { ok: true, user: publicUser(user), profile: merged.profile, version: merged.version },
         201,
-        { "Set-Cookie": sessionCookie(token) },
+        { "Set-Cookie": requestSessionCookie(request, token) },
       ),
     };
   } catch (error) {
@@ -207,7 +216,7 @@ export async function POST(request) {
 
     if (action === "logout") {
       await deleteSession(request);
-      return json({ ok: true }, 200, { "Set-Cookie": sessionCookie("", 0) });
+      return json({ ok: true }, 200, { "Set-Cookie": requestSessionCookie(request, "", 0) });
     }
 
     const allowedActions = [
@@ -277,7 +286,7 @@ export async function POST(request) {
       if (!user || !passwordMatches) return json({ error: "invalid_credentials" }, 401);
       const merged = await mergeCloudProfile(existingId, body.profile || {}, { preferIncomingPreferences: false });
       const token = await createSession(existingId, user.sessionVersion);
-      return json({ ok: true, user: publicUser(user), profile: merged.profile, version: merged.version }, 200, { "Set-Cookie": sessionCookie(token) });
+      return json({ ok: true, user: publicUser(user), profile: merged.profile, version: merged.version }, 200, { "Set-Cookie": requestSessionCookie(request, token) });
     }
 
     if (action === "recover_start" || action === "recover_resend") {
@@ -331,7 +340,7 @@ export async function POST(request) {
 
     const token = await createSession(existingId, user.sessionVersion);
     const profile = await readCloudProfile(existingId), version = await cloudProfileVersion(existingId);
-    return json({ ok: true, user: publicUser(user), profile, version }, 200, { "Set-Cookie": sessionCookie(token) });
+    return json({ ok: true, user: publicUser(user), profile, version }, 200, { "Set-Cookie": requestSessionCookie(request, token) });
   } catch (error) {
     if (error?.message === "REDIS_NOT_CONFIGURED") return json({ error: "redis_not_configured" }, 503);
     if (error?.message === "profile_too_large") return json({ error: "profile_too_large" }, 413);

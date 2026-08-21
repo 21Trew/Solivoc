@@ -5,6 +5,14 @@ node_modules/
 dist-frontend/
 yandex-function/
 
+# Local secrets / credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.yc/
+
 # Local noise
 .DS_Store
 *.log

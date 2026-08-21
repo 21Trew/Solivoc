@@ -225,7 +225,10 @@
   // Large-profile postMessage receiver.
   if (isWeb && location.origin === APP_ORIGIN) {
     window.addEventListener("message", (event) => {
-      if (!event.origin.endsWith(".vercel.app") && event.origin !== LEGACY_ORIGIN) return;
+      // Migration data is trusted only from our exact legacy origin.
+      // Accepting every *.vercel.app origin would let an unrelated Vercel
+      // project overwrite local profile metadata on solivoc.ru.
+      if (event.origin !== LEGACY_ORIGIN) return;
       if (event.data?.type !== "SOLIVOC_LEGACY_DATA") return;
       if (!restoreMigration(event.data.payload)) return;
       try { event.source?.postMessage({ type: "SOLIVOC_LEGACY_IMPORTED" }, event.origin); } catch {}

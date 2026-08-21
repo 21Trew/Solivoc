@@ -300,6 +300,23 @@ function registerPwa() {
         try { worker.postMessage({ type: "SKIP_WAITING" }); } catch { return false; }
         return true;
       };
+      const armActivationFallback = () => {
+        clearTimeout(activationTimer);
+        activationTimer = setTimeout(() => {
+          if (refreshing || !updateRequested) return;
+          // iOS occasionally misses controllerchange after SKIP_WAITING.
+          // Reload once; on the next navigation the activated worker controls
+          // the page instead of leaving the button stuck on "Обновляю…".
+          refreshing = true;
+          try { sessionStorage.removeItem(updateReloadKey); } catch {}
+          location.reload();
+        }, 6000);
+      };
+      const activateUpdate = (worker) => {
+        if (!requestActivation(worker)) return false;
+        if (updateRequested) armActivationFallback();
+        return true;
+      };
       const watchWorker = (worker) => {
         if (!worker) return;
         const onState = () => {
@@ -313,7 +330,7 @@ function registerPwa() {
             }
             pendingWorker = worker;
             showUpdate(worker);
-            requestActivation(worker);
+            activateUpdate(worker);
             return;
           }
           if (["activated", "redundant"].includes(worker.state) && pendingWorker === worker) {
@@ -356,20 +373,8 @@ function registerPwa() {
         updateBtn.textContent = "Обновляю…";
         try { sessionStorage.setItem(updateReloadKey, "1"); } catch {}
 
-        const activateIfReady = () => requestActivation(reg.waiting || pendingWorker);
-        if (activateIfReady()) {
-          clearTimeout(activationTimer);
-          activationTimer = setTimeout(() => {
-            if (refreshing) return;
-            // The worker may already have activated while iOS missed the
-            // controllerchange callback. Reload once instead of offering an
-            // endless Retry button.
-            refreshing = true;
-            try { sessionStorage.removeItem(updateReloadKey); } catch {}
-            location.reload();
-          }, 6000);
-          return;
-        }
+        const activateIfReady = () => activateUpdate(reg.waiting || pendingWorker);
+        if (activateIfReady()) return;
 
         try { await reg.update(); } catch {}
         if (activateIfReady()) return;

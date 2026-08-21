@@ -16,6 +16,8 @@ paths:
         - Authorization
         - Cache-Control
         - Pragma
+        - X-Solivoc-Owner-Token
+        - X-Solivoc-Guest-Token
       credentials: true
       maxAge: 3600
       optionsSuccessStatus: 204
