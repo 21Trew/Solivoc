@@ -1,4 +1,4 @@
-const CACHE = "worditaire-v50";
+const CACHE = "worditaire-v51";
 const CORE = [
   "./",
   "./index.html",
@@ -88,8 +88,18 @@ const CORE = [
   "./js/app.js"
 ];
 
+const NETWORK_FIRST = new Set([
+  "/js/host-routing.js",
+  "/js/runtime-config.js",
+]);
+
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(CORE)));
+  event.waitUntil(
+    caches
+      .open(CACHE)
+      .then((cache) => cache.addAll(CORE))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener("message", (event) => {
@@ -125,15 +135,22 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
-  // The game service worker owns the root scope. Admin pages must always go to
-  // the network instead of falling back to the cached game shell.
+
   if (["/admin", "/admin.html", "/js/admin.js", "/styles/admin.css"].includes(url.pathname)) return;
 
   event.respondWith((async () => {
-    // Keep HTML and JS from the same cache generation. Serving a fresh HTML
-    // document together with old cached scripts can break the app between
-    // deployments. SW update discovery still happens through register(), and
-    // the player switches generations explicitly via the update banner.
+    if (NETWORK_FIRST.has(url.pathname)) {
+      try {
+        const response = await fetch(event.request, { cache: "no-store" });
+        if (shouldCache(event.request, url, response)) {
+          try { await caches.open(CACHE).then((cache) => cache.put(event.request, response.clone())); } catch {}
+        }
+        return response;
+      } catch {
+        return (await caches.match(event.request)) || Response.error();
+      }
+    }
+
     if (event.request.mode === "navigate") {
       const shell = (await caches.match(event.request)) || (await caches.match("./index.html")) || (await caches.match("./"));
       if (shell) return shell;
@@ -148,9 +165,6 @@ self.addEventListener("fetch", (event) => {
       }
     }
 
-    // Static game assets are immutable for the lifetime of a SW cache version.
-    // Cache-first avoids dozens of network/cache stream operations on every
-    // launch, which is notably more stable in iOS standalone mode.
     const cached = await caches.match(event.request);
     if (cached) return cached;
     try {

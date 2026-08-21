@@ -6,10 +6,15 @@
     return;
   }
 
+  const protocol = String(window.location.protocol || "");
   const host = String(window.location.hostname || "").toLowerCase();
-  const usesSplitApi =
-    host.endsWith(".twc1.net") ||
-    host === "stage.solivoc.ru";
+  const local =
+    protocol === "file:" ||
+    host === "localhost" ||
+    host === "127.0.0.1";
 
-  window.SOLIVOC_API_BASE = usesSplitApi ? "https://api.solivoc.ru" : "";
+  window.SOLIVOC_API_BASE =
+    !local && /^https?:$/.test(protocol)
+      ? "https://api.solivoc.ru"
+      : "";
 })();
