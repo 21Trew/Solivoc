@@ -84,23 +84,8 @@ function corsOrigin(request) {
   return allowedOrigins().has(origin) ? origin : "";
 }
 
-function corsHeaders(request) {
-  const origin = corsOrigin(request);
-  if (!origin) return {};
-  return {
-    "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Credentials": "true",
-    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,X-Solivoc-Owner-Token,X-Solivoc-Guest-Token,Authorization",
-    "Access-Control-Max-Age": "600",
-    "Vary": "Origin",
-  };
-}
-
 function preflight(request) {
   if (!corsOrigin(request)) return Response.json({ error: "origin_not_allowed" }, { status: 403 });
-  // API Gateway owns the CORS response headers. Adding them here as well makes
-  // browsers see duplicate Access-Control-Allow-Origin values.
   return new Response(null, { status: 204 });
 }
 
@@ -136,8 +121,6 @@ async function toGatewayResponse(response, request) {
     const values = response.headers.getSetCookie();
     if (values?.length) cookies.splice(0, cookies.length, ...values);
   }
-  // CORS headers are added by API Gateway. Keep the function response free of
-  // Access-Control-Allow-* headers to avoid duplicate values at the browser.
   const body = await response.text();
   const result = {
     statusCode: response.status,
@@ -152,7 +135,53 @@ async function toGatewayResponse(response, request) {
   return result;
 }
 
+function timerMessage(event) {
+  const messages = Array.isArray(event?.messages) ? event.messages : [];
+  return messages.find(
+    (item) => item?.event_metadata?.event_type === "yandex.cloud.events.serverless.triggers.TimerMessage",
+  ) || null;
+}
+
+async function handleTimerEvent(event) {
+  const message = timerMessage(event);
+  const payload = String(message?.details?.payload || "").trim();
+  if (payload !== "reminders") {
+    console.warn("Ignoring unknown timer payload", payload || "<empty>");
+    return { ok: true, ignored: true };
+  }
+
+  const secret = String(process.env.CRON_SECRET || "");
+  if (!secret) throw new Error("CRON_SECRET is not configured");
+
+  const request = new Request(
+    `https://${process.env.API_HOST || "api.solivoc.ru"}/api/reminders`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        "X-Solivoc-Internal-Trigger": "yandex-timer",
+      },
+    },
+  );
+
+  const response = await reminders.GET(request);
+  const body = await response.text();
+  if (!response.ok) {
+    console.error("Reminder timer failed", response.status, body);
+    throw new Error(`Reminder timer failed with HTTP ${response.status}`);
+  }
+
+  let result = body;
+  try { result = JSON.parse(body); } catch {}
+  console.log("Reminder timer completed", result);
+  return { ok: true, result };
+}
+
 export async function handler(event) {
+  if (timerMessage(event)) {
+    return handleTimerEvent(event || {});
+  }
+
   const request = requestFromEvent(event || {});
   try {
     const response = await routeRequest(request);

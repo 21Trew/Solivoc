@@ -1,0 +1,131 @@
+name: Deploy reminders timer
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/deploy-reminders-trigger.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: Production
+
+    steps:
+      - name: Configure Yandex timer trigger
+        shell: bash
+        env:
+          YC_SA_ID: ${{ vars.YC_SA_ID }}
+          YC_FOLDER_ID: ${{ vars.YC_FOLDER_ID }}
+          YC_FUNCTION_ID: ${{ vars.YC_FUNCTION_ID }}
+          YC_TRIGGER_INVOKER_SA_ID: ${{ vars.YC_GATEWAY_INVOKER_SA_ID }}
+        run: |
+          set -euo pipefail
+
+          oidc_response="$(curl --fail --silent --show-error \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}")"
+          github_oidc_token="$(printf '%s' "$oidc_response" | jq -r '.value')"
+
+          exchange_response="$(curl --fail --silent --show-error \
+            --request POST \
+            'https://auth.yandex.cloud/oauth/token' \
+            --header 'Content-Type: application/x-www-form-urlencoded' \
+            --data-urlencode 'grant_type=urn:ietf:params:oauth:grant-type:token-exchange' \
+            --data-urlencode 'requested_token_type=urn:ietf:params:oauth:token-type:access_token' \
+            --data-urlencode "audience=${YC_SA_ID}" \
+            --data-urlencode "subject_token=${github_oidc_token}" \
+            --data-urlencode 'subject_token_type=urn:ietf:params:oauth:token-type:id_token')"
+          iam_token="$(printf '%s' "$exchange_response" | jq -r '.access_token')"
+
+          trigger_name="solivoc-reminders"
+          list_json="$(curl --fail --silent --show-error --get \
+            'https://serverless-triggers.api.cloud.yandex.net/triggers/v1/triggers' \
+            -H "Authorization: Bearer ${iam_token}" \
+            --data-urlencode "folderId=${YC_FOLDER_ID}" \
+            --data-urlencode "filter=name=\"${trigger_name}\"")"
+          trigger_id="$(printf '%s' "$list_json" | jq -r '.triggers[0].id // ""')"
+
+          jq -n \
+            --arg folderId "$YC_FOLDER_ID" \
+            --arg name "$trigger_name" \
+            --arg functionId "$YC_FUNCTION_ID" \
+            --arg serviceAccountId "$YC_TRIGGER_INVOKER_SA_ID" \
+            '{
+              folderId: $folderId,
+              name: $name,
+              description: "Daily Slovasyans push reminders",
+              rule: {
+                timer: {
+                  cronExpression: "0 16 ? * * *",
+                  payload: "reminders",
+                  invokeFunctionWithRetry: {
+                    functionId: $functionId,
+                    functionTag: "$latest",
+                    serviceAccountId: $serviceAccountId,
+                    retrySettings: {
+                      retryAttempts: "2",
+                      interval: "30s"
+                    }
+                  }
+                }
+              }
+            }' > "$RUNNER_TEMP/trigger-create.json"
+
+          if [ -z "$trigger_id" ]; then
+            echo "Creating ${trigger_name}"
+            response="$(curl --fail --silent --show-error \
+              --request POST \
+              'https://serverless-triggers.api.cloud.yandex.net/triggers/v1/triggers' \
+              -H "Authorization: Bearer ${iam_token}" \
+              -H 'Content-Type: application/json' \
+              --data-binary "@$RUNNER_TEMP/trigger-create.json")"
+          else
+            echo "Updating ${trigger_name} (${trigger_id})"
+            jq '{
+              updateMask: "description,rule",
+              description,
+              rule
+            }' "$RUNNER_TEMP/trigger-create.json" > "$RUNNER_TEMP/trigger-update.json"
+            response="$(curl --fail --silent --show-error \
+              --request PATCH \
+              "https://serverless-triggers.api.cloud.yandex.net/triggers/v1/triggers/${trigger_id}" \
+              -H "Authorization: Bearer ${iam_token}" \
+              -H 'Content-Type: application/json' \
+              --data-binary "@$RUNNER_TEMP/trigger-update.json")"
+          fi
+
+          operation_id="$(printf '%s' "$response" | jq -r '.id // ""')"
+          if [ -z "$operation_id" ]; then
+            echo "Yandex did not return an operation ID"
+            printf '%s\n' "$response"
+            exit 1
+          fi
+
+          echo "Trigger operation: ${operation_id}"
+          for attempt in $(seq 1 45); do
+            operation_json="$(curl --fail --silent --show-error \
+              -H "Authorization: Bearer ${iam_token}" \
+              "https://operation.api.cloud.yandex.net/operations/${operation_id}")"
+            done_flag="$(printf '%s' "$operation_json" | jq -r '.done // false')"
+            if [ "$done_flag" = "true" ]; then
+              error_message="$(printf '%s' "$operation_json" | jq -r '.error.message // ""')"
+              if [ -n "$error_message" ]; then
+                echo "Timer trigger deployment failed: ${error_message}"
+                printf '%s\n' "$operation_json" | jq '.error'
+                exit 1
+              fi
+              echo "Yandex reminders timer is configured for 16:00 UTC daily"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Timer trigger operation timed out"
+          exit 1
