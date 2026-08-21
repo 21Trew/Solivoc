@@ -80,31 +80,67 @@ jobs:
         run: |
           set -euo pipefail
 
+          header_value() {
+            local name="$1"
+            local file="$2"
+            local line
+            line="$(grep -i -m1 "^${name}:" "$file" || true)"
+            if [ -z "$line" ]; then
+              return 0
+            fi
+            line="${line#*:}"
+            printf '%s\n' "$line" | sed 's/^[[:space:]]*//; s/\r$//'
+          }
+
           for attempt in $(seq 1 20); do
             actual_headers="$RUNNER_TEMP/solivoc-actual-headers.txt"
             preflight_headers="$RUNNER_TEMP/solivoc-preflight-headers.txt"
 
-            if curl --fail --silent --show-error               --dump-header "$actual_headers"               --header 'Origin: https://solivoc.ru'               --header 'Cache-Control: no-cache'               "https://api.solivoc.ru/api/version?gateway_ci=${GITHUB_SHA}-${attempt}"               > "$RUNNER_TEMP/solivoc-version.json"; then
+            if curl --fail --silent --show-error \
+              --dump-header "$actual_headers" \
+              --header 'Origin: https://solivoc.ru' \
+              --header 'Cache-Control: no-cache' \
+              "https://api.solivoc.ru/api/version?gateway_ci=${GITHUB_SHA}-${attempt}" \
+              > "$RUNNER_TEMP/solivoc-version.json"; then
 
               build="$(jq -r '.build // ""' "$RUNNER_TEMP/solivoc-version.json")"
 
-              curl --fail --silent --show-error                 --request OPTIONS                 --dump-header "$preflight_headers"                 --output /dev/null                 --header 'Origin: https://solivoc.ru'                 --header 'Access-Control-Request-Method: POST'                 --header 'Access-Control-Request-Headers: content-type, cache-control'                 'https://api.solivoc.ru/api/admin' || true
+              curl --fail --silent --show-error \
+                --request OPTIONS \
+                --dump-header "$preflight_headers" \
+                --output /dev/null \
+                --header 'Origin: https://solivoc.ru' \
+                --header 'Access-Control-Request-Method: POST' \
+                --header 'Access-Control-Request-Headers: content-type, cache-control' \
+                'https://api.solivoc.ru/api/admin' || true
 
-              actual_origin="$(awk -F': *' 'tolower($1)=="access-control-allow-origin"{gsub("\r","",$2); print $2; exit}' "$actual_headers")"
-              actual_credentials="$(awk -F': *' 'tolower($1)=="access-control-allow-credentials"{gsub("\r","",$2); print tolower($2); exit}' "$actual_headers")"
-              preflight_origin="$(awk -F': *' 'tolower($1)=="access-control-allow-origin"{gsub("\r","",$2); print $2; exit}' "$preflight_headers")"
-              preflight_credentials="$(awk -F': *' 'tolower($1)=="access-control-allow-credentials"{gsub("\r","",$2); print tolower($2); exit}' "$preflight_headers")"
+              actual_origin="$(header_value 'Access-Control-Allow-Origin' "$actual_headers")"
+              actual_credentials="$(header_value 'Access-Control-Allow-Credentials' "$actual_headers" | tr '[:upper:]' '[:lower:]')"
+              preflight_origin="$(header_value 'Access-Control-Allow-Origin' "$preflight_headers")"
+              preflight_credentials="$(header_value 'Access-Control-Allow-Credentials' "$preflight_headers" | tr '[:upper:]' '[:lower:]')"
 
-              if [ -n "$build" ]                 && [ "$actual_origin" = "https://solivoc.ru" ]                 && [ "$actual_credentials" = "true" ]                 && [ "$preflight_origin" = "https://solivoc.ru" ]                 && [ "$preflight_credentials" = "true" ]; then
+              if [ -n "$build" ] \
+                && [ "$actual_origin" = "https://solivoc.ru" ] \
+                && [ "$actual_credentials" = "true" ] \
+                && [ "$preflight_origin" = "https://solivoc.ru" ] \
+                && [ "$preflight_credentials" = "true" ]; then
                 echo "API Gateway and credentialed CORS are healthy. Build: ${build}"
                 exit 0
               fi
 
-              echo "Waiting for CORS rollout (${attempt}/20): actual_origin=${actual_origin:-missing}, preflight_origin=${preflight_origin:-missing}"
+              echo "Waiting for CORS rollout (${attempt}/20)"
+              echo "  actual_origin=${actual_origin:-missing}"
+              echo "  actual_credentials=${actual_credentials:-missing}"
+              echo "  preflight_origin=${preflight_origin:-missing}"
+              echo "  preflight_credentials=${preflight_credentials:-missing}"
             fi
 
             sleep 3
           done
 
           echo "API Gateway/CORS health check failed"
+          echo "--- actual response headers ---"
+          cat "$actual_headers" || true
+          echo "--- preflight response headers ---"
+          cat "$preflight_headers" || true
           exit 1
