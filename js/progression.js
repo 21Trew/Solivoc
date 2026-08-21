@@ -501,6 +501,9 @@ function noteTutorialAction(action) {
   if (state?.mode !== "tutorial" || !action) return;
   state.tutorialActions ||= {};
   state.tutorialActions[action] = true;
+  // Save tutorial checkpoints synchronously: on iOS a PWA can be suspended
+  // between a successful move and the next debounced save.
+  save?.({ immediate: true });
   updateCoach();
   markStateChanged?.();
 }
@@ -511,6 +514,12 @@ function updateCoach() {
   }
   coach.classList.add("show", "tutorial");
   const a=state.tutorialActions ||= {};
+  // Repair older/stale tutorial saves where the category is already visibly
+  // in a slot but the action flag was never committed.
+  if (state.tutorialStep === 1 && !a.category && state.slots?.some((g) => g && categoryCard(g))) {
+    a.category = true;
+    save?.({ immediate: true });
+  }
   let text="";
   if(state.tutorialStep===1) text=a.category
     ? "Отлично! Категория закреплена сверху. Теперь собери в неё все связанные слова."

@@ -19,6 +19,8 @@
     "assoc-klondike-v5",
     "assoc-klondike-v4",
     "assoc-recent-categories-v2",
+    "solivoc-account-v1",
+    "solivoc-stability-v2",
   ];
 
   const { location } = window;
@@ -78,12 +80,19 @@
   // profile is available on the very first canonical render.
   if (isWeb && !isLegacyHost && location.hash.startsWith("#legacy=")) {
     try {
-      const payload = JSON.parse(base64UrlToText(location.hash.slice("#legacy=".length)));
-      if (restoreMigration(payload)) {
-        history.replaceState(null, "", `${location.pathname}${location.search}`);
+      // Some iOS home-screen shortcuts can retain the URL fragment they were
+      // created from. Import the Vercel snapshot only once; otherwise every
+      // launch would overwrite newer onboarding/tutorial progress with the old
+      // snapshot and look like a fresh install again.
+      const migrationDone = !!localStorage.getItem("solivoc-origin-migrated");
+      if (!migrationDone) {
+        const payload = JSON.parse(base64UrlToText(location.hash.slice("#legacy=".length)));
+        restoreMigration(payload);
       }
+      history.replaceState(null, "", `${location.pathname}${location.search}`);
     } catch (error) {
       console.warn("Legacy profile migration failed", error);
+      try { history.replaceState(null, "", `${location.pathname}${location.search}`); } catch {}
     }
   }
 

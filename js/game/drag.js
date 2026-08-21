@@ -61,18 +61,48 @@ function cancelAutoMoveForLifecycle() {
 }
 async function animateAutoMove(card, payload, target) {
   if (autoMoveBusy || categoryAnimating) return;
-  const lifecycleToken = ++autoMoveLifecycleToken;
-  autoMoveBusy = true;
-  const targetCard = target.querySelector(".card"),
+  const lifecycleToken = ++autoMoveLifecycleToken,
+    targetCard = target.querySelector(".card"),
     targetRect = (targetCard || target).getBoundingClientRect(),
     sources = sourceNodesForPayload(payload, card).filter((n) => n?.isConnected),
-    vacancyNodes = sourceVacancyNodes(payload);
-  if (!sources.length) {
-    autoMoveBusy = false;
-    return;
-  }
-  const reduced = motionReduced(),
-    duration = reduced ? 70 : 145,
+    vacancyNodes = sourceVacancyNodes(payload),
+    moving = payloadGroup(payload),
+    cc = categoryCard(moving),
+    constrained = typeof stabilityConstrainedMode === "function" && stabilityConstrainedMode();
+  let flies = [];
+  autoMoveBusy = true;
+
+  const waitAnimation = (animation, timeoutMs = 650) => {
+    if (!animation?.finished) return Promise.resolve();
+    return Promise.race([
+      animation.finished.catch(() => {}),
+      new Promise((resolve) => setTimeout(resolve, timeoutMs)),
+    ]);
+  };
+
+  const commitMove = () => {
+    state.run.autoMoves++;
+    profile.stats.autoMoves++;
+    track("auto_move", { mode: state.mode });
+    const moved = performDrop(payload, target, { comboEligible: false, comboSource: "auto" });
+    if (moved && state.mode === "tutorial" && !cc) noteTutorialAction?.("auto");
+    return moved;
+  };
+
+  try {
+    if (!sources.length) return;
+
+    // iOS standalone already runs in constrained mode. Avoid Web Animations for
+    // double-tap moves there: Safari can leave animation.finished unresolved
+    // after a DOM rerender, which used to keep autoMoveBusy=true forever.
+    if (constrained) {
+      const moved = commitMove();
+      if (!moved) feedbackWrongMove(sources, target);
+      return;
+    }
+
+    const reduced = motionReduced(),
+      duration = reduced ? 70 : 145;
     flies = sources.map((source, i) => {
       const r = source.getBoundingClientRect(),
         fly = source.cloneNode(true);
@@ -90,55 +120,63 @@ async function animateAutoMove(card, payload, target) {
       fitAllCardText(fly);
       return { source, fly, rect: r };
     });
-  await nextPaint();
-  if (lifecycleToken !== autoMoveLifecycleToken || document.hidden) { cleanupAutoMoveVisuals(); autoMoveBusy = false; return; }
-  setSourceVacancy(vacancyNodes, true);
-  sources.forEach((n) => n.classList.add("auto-source"));
-  playSfx("pickup", 0.8);
-  const cx = targetRect.left + targetRect.width / 2,
-    cy = targetRect.top + targetRect.height / 2;
-  await Promise.all(
-    flies.map(({ fly, rect }, i) => {
-      const dx = cx - (rect.left + rect.width / 2),
-        dy = cy - (rect.top + rect.height / 2);
-      return fly
-        .animate(
-          [
-            { transform: "translate3d(0,0,0) scale(1)", opacity: 1 },
-            { transform: `translate3d(${dx * 0.45}px,${dy * 0.45}px,0) scale(1.035)`, opacity: 1, offset: 0.42 },
-            { transform: `translate3d(${dx}px,${dy}px,0) scale(.96)`, opacity: 1 },
-          ],
-          { duration: duration + Math.min(i, 4) * 7, easing: "cubic-bezier(.22,.78,.18,1)", fill: "forwards" },
-        )
-        .finished.catch(() => {});
-    }),
-  );
-  if (lifecycleToken !== autoMoveLifecycleToken || document.hidden) { cleanupAutoMoveVisuals(); autoMoveBusy = false; return; }
-  state.run.autoMoves++;
-  profile.stats.autoMoves++;
-  track("auto_move", { mode: state.mode });
-  const moved = performDrop(payload, target, { comboEligible: false, comboSource: "auto" });
-  if (moved && state.mode === "tutorial") noteTutorialAction?.(cc ? "category" : "auto");
-  if (!moved) {
-    sources.forEach((n) => n.classList.remove("auto-source"));
+
+    await nextPaint();
+    if (lifecycleToken !== autoMoveLifecycleToken || document.hidden) return;
+    setSourceVacancy(vacancyNodes, true);
+    sources.forEach((n) => n.classList.add("auto-source"));
+    playSfx("pickup", 0.8);
+    const cx = targetRect.left + targetRect.width / 2,
+      cy = targetRect.top + targetRect.height / 2;
+
+    await Promise.all(
+      flies.map(({ fly, rect }, i) => {
+        const dx = cx - (rect.left + rect.width / 2),
+          dy = cy - (rect.top + rect.height / 2),
+          animation = fly.animate(
+            [
+              { transform: "translate3d(0,0,0) scale(1)", opacity: 1 },
+              { transform: `translate3d(${dx * 0.45}px,${dy * 0.45}px,0) scale(1.035)`, opacity: 1, offset: 0.42 },
+              { transform: `translate3d(${dx}px,${dy}px,0) scale(.96)`, opacity: 1 },
+            ],
+            { duration: duration + Math.min(i, 4) * 7, easing: "cubic-bezier(.22,.78,.18,1)", fill: "forwards" },
+          );
+        return waitAnimation(animation);
+      }),
+    );
+    if (lifecycleToken !== autoMoveLifecycleToken || document.hidden) return;
+
+    const moved = commitMove();
+    if (!moved) {
+      feedbackWrongMove(sources, target);
+      return;
+    }
+
     setSourceVacancy(vacancyNodes, false);
-    flies.forEach((x) => x.fly.remove());
-    autoMoveBusy = false;
-    feedbackWrongMove(sources, target);
-    return;
+    await nextPaint();
+    if (lifecycleToken !== autoMoveLifecycleToken || document.hidden) return;
+    await Promise.all(
+      flies.map(({ fly }) =>
+        waitAnimation(
+          fly.animate([{ opacity: 1 }, { opacity: 0 }], { duration: reduced ? 25 : 70, fill: "forwards" }),
+          350,
+        ),
+      ),
+    );
+  } catch (error) {
+    console.error("auto move failed", error);
+    markStabilityFault?.("auto_move_failed", error?.message || String(error));
+    // If state mutation succeeded before a visual failure, keep that checkpoint.
+    if (state?.mode === "tutorial") {
+      if (cc && state.slots?.some((g) => g && categoryCard(g)?.cat === cc.cat)) noteTutorialAction?.("category");
+      save?.({ immediate: true });
+    }
+  } finally {
+    flies.forEach(({ fly }) => { try { fly.getAnimations?.().forEach((a) => a.cancel()); } catch {} fly.remove(); });
+    sources.forEach((n) => n?.classList?.remove("auto-source"));
+    setSourceVacancy(vacancyNodes, false);
+    if (lifecycleToken === autoMoveLifecycleToken) autoMoveBusy = false;
   }
-  setSourceVacancy(vacancyNodes, false);
-  await nextPaint();
-  if (lifecycleToken !== autoMoveLifecycleToken || document.hidden) { cleanupAutoMoveVisuals(); autoMoveBusy = false; return; }
-  await Promise.all(
-    flies.map(({ fly }) =>
-      fly
-        .animate([{ opacity: 1 }, { opacity: 0 }], { duration: reduced ? 25 : 70, fill: "forwards" })
-        .finished.catch(() => {}),
-    ),
-  );
-  flies.forEach((x) => x.fly.remove());
-  autoMoveBusy = false;
 }
 function handleCardTap(card, payload) {
   const now = performance.now(),

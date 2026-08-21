@@ -123,7 +123,10 @@ function performDrop(p, target, options = {}) {
   state.run.moves++;
   if (state.mode === "tutorial") {
     const manual = (options.comboSource || "manual") !== "auto";
-    if (manual && zone === "slot" && categoryCard(moving)) noteTutorialAction?.("category");
+    // Category placement is part of tutorial step 1 no matter whether it was
+    // dragged or auto-moved by a double tap. Record it before render so an
+    // animation/render interruption cannot leave the coach one step behind.
+    if (zone === "slot" && categoryCard(moving)) noteTutorialAction?.("category");
     else if (manual) noteTutorialAction?.("manual");
   }
   if (typeof checkActiveRuleFailure === "function" && checkActiveRuleFailure()) return true;
@@ -133,6 +136,9 @@ function performDrop(p, target, options = {}) {
   } else if ((options.comboSource || "manual") !== "auto") resetCombo();
   playSfx("drop");
   haptic(9);
+  // Tutorial progress is tiny and critical. Persist the state before render so
+  // iOS cannot roll the player back if WebKit suspends during a transition.
+  if (state.mode === "tutorial") save?.({ immediate: true });
   render();
   if (zone === "slot" && slotIsComplete(idx)) {
     categoryAnimating = true;
