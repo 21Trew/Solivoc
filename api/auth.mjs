@@ -156,7 +156,7 @@ async function verifyFlowCode(kind, email, code) {
   return { ok: true, pending };
 }
 
-async function createRegisteredAccount(email, passwordHash, profile) {
+async function createRegisteredAccount(request, email, passwordHash, profile) {
   const userId = newUserId(), now = Date.now();
   const user = {
     id: userId,
@@ -271,7 +271,7 @@ export async function POST(request) {
         await clearFlow("verify", email);
         return json({ error: "verification_expired" }, 410);
       }
-      const created = await createRegisteredAccount(email, checked.pending.passwordHash, body.profile || {});
+      const created = await createRegisteredAccount(request, email, checked.pending.passwordHash, body.profile || {});
       if (created.error) return json({ error: created.error }, created.status);
       await clearFlow("verify", email);
       return created.response;
