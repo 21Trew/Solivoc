@@ -43,38 +43,84 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          BUILD_ID="${GITHUB_SHA:0:12}"
+
           test -f dist-frontend/admin.html
           test -f dist-frontend/js/admin.js
-          grep -q 'adminBackup' dist-frontend/js/admin.js
-          grep -q 'backup-20260821-2' dist-frontend/admin.html
+          test -f dist-frontend/js/runtime-config.js
+          test -f dist-frontend/sw.js
 
-      - name: Upload to Yandex Object Storage
+          grep -q 'adminBackup' dist-frontend/js/admin.js
+          grep -q "js/admin.js?v=${BUILD_ID}" dist-frontend/admin.html
+          grep -q 'solivoc-pwa-update-requested-v2' dist-frontend/js/runtime-config.js
+          grep -q "worditaire-build-${BUILD_ID}" dist-frontend/sw.js
+
+          test ! -e dist-frontend/admin-backup.html
+          test ! -e dist-frontend/js/admin-backup.js
+          test ! -e dist-frontend/js/admin-20260821.js
+
+      - name: Upload frontend assets
         uses: yc-actions/yc-obj-storage-upload@v4
         with:
           yc-sa-id: ${{ vars.YC_SA_ID }}
           bucket: ${{ vars.YC_BUCKET }}
           root: ./dist-frontend
           include: '**/*'
+          exclude: 'sw.js'
           clear: false
           skip-unchanged: true
           fail-on-error: true
           cache-control: |
             *.html: no-cache
-            sw.js: no-cache
             js/runtime-config.js: no-cache
             **/*.js, **/*.css: no-cache
             **/*.json, **/*.webmanifest: no-cache
             *: public, max-age=3600
 
+      # Publish the service worker only after every asset it will cache is
+      # already present in Object Storage. This prevents mixed generations.
+      - name: Publish service worker last
+        uses: yc-actions/yc-obj-storage-upload@v4
+        with:
+          yc-sa-id: ${{ vars.YC_SA_ID }}
+          bucket: ${{ vars.YC_BUCKET }}
+          root: ./dist-frontend
+          include: 'sw.js'
+          clear: false
+          skip-unchanged: false
+          fail-on-error: true
+          cache-control: |
+            sw.js: no-cache
+            *: no-cache
+
       - name: Smoke test production
         shell: bash
         run: |
           set -euo pipefail
+          BUILD_ID="${GITHUB_SHA:0:12}"
 
-          admin_html="$(curl --fail --silent --show-error             --retry 10 --retry-delay 3 --retry-all-errors             -H 'Cache-Control: no-cache'             "https://solivoc.ru/admin.html?ci=${GITHUB_SHA}")"
-          printf '%s' "$admin_html" | grep -q 'backup-20260821-2'
+          admin_html="$(curl --fail --silent --show-error \
+            --retry 10 --retry-delay 3 --retry-all-errors \
+            -H 'Cache-Control: no-cache' \
+            "https://solivoc.ru/admin.html?ci=${GITHUB_SHA}")"
+          printf '%s' "$admin_html" | grep -q "js/admin.js?v=${BUILD_ID}"
 
-          admin_js="$(curl --fail --silent --show-error             --retry 10 --retry-delay 3 --retry-all-errors             -H 'Cache-Control: no-cache'             "https://solivoc.ru/js/admin.js?v=backup-20260821-2&ci=${GITHUB_SHA}")"
+          admin_js="$(curl --fail --silent --show-error \
+            --retry 10 --retry-delay 3 --retry-all-errors \
+            -H 'Cache-Control: no-cache' \
+            "https://solivoc.ru/js/admin.js?ci=${GITHUB_SHA}")"
           printf '%s' "$admin_js" | grep -q 'adminBackup'
 
-          echo "Production admin bundle is current."
+          runtime_config="$(curl --fail --silent --show-error \
+            --retry 10 --retry-delay 3 --retry-all-errors \
+            -H 'Cache-Control: no-cache' \
+            "https://solivoc.ru/js/runtime-config.js?ci=${GITHUB_SHA}")"
+          printf '%s' "$runtime_config" | grep -q 'solivoc-pwa-update-requested-v2'
+
+          service_worker="$(curl --fail --silent --show-error \
+            --retry 10 --retry-delay 3 --retry-all-errors \
+            -H 'Cache-Control: no-cache' \
+            "https://solivoc.ru/sw.js?ci=${GITHUB_SHA}")"
+          printf '%s' "$service_worker" | grep -q "worditaire-build-${BUILD_ID}"
+
+          echo "Production frontend and PWA generation are current."

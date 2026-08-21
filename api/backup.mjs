@@ -4,6 +4,10 @@ import { checkRateLimit, sameOrigin, sha256 } from "./_auth-lib.mjs";
 const ADMIN_COOKIE = "solivoc_admin_session";
 const PAGE_SIZE = 20;
 
+function legacyVercelRuntime() {
+  return !!process.env.VERCEL;
+}
+
 function json(data, status = 200) {
   return Response.json(data, {
     status,
@@ -20,6 +24,7 @@ function firstEnv(...names) {
 }
 
 function redisConfig() {
+  if (legacyVercelRuntime()) return { url: "", token: "" };
   return {
     url: firstEnv(
       "UPSTASH_REDIS_REST_URL",
@@ -159,6 +164,7 @@ async function backupPage(cursor) {
 }
 
 export async function GET(request) {
+  if (legacyVercelRuntime()) return json({ error: "legacy_backend_disabled" }, 410);
   if (!sameOrigin(request)) return json({ error: "bad_origin" }, 403);
 
   try {

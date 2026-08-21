@@ -4,7 +4,12 @@ const POSTBOX_HOST = "postbox.cloud.yandex.net";
 const POSTBOX_PORT = 587;
 let transporter = null;
 
+function legacyVercelRuntime() {
+  return !!process.env.VERCEL;
+}
+
 function postboxConfig() {
+  if (legacyVercelRuntime()) return { user: "", password: "", fromEmail: "" };
   return {
     user: String(process.env.POSTBOX_SMTP_USER || "").trim(),
     password: String(process.env.POSTBOX_SMTP_PASSWORD || ""),

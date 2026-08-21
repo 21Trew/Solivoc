@@ -1,10 +1,14 @@
 import webpush from "web-push";
 
+function legacyVercelRuntime() {
+  return !!process.env.VERCEL;
+}
 function firstEnv(...names) {
   for (const name of names) if (process.env[name]) return process.env[name];
   return "";
 }
 function redisConfig() {
+  if (legacyVercelRuntime()) return { url: "", token: "" };
   return {
     url: firstEnv("UPSTASH_REDIS_REST_URL","KV_REST_API_URL","UPSTASH_REDIS_REST_KV_REST_API_URL").replace(/\/$/,""),
     token: firstEnv("UPSTASH_REDIS_REST_TOKEN","KV_REST_API_TOKEN","UPSTASH_REDIS_REST_KV_REST_API_TOKEN"),
@@ -20,6 +24,7 @@ export async function redis(command) {
 }
 export function pushKey(clientId){return `worditaire:push:${String(clientId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64)}`;}
 export function configureWebPush(){
+  if(legacyVercelRuntime()) return false;
   const publicKey=process.env.VAPID_PUBLIC_KEY||"", privateKey=process.env.VAPID_PRIVATE_KEY||"", subject=process.env.VAPID_SUBJECT||"mailto:admin@solivoc.app";
   if(!publicKey||!privateKey) return false;
   webpush.setVapidDetails(subject,publicKey,privateKey);

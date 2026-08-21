@@ -1,4 +1,4 @@
-const CACHE = "worditaire-v57";
+const CACHE = "worditaire-build-__SOLIVOC_BUILD__";
 const CORE = [
   "./",
   "./index.html",
@@ -96,7 +96,14 @@ const NETWORK_FIRST = new Set([
 self.addEventListener("install", (event) => {
   // Keep updates explicit. The app already has a visible update banner and
   // sends SKIP_WAITING only after the player asks to update.
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(CORE)));
+  //
+  // cache:"reload" prevents a newly installed worker from seeding its cache
+  // with stale HTTP-cache entries after a deployment.
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    const requests = CORE.map((url) => new Request(url, { cache: "reload" }));
+    await cache.addAll(requests);
+  })());
 });
 
 self.addEventListener("message", (event) => {

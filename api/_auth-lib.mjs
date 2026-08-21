@@ -107,7 +107,7 @@ export function sameOrigin(request) {
   if (!origin) return true;
   try {
     if (origin === new URL(request.url).origin) return true;
-    if (/^http:\/\/(localhost|127\.0\.1)(:\d+)?$/i.test(origin)) return true;
+    if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return true;
     return allowedAppOrigins().has(origin);
   } catch { return false; }
 }
