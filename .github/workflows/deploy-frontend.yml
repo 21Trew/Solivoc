@@ -39,12 +39,22 @@ jobs:
       - name: Build frontend
         run: npm run build:frontend
 
+      - name: Verify frontend bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist-frontend/admin.html
+          test -f dist-frontend/js/admin.js
+          grep -q 'adminBackup' dist-frontend/js/admin.js
+          grep -q 'backup-20260821-2' dist-frontend/admin.html
+
       - name: Upload to Yandex Object Storage
         uses: yc-actions/yc-obj-storage-upload@v4
         with:
           yc-sa-id: ${{ vars.YC_SA_ID }}
           bucket: ${{ vars.YC_BUCKET }}
           root: ./dist-frontend
+          include: '**/*'
           clear: false
           skip-unchanged: true
           fail-on-error: true
@@ -52,11 +62,19 @@ jobs:
             *.html: no-cache
             sw.js: no-cache
             js/runtime-config.js: no-cache
-            *.js, *.css: no-cache
-            *.json, *.webmanifest: no-cache
+            **/*.js, **/*.css: no-cache
+            **/*.json, **/*.webmanifest: no-cache
             *: public, max-age=3600
 
       - name: Smoke test production
+        shell: bash
         run: |
-          curl --fail --silent --show-error             --retry 5 --retry-delay 3             https://solivoc.ru/ > /dev/null
-          curl --fail --silent --show-error             --retry 5 --retry-delay 3             https://solivoc.ru/js/admin-20260821.js | grep -q 'adminBackup'
+          set -euo pipefail
+
+          admin_html="$(curl --fail --silent --show-error             --retry 10 --retry-delay 3 --retry-all-errors             -H 'Cache-Control: no-cache'             "https://solivoc.ru/admin.html?ci=${GITHUB_SHA}")"
+          printf '%s' "$admin_html" | grep -q 'backup-20260821-2'
+
+          admin_js="$(curl --fail --silent --show-error             --retry 10 --retry-delay 3 --retry-all-errors             -H 'Cache-Control: no-cache'             "https://solivoc.ru/js/admin.js?v=backup-20260821-2&ci=${GITHUB_SHA}")"
+          printf '%s' "$admin_js" | grep -q 'adminBackup'
+
+          echo "Production admin bundle is current."

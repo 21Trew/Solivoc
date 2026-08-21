@@ -169,20 +169,23 @@ $("#adminRefresh").onclick = refresh;
 $("#adminBackup").onclick = async () => {
   const button = $("#adminBackup");
   button.disabled = true;
-  const entries = [];
+  const entriesByKey = new Map();
   let cursor = "0";
   let pages = 0;
   try {
     do {
       const page = await requestAdmin(`?backup=1&cursor=${encodeURIComponent(cursor)}`);
       if (page.format !== "solivoc-redis-dump-v1") throw new Error("Сервер вернул неизвестный формат резервной копии.");
-      entries.push(...(page.entries || []));
+      for (const entry of page.entries || []) {
+        if (entry?.key) entriesByKey.set(entry.key, entry);
+      }
       cursor = String(page.cursor || "0");
       pages++;
-      setAdminStatus(`Создаю резервную копию… ${entries.length} ключей`);
+      setAdminStatus(`Создаю резервную копию… ${entriesByKey.size} ключей`);
       if (pages > 5000) throw new Error("Слишком много страниц Redis — выгрузка остановлена.");
     } while (cursor !== "0");
 
+    const entries = [...entriesByKey.values()].sort((a, b) => a.key.localeCompare(b.key));
     const backup = {
       format: "solivoc-redis-dump-v1",
       createdAt: new Date().toISOString(),
