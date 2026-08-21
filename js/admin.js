@@ -27,7 +27,7 @@ function showPanel() {
 
 function errorMessage(error) {
   if (error?.code === "invalid_credentials") return "Неверный логин или пароль.";
-  if (error?.code === "rate_limited") return "Слишком много попыток входа. Попробуй позже.";
+  if (error?.code === "rate_limited") return "Слишком много попыток. Попробуй позже.";
   if (error?.code === "admin_not_configured") return "Вход в админку ещё не настроен на сервере.";
   if (error?.status === 401) return "Сессия истекла. Войди снова.";
   return error?.message || "Не удалось выполнить запрос.";
@@ -56,6 +56,24 @@ function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
   }[char]));
+}
+
+function downloadJson(text, filename) {
+  const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+async function sha256Hex(text) {
+  const bytes = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(hash)].map((value) => value.toString(16).padStart(2, "0")).join("");
 }
 
 function render(data) {
@@ -147,6 +165,44 @@ $("#adminLogout").addEventListener("click", async () => {
 });
 
 $("#adminRefresh").onclick = refresh;
+
+$("#adminBackup").onclick = async () => {
+  const button = $("#adminBackup");
+  button.disabled = true;
+  const entries = [];
+  let cursor = "0";
+  let pages = 0;
+  try {
+    do {
+      const page = await requestAdmin(`?backup=1&cursor=${encodeURIComponent(cursor)}`);
+      if (page.format !== "solivoc-redis-dump-v1") throw new Error("Сервер вернул неизвестный формат резервной копии.");
+      entries.push(...(page.entries || []));
+      cursor = String(page.cursor || "0");
+      pages++;
+      setAdminStatus(`Создаю резервную копию… ${entries.length} ключей`);
+      if (pages > 5000) throw new Error("Слишком много страниц Redis — выгрузка остановлена.");
+    } while (cursor !== "0");
+
+    const backup = {
+      format: "solivoc-redis-dump-v1",
+      createdAt: new Date().toISOString(),
+      source: "production",
+      keyCount: entries.length,
+      entries,
+    };
+    const text = JSON.stringify(backup);
+    const digest = await sha256Hex(text);
+    const stamp = backup.createdAt.replace(/[:.]/g, "-");
+    downloadJson(text, `solivoc-redis-backup-${stamp}.json`);
+    setAdminStatus(`Резервная копия готова: ${entries.length} ключей. SHA-256: ${digest}`);
+  } catch (error) {
+    if (error.status === 401) return showLogin("Сессия истекла. Войди снова.");
+    setAdminStatus(errorMessage(error), true);
+  } finally {
+    button.disabled = false;
+  }
+};
+
 $("#adminRepair").onclick = async () => {
   if (!confirm("Пересчитать уровни, звёзды и синхронизировать лидерборды для всех профилей?")) return;
   setAdminStatus("Пересчитываю…");
@@ -171,7 +227,6 @@ $("#adminDedupe").onclick = async () => {
     setAdminStatus(errorMessage(error), true);
   }
 };
-
 
 $("#adminPlayers").addEventListener("click", async (event) => {
   const button = event.target.closest("[data-delete-account]");

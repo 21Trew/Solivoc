@@ -2,6 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { checkRateLimit, sameOrigin, sha256, verifySecret } from "./_auth-lib.mjs";
 
 const COOKIE = "solivoc_backup_session";
+const ADMIN_COOKIE = "solivoc_admin_session";
 const SESSION_TTL = 60 * 60;
 const PAGE_SIZE = 64;
 
@@ -109,6 +110,9 @@ function cookieValue(request, name) {
 function sessionKey(token) {
   return `worditaire:backup:session:${sha256(token)}`;
 }
+function adminSessionKey(token) {
+  return `worditaire:admin:session:${sha256(token)}`;
+}
 function sessionCookie(request, token, maxAge = SESSION_TTL) {
   let secure = "";
   try { secure = new URL(request.url).protocol === "https:" ? "; Secure" : ""; } catch {}
@@ -122,18 +126,25 @@ async function createSession() {
   }), "EX", SESSION_TTL]);
   return token;
 }
-async function currentSession(request) {
-  const token = cookieValue(request, COOKIE);
+async function readSession(request, cookieName, keyForToken, removeInvalid = false) {
+  const token = cookieValue(request, cookieName);
   if (!token) return null;
-  const raw = await redis(["GET", sessionKey(token)]);
+  const key = keyForToken(token);
+  const raw = await redis(["GET", key]);
   if (!raw) return null;
   let stored = null;
   try { stored = JSON.parse(raw); } catch {}
   if (!stored?.version || !constantTimeText(stored.version, credentialVersion())) {
-    await redis(["DEL", sessionKey(token)]).catch(() => {});
+    if (removeInvalid) await redis(["DEL", key]).catch(() => {});
     return null;
   }
   return { token };
+}
+async function currentSession(request) {
+  return readSession(request, COOKIE, sessionKey, true);
+}
+async function currentAdminSession(request) {
+  return readSession(request, ADMIN_COOKIE, adminSessionKey, false);
 }
 async function deleteSession(request) {
   const token = cookieValue(request, COOKIE);
@@ -163,7 +174,7 @@ async function backupPage(cursor) {
     const ttlRow = rows[i * 2 + 1] || {};
     if (dumpRow.error) throw new Error(`DUMP_FAILED:${keys[i]}:${dumpRow.error}`);
     if (ttlRow.error) throw new Error(`PTTL_FAILED:${keys[i]}:${ttlRow.error}`);
-    if (typeof dumpRow.result !== "string" || !dumpRow.result) continue; // expired during scan
+    if (typeof dumpRow.result !== "string" || !dumpRow.result) continue;
     entries.push({
       key: keys[i],
       dump: dumpRow.result,
@@ -182,7 +193,10 @@ export async function GET(request) {
   if (!sameOrigin(request)) return json({ error: "bad_origin" }, 403);
   try {
     if (!configured()) return json({ error: "admin_not_configured" }, 503);
-    if (!(await currentSession(request))) return json({ authenticated: false, error: "unauthorized" }, 401);
+
+    const adminSession = await currentAdminSession(request);
+    const backupSession = adminSession ? null : await currentSession(request);
+    if (!adminSession && !backupSession) return json({ authenticated: false, error: "unauthorized" }, 401);
 
     const url = new URL(request.url);
     if (url.searchParams.get("session") === "1") return json({ ok: true, authenticated: true });

@@ -16,7 +16,6 @@ const ROUTES = new Map([
   ["admin", admin],
   ["analytics", analytics],
   ["auth", auth],
-  ["backup", backup],
   ["bootstrap", bootstrap],
   ["challenges", challenges],
   ["leaderboard", leaderboard],
@@ -101,6 +100,16 @@ async function routeRequest(request) {
     shareUrl.pathname = "/api/duel-share";
     shareUrl.search = `?c=${encodeURIComponent(code)}`;
     return duelShare.GET(new Request(shareUrl, { method: "GET", headers: request.headers }));
+  }
+
+  // Backup lives inside the existing admin route so the browser sends the
+  // already-authenticated admin cookie. /api/backup is not exposed directly.
+  if (
+    request.method === "GET"
+    && url.pathname === "/api/admin"
+    && url.searchParams.get("backup") === "1"
+  ) {
+    return backup.GET(request);
   }
 
   const match = url.pathname.match(/^\/api\/([a-z0-9-]+)\/?$/i);
