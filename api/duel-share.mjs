@@ -1,23 +1,49 @@
+const DEFAULT_APP_ORIGIN = "https://solivoc.ru";
+
 function cleanCode(value) {
   return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
 }
+
+function appOrigin() {
+  const configured = String(process.env.APP_ORIGIN || DEFAULT_APP_ORIGIN).trim().replace(/\/+$/, "");
+  try {
+    const url = new URL(configured);
+    return /^https?:$/.test(url.protocol) ? url.origin : DEFAULT_APP_ORIGIN;
+  } catch {
+    return DEFAULT_APP_ORIGIN;
+  }
+}
+
 function htmlResponse(body, status = 200, headers = {}) {
   return new Response(body, {
     status,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "public, max-age=60, s-maxage=300",
+      "Content-Security-Policy":
+        "default-src 'none'; style-src 'unsafe-inline'; img-src https://solivoc.ru; " +
+        "object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+      "Referrer-Policy": "same-origin",
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "DENY",
       ...headers,
     },
   });
 }
 
 export async function GET(request) {
-  const url = new URL(request.url), code = cleanCode(url.searchParams.get("c"));
-  const origin = url.origin;
-  if (code.length !== 6) return Response.redirect(`${origin}/`, 302);
-  const target = `${origin}/?c=${encodeURIComponent(code)}`;
-  const image = `${origin}/icons/share-duel.png`;
+  const url = new URL(request.url);
+  const code = cleanCode(url.searchParams.get("c"));
+  const webOrigin = appOrigin();
+
+  if (code.length !== 6) return Response.redirect(`${webOrigin}/`, 302);
+
+  const target = `${webOrigin}/?c=${encodeURIComponent(code)}`;
+  const image = `${webOrigin}/icons/share-duel.png`;
+  const canonical = `${url.origin}/d/${encodeURIComponent(code)}`;
+
   return htmlResponse(`<!doctype html>
 <html lang="ru">
 <head>
@@ -31,7 +57,7 @@ export async function GET(request) {
 <meta property="og:image" content="${image}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:url" content="${origin}/d/${code}">
+<meta property="og:url" content="${canonical}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Словасьянс — дуэль ${code}">
 <meta name="twitter:description" content="Открой тот же расклад и сравни результат с другом.">
