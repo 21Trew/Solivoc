@@ -75,19 +75,36 @@ jobs:
           echo "API Gateway update timed out"
           exit 1
 
-      - name: Smoke test API
+      - name: Smoke test API and CORS
         shell: bash
         run: |
           set -euo pipefail
+
           for attempt in $(seq 1 20); do
-            if curl --fail --silent --show-error --header 'Cache-Control: no-cache' "https://api.solivoc.ru/api/version?gateway_ci=${GITHUB_SHA}-${attempt}" > "$RUNNER_TEMP/solivoc-version.json"; then
+            actual_headers="$RUNNER_TEMP/solivoc-actual-headers.txt"
+            preflight_headers="$RUNNER_TEMP/solivoc-preflight-headers.txt"
+
+            if curl --fail --silent --show-error               --dump-header "$actual_headers"               --header 'Origin: https://solivoc.ru'               --header 'Cache-Control: no-cache'               "https://api.solivoc.ru/api/version?gateway_ci=${GITHUB_SHA}-${attempt}"               > "$RUNNER_TEMP/solivoc-version.json"; then
+
               build="$(jq -r '.build // ""' "$RUNNER_TEMP/solivoc-version.json")"
-              if [ -n "$build" ]; then
-                echo "API Gateway is healthy. Build: ${build}"
+
+              curl --fail --silent --show-error                 --request OPTIONS                 --dump-header "$preflight_headers"                 --output /dev/null                 --header 'Origin: https://solivoc.ru'                 --header 'Access-Control-Request-Method: POST'                 --header 'Access-Control-Request-Headers: content-type, cache-control'                 'https://api.solivoc.ru/api/admin' || true
+
+              actual_origin="$(awk -F': *' 'tolower($1)=="access-control-allow-origin"{gsub("\r","",$2); print $2; exit}' "$actual_headers")"
+              actual_credentials="$(awk -F': *' 'tolower($1)=="access-control-allow-credentials"{gsub("\r","",$2); print tolower($2); exit}' "$actual_headers")"
+              preflight_origin="$(awk -F': *' 'tolower($1)=="access-control-allow-origin"{gsub("\r","",$2); print $2; exit}' "$preflight_headers")"
+              preflight_credentials="$(awk -F': *' 'tolower($1)=="access-control-allow-credentials"{gsub("\r","",$2); print tolower($2); exit}' "$preflight_headers")"
+
+              if [ -n "$build" ]                 && [ "$actual_origin" = "https://solivoc.ru" ]                 && [ "$actual_credentials" = "true" ]                 && [ "$preflight_origin" = "https://solivoc.ru" ]                 && [ "$preflight_credentials" = "true" ]; then
+                echo "API Gateway and credentialed CORS are healthy. Build: ${build}"
                 exit 0
               fi
+
+              echo "Waiting for CORS rollout (${attempt}/20): actual_origin=${actual_origin:-missing}, preflight_origin=${preflight_origin:-missing}"
             fi
+
             sleep 3
           done
-          echo "API Gateway health check failed"
+
+          echo "API Gateway/CORS health check failed"
           exit 1
