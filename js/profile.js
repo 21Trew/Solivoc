@@ -54,6 +54,7 @@ function defaultProfile() {
     levelRecords: {},
     dailyRecords: {},
     challengeRecords: {},
+    duelHistoryRecords: {},
     sentChallenges: [],
     receivedChallenges: [],
     pendingChallengeSubmissions: [],
@@ -91,6 +92,7 @@ function loadProfile() {
         levelRecords: p.levelRecords && typeof p.levelRecords === "object" ? p.levelRecords : {},
         dailyRecords: p.dailyRecords && typeof p.dailyRecords === "object" ? p.dailyRecords : {},
         challengeRecords: p.challengeRecords && typeof p.challengeRecords === "object" ? p.challengeRecords : {},
+        duelHistoryRecords: p.duelHistoryRecords && typeof p.duelHistoryRecords === "object" && !Array.isArray(p.duelHistoryRecords) ? p.duelHistoryRecords : {},
         sentChallenges: Array.isArray(p.sentChallenges) ? p.sentChallenges : [],
         receivedChallenges: Array.isArray(p.receivedChallenges) ? p.receivedChallenges : [],
         pendingChallengeSubmissions: Array.isArray(p.pendingChallengeSubmissions) ? p.pendingChallengeSubmissions : [],
@@ -428,6 +430,7 @@ function pruneProfileHistories() {
   // so a long-lived profile cannot grow without bound.
   profile.dailyRecords = pruneRecordMap(profile.dailyRecords, 800);
   profile.challengeRecords = pruneRecordMap(profile.challengeRecords, 200);
+  profile.duelHistoryRecords = pruneRecordMap(profile.duelHistoryRecords, 300);
 }
 let profileSaveTimer = null;
 function saveProfile(options = {}) {

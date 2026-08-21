@@ -220,7 +220,7 @@ async function challengeApi(method, path = "", body = null, { keepalive = false,
     // in the URL because it is intentionally shareable.
     if (ownerToken) headers["X-Solivoc-Owner-Token"] = String(ownerToken);
     if (guestToken) headers["X-Solivoc-Guest-Token"] = String(guestToken);
-    const response = await apiFetch(`${CHALLENGE_API}${path}`, {
+    const response = await fetch(`${CHALLENGE_API}${path}`, {
       method,
       headers: Object.keys(headers).length ? headers : undefined,
       body: body ? JSON.stringify(body) : undefined,
@@ -259,6 +259,10 @@ function cleanChallengeResult(result = {}) {
     featured: Array.isArray(result.featured) ? result.featured.map((x)=>String(x).slice(0,32)).slice(0,3) : [],
     completedAt: result.completedAt || Date.now(),
   };
+}
+function cleanDuelHistoryResult(result = {}) {
+  const r = cleanChallengeResult(result);
+  return { stars:r.stars, moves:r.moves, maxCombo:r.maxCombo, durationMs:r.durationMs, failed:r.failed, duelMode:r.duelMode, hints:r.hints, errors:r.errors, undos:r.undos, playerName:r.playerName, playerId:r.playerId, avatarEmoji:r.avatarEmoji, completedAt:r.completedAt };
 }
 function resultForCurrentChallenge(s = state, stars = null) {
   return cleanChallengeResult({
@@ -315,6 +319,50 @@ function pruneReceivedChallenges() {
     .filter((x) => x?.code && x?.seed)
     .sort((a, b) => (+b.completedAt || +b.startedAt || 0) - (+a.completedAt || +a.startedAt || 0))
     .slice(0, 60);
+}
+function pruneDuelHistoryRecords() {
+  const records = profile.duelHistoryRecords && typeof profile.duelHistoryRecords === "object" && !Array.isArray(profile.duelHistoryRecords) ? profile.duelHistoryRecords : {};
+  profile.duelHistoryRecords = Object.fromEntries(Object.entries(records)
+    .filter(([code, record]) => normalizeChallengeCode(code) && (record?.hidden || (record?.creatorResult && record?.guestResult)))
+    .sort((a, b) => (+b[1]?.completedAt || +b[1]?.at || 0) - (+a[1]?.completedAt || +a[1]?.at || 0))
+    .slice(0, 300));
+}
+function rememberCompletedDuelHistory(entry, perspective = "creator") {
+  if (!entry?.code || !entry?.creatorResult || !entry?.guestResult) return false;
+  const code = normalizeChallengeCode(entry.code);
+  if (!code) return false;
+  const creatorResult = cleanDuelHistoryResult(entry.creatorResult), guestResult = cleanDuelHistoryResult(entry.guestResult);
+  const side = perspective === "guest" ? "guest" : "creator";
+  const completedAt = Math.max(+entry.completedAt || 0, +creatorResult.completedAt || 0, +guestResult.completedAt || 0) || Date.now();
+  profile.duelHistoryRecords ||= {};
+  const previous = profile.duelHistoryRecords[code];
+  const record = {
+    v: 1, code, hidden: !!previous?.hidden, perspective: side, creatorResult, guestResult,
+    seriesId: entry.seriesId || null, seriesRound: Math.max(1, +entry.seriesRound || 1),
+    seriesScoreCreator: Math.max(0, +entry.seriesScoreCreator || 0), seriesScoreGuest: Math.max(0, +entry.seriesScoreGuest || 0),
+    completedAt, at: completedAt,
+  };
+  profile.duelHistoryRecords[code] = record;
+  pruneDuelHistoryRecords();
+  try { return JSON.stringify(previous) !== JSON.stringify(record); } catch { return true; }
+}
+function hideDuelHistoryRecord(entry, perspective = "creator") {
+  if (!entry?.code) return false;
+  const code = normalizeChallengeCode(entry.code);
+  if (!code) return false;
+  if (entry.creatorResult && entry.guestResult) rememberCompletedDuelHistory(entry, perspective);
+  profile.duelHistoryRecords ||= {};
+  const previous = profile.duelHistoryRecords[code] || { code, at: Date.now(), completedAt: +entry.completedAt || Date.now() };
+  profile.duelHistoryRecords[code] = { ...previous, code, hidden: true, at: Math.max(+previous.at || 0, Date.now()) };
+  pruneDuelHistoryRecords();
+  return true;
+}
+function migrateCompletedDuelHistory() {
+  let changed = false;
+  for (const entry of profile.sentChallenges || []) if (entry?.creatorResult && entry?.guestResult) changed = rememberCompletedDuelHistory(entry, "creator") || changed;
+  for (const entry of profile.receivedChallenges || []) if (entry?.creatorResult && entry?.guestResult) changed = rememberCompletedDuelHistory(entry, "guest") || changed;
+  if (changed) saveProfile();
+  return changed;
 }
 function ownedChallengeByCode(code) {
   const normalized = normalizeChallengeCode(code);
@@ -423,6 +471,7 @@ async function deleteOwnedChallenge(code) {
     try { await challengeApi("POST", "", { action: "cancel", code: entry.code, ownerToken: entry.ownerToken }); }
     catch (error) { if (![404, 410].includes(error?.status)) console.warn("Challenge cancel", error); }
   }
+  if (!pending && entry.creatorResult && entry.guestResult) hideDuelHistoryRecord(entry, "creator");
   profile.sentChallenges = (profile.sentChallenges || []).filter((x) => x.code !== entry.code);
   saveProfile();
   showToast(pending ? "Дуэль удалена" : "Матч удалён из истории");
@@ -432,6 +481,7 @@ function deleteReceivedChallenge(code) {
   const entry = receivedChallengeByCode(code);
   if (!entry) return;
   if (!confirm("Удалить эту дуэль с устройства?")) return;
+  if (entry.creatorResult && entry.guestResult) hideDuelHistoryRecord(entry, "guest");
   profile.receivedChallenges = (profile.receivedChallenges || []).filter((x) => x.code !== entry.code);
   saveProfile();
   showToast("Дуэль удалена");
@@ -492,7 +542,7 @@ async function createRemoteChallenge(meta = {}) {
 }
 function challengeShortLink(entryOrCode) {
   const code = normalizeChallengeCode(entryOrCode?.code || entryOrCode);
-  const origin = solivocApiBase() || (/^https?:$/.test(location.protocol) ? location.origin : "https://solivoc.ru");
+  const origin = /^https?:$/.test(location.protocol) ? location.origin : "https://solivoc.vercel.app";
   return `${origin.replace(/\/$/, "")}/d/${code}`;
 }
 async function challengeInviteFile(entry) {
@@ -681,6 +731,7 @@ function recordCreatorChallengeResult(s = state, stars = null) {
   if (!entry) return;
   entry.creatorResult = resultForCurrentChallenge(s, stars);
   entry.status = entry.guestResult ? "completed" : "pending";
+  if (entry.guestResult) rememberCompletedDuelHistory(entry, "creator");
   saveProfile();
   if (entry.ownerToken) challengeApi("POST", "", { action: "ownerResult", code: entry.code, ownerToken: entry.ownerToken, result: entry.creatorResult }).catch((err)=>console.warn("Owner result sync",err));
 }
@@ -699,6 +750,7 @@ function recordGuestChallengeLocal(s = state, result = null) {
   entry.guestResult = cleanChallengeResult(result || resultForCurrentChallenge(s));
   entry.status = "completed";
   entry.completedAt = entry.guestResult.completedAt || Date.now();
+  if (entry.creatorResult) rememberCompletedDuelHistory(entry, "guest");
   pruneReceivedChallenges();
   saveProfile();
   return entry;
@@ -739,6 +791,7 @@ async function flushPendingChallengeSubmissions() {
         if (data.seriesScoreCreator != null) received.seriesScoreCreator = +data.seriesScoreCreator || 0;
         if (data.seriesScoreGuest != null) received.seriesScoreGuest = +data.seriesScoreGuest || 0;
         if (received.guestToken && received.creatorResult) challengeApi("POST","",{action:"ack",code:received.code,guestToken:received.guestToken}).catch(()=>{});
+        if (received.creatorResult) rememberCompletedDuelHistory(received, "guest");
         if (received.creatorResult && typeof finalizeSeriesForEntry === "function") finalizeSeriesForEntry(received,"guest");
         if (received.creatorResult && typeof queueDuelReveal === "function") queueDuelReveal(received,"guest");
       }
@@ -767,6 +820,7 @@ async function refreshOwnedChallenges({ notify = true } = {}) {
         entry.guestResult = cleanChallengeResult(data.guestResult);
         if (data.creatorResult) entry.creatorResult = cleanChallengeResult(data.creatorResult);
         entry.status = "completed";
+        rememberCompletedDuelHistory(entry, "creator");
         if (wasNew) entry.resultSeen = false;
         changed = true;
         try { await challengeApi("POST", "", { action: "ack", code: entry.code, ownerToken: entry.ownerToken }); } catch {}
@@ -801,6 +855,7 @@ async function refreshReceivedChallenges() {
       const data=await challengeApi("GET",`?code=${encodeURIComponent(entry.code)}`,null,{guestToken:entry.guestToken});
       if (data.creatorResult) {
         entry.creatorResult=cleanChallengeResult(data.creatorResult); changed=true;
+        rememberCompletedDuelHistory(entry, "guest");
         if (typeof finalizeSeriesForEntry === "function") finalizeSeriesForEntry(entry,"guest");
         if (typeof queueDuelReveal === "function") queueDuelReveal(entry,"guest");
         try{await challengeApi("POST","",{action:"ack",code:entry.code,guestToken:entry.guestToken});}catch{}
@@ -854,6 +909,7 @@ function migrateLastGuestChallengeHistory() {
   } catch {}
 }
 migrateLastGuestChallengeHistory();
+migrateCompletedDuelHistory();
 
 
 function appShareLink() {

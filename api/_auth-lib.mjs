@@ -91,25 +91,12 @@ export async function checkRateLimit(request, bucket, limit = 12, windowSec = 90
   return count <= limit;
 }
 
-function allowedAppOrigins() {
-  const defaults = ["https://solivoc.ru", "https://www.solivoc.ru", "https://admin.solivoc.ru"];
-  const configured = String(process.env.APP_ORIGINS || "")
-    .split(",")
-    .map((value) => value.trim().replace(/\/$/, ""))
-    .filter(Boolean);
-  return new Set([...defaults, ...configured]);
-}
-
 export function sameOrigin(request) {
   const fetchSite = String(request.headers.get("sec-fetch-site") || "").toLowerCase();
   if (fetchSite === "cross-site") return false;
-  const origin = String(request.headers.get("origin") || "").replace(/\/$/, "");
+  const origin = request.headers.get("origin");
   if (!origin) return true;
-  try {
-    if (origin === new URL(request.url).origin) return true;
-    if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return true;
-    return allowedAppOrigins().has(origin);
-  } catch { return false; }
+  try { return origin === new URL(request.url).origin; } catch { return false; }
 }
 
 function parseCookies(request) {
@@ -191,6 +178,7 @@ export function sanitizeProfile(input, userId) {
   };
   profile.dailyRecords = pruneRecordMap(profile.dailyRecords, 800);
   profile.challengeRecords = pruneRecordMap(profile.challengeRecords, 200);
+  profile.duelHistoryRecords = pruneRecordMap(profile.duelHistoryRecords, 300);
   profile.playerId = String(userId || profile.playerId || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64);
   return profile;
 }

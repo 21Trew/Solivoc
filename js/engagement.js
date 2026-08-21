@@ -26,7 +26,7 @@ async function flushRemoteAnalytics() {
   const batch = queue.slice(0, 30), controller = new AbortController(), timer = setTimeout(()=>controller.abort(), 4500);
   remoteAnalyticsBusy = true;
   try {
-    const response = await apiFetch("/api/analytics", {
+    const response = await fetch("/api/analytics", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clientId: profile.analyticsClientId, events: batch }),
@@ -223,7 +223,7 @@ let leaderboardCache={at:0,boards:{},promise:null};
 async function syncLeaderboardNonBlocking(force=false){
   if(!/^https?:$/.test(location.protocol)||navigator.onLine===false||!profile.playerId||!(typeof accountSignedIn==="function"&&accountSignedIn()))return false;
   if(!force&&Date.now()-leaderboardSyncAt<30000)return false;leaderboardSyncAt=Date.now();
-  try{const c=new AbortController(),t=setTimeout(()=>c.abort(),1800);const r=await apiFetch("/api/leaderboard",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(leaderboardPayload()),signal:c.signal,cache:"no-store"});clearTimeout(t);return r.ok;}catch{return false;}
+  try{const c=new AbortController(),t=setTimeout(()=>c.abort(),1800);const r=await fetch("/api/leaderboard",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(leaderboardPayload()),signal:c.signal,cache:"no-store"});clearTimeout(t);return r.ok;}catch{return false;}
 }
 function leaderboardValueLabel(board,value){
   if(board==="time")return `${Math.floor(value/60000)}:${String(Math.floor(value/1000)%60).padStart(2,"0")}`;
@@ -254,7 +254,7 @@ async function fetchLeaderboardSnapshot(force=false){
   leaderboardCache.promise=(async()=>{
     const c=new AbortController(),t=setTimeout(()=>c.abort(),3200);
     try{
-      const r=await apiFetch("/api/leaderboard?board=all",{cache:"no-store",signal:c.signal});
+      const r=await fetch("/api/leaderboard?board=all",{cache:"no-store",signal:c.signal});
       if(!r.ok)throw new Error("leaderboard unavailable");
       const data=await r.json(),boards=data?.boards&&typeof data.boards==="object"?data.boards:{};
       if(data?.me?.duelStats){
@@ -288,11 +288,38 @@ function openLeaderboardModal(board="stars"){
   return true;
 }
 
+let deletedDuelOpponentIds=new Set(),duelOpponentStatusAt=0,duelOpponentStatusPromise=null;
 function completedDuelEntries() {
-  const out=[], seen=new Set();
-  for (const entry of profile.sentChallenges || []) if(entry?.code && entry.creatorResult && entry.guestResult && !seen.has(entry.code)){seen.add(entry.code);out.push({entry,perspective:"creator",opponent:entry.guestResult.playerName||"Друг",opponentAvatar:entry.guestResult.avatarEmoji||"🙂",opponentId:entry.guestResult.playerId||"",completedAt:+entry.completedAt||+entry.guestResult.completedAt||0});}
-  for (const entry of profile.receivedChallenges || []) if(entry?.code && entry.creatorResult && entry.guestResult && !seen.has(entry.code)){seen.add(entry.code);out.push({entry,perspective:"guest",opponent:entry.creatorName||entry.creatorResult.playerName||"Друг",opponentAvatar:entry.creatorAvatar||entry.creatorResult.avatarEmoji||"🙂",opponentId:entry.creatorPlayerId||entry.creatorResult.playerId||"",completedAt:+entry.completedAt||+entry.creatorResult.completedAt||0});}
+  const out=[], seen=new Set(), hidden=new Set();
+  const records=profile.duelHistoryRecords&&typeof profile.duelHistoryRecords==="object"&&!Array.isArray(profile.duelHistoryRecords)?profile.duelHistoryRecords:{};
+  for(const [rawCode,entry] of Object.entries(records)){
+    const code=String(entry?.code||rawCode||"").trim().toUpperCase();if(!code)continue;
+    if(entry?.hidden){hidden.add(code);seen.add(code);continue;}
+    if(!entry?.creatorResult||!entry?.guestResult||seen.has(code))continue;
+    seen.add(code);const perspective=entry.perspective==="guest"?"guest":"creator",fr=perspective==="guest"?entry.creatorResult:entry.guestResult;
+    const opponentId=entry.opponentId||fr?.playerId||"",deleted=!!opponentId&&deletedDuelOpponentIds.has(opponentId);
+    out.push({entry,perspective,opponent:deleted?"Аккаунт удалён":(entry.opponentName||fr?.playerName||"Друг"),opponentAvatar:deleted?"◌":(entry.opponentAvatar||fr?.avatarEmoji||"🙂"),opponentId,opponentDeleted:deleted,completedAt:+entry.completedAt||+fr?.completedAt||0});
+  }
+  for (const entry of profile.sentChallenges || []) {const code=String(entry?.code||"").trim().toUpperCase();if(!code||hidden.has(code)||seen.has(code)||!entry.creatorResult||!entry.guestResult)continue;seen.add(code);const opponentId=entry.guestResult.playerId||"",deleted=!!opponentId&&deletedDuelOpponentIds.has(opponentId);out.push({entry,perspective:"creator",opponent:deleted?"Аккаунт удалён":(entry.guestResult.playerName||"Друг"),opponentAvatar:deleted?"◌":(entry.guestResult.avatarEmoji||"🙂"),opponentId,opponentDeleted:deleted,completedAt:+entry.completedAt||+entry.guestResult.completedAt||0});}
+  for (const entry of profile.receivedChallenges || []) {const code=String(entry?.code||"").trim().toUpperCase();if(!code||hidden.has(code)||seen.has(code)||!entry.creatorResult||!entry.guestResult)continue;seen.add(code);const opponentId=entry.creatorPlayerId||entry.creatorResult.playerId||"",deleted=!!opponentId&&deletedDuelOpponentIds.has(opponentId);out.push({entry,perspective:"guest",opponent:deleted?"Аккаунт удалён":(entry.creatorName||entry.creatorResult.playerName||"Друг"),opponentAvatar:deleted?"◌":(entry.creatorAvatar||entry.creatorResult.avatarEmoji||"🙂"),opponentId,opponentDeleted:deleted,completedAt:+entry.completedAt||+entry.creatorResult.completedAt||0});}
   return out.sort((a,b)=>b.completedAt-a.completedAt);
+}
+async function refreshDeletedDuelOpponents(force=false){
+  if(!(typeof accountSignedIn==="function"&&accountSignedIn())||navigator.onLine===false||!/^https?:$/.test(location.protocol))return false;
+  if(!force&&duelOpponentStatusAt&&Date.now()-duelOpponentStatusAt<5*60*1000)return false;
+  if(duelOpponentStatusPromise)return duelOpponentStatusPromise;
+  const ids=[...new Set(completedDuelEntries().map(x=>String(x.opponentId||"")).filter(id=>/^u_[a-zA-Z0-9_-]{8,62}$/.test(id)))];
+  if(!ids.length){duelOpponentStatusAt=Date.now();return false;}
+  duelOpponentStatusPromise=(async()=>{
+    const next=new Set();
+    for(let i=0;i<ids.length;i+=60){
+      const chunk=ids.slice(i,i+60),c=new AbortController(),t=setTimeout(()=>c.abort(),3500);
+      try{const r=await fetch(`/api/account?players=${encodeURIComponent(chunk.join(","))}`,{cache:"no-store",credentials:"same-origin",signal:c.signal});if(!r.ok)continue;const data=await r.json().catch(()=>({}));for(const id of chunk)if(data?.players?.[id]?.deleted)next.add(id);}catch{}finally{clearTimeout(t);}
+    }
+    const before=[...deletedDuelOpponentIds].sort().join("|"),after=[...next].sort().join("|");
+    deletedDuelOpponentIds=next;duelOpponentStatusAt=Date.now();return before!==after;
+  })();
+  try{return await duelOpponentStatusPromise;}finally{duelOpponentStatusPromise=null;}
 }
 function duelHistorySummary() {
   let wins=0,losses=0,draws=0;
@@ -358,6 +385,7 @@ function showDuelProfileHistory(key) {
 }
 function duelsHubMarkup(view="active") {
   const active=activeDuelEntries(), completed=completedDuelEntries(), profiles=duelHistoryGroups(), current=view==="history"?"history":"active";
+  if(current==="history"&&typeof refreshDeletedDuelOpponents==="function")refreshDeletedDuelOpponents().then((changed)=>{if(changed&&hub?.classList.contains("show")&&typeof hubDuelTab!=="undefined"&&hubDuelTab==="history")renderHub?.();}).catch(()=>{});
   const activeMarkup=active.length
     ? `<div class="owned-challenge-list duel-active-list">${active.map(x=>x.perspective==="guest"?receivedChallengeCardMarkup(x.entry,{compact:true}):ownedChallengeCardMarkup(x.entry,{compact:true})).join("")}</div>`
     : `<div class="empty-state">Активных дуэлей сейчас нет</div>`;
