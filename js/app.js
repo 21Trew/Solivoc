@@ -259,40 +259,76 @@ function registerPwa() {
     try {
       const reg = await navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" });
       const banner = $("#updateBanner"), updateBtn = $("#updateNow"), updateReloadKey = "solivoc-explicit-update";
-      const currentBuild = document.querySelector('meta[name="slovasyans-build"]')?.content || "";
-      const deploymentKey = "solivoc-deployment-id";
       let pendingWorker = reg.waiting || null,
-        pendingDeployment = "",
         updateRequested = false,
         refreshing = false,
         checkBusy = false,
-        lastCheckAt = 0;
+        lastCheckAt = 0,
+        activationTimer = null;
 
-      const requestActivation = (worker) => {
-        if (!worker || worker.state !== "installed") return false;
-        pendingWorker = worker;
-        if (!updateRequested) return true;
-        try { worker.postMessage({ type: "SKIP_WAITING" }); } catch {}
-        return true;
+      const hasController = () => !!navigator.serviceWorker.controller;
+      const hideUpdate = () => {
+        banner?.classList.remove("show");
+        banner?.setAttribute("aria-hidden", "true");
+        if (updateBtn) {
+          updateBtn.disabled = false;
+          updateBtn.textContent = "Обновить";
+        }
       };
       const showUpdate = (worker = null) => {
+        // An installed worker without a controller is the FIRST installation,
+        // not an application update. Showing the banner here created the iOS
+        // "Обновить → Повторить" loop on fresh profiles.
+        if (!hasController()) {
+          pendingWorker = null;
+          hideUpdate();
+          return false;
+        }
         if (worker) pendingWorker = worker;
         banner?.classList.add("show");
         banner?.setAttribute("aria-hidden", "false");
+        if (updateBtn && !updateRequested) {
+          updateBtn.disabled = false;
+          updateBtn.textContent = "Обновить";
+        }
+        return true;
+      };
+      const requestActivation = (worker) => {
+        if (!worker || worker.state !== "installed" || !hasController()) return false;
+        pendingWorker = worker;
+        if (!updateRequested) return true;
+        try { worker.postMessage({ type: "SKIP_WAITING" }); } catch { return false; }
+        return true;
       };
       const watchWorker = (worker) => {
         if (!worker) return;
         const onState = () => {
-          if (worker.state !== "installed") return;
-          pendingWorker = worker;
-          showUpdate(worker);
-          requestActivation(worker);
+          if (worker.state === "installed") {
+            if (!hasController()) {
+              // First registration activates by itself. There is nothing for
+              // the player to confirm and no reason to keep an update banner.
+              pendingWorker = null;
+              hideUpdate();
+              return;
+            }
+            pendingWorker = worker;
+            showUpdate(worker);
+            requestActivation(worker);
+            return;
+          }
+          if (["activated", "redundant"].includes(worker.state) && pendingWorker === worker) {
+            pendingWorker = null;
+            if (!updateRequested) hideUpdate();
+          }
         };
         onState();
         worker.addEventListener("statechange", onState);
       };
 
-      if (reg.waiting) showUpdate(reg.waiting);
+      // A waiting worker is an update only when the page is already controlled
+      // by an older worker. Fresh installations must stay silent.
+      if (reg.waiting && hasController()) showUpdate(reg.waiting);
+      else if (!hasController()) hideUpdate();
       watchWorker(reg.installing);
       reg.addEventListener("updatefound", () => watchWorker(reg.installing));
 
@@ -304,28 +340,10 @@ function registerPwa() {
         checkBusy = true;
         try {
           await reg.update().catch(() => {});
-          if (reg.waiting) showUpdate(reg.waiting);
-          const response = await apiFetch(`/api/version?t=${now}`, { cache: "no-store" });
-          if (!response.ok) return false;
-          const data = await response.json().catch(() => ({}));
-          const serverBuild = String(data?.build || "");
-          const serverDeployment = String(data?.deployment || "");
-          let savedDeployment = "";
-          try { savedDeployment = localStorage.getItem(deploymentKey) || ""; } catch {}
-          const buildChanged = !!(currentBuild && serverBuild && serverBuild !== String(currentBuild));
-          const deploymentChanged = !!(serverDeployment && savedDeployment && serverDeployment !== savedDeployment);
-          if (buildChanged || deploymentChanged) {
-            pendingDeployment = serverDeployment || pendingDeployment;
-            showUpdate(reg.waiting || pendingWorker);
-            // Start downloading the new worker immediately, even before the player taps the banner.
-            reg.update().catch(() => {});
+          if (reg.waiting && hasController()) {
+            showUpdate(reg.waiting);
             return true;
           }
-          if (serverDeployment && (!savedDeployment || serverBuild === String(currentBuild))) {
-            try { localStorage.setItem(deploymentKey, serverDeployment); } catch {}
-          }
-          return !!reg.waiting;
-        } catch {
           return false;
         } finally {
           checkBusy = false;
@@ -334,50 +352,54 @@ function registerPwa() {
 
       if (updateBtn) updateBtn.onclick = async () => {
         updateRequested = true;
-        try { sessionStorage.setItem(updateReloadKey, "1"); } catch {}
         updateBtn.disabled = true;
         updateBtn.textContent = "Обновляю…";
-        const ready = reg.waiting || pendingWorker;
-        if (requestActivation(ready)) return;
-        try { await reg.update(); } catch {}
-        if (requestActivation(reg.waiting || pendingWorker)) return;
-        watchWorker(reg.installing);
+        try { sessionStorage.setItem(updateReloadKey, "1"); } catch {}
 
-        // A deployment id lets us detect a release even if somebody forgets to
-        // bump the SW cache/version next time. In that case the player explicitly
-        // asked to update, so clear the current offline generation and reload from
-        // the network instead of leaving the button stuck on "Повторить".
-        if (pendingDeployment && navigator.serviceWorker.controller) {
-          const channel = new MessageChannel();
-          const cleared = new Promise((resolve) => {
-            const timeout = setTimeout(() => resolve(false), 2500);
-            channel.port1.onmessage = () => { clearTimeout(timeout); resolve(true); };
-          });
-          try { navigator.serviceWorker.controller.postMessage({ type: "CLEAR_APP_CACHE" }, [channel.port2]); } catch {}
-          await cleared;
-          try { localStorage.setItem(deploymentKey, pendingDeployment); } catch {}
-          refreshing = true;
-          location.reload();
+        const activateIfReady = () => requestActivation(reg.waiting || pendingWorker);
+        if (activateIfReady()) {
+          clearTimeout(activationTimer);
+          activationTimer = setTimeout(() => {
+            if (refreshing) return;
+            // The worker may already have activated while iOS missed the
+            // controllerchange callback. Reload once instead of offering an
+            // endless Retry button.
+            refreshing = true;
+            try { sessionStorage.removeItem(updateReloadKey); } catch {}
+            location.reload();
+          }, 6000);
           return;
         }
 
-        // If installation is still downloading, keep the request armed. The
-        // statechange handler will activate it as soon as it reaches installed.
+        try { await reg.update(); } catch {}
+        if (activateIfReady()) return;
+        watchWorker(reg.installing);
+
+        // No waiting/installing worker means there is no update. This can only
+        // happen with a stale banner from an older client build. Dismiss it.
         setTimeout(() => {
-          if (!updateRequested || refreshing || reg.waiting || pendingWorker?.state === "installed") return;
-          updateBtn.disabled = false;
-          updateBtn.textContent = "Повторить";
-        }, 8000);
+          if (refreshing || reg.waiting || pendingWorker?.state === "installed") return;
+          updateRequested = false;
+          try { sessionStorage.removeItem(updateReloadKey); } catch {}
+          hideUpdate();
+          showToast?.("Уже установлена последняя версия");
+        }, 3500);
       };
 
       navigator.serviceWorker.addEventListener("controllerchange", () => {
-        if (refreshing) return;
+        // controllerchange also fires after the very first SW installation.
+        // Only reload when the player explicitly accepted a real update.
         let explicit = false;
         try { explicit = sessionStorage.getItem(updateReloadKey) === "1"; } catch {}
-        if (!explicit) return;
+        if (!explicit) {
+          pendingWorker = null;
+          hideUpdate();
+          return;
+        }
+        if (refreshing) return;
         refreshing = true;
+        clearTimeout(activationTimer);
         try { sessionStorage.removeItem(updateReloadKey); } catch {}
-        if (pendingDeployment) { try { localStorage.setItem(deploymentKey, pendingDeployment); } catch {} }
         markStabilityStage?.("updating");
         location.reload();
       });
