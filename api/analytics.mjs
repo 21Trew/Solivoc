@@ -1,4 +1,4 @@
-import { redis } from "./_push-lib.mjs";
+import { redis, redisPipeline } from "./_push-lib.mjs";
 import { checkRateLimit, sameOrigin } from "./_auth-lib.mjs";
 
 function json(data,status=200){return Response.json(data,{status,headers:{"Cache-Control":"no-store, max-age=0"}});}
@@ -29,16 +29,21 @@ export async function POST(request){
     }
     let accepted=0;
     for(const [day,names] of byDay){
-      await redis(["PFADD",`worditaire:analytics:users:${day}`,clientId]);
+      const commands=[["PFADD",`worditaire:analytics:users:${day}`,clientId]];
       for(const name of names){
-        await redis(["HINCRBY",`worditaire:analytics:events:${day}`,name,1]);
-        await redis(["HINCRBY","worditaire:analytics:events:all",name,1]);
-        await redis(["PFADD",`worditaire:analytics:event-users:${day}:${name}`,clientId]);
-        await redis(["EXPIRE",`worditaire:analytics:event-users:${day}:${name}`,ANALYTICS_TTL]);
+        commands.push(
+          ["HINCRBY",`worditaire:analytics:events:${day}`,name,1],
+          ["HINCRBY","worditaire:analytics:events:all",name,1],
+          ["PFADD",`worditaire:analytics:event-users:${day}:${name}`,clientId],
+          ["EXPIRE",`worditaire:analytics:event-users:${day}:${name}`,ANALYTICS_TTL],
+        );
         accepted++;
       }
-      await redis(["EXPIRE",`worditaire:analytics:events:${day}`,ANALYTICS_TTL]);
-      await redis(["EXPIRE",`worditaire:analytics:users:${day}`,ANALYTICS_TTL]);
+      commands.push(
+        ["EXPIRE",`worditaire:analytics:events:${day}`,ANALYTICS_TTL],
+        ["EXPIRE",`worditaire:analytics:users:${day}`,ANALYTICS_TTL],
+      );
+      await redisPipeline(commands);
     }
     return json({ok:true,accepted});
   }catch(error){console.error("analytics POST",error);return json({error:"server_error"},500);}

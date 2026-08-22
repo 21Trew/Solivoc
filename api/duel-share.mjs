@@ -28,6 +28,7 @@ function htmlResponse(body, status = 200, headers = {}) {
       "Referrer-Policy": "same-origin",
       "X-Content-Type-Options": "nosniff",
       "X-Frame-Options": "DENY",
+      "X-Robots-Tag": "noindex, nofollow, noarchive",
       ...headers,
     },
   });
@@ -42,13 +43,14 @@ export async function GET(request) {
 
   const target = `${webOrigin}/?c=${encodeURIComponent(code)}`;
   const image = `${webOrigin}/icons/share-duel.png`;
-  const canonical = `${url.origin}/d/${encodeURIComponent(code)}`;
+  const shareUrl = `${url.origin}/d/${encodeURIComponent(code)}`;
 
   return htmlResponse(`<!doctype html>
 <html lang="ru">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
 <title>Дуэль ${code} — Словасьянс</title>
 <meta name="description" content="Тебя пригласили в дуэль Словасьянса. Открой тот же расклад и сравни результат.">
 <meta property="og:type" content="website">
@@ -57,7 +59,7 @@ export async function GET(request) {
 <meta property="og:image" content="${image}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:url" content="${canonical}">
+<meta property="og:url" content="${shareUrl}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Словасьянс — дуэль ${code}">
 <meta name="twitter:description" content="Открой тот же расклад и сравни результат с другом.">

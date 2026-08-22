@@ -5,8 +5,9 @@ on:
     branches:
       - main
     paths:
-      - "index.html"
-      - "admin.html"
+      - "*.html"
+      - "*.xml"
+      - "*.txt"
       - "sw.js"
       - "*.webmanifest"
       - "data/**"
@@ -46,11 +47,18 @@ jobs:
           BUILD_ID="${GITHUB_SHA:0:12}"
 
           test -f dist-frontend/admin.html
+          test -f dist-frontend/about.html
+          test -f dist-frontend/robots.txt
+          test -f dist-frontend/sitemap.xml
           test -f dist-frontend/js/admin.js
           test -f dist-frontend/js/runtime-config.js
           test -f dist-frontend/sw.js
 
           grep -q 'adminBackup' dist-frontend/js/admin.js
+          grep -q 'rel="canonical" href="https://solivoc.ru/"' dist-frontend/index.html
+          grep -q 'application/ld+json' dist-frontend/index.html
+          grep -q 'Sitemap: https://solivoc.ru/sitemap.xml' dist-frontend/robots.txt
+          grep -q '<loc>https://solivoc.ru/about.html</loc>' dist-frontend/sitemap.xml
           grep -q "js/admin.js?v=${BUILD_ID}" dist-frontend/admin.html
           grep -q 'solivoc-pwa-update-requested-v2' dist-frontend/js/runtime-config.js
           grep -q "worditaire-build-${BUILD_ID}" dist-frontend/sw.js
@@ -75,6 +83,7 @@ jobs:
             js/runtime-config.js: no-cache
             **/*.js, **/*.css: no-cache
             **/*.json, **/*.webmanifest: no-cache
+            *.xml, *.txt: no-cache
             *: public, max-age=3600
 
       # Publish the service worker only after every asset it will cache is
@@ -123,4 +132,12 @@ jobs:
             "https://solivoc.ru/sw.js?ci=${GITHUB_SHA}")"
           printf '%s' "$service_worker" | grep -q "worditaire-build-${BUILD_ID}"
 
-          echo "Production frontend and PWA generation are current."
+          root_html="$(curl --fail --silent --show-error --retry 10 --retry-delay 3 --retry-all-errors -H 'Cache-Control: no-cache' "https://solivoc.ru/?ci=${GITHUB_SHA}")"
+          printf '%s' "$root_html" | grep -q 'rel="canonical" href="https://solivoc.ru/"'
+          printf '%s' "$root_html" | grep -q 'application/ld+json'
+
+          curl --fail --silent --show-error --retry 10 --retry-delay 3 --retry-all-errors "https://solivoc.ru/robots.txt?ci=${GITHUB_SHA}" | grep -q 'Sitemap: https://solivoc.ru/sitemap.xml'
+          curl --fail --silent --show-error --retry 10 --retry-delay 3 --retry-all-errors "https://solivoc.ru/sitemap.xml?ci=${GITHUB_SHA}" | grep -q '<loc>https://solivoc.ru/about.html</loc>'
+          curl --fail --silent --show-error --retry 10 --retry-delay 3 --retry-all-errors "https://solivoc.ru/about.html?ci=${GITHUB_SHA}" | grep -q 'Словасьянс — игра в ассоциации'
+
+          echo "Production frontend, PWA and SEO files are current."

@@ -1,12 +1,15 @@
 openapi: 3.0.0
 info:
-  title: Solivoc API
+  title: Словасьянс API
   version: 1.0.0
 
 paths:
   /api/{endpoint}:
     x-yc-apigateway-cors:
-      origin: https://solivoc.ru
+      origin:
+        - https://solivoc.ru
+        - https://www.solivoc.ru
+        - https://admin.solivoc.ru
       methods:
         - GET
         - POST
@@ -23,7 +26,7 @@ paths:
       optionsSuccessStatus: 204
 
     x-yc-apigateway-any-method:
-      summary: Solivoc API endpoint
+      summary: Slovasyans API endpoint
       operationId: solivocApi
       parameters:
         - name: endpoint

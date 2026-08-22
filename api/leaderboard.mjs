@@ -1,13 +1,11 @@
 import { createHash } from "node:crypto";
 import { checkRateLimit, currentSession, sameOrigin } from "./_auth-lib.mjs";
+import { redis, redisPipeline } from "./_push-lib.mjs";
 
 const BOARD_LIST = Object.freeze(["stars","levels","daily","marathon","combo","duel","time","moves","onePass"]);
 const BOARDS = new Set(BOARD_LIST);
 const LEADERBOARD_MAX_MEMBERS = 2000, LEADERBOARD_TTL = 180 * 24 * 60 * 60;
-function firstEnv(...names){for(const name of names){const value=process.env[name];if(value)return value;}return "";}
-function redisConfig(){return{url:firstEnv("UPSTASH_REDIS_REST_URL","KV_REST_API_URL","UPSTASH_REDIS_REST_KV_REST_API_URL").replace(/\/$/,""),token:firstEnv("UPSTASH_REDIS_REST_TOKEN","KV_REST_API_TOKEN","UPSTASH_REDIS_REST_KV_REST_API_TOKEN")};}
 function json(data,status=200){return Response.json(data,{status,headers:{"Cache-Control":"no-store, max-age=0"}});}
-async function redis(command){const{url,token}=redisConfig();if(!url||!token){const e=new Error("Redis is not configured");e.code="REDIS_NOT_CONFIGURED";throw e;}const response=await fetch(url,{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify(command),cache:"no-store"});const data=await response.json().catch(()=>({}));if(!response.ok||data.error)throw new Error(data.error||`Redis ${response.status}`);return data.result;}
 function cleanId(value){return String(value||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,64);}
 function cleanName(value){return String(value||"Игрок").trim().slice(0,20)||"Игрок";}
 function cleanAvatar(value){return String(value||"🙂").slice(0,8)||"🙂";}
@@ -53,13 +51,16 @@ export async function POST(request){
     const session=await currentSession(request);if(!session)return json({error:"unauthorized",message:"Для попадания в лидеры нужен аккаунт"},401);
     const body=await request.json().catch(()=>({})),playerId=cleanId(session.userId);if(!playerId)return json({error:"invalid_player"},400);
     const values=cleanValues(body.values),duelStats=cleanDuelStats(body.duelStats),record={playerId,name:cleanName(body.name),avatar:cleanAvatar(body.avatar),values,duelStats,account:true,accountKey:accountKeyFor(session),updatedAt:Date.now()};
-    await redis(["SET",playerKey(playerId),JSON.stringify(record),"EX",90*24*60*60]);
-    await Promise.all(BOARD_LIST.map(async(board)=>{
-      const value=values[board];if(value<=0)return;const key=boardKey(board);
-      await redis(["ZADD",key,scoreFor(board,value),playerId]);
-      await redis(["ZREMRANGEBYRANK",key,0,-(LEADERBOARD_MAX_MEMBERS+1)]);
-      await redis(["EXPIRE",key,LEADERBOARD_TTL]);
-    }));
+    const commands=[["SET",playerKey(playerId),JSON.stringify(record),"EX",90*24*60*60]];
+    for(const board of BOARD_LIST){
+      const value=values[board];if(value<=0)continue;const key=boardKey(board);
+      commands.push(
+        ["ZADD",key,scoreFor(board,value),playerId],
+        ["ZREMRANGEBYRANK",key,0,-(LEADERBOARD_MAX_MEMBERS+1)],
+        ["EXPIRE",key,LEADERBOARD_TTL],
+      );
+    }
+    await redisPipeline(commands);
     return json({ok:true});
   }catch(error){if(error?.code==="REDIS_NOT_CONFIGURED"||error?.message==="REDIS_NOT_CONFIGURED")return json({error:"redis_not_configured"},503);console.error("leaderboard POST",error);return json({error:"server_error"},500);}
 }

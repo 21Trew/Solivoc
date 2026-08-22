@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const out = path.join(root, "dist-frontend");
 const staticDirs = ["data", "icons", "js", "styles"];
-const rootFiles = ["index.html", "admin.html"];
+const rootFiles = ["index.html", "admin.html", "about.html", "robots.txt", "sitemap.xml"];
 const buildId = String(process.env.GITHUB_SHA || process.env.SOLIVOC_BUILD_ID || "dev")
   .trim()
   .replace(/[^a-zA-Z0-9_-]/g, "")
@@ -26,10 +26,63 @@ for (const entry of await readdir(root)) {
   }
 }
 
-// Temporary standalone backup UI is obsolete. Keep production clean even if a
-// stale branch still contains these files until the repository cleanup lands.
-await rm(path.join(out, "js", "admin-backup.js"), { force: true });
-await rm(path.join(out, "js", "admin-20260821.js"), { force: true });
+
+// Build-time SEO metadata keeps the source game shell uncluttered while the
+// deployed HTML remains fully crawlable without executing JavaScript.
+const indexPath = path.join(out, "index.html");
+let indexHtml = await readFile(indexPath, "utf8");
+const seoMarker = '<meta name="description" content="Словасьянс';
+if (!indexHtml.includes(seoMarker)) {
+  const seoHead = `
+    <meta name="description" content="Словасьянс — бесплатная игра в ассоциации и словесный пасьянс на русском языке: уровни, ежедневные расклады, дуэли и режимы прямо в браузере." />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <link rel="canonical" href="https://solivoc.ru/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Словасьянс" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:title" content="Словасьянс — пасьянс ассоциаций" />
+    <meta property="og:description" content="Собирай связанные слова по категориям, проходи расклады и играй в дуэли с друзьями." />
+    <meta property="og:url" content="https://solivoc.ru/" />
+    <meta property="og:image" content="https://solivoc.ru/icons/share-duel.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Словасьянс — пасьянс ассоциаций" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Словасьянс — пасьянс ассоциаций" />
+    <meta name="twitter:description" content="Бесплатная браузерная игра в слова и ассоциации на русском языке." />
+    <meta name="twitter:image" content="https://solivoc.ru/icons/share-duel.png" />
+    <script type="application/ld+json">${JSON.stringify({
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://solivoc.ru/#website",
+          url: "https://solivoc.ru/",
+          name: "Словасьянс",
+          alternateName: "Solivoc",
+          inLanguage: "ru",
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://solivoc.ru/#game",
+          url: "https://solivoc.ru/",
+          name: "Словасьянс",
+          description: "Бесплатная браузерная игра в ассоциации и словесный пасьянс на русском языке.",
+          applicationCategory: "GameApplication",
+          operatingSystem: "Web",
+          inLanguage: "ru",
+          isAccessibleForFree: true,
+          offers: { "@type": "Offer", price: "0", priceCurrency: "RUB" },
+        },
+      ],
+    })}</script>`;
+  indexHtml = indexHtml.replace(/(\s*<title>)/, `${seoHead}$1`);
+}
+indexHtml = indexHtml.replace(
+  /(<meta name="slovasyans-build" content=")[^"]*(" \/>)/,
+  `$1${buildId}$2`,
+);
+await writeFile(indexPath, indexHtml, "utf8");
 
 // Admin assets get a commit-specific URL without hard-coding dated cache keys
 // in the source HTML.

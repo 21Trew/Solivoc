@@ -3,11 +3,12 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "web-push": "^3.6.7",
-    "nodemailer": "^9.0.3"
+    "web-push": "3.6.7",
+    "nodemailer": "9.0.3"
   },
   "scripts": {
     "vapid": "web-push generate-vapid-keys --json",
+    "check": "node scripts/check-source.mjs && npm run build:frontend && npm run build:yandex",
     "build:frontend": "node scripts/build-frontend.mjs",
     "build:yandex": "node scripts/build-yandex.mjs",
     "build:deploy": "npm run build:frontend && npm run build:yandex"

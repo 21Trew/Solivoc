@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { sendPushToClient } from "./_push-lib.mjs";
+import { redis, sendPushToClient } from "./_push-lib.mjs";
 import { checkRateLimit, currentSession, sameOrigin } from "./_auth-lib.mjs";
 
 const ACTIVE_TTL = 7 * 24 * 60 * 60;
@@ -7,10 +7,7 @@ const RESULT_TTL = 7 * 24 * 60 * 60;
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/;
 
-function firstEnv(...names) { for (const name of names) { const value=process.env[name]; if(value) return value; } return ""; }
-function redisConfig(){return{url:firstEnv("UPSTASH_REDIS_REST_URL","KV_REST_API_URL","UPSTASH_REDIS_REST_KV_REST_API_URL").replace(/\/$/,""),token:firstEnv("UPSTASH_REDIS_REST_TOKEN","KV_REST_API_TOKEN","UPSTASH_REDIS_REST_KV_REST_API_TOKEN")};}
 function json(data,status=200){return Response.json(data,{status,headers:{"Cache-Control":"no-store, max-age=0"}});}
-async function redis(command){const{url,token}=redisConfig();if(!url||!token){const e=new Error("Redis is not configured");e.code="REDIS_NOT_CONFIGURED";throw e;}const response=await fetch(url,{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify(command),cache:"no-store"});const data=await response.json().catch(()=>({}));if(!response.ok||data.error)throw new Error(data.error||`Redis ${response.status}`);return data.result;}
 function ruPlural(value,one,few,many=few){const n=Math.abs(Math.trunc(Number(value)||0)),m100=n%100,m10=n%10;if(m100>=11&&m100<=14)return many;if(m10===1)return one;if(m10>=2&&m10<=4)return few;return many;}
 function ruCount(value,one,few,many=few){const n=Math.max(0,Math.trunc(Number(value)||0));return `${n} ${ruPlural(n,one,few,many)}`;}
 function activeKey(code){return `worditaire:challenge:active:${code}`;}
