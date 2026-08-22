@@ -15,7 +15,28 @@ function chapterFinalSpecial(level) {
     { id: "final-mix", icon: "✦", title: "Финал: Большой вызов", desc: "6 категорий, 1 отмена и более плотный расклад", boss: true, bigMix: true, maxUndos: 1 },
   ];
   const special = { ...defs[cycle], chapter };
-  const everyThirdFinal = chapter % 3 === 0 || chapter === 100;
+  const milestone = typeof progressionMilestoneForLevel === "function" ? progressionMilestoneForLevel(level) : null;
+  if (milestone) {
+    special.milestoneType = milestone.type;
+    special.milestoneLevel = milestone.level;
+    special.milestoneReserved = !!milestone.reserved;
+    if (milestone.entity) {
+      const boss = milestone.entity;
+      const taunts = Array.isArray(boss.bossTaunts) && boss.bossTaunts.length ? boss.bossTaunts : ["Этот рубеж нужно заслужить."];
+      special.icon = boss.emoji || special.icon;
+      special.bossCompanionId = boss.id; // Backward-compatible hook; unlockCompanion now handles every entity type.
+      special.bossEntityId = boss.id;
+      special.bossName = boss.name;
+      special.bossTaunt = taunts[Math.abs(level) % taunts.length];
+      special.title = milestone.type === "elemental" ? `Рубеж: ${boss.name}` : `Испытание: ${boss.name}`;
+      if (milestone.type === "elemental") special.desc = "Победи древнюю стихию в абсолютной форме. После поражения её развитие начнётся заново.";
+      return special;
+    }
+    // A reserved milestone keeps the campaign playable until its bespoke boss ships.
+    // In particular level 1000 no longer falls through to the retired Gandalf encounter.
+    if (milestone.type === "god") return special;
+  }
+  const everyThirdFinal = chapter % 3 === 0;
   if (everyThirdFinal) {
     const bosses = [
       { id: "fox", icon: "🦊", name: "Хитрый лис", taunts: ["Щёлк — и ловушка уже захлопнулась. Выберешься?", "Я люблю, когда игрок сам делает за меня ошибки.", "Смотри в оба: этот расклад не прощает суеты."] },
@@ -27,9 +48,7 @@ function chapterFinalSpecial(level) {
       { id: "frog", icon: "🐸", name: "Ловкая лягушка", taunts: ["Прыг-скок — и вот ты уже в моём любимом хаосе.", "Скучно не будет: этот расклад любит неожиданные повороты.", "Ну-ка, удиви меня чем-нибудь по-настоящему ловким."] },
       { id: "octopus", icon: "🐙", name: "Умный осьминог", taunts: ["Я держу в голове восемь планов. А у тебя есть хотя бы два?", "Здесь побеждает тот, кто видит дальше ближайшего хода.", "Пора проверить, умеешь ли ты думать на несколько шагов вперёд."] },
     ];
-    const boss = chapter === 100
-      ? { id: "gandalf", icon: "🧙‍♂️", name: "Гендальф", taunts: ["Ты не пройдёшь!", "Ты не пройдёшь!", "Ты не пройдёшь!"] }
-      : bosses[Math.max(0, Math.floor(chapter / 3) - 1) % bosses.length];
+    const boss = bosses[Math.max(0, Math.floor(chapter / 3) - 1) % bosses.length];
     special.icon = boss.icon;
     special.bossCompanionId = boss.id;
     special.bossName = boss.name;

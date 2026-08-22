@@ -30,30 +30,392 @@ const APP_ICON_DEFS = Object.freeze([
 ]);
 function appIconDef(id) { return APP_ICON_DEFS.find((x) => x.id === id) || APP_ICON_DEFS[0]; }
 
-const COMPANION_DEFS = Object.freeze([
-  { id: "owl", name: "Мудрая сова", image: "./icons/mascot-owl.svg", role: "Научный наставник", unlockLabel: "За регистрацию аккаунта", starter: true, personality: "спокойная, любознательная и немного профессорская", lore: "Мудрая сова любит объяснять сложное простыми словами. Она подмечает закономерности, делится научными фактами и всегда подталкивает к вдумчивой победе." },
-  { id: "cat", name: "Кот-учёный", image: "./icons/mascot-cat.svg", role: "Весёлый напарник", unlockLabel: "За регистрацию аккаунта", starter: true, personality: "ироничный, тёплый и очень харизматичный", lore: "Кот-учёный обожает похвалу, каламбуры и красивые победы. Он встречает успех мягкой самоиронией и превращает каждый уровень в маленькое приключение." },
-  { id: "fox", name: "Хитрый лис", image: "./icons/mascot-fox.svg", emoji: "🦊", role: "Ловкий стратег", unlockChapter: 3, bossReward: true, rewardText: "Приручён после финала главы 3", personality: "быстрый, остроумный и чуть ехидный", lore: "Хитрый лис любит запутывать соперника и проверять, умеешь ли ты замечать тонкие связи. После победы он признаёт умного игрока своим." },
-  { id: "bear", name: "Сильный медведь", image: "./icons/mascot-bear.svg", emoji: "🐻", role: "Надёжный защитник", unlockChapter: 6, bossReward: true, rewardText: "Приручён после финала главы 6", personality: "спокойный, основательный и уверенный", lore: "Сильный медведь не любит суету. Он уважает выдержку, точность и победы, которые добыты без паники." },
-  { id: "raven", name: "Умный ворон", image: "./icons/mascot-raven.svg", emoji: "🐦‍⬛", role: "Колкий умник", unlockChapter: 9, bossReward: true, rewardText: "Приручён после финала главы 9", personality: "язвительный, наблюдательный и очень сообразительный", lore: "Умный ворон замечает ошибки раньше всех и обожает острые фразы. Но ещё больше он уважает игрока, который умеет удивлять." },
-  { id: "wolf", name: "Серый волк", image: "./icons/mascot-wolf.svg", emoji: "🐺", role: "Упрямый следопыт", unlockChapter: 12, bossReward: true, rewardText: "Приручён после финала главы 12", personality: "собранный, настойчивый и прямой", lore: "Серый волк идёт по следу до конца. Он любит тех, кто не сдаётся после первой же сложной комбинации." },
-  { id: "tiger", name: "Грозный тигр", image: "./icons/mascot-tiger.svg", emoji: "🐯", role: "Гордый соперник", unlockChapter: 15, bossReward: true, rewardText: "Приручён после финала главы 15", personality: "эффектный, громкий и соревновательный", lore: "Грозный тигр появляется там, где нужен вызов посерьёзнее. Он уважает только тех, кто не пугается давления." },
-  { id: "panda", name: "Спокойная панда", image: "./icons/mascot-panda.svg", emoji: "🐼", role: "Невозмутимый тактик", unlockChapter: 18, bossReward: true, rewardText: "Приручён после финала главы 18", personality: "неторопливая, мягкая и сосредоточенная", lore: "Спокойная панда напоминает: не каждая победа должна быть шумной. Иногда лучший ход — самый тихий и точный." },
-  { id: "frog", name: "Ловкая лягушка", image: "./icons/mascot-frog.svg", emoji: "🐸", role: "Зелёная выдумщица", unlockChapter: 21, bossReward: true, rewardText: "Приручена после финала главы 21", personality: "смешливая, резкая и непредсказуемая", lore: "Ловкая лягушка любит неожиданные решения и нестандартные ассоциации. С ней игра всегда становится чуть веселее." },
-  { id: "octopus", name: "Умный осьминог", image: "./icons/mascot-octopus.svg", emoji: "🐙", role: "Мастер сложных ходов", unlockChapter: 24, bossReward: true, rewardText: "Приручён после финала главы 24", personality: "спокойный, системный и многозадачный", lore: "Умный осьминог умеет держать в голове сразу несколько вариантов. Он ценит порядок мысли и длинные цепочки верных решений." },
-  { id: "gandalf", name: "Гендальф", image: "./icons/mascot-gandalf.svg", emoji: "🧙‍♂️", role: "Легендарный босс", unlockChapter: 100, bossReward: true, rewardText: "Приручён после финала главы 100", personality: "величественный, суровый и мудрый", lore: "Гендальф встречает только тех, кто добрался до сотой главы. Его уважение нужно заслужить — и эта победа запоминается надолго." },
-  { id: "clip", name: "Скрепка", image: "./icons/mascot-clip.svg", emoji: "📎", role: "Легендарный советчик", achievementId: "retro90", rewardText: "Открыта за достижение «Я из 90-х»", personality: "деловая, смешная и ностальгическая", lore: "Скрепка с глазами словно сбежала из старого компьютера девяностых. Она любит советы, ретро-настроение и большие коллекции пройденных режимов." },
-  { id: "birthday", name: "Праздничная капибара", image: "./icons/mascot-birthday.svg", role: "Именинный маскот", unlockLabel: "Открывается в день рождения", rewardText: "Открыта в день рождения", personality: "очень доброжелательная, уютная и праздничная", lore: "Праздничная капибара приходит только на день рождения игрока. Она приносит поздравления, неделю бонусов и напоминает, что повод порадовать себя тоже важен." },
+const ENTITY_TYPES = Object.freeze(["mascot", "elemental", "god", "special"]);
+const MASCOT_PROGRESS_VERSION = 1;
+const ENTITY_STATUS_ORDER = Object.freeze({ locked: 0, encountered: 1, captured: 2, companion: 3, mastered: 4 });
+const GOD_STATUS_ORDER = Object.freeze({ locked: 0, encountered: 1, recognized: 2, worshipped: 3, exalted: 4 });
+const MILESTONE_STATUS_ORDER = Object.freeze({ locked: 0, available: 1, completed: 2 });
+const RETIRED_COMPANION_IDS = Object.freeze(["gandalf", "clip"]);
+
+const ENTITY_DEFS = Object.freeze([
+  { id: "owl", type: "mascot", name: "Мудрая сова", image: "./icons/mascot-owl.svg", role: "Научный наставник", unlockLabel: "За регистрацию аккаунта", starter: true, maxLevel: 5, maxEvolutionStage: 3, coreTraits: ["мудрая", "спокойная", "любознательная"], personality: "спокойная, любознательная и немного профессорская", lore: "Мудрая сова любит объяснять сложное простыми словами. Она подмечает закономерности, делится научными фактами и всегда подталкивает к вдумчивой победе." },
+  { id: "cat", type: "mascot", name: "Кот-учёный", image: "./icons/mascot-cat.svg", role: "Весёлый напарник", unlockLabel: "За регистрацию аккаунта", starter: true, maxLevel: 5, maxEvolutionStage: 3, coreTraits: ["мудрый", "ироничный", "тёплый"], personality: "ироничный, тёплый и очень харизматичный", lore: "Кот-учёный обожает похвалу, каламбуры и красивые победы. Он встречает успех мягкой самоиронией и превращает каждый уровень в маленькое приключение." },
+  { id: "fox", type: "mascot", name: "Хитрый лис", image: "./icons/mascot-fox.svg", emoji: "🦊", role: "Ловкий стратег", unlockChapter: 3, bossReward: true, maxLevel: 5, maxEvolutionStage: 3, coreTraits: ["хитрый", "быстрый", "ехидный"], rewardText: "Приручён после финала главы 3", personality: "быстрый, остроумный и чуть ехидный", lore: "Хитрый лис любит запутывать соперника и проверять, умеешь ли ты замечать тонкие связи. После победы он признаёт умного игрока своим." },
+  { id: "bear", type: "mascot", name: "Сильный медведь", image: "./icons/mascot-bear.svg", emoji: "🐻", role: "Надёжный защитник", unlockChapter: 6, bossReward: true, maxLevel: 5, maxEvolutionStage: 3, coreTraits: ["спокойный", "сильный", "надёжный"], rewardText: "Приручён после финала главы 6", personality: "спокойный, основательный и уверенный", lore: "Сильный медведь не любит суету. Он уважает выдержку, точность и победы, которые добыты без паники." },
+  { id: "raven", type: "mascot", name: "Умный ворон", image: "./icons/mascot-raven.svg", emoji: "🐦‍⬛", role: "Колкий умник", unlockChapter: 9, bossReward: true, maxLevel: 5, maxEvolutionStage: 3, coreTraits: ["хитрый", "гордый", "язвительный"], rewardText: "Приручён после финала главы 9", personality: "язвительный, наблюдательный и очень сообразительный", lore: "Умный ворон замечает ошибки раньше всех и обожает острые фразы. Но ещё больше он уважает игрока, который умеет удивлять." },
+  { id: "wolf", type: "mascot", name: "Серый волк", image: "./icons/mascot-wolf.svg", emoji: "🐺", role: "Упрямый следопыт", unlockChapter: 12, bossReward: true, maxLevel: 5, maxEvolutionStage: 3, coreTraits: ["собранный", "упрямый", "прямой"], rewardText: "Приручён после финала главы 12", personality: "собранный, настойчивый и прямой", lore: "Серый волк идёт по следу до конца. Он любит тех, кто не сдаётся после первой же сложной комбинации." },
+  { id: "tiger", type: "mascot", name: "Грозный тигр", image: "./icons/mascot-tiger.svg", emoji: "🐯", role: "Гордый соперник", unlockChapter: 15, bossReward: true, maxLevel: 5, maxEvolutionStage: 3, coreTraits: ["гордый", "смелый", "соревновательный"], rewardText: "Приручён после финала главы 15", personality: "эффектный, громкий и соревновательный", lore: "Грозный тигр появляется там, где нужен вызов посерьёзнее. Он уважает только тех, кто не пугается давления." },
+  { id: "panda", type: "mascot", name: "Спокойная панда", image: "./icons/mascot-panda.svg", emoji: "🐼", role: "Невозмутимый тактик", unlockChapter: 18, bossReward: true, maxLevel: 5, maxEvolutionStage: 3, coreTraits: ["спокойная", "мягкая", "сосредоточенная"], rewardText: "Приручена после финала главы 18", personality: "неторопливая, мягкая и сосредоточенная", lore: "Спокойная панда напоминает: не каждая победа должна быть шумной. Иногда лучший ход — самый тихий и точный." },
+  { id: "frog", type: "mascot", name: "Ловкая лягушка", image: "./icons/mascot-frog.svg", emoji: "🐸", role: "Зелёная выдумщица", unlockChapter: 21, bossReward: true, maxLevel: 5, maxEvolutionStage: 3, coreTraits: ["весёлая", "ловкая", "непредсказуемая"], rewardText: "Приручена после финала главы 21", personality: "смешливая, резкая и непредсказуемая", lore: "Ловкая лягушка любит неожиданные решения и нестандартные ассоциации. С ней игра всегда становится чуть веселее." },
+  { id: "octopus", type: "mascot", name: "Умный осьминог", image: "./icons/mascot-octopus.svg", emoji: "🐙", role: "Мастер сложных ходов", unlockChapter: 24, bossReward: true, maxLevel: 5, maxEvolutionStage: 3, coreTraits: ["умный", "спокойный", "системный"], rewardText: "Приручён после финала главы 24", personality: "спокойный, системный и многозадачный", lore: "Умный осьминог умеет держать в голове сразу несколько вариантов. Он ценит порядок мысли и длинные цепочки верных решений." },
+  {
+    id: "stone-elemental", type: "elemental", name: "Каменный элементаль", emoji: "🪨", role: "Древняя стихия", companion: true, selectable: false,
+    milestoneLevel: 100, milestoneActive: true, maxLevel: 7, maxEvolutionStage: 4, coreTraits: ["невозмутимый", "упрямый", "надёжный"],
+    rewardText: "Побеждён на уровне 100", personality: "невозмутимый, упрямый и надёжный",
+    lore: "В абсолютной форме Каменный элементаль похож на ожившую гору. После поражения его сила схлопывается до маленького камня, которому ещё предстоит заново пройти путь к абсолютной форме.",
+    bossTaunts: ["Гора не спешит. И всё равно переживает путника.", "Попробуй сдвинуть то, что стояло здесь задолго до тебя.", "Камень помнит каждый удар. А ты помнишь каждый ход?"],
+  },
+  {
+    id: "god-1000", type: "god", name: "Неизвестный бог", emoji: "✦", role: "Порог Пантеона", companion: false,
+    milestoneLevel: 1000, milestoneActive: false, maxLevel: 10, placeholder: true,
+    lore: "Место первого божественного испытания зарезервировано на тысячном уровне. Сам бог будет раскрыт отдельным обновлением.",
+  },
+  { id: "birthday", type: "special", name: "Праздничная капибара", image: "./icons/mascot-birthday.svg", role: "Именинный маскот", unlockLabel: "Открывается в день рождения", maxLevel: 5, maxEvolutionStage: 0, coreTraits: ["добрая", "уютная", "праздничная"], rewardText: "Открыта в день рождения", personality: "очень доброжелательная, уютная и праздничная", lore: "Праздничная капибара приходит только на день рождения игрока. Она приносит поздравления, неделю бонусов и напоминает, что повод порадовать себя тоже важен." },
 ]);
-function companionDef(id) { return COMPANION_DEFS.find((x) => x.id === id) || COMPANION_DEFS[0]; }
-function companionUnlocked(def, p = profile) {
-  if (!def) return false;
-  const unlocked = new Set(Array.isArray(p?.companionsUnlocked) ? p.companionsUnlocked : []);
-  return unlocked.has(def.id);
+
+const COMPANION_DEFS = Object.freeze(ENTITY_DEFS.filter((x) => x.companion !== false && x.selectable !== false));
+function entityDef(id) { return ENTITY_DEFS.find((x) => x.id === id) || null; }
+function companionDef(id) { return entityDef(id) || ENTITY_DEFS[0]; }
+function entityStatusRank(status) { return ENTITY_STATUS_ORDER[String(status || "locked")] ?? 0; }
+function godStatusRank(status) { return GOD_STATUS_ORDER[String(status || "locked")] ?? 0; }
+function milestoneStatusRank(status) { return MILESTONE_STATUS_ORDER[String(status || "locked")] ?? 0; }
+function higherStatus(a, b, rankFn = entityStatusRank) { return rankFn(a) >= rankFn(b) ? a : b; }
+function entityCanBeSelected(def) { return !!def && def.companion !== false && def.selectable !== false && def.type !== "god"; }
+function cleanProgressId(value) { return String(value || "").trim().replace(/[^a-zA-Z0-9:_-]/g, "").slice(0, 64); }
+function cleanProgressIdArray(value, limit = 100) {
+  const out = [];
+  for (const raw of Array.isArray(value) ? value : []) {
+    const id = cleanProgressId(raw);
+    if (id && !out.includes(id)) out.push(id);
+    if (out.length >= limit) break;
+  }
+  return out;
 }
-function availableCompanions(p = profile) { return COMPANION_DEFS.filter((x) => companionUnlocked(x, p)); }
+function cleanTraits(value) {
+  const out = [];
+  for (const raw of Array.isArray(value) ? value : []) {
+    const trait = String(raw || "").trim().slice(0, 32);
+    if (trait && !out.includes(trait)) out.push(trait);
+    if (out.length >= 2) break;
+  }
+  return out;
+}
+function cleanAbilityLevels(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const out = {};
+  for (const [rawId, rawLevel] of Object.entries(value)) {
+    const id = cleanProgressId(rawId);
+    if (!id) continue;
+    out[id] = Math.max(0, Math.min(10, Math.trunc(Number(rawLevel) || 0)));
+  }
+  return out;
+}
+function cleanAbilityLoadout(value) {
+  const raw = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  return {
+    active: cleanProgressIdArray(raw.active, 2),
+    passive: cleanProgressId(raw.passive),
+    updatedAt: Math.max(0, Number(raw.updatedAt) || 0),
+  };
+}
+function defaultMascotProgress(defOrId) {
+  const def = typeof defOrId === "string" ? entityDef(defOrId) : defOrId;
+  return {
+    version: MASCOT_PROGRESS_VERSION,
+    type: def?.type || "mascot",
+    status: "locked",
+    level: 0,
+    progressXp: 0,
+    evolutionStage: 0,
+    evolutionBranch: "",
+    evolutionUpdatedAt: 0,
+    developedTraits: [],
+    traitsUpdatedAt: 0,
+    abilities: {},
+    equippedAbilities: { active: [], passive: "", updatedAt: 0 },
+    trainingLevel: 0,
+    completedQuests: [],
+    cosmeticsUnlocked: [],
+    capturedAt: 0,
+    updatedAt: 0,
+  };
+}
+function normalizeMascotProgressEntry(def, value = {}) {
+  const raw = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const base = defaultMascotProgress(def);
+  const maxLevel = Math.max(1, Number(def?.maxLevel) || (def?.type === "elemental" ? 7 : 5));
+  const maxEvolution = Math.max(0, Number(def?.maxEvolutionStage) || 0);
+  const status = Object.prototype.hasOwnProperty.call(ENTITY_STATUS_ORDER, raw.status) ? raw.status : "locked";
+  return {
+    ...base,
+    version: MASCOT_PROGRESS_VERSION,
+    type: def?.type || base.type,
+    status,
+    level: Math.max(0, Math.min(maxLevel, Math.trunc(Number(raw.level) || 0))),
+    progressXp: Math.max(0, Math.trunc(Number(raw.progressXp) || 0)),
+    evolutionStage: Math.max(0, Math.min(maxEvolution, Math.trunc(Number(raw.evolutionStage) || 0))),
+    evolutionBranch: cleanProgressId(raw.evolutionBranch),
+    evolutionUpdatedAt: Math.max(0, Number(raw.evolutionUpdatedAt) || 0),
+    developedTraits: cleanTraits(raw.developedTraits),
+    traitsUpdatedAt: Math.max(0, Number(raw.traitsUpdatedAt) || 0),
+    abilities: cleanAbilityLevels(raw.abilities),
+    equippedAbilities: cleanAbilityLoadout(raw.equippedAbilities),
+    trainingLevel: Math.max(0, Math.min(3, Math.trunc(Number(raw.trainingLevel) || 0))),
+    completedQuests: cleanProgressIdArray(raw.completedQuests, 200),
+    cosmeticsUnlocked: cleanProgressIdArray(raw.cosmeticsUnlocked, 100),
+    capturedAt: Math.max(0, Number(raw.capturedAt) || 0),
+    updatedAt: Math.max(0, Number(raw.updatedAt) || 0),
+  };
+}
+function defaultGodProgress(defOrId) {
+  const def = typeof defOrId === "string" ? entityDef(defOrId) : defOrId;
+  return {
+    version: 1,
+    type: "god",
+    status: "locked",
+    favorLevel: 0,
+    favorXp: 0,
+    gracesUnlocked: [],
+    activeGraceIds: [],
+    loadoutUpdatedAt: 0,
+    attention: 0,
+    attentionUpdatedAt: 0,
+    offerings: {},
+    updatedAt: 0,
+    entityId: def?.id || "",
+  };
+}
+function normalizeGodProgressEntry(def, value = {}) {
+  const raw = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const status = Object.prototype.hasOwnProperty.call(GOD_STATUS_ORDER, raw.status) ? raw.status : "locked";
+  const offerings = {};
+  if (raw.offerings && typeof raw.offerings === "object" && !Array.isArray(raw.offerings)) {
+    for (const [key, count] of Object.entries(raw.offerings)) {
+      const id = cleanProgressId(key);
+      if (id) offerings[id] = Math.max(0, Math.trunc(Number(count) || 0));
+    }
+  }
+  return {
+    ...defaultGodProgress(def),
+    status,
+    favorLevel: Math.max(0, Math.min(10, Math.trunc(Number(raw.favorLevel) || 0))),
+    favorXp: Math.max(0, Math.trunc(Number(raw.favorXp) || 0)),
+    gracesUnlocked: cleanProgressIdArray(raw.gracesUnlocked, 30),
+    activeGraceIds: cleanProgressIdArray(raw.activeGraceIds, 3),
+    loadoutUpdatedAt: Math.max(0, Number(raw.loadoutUpdatedAt) || 0),
+    attention: Math.max(0, Number(raw.attention) || 0),
+    attentionUpdatedAt: Math.max(0, Number(raw.attentionUpdatedAt) || 0),
+    offerings,
+    updatedAt: Math.max(0, Number(raw.updatedAt) || 0),
+  };
+}
+function preserveUnknownProgress(localValue, cloudValue) {
+  const local = localValue && typeof localValue === "object" && !Array.isArray(localValue) ? localValue : null;
+  const cloud = cloudValue && typeof cloudValue === "object" && !Array.isArray(cloudValue) ? cloudValue : null;
+  if (!local) return cloud ? { ...cloud } : null;
+  if (!cloud) return { ...local };
+  const localUpdated = Math.max(0, Number(local.updatedAt) || 0);
+  const cloudUpdated = Math.max(0, Number(cloud.updatedAt) || 0);
+  return { ...(cloudUpdated >= localUpdated ? local : cloud), ...(cloudUpdated >= localUpdated ? cloud : local) };
+}
+function newerSnapshot(local, cloud, timestampKey) {
+  const lt = Math.max(0, Number(local?.[timestampKey]) || 0), ct = Math.max(0, Number(cloud?.[timestampKey]) || 0);
+  if (lt > ct) return local;
+  return cloud || local || {};
+}
+function unionProgressIds(a, b, limit) { return cleanProgressIdArray([...(Array.isArray(a) ? a : []), ...(Array.isArray(b) ? b : [])], limit); }
+function mergeMascotProgressEntry(def, localValue, cloudValue) {
+  const local = normalizeMascotProgressEntry(def, localValue), cloud = normalizeMascotProgressEntry(def, cloudValue);
+  const traitSource = newerSnapshot(local, cloud, "traitsUpdatedAt");
+  const loadoutSource = newerSnapshot(local.equippedAbilities, cloud.equippedAbilities, "updatedAt");
+  const evolutionSource = newerSnapshot(local, cloud, "evolutionUpdatedAt");
+  const abilities = { ...local.abilities };
+  for (const [id, level] of Object.entries(cloud.abilities)) abilities[id] = Math.max(abilities[id] || 0, level || 0);
+  const captured = [local.capturedAt, cloud.capturedAt].filter((x) => x > 0);
+  return normalizeMascotProgressEntry(def, {
+    ...local,
+    ...cloud,
+    status: higherStatus(local.status, cloud.status),
+    level: Math.max(local.level, cloud.level),
+    progressXp: Math.max(local.progressXp, cloud.progressXp),
+    evolutionStage: Math.max(local.evolutionStage, cloud.evolutionStage),
+    evolutionBranch: evolutionSource?.evolutionBranch || "",
+    evolutionUpdatedAt: Math.max(local.evolutionUpdatedAt, cloud.evolutionUpdatedAt),
+    developedTraits: cleanTraits(traitSource?.developedTraits),
+    traitsUpdatedAt: Math.max(local.traitsUpdatedAt, cloud.traitsUpdatedAt),
+    abilities,
+    equippedAbilities: cleanAbilityLoadout(loadoutSource),
+    trainingLevel: Math.max(local.trainingLevel, cloud.trainingLevel),
+    completedQuests: unionProgressIds(local.completedQuests, cloud.completedQuests, 200),
+    cosmeticsUnlocked: unionProgressIds(local.cosmeticsUnlocked, cloud.cosmeticsUnlocked, 100),
+    capturedAt: captured.length ? Math.min(...captured) : 0,
+    updatedAt: Math.max(local.updatedAt, cloud.updatedAt),
+  });
+}
+function mergeMascotProgressSnapshots(localValue, cloudValue) {
+  const local = localValue && typeof localValue === "object" && !Array.isArray(localValue) ? localValue : {};
+  const cloud = cloudValue && typeof cloudValue === "object" && !Array.isArray(cloudValue) ? cloudValue : {};
+  const out = {};
+  for (const id of new Set([...Object.keys(local), ...Object.keys(cloud)])) {
+    const def = entityDef(id);
+    if (!def) {
+      const preserved = preserveUnknownProgress(local[id], cloud[id]);
+      if (preserved) out[id] = preserved;
+      continue;
+    }
+    if (def.type === "god") continue;
+    out[id] = mergeMascotProgressEntry(def, local[id], cloud[id]);
+  }
+  return out;
+}
+function mergeGodProgressSnapshots(localValue, cloudValue) {
+  const local = localValue && typeof localValue === "object" && !Array.isArray(localValue) ? localValue : {};
+  const cloud = cloudValue && typeof cloudValue === "object" && !Array.isArray(cloudValue) ? cloudValue : {};
+  const out = {};
+  for (const id of new Set([...Object.keys(local), ...Object.keys(cloud)])) {
+    const def = entityDef(id);
+    if (!def) {
+      const preserved = preserveUnknownProgress(local[id], cloud[id]);
+      if (preserved) out[id] = preserved;
+      continue;
+    }
+    if (def.type !== "god") continue;
+    const a = normalizeGodProgressEntry(def, local[id]), b = normalizeGodProgressEntry(def, cloud[id]);
+    const loadoutSource = newerSnapshot(a, b, "loadoutUpdatedAt");
+    const attentionSource = newerSnapshot(a, b, "attentionUpdatedAt");
+    const offerings = { ...a.offerings };
+    for (const [key, count] of Object.entries(b.offerings)) offerings[key] = Math.max(offerings[key] || 0, count || 0);
+    out[id] = normalizeGodProgressEntry(def, {
+      ...a, ...b,
+      status: higherStatus(a.status, b.status, godStatusRank),
+      favorLevel: Math.max(a.favorLevel, b.favorLevel),
+      favorXp: Math.max(a.favorXp, b.favorXp),
+      gracesUnlocked: unionProgressIds(a.gracesUnlocked, b.gracesUnlocked, 30),
+      activeGraceIds: cleanProgressIdArray(loadoutSource?.activeGraceIds, 3),
+      loadoutUpdatedAt: Math.max(a.loadoutUpdatedAt, b.loadoutUpdatedAt),
+      attention: Math.max(0, Number(attentionSource?.attention) || 0),
+      attentionUpdatedAt: Math.max(a.attentionUpdatedAt, b.attentionUpdatedAt),
+      offerings,
+      updatedAt: Math.max(a.updatedAt, b.updatedAt),
+    });
+  }
+  return out;
+}
+function normalizeMilestoneEntry(level, value = {}) {
+  const raw = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const type = ["elemental", "god"].includes(raw.type) ? raw.type : progressionMilestoneType(level);
+  const status = Object.prototype.hasOwnProperty.call(MILESTONE_STATUS_ORDER, raw.status) ? raw.status : "locked";
+  return { type, entityId: cleanProgressId(raw.entityId), status, updatedAt: Math.max(0, Number(raw.updatedAt) || 0) };
+}
+function mergeProgressionMilestonesSnapshots(localValue, cloudValue) {
+  const local = localValue && typeof localValue === "object" && !Array.isArray(localValue) ? localValue : {};
+  const cloud = cloudValue && typeof cloudValue === "object" && !Array.isArray(cloudValue) ? cloudValue : {};
+  const out = {};
+  for (const key of new Set([...Object.keys(local), ...Object.keys(cloud)])) {
+    const level = Math.max(0, Math.trunc(Number(key) || 0));
+    if (!level) continue;
+    const a = normalizeMilestoneEntry(level, local[key]), b = normalizeMilestoneEntry(level, cloud[key]);
+    out[level] = {
+      type: b.type || a.type || progressionMilestoneType(level),
+      entityId: b.entityId || a.entityId || milestoneEntityDefinition(level)?.id || "",
+      status: higherStatus(a.status, b.status, milestoneStatusRank),
+      updatedAt: Math.max(a.updatedAt, b.updatedAt),
+    };
+  }
+  return out;
+}
+function progressionMilestoneType(level) {
+  const n = Math.max(0, Math.trunc(Number(level) || 0));
+  if (n > 0 && n % 1000 === 0) return "god";
+  if (n > 0 && n % 100 === 0) return "elemental";
+  return "";
+}
+function milestoneEntityDefinition(level) { return ENTITY_DEFS.find((x) => x.milestoneLevel === Number(level)) || null; }
+function progressionMilestoneForLevel(level) {
+  const type = progressionMilestoneType(level);
+  if (!type) return null;
+  const definition = milestoneEntityDefinition(level);
+  const entity = definition && definition.milestoneActive !== false ? definition : null;
+  return { level: Number(level), type, entity, reserved: !entity };
+}
+function markMilestone(p, level, status, entityId = "") {
+  if (!p || !level) return null;
+  p.progressionMilestones ||= {};
+  const current = normalizeMilestoneEntry(level, p.progressionMilestones[level]);
+  const nextStatus = higherStatus(current.status, status, milestoneStatusRank);
+  p.progressionMilestones[level] = {
+    type: current.type || progressionMilestoneType(level),
+    entityId: cleanProgressId(entityId) || current.entityId || milestoneEntityDefinition(level)?.id || "",
+    status: nextStatus,
+    updatedAt: nextStatus !== current.status ? Date.now() : current.updatedAt,
+  };
+  return p.progressionMilestones[level];
+}
+function migrateMascotProgress(p = profile) {
+  if (!p || typeof p !== "object") return p;
+  p.mascotProgress = p.mascotProgress && typeof p.mascotProgress === "object" && !Array.isArray(p.mascotProgress) ? p.mascotProgress : {};
+  p.godProgress = p.godProgress && typeof p.godProgress === "object" && !Array.isArray(p.godProgress) ? p.godProgress : {};
+  p.progressionMilestones = p.progressionMilestones && typeof p.progressionMilestones === "object" && !Array.isArray(p.progressionMilestones) ? p.progressionMilestones : {};
+  p.retiredCompanionRewards = p.retiredCompanionRewards && typeof p.retiredCompanionRewards === "object" && !Array.isArray(p.retiredCompanionRewards) ? p.retiredCompanionRewards : {};
+
+  const legacyUnlocked = Array.isArray(p.companionsUnlocked) ? [...new Set(p.companionsUnlocked.map(String))] : [];
+  for (const retiredId of RETIRED_COMPANION_IDS) if (legacyUnlocked.includes(retiredId)) p.retiredCompanionRewards[retiredId] = true;
+
+  const normalized = {};
+  for (const [id, value] of Object.entries(p.mascotProgress)) {
+    if (!entityDef(id) && value && typeof value === "object" && !Array.isArray(value)) normalized[id] = { ...value };
+  }
+  for (const def of ENTITY_DEFS.filter((x) => x.type !== "god")) {
+    let progress = normalizeMascotProgressEntry(def, p.mascotProgress[def.id]);
+    if (legacyUnlocked.includes(def.id) && entityCanBeSelected(def)) {
+      progress.status = higherStatus(progress.status, "companion");
+      progress.level = Math.max(progress.level, def.type === "mascot" ? 2 : 1);
+    }
+    if (entityStatusRank(progress.status) > 0 || legacyUnlocked.includes(def.id)) normalized[def.id] = progress;
+  }
+  p.mascotProgress = normalized;
+
+  const gods = {};
+  for (const [id, value] of Object.entries(p.godProgress)) {
+    if (!entityDef(id) && value && typeof value === "object" && !Array.isArray(value)) gods[id] = { ...value };
+  }
+  for (const def of ENTITY_DEFS.filter((x) => x.type === "god")) {
+    const progress = normalizeGodProgressEntry(def, p.godProgress[def.id]);
+    if (godStatusRank(progress.status) > 0 || progress.favorLevel > 0 || progress.favorXp > 0) gods[def.id] = progress;
+  }
+  p.godProgress = gods;
+
+  p.companionsUnlocked = legacyUnlocked.filter((id) => {
+    const def = entityDef(id);
+    return entityCanBeSelected(def) && !RETIRED_COMPANION_IDS.includes(id);
+  });
+  for (const [id, progress] of Object.entries(p.mascotProgress)) {
+    const def = entityDef(id);
+    if (entityCanBeSelected(def) && entityStatusRank(progress.status) >= entityStatusRank("companion") && !p.companionsUnlocked.includes(id)) p.companionsUnlocked.push(id);
+  }
+
+  const completedThrough = Math.max(0, Math.trunc(Number(p.currentLevel || 1) - 1), Math.trunc(Number(p.stats?.levelsCompleted) || 0));
+  for (let level = 100; level <= completedThrough; level += 100) {
+    const type = progressionMilestoneType(level);
+    if (type) markMilestone(p, level, "available", milestoneEntityDefinition(level)?.id || "");
+  }
+  for (const def of ENTITY_DEFS.filter((x) => x.milestoneLevel)) {
+    if (def.type === "god") {
+      const gp = p.godProgress[def.id];
+      if (gp && godStatusRank(gp.status) >= godStatusRank("recognized")) markMilestone(p, def.milestoneLevel, "completed", def.id);
+    } else {
+      const mp = p.mascotProgress[def.id];
+      if (mp && entityStatusRank(mp.status) >= entityStatusRank("captured")) markMilestone(p, def.milestoneLevel, "completed", def.id);
+    }
+  }
+  p.mascotProgressVersion = MASCOT_PROGRESS_VERSION;
+  if (RETIRED_COMPANION_IDS.includes(p.settings?.companion) || !entityCanBeSelected(entityDef(p.settings?.companion))) {
+    p.settings ||= {};
+    p.settings.companion = "";
+  }
+  return p;
+}
+function companionUnlocked(def, p = profile) {
+  const entity = typeof def === "string" ? entityDef(def) : def;
+  if (!entityCanBeSelected(entity)) return false;
+  const unlocked = new Set(Array.isArray(p?.companionsUnlocked) ? p.companionsUnlocked : []);
+  if (unlocked.has(entity.id)) return true;
+  return entityStatusRank(p?.mascotProgress?.[entity.id]?.status) >= entityStatusRank("companion");
+}
+function availableCompanions(p = profile) { return COMPANION_DEFS.filter((x) => entityCanBeSelected(x) && companionUnlocked(x, p)); }
 function companionUnlockLabel(def) {
   if (def?.unlockLabel) return def.unlockLabel;
+  if (def?.milestoneLevel) return `После испытания на уровне ${def.milestoneLevel}`;
   if (def?.unlockChapter) return `После финала главы ${def.unlockChapter}`;
   return "Открывается позже";
 }
@@ -66,7 +428,7 @@ function companionChapterProgress(p = profile) {
 function syncBossCompanionsFromProgress({ notify = false } = {}) {
   const chapters = companionChapterProgress(profile);
   let fresh = 0;
-  for (const def of COMPANION_DEFS.filter((x) => x.bossReward && x.unlockChapter && chapters >= x.unlockChapter)) {
+  for (const def of COMPANION_DEFS.filter((x) => x.type === "mascot" && x.bossReward && x.unlockChapter && chapters >= x.unlockChapter)) {
     const before = companionUnlocked(def, profile);
     unlockCompanion(def.id, { notify: !before && notify, select: false });
     if (!before) fresh++;
@@ -86,8 +448,8 @@ function syncAchievementCompanions({ notify = false } = {}) {
 }
 function ensureCompanionSelection(p = profile) {
   if (!p?.settings) return null;
-  const current = companionDef(p.settings.companion);
-  if (companionUnlocked(current, p)) return current;
+  const current = entityDef(p.settings.companion);
+  if (current && companionUnlocked(current, p)) return current;
   const fallback = availableCompanions(p)[0] || null;
   p.settings.companion = fallback?.id || "";
   return fallback;
@@ -98,13 +460,41 @@ function emojiSvgDataUri(emoji = "✨") {
 }
 function companionAsset(def) { return def?.image || emojiSvgDataUri(def?.emoji || "✨"); }
 function unlockCompanion(id, { notify = true, select = false } = {}) {
-  const def = companionDef(id);
+  const def = entityDef(id);
+  if (!def) return null;
+  profile.mascotProgress ||= {};
+  profile.godProgress ||= {};
   profile.companionsUnlocked ||= [];
-  if (!profile.companionsUnlocked.includes(def.id)) {
+  const now = Date.now();
+
+  if (def.type === "god") {
+    const progress = normalizeGodProgressEntry(def, profile.godProgress[def.id]);
+    progress.status = higherStatus(progress.status, "recognized", godStatusRank);
+    progress.favorLevel = Math.max(progress.favorLevel, 1);
+    progress.updatedAt = now;
+    profile.godProgress[def.id] = progress;
+    if (def.milestoneLevel) markMilestone(profile, def.milestoneLevel, "completed", def.id);
+    return def;
+  }
+
+  const progress = normalizeMascotProgressEntry(def, profile.mascotProgress[def.id]);
+  const selectable = entityCanBeSelected(def);
+  const targetStatus = selectable ? "companion" : "captured";
+  const wasStatus = progress.status;
+  progress.status = higherStatus(progress.status, targetStatus);
+  progress.level = Math.max(progress.level, 1);
+  progress.capturedAt ||= now;
+  progress.updatedAt = now;
+  profile.mascotProgress[def.id] = progress;
+  if (def.milestoneLevel) markMilestone(profile, def.milestoneLevel, "completed", def.id);
+
+  if (selectable && !profile.companionsUnlocked.includes(def.id)) {
     profile.companionsUnlocked.push(def.id);
     if (notify && typeof queueAchievementNotifications === "function") queueAchievementNotifications([{ icon: def.emoji || "🦉", title: `Новый маскот: ${def.name}`, desc: def.rewardText || "Напарник уже доступен в разделе «Стиль»" }]);
+  } else if (!selectable && wasStatus !== progress.status && notify && typeof queueAchievementNotifications === "function") {
+    queueAchievementNotifications([{ icon: def.emoji || "◆", title: `${def.name} повержен`, desc: def.rewardText || "Рубеж пройден" }]);
   }
-  if (select || !companionUnlocked(companionDef(profile.settings?.companion), profile)) {
+  if (selectable && (select || !companionUnlocked(entityDef(profile.settings?.companion), profile))) {
     profile.settings ||= {};
     profile.settings.companion = def.id;
   }
@@ -179,16 +569,6 @@ const COMPANION_FACTS = Object.freeze({
     "Многозадачность обычно снижает качество внимания — последовательное решение задач надёжнее.",
     "Сложная задача становится проще, если удерживать в голове только ближайший следующий шаг."
   ],
-  gandalf: [
-    "Самые сложные задачи почти всегда решаются серией небольших, но точных шагов.",
-    "Когда кажется, что выходов нет, мозгу часто помогает короткая пауза и новый взгляд на расклад.",
-    "Опытный игрок не спешит — он заранее замечает, какие варианты ведут в тупик."
-  ],
-  clip: [
-    "Скрепки придумали в XIX веке, а в 90-х они стали символом офисной эпохи и первых домашних компьютеров.",
-    "Повторение в разных режимах помогает мозгу лучше переносить навык из одной ситуации в другую.",
-    "Ностальгия тоже полезна: знакомые образы и стиль прошлого могут сильнее закреплять воспоминания."
-  ]
 });
 function companionFact(id = profile?.settings?.companion) {
   const list = COMPANION_FACTS[companionDef(id).id] || COMPANION_FACTS.owl;
@@ -208,8 +588,6 @@ const COMPANION_VOICES = Object.freeze({
   panda:{ start:["Спокойно начинаем","Без суеты","Панда уже устроилась поудобнее","Точный ход любит тишину","Дышим ровно и смотрим на связи"], win:["Идеально спокойно","Очень чистая победа","Без суеты и красиво","Панда довольно улыбается","Такой темп мне нравится"], error:["Спешка нам ни к чему","Ничего, просто посмотрим ещё раз","Мягко возвращаемся к задаче","Один промах не портит партию","Попробуем спокойнее"] , combo:["Тихая, но мощная серия","Вот это плавность","Связи идут сами","Очень ровное комбо","Спокойный ритм работает"] },
   frog:{ start:["Прыг-скок, начинаем","Сейчас будет весело","Лягушка уже готова к эксперименту","Посмотрим, куда прыгнет мысль","Расклад пахнет приключением"], win:["Ква-сота","Вот это прыжок к победе","Весело и точно","Лягушка в восторге","Получилось ярко"], error:["Ой, не на ту кочку","Прыгнули чуть мимо","Ничего, следующая кочка наша","Эксперимент дал результат","Попробуем другой прыжок"] , combo:["Прыг-прыг-комбо","Серия скачет отлично","Вот это цепочка","Не останавливайся","Ловкие ходы пошли"] },
   octopus:{ start:["Разложим всё по щупальцам","Планов много — выберем лучший","Смотрим на несколько ходов вперёд","Осьминог уже строит схему","Начинаем системно"], win:["Всё разложено идеально","Система сработала","Очень умная партия","Осьминог доволен схемой","План выполнен точно"], error:["Один из планов не сработал","Пересчитаем варианты","Ничего, осталось ещё семь идей","Схему можно улучшить","Этот путь вычёркиваем"] , combo:["Система набирает скорость","Щупальца считают комбо","Отличная последовательность","План складывается","Связи идут по схеме"] },
-  gandalf:{ start:["Путь открыт","Настало время испытания","Идём мудро","Не все дороги видны сразу","Сохраняй ясность мысли"], win:["Ты прошёл достойно","Путь завершён","Мудрость была на твоей стороне","Сильная победа","Достойная партия"], error:["Даже мудрые ошибаются","Путь ещё не закрыт","Вернись к мысли, а не к спешке","Ошибку можно превратить в урок","Продолжай — дорога впереди"] , combo:["Сила серии растёт","Ходы складываются в путь","Хорошая цепочка","Не прерывай ритм","Мудрый темп"] },
-  clip:{ start:["Похоже, ты собираешь расклад","Скрепка готова помочь","Открываю режим советчика","Так, документ... то есть уровень","Начинаем по-офисному"], win:["Сохранено без ошибок","Отличный результат, пользователь","Можно печатать диплом","Скрепка одобряет","Это достойно кнопки «Сохранить»"], error:["Похоже, здесь нужна помощь","Неверная операция, но всё поправимо","Отмена ещё не конец света","Попробуем другой пункт меню","Скрепка видела и похуже"] , combo:["Серия сохранена","Вот это горячие клавиши","Комбо успешно обработано","Система работает быстро","Отличная последовательность"] },
   birthday:{ start:["Праздник продолжается","Капибара принесла хорошее настроение","Сегодня играем с бонусом к улыбке","Пусть расклад будет подарком","Начинаем празднично"], win:["Вот это подарок","Праздничная победа","Капибара хлопает лапками","Красиво отпраздновали уровень","Ещё один повод улыбнуться"], error:["На празднике всё можно поправить","Ничего, торт от этого не исчезнет","Улыбнулись и пробуем снова","Один промах празднику не помеха","Следующий ход будет подарком"] , combo:["Праздничное комбо","Свечи зажигаются одна за другой","Вот это фейерверк ходов","Серия как подарок","Продолжаем праздник"] }
 });
 const COMPANION_CONTEXT_ENDINGS = Object.freeze({
@@ -983,7 +1361,7 @@ const ACHIEVEMENTS = [
   { id: "duelGold10", icon: "🥇10", title: "Золотой дуэлянт", desc: "Получить 10 золотых медалей в дуэлях", test: (p) => (p.stats.duelGold || 0) >= 10 },
   { id: "allPictures", icon: "🦁", title: "Галерея собрана", desc: "Открыть все карточки с рисунками", rare: true, legendary: true, test: (p) => typeof hasDiscoveredAllVisualCards === "function" && hasDiscoveredAllVisualCards(p) },
   { id: "allWords", icon: "🦜", title: "Птица-говорун", desc: "Открыть все карточки со словами", rare: true, legendary: true, test: (p) => typeof hasDiscoveredAllWordCards === "function" && hasDiscoveredAllWordCards(p) },
-  { id: "retro90", icon: "📼", title: "Я из 90-х", desc: "Пройти все режимы по 90 раз", rare: true, legendary: true, test: (p) => retro90AchievementReady(p) },
+  { id: "retro90", icon: "📼", title: "Я из 90-х", desc: "Пройти все режимы по 90 раз. Награда: уникальный титул «Я из 90-х»", rare: true, legendary: true, test: (p) => retro90AchievementReady(p) },
   { id: "allAchievements", icon: "🏆", title: "Абсолютный коллекционер", desc: "Открыть все остальные достижения", rare: true, legendary: true, test: (p) => ACHIEVEMENTS.filter((a) => a.id !== "allAchievements").every((a) => p.achievements.includes(a.id)) },
 ];
 const DEFAULT_STATS = {

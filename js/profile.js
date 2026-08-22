@@ -34,6 +34,11 @@ function defaultProfile() {
     favoriteCategory: "",
     featuredAchievements: [],
     companionsUnlocked: [],
+    mascotProgressVersion: 0,
+    mascotProgress: {},
+    godProgress: {},
+    progressionMilestones: {},
+    retiredCompanionRewards: {},
     birthDate: "",
     birthdayWeek: { lastCelebratedYear: 0, start: "", end: "" },
     installRewardClaimed: false,
@@ -103,6 +108,11 @@ function loadProfile() {
         onboardingComplete: typeof p.onboardingComplete === "boolean" ? p.onboardingComplete : !!p.tutorialComplete,
         featuredAchievements: Array.isArray(p.featuredAchievements) ? p.featuredAchievements : [],
         companionsUnlocked: Array.isArray(p.companionsUnlocked) ? p.companionsUnlocked : [],
+        mascotProgressVersion: Math.max(0, Math.trunc(Number(p.mascotProgressVersion) || 0)),
+        mascotProgress: p.mascotProgress && typeof p.mascotProgress === "object" && !Array.isArray(p.mascotProgress) ? p.mascotProgress : {},
+        godProgress: p.godProgress && typeof p.godProgress === "object" && !Array.isArray(p.godProgress) ? p.godProgress : {},
+        progressionMilestones: p.progressionMilestones && typeof p.progressionMilestones === "object" && !Array.isArray(p.progressionMilestones) ? p.progressionMilestones : {},
+        retiredCompanionRewards: p.retiredCompanionRewards && typeof p.retiredCompanionRewards === "object" && !Array.isArray(p.retiredCompanionRewards) ? p.retiredCompanionRewards : {},
         birthDate: /^\d{4}-\d{2}-\d{2}$/.test(String(p.birthDate || "")) ? String(p.birthDate) : "",
         developerMailSeen: Array.isArray(p.developerMailSeen) ? p.developerMailSeen : [],
         developerMailDeleted: Array.isArray(p.developerMailDeleted) ? p.developerMailDeleted : [],
@@ -117,6 +127,7 @@ function loadProfile() {
   return defaultProfile();
 }
 let profile = loadProfile();
+if (typeof migrateMascotProgress === "function") migrateMascotProgress(profile);
 if (typeof ensureCompanionSelection === "function") ensureCompanionSelection(profile);
 function inferLegacyCompletedThrough() {
   let completed = Math.max(0, (+profile.currentLevel || 1) - 1);
@@ -259,6 +270,7 @@ function migrateAchievementCounters() {
 }
 migrateAchievementCounters();
 function migrateMetaProfile() {
+  if (typeof migrateMascotProgress === "function") migrateMascotProgress(profile);
   profile.categoryStats = profile.categoryStats || {};
   for (const id of profile.discovered || []) {
     const old = profile.categoryStats[id] || {};
@@ -308,6 +320,7 @@ function migrateMetaProfile() {
   profile.pushClientId = String(profile.pushClientId || "");
   profile.settings.startupScreen = profile.settings.startupScreen === "game" ? "game" : "home";
   reconcileCampaignProgress(profile);
+  if (typeof migrateMascotProgress === "function") migrateMascotProgress(profile);
   if (!profile.xpMigrated) {
     profile.xp = Math.max(+profile.xp || 0,
       (+profile.stats.levelsCompleted || 0) * 45 +

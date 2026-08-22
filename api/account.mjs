@@ -1,5 +1,6 @@
-import { checkRateLimit, cloudProfileVersion, currentSession, json, mergeCloudProfile, readCloudProfile, sameOrigin, userKey } from "./_auth-lib.mjs";
+import { checkRateLimit, cloudProfileVersion, currentSession, json, mergeCloudProfile, profileKey, readCloudProfile, sameOrigin, userKey, writeJsonKey } from "./_auth-lib.mjs";
 import { redis } from "./_push-lib.mjs";
+import { mergeEntityProgressDomains } from "./_progression-merge-lib.mjs";
 
 export async function GET(request) {
   try {
@@ -31,7 +32,17 @@ export async function POST(request) {
     const session = await currentSession(request);
     if (!session) return json({ error: "unauthorized" }, 401);
     const body = await request.json().catch(() => ({}));
-    const merged = await mergeCloudProfile(session.userId, body.profile || {}, { clientVersion: Number(body.version) || 0 });
+    const incomingProfile = body.profile && typeof body.profile === "object" ? body.profile : {};
+    const cloudBeforeMerge = await readCloudProfile(session.userId);
+    const entityDomains = mergeEntityProgressDomains(cloudBeforeMerge, incomingProfile);
+    const merged = await mergeCloudProfile(session.userId, incomingProfile, { clientVersion: Number(body.version) || 0 });
+
+    // The generic account merge intentionally unions most arrays. Mascot traits,
+    // ability loadouts and divine graces are bounded choices, so overwrite only
+    // these domains with their conflict-aware merge before persisting the result.
+    Object.assign(merged.profile, entityDomains);
+    await writeJsonKey(profileKey(session.userId), merged.profile);
+
     return json({ ok: true, profile: merged.profile, version: merged.version, syncedAt: Date.now() });
   } catch (error) {
     if (error?.message === "REDIS_NOT_CONFIGURED") return json({ error: "redis_not_configured" }, 503);

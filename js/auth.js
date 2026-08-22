@@ -111,6 +111,12 @@ function mergeAccountProfiles(localProfile, cloudProfile) {
   const cloud = cloudProfile && typeof cloudProfile === "object" ? cloudProfile : {};
   const merged = mergeAccountProgress(local, cloud);
   merged.dailyQuests = mergeDailyQuestSnapshots(local.dailyQuests, cloud.dailyQuests);
+  // Mascot/entity progression has bounded choice arrays and timestamped loadouts.
+  // Generic array union would create impossible states (for example 4 developed
+  // traits instead of 2), so these domains use purpose-built conflict resolution.
+  if (typeof mergeMascotProgressSnapshots === "function") merged.mascotProgress = mergeMascotProgressSnapshots(local.mascotProgress, cloud.mascotProgress);
+  if (typeof mergeGodProgressSnapshots === "function") merged.godProgress = mergeGodProgressSnapshots(local.godProgress, cloud.godProgress);
+  if (typeof mergeProgressionMilestonesSnapshots === "function") merged.progressionMilestones = mergeProgressionMilestonesSnapshots(local.progressionMilestones, cloud.progressionMilestones);
   // Campaign v2 is a corrective migration. When the cloud still contains the old
   // inflated campaign counters, the repaired local star map must win once instead
   // of being unioned with the obsolete synthetic tail.
