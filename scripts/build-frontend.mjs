@@ -26,7 +26,6 @@ for (const entry of await readdir(root)) {
   }
 }
 
-
 // Build-time SEO metadata keeps the source game shell uncluttered while the
 // deployed HTML remains fully crawlable without executing JavaScript.
 const indexPath = path.join(out, "index.html");
@@ -78,6 +77,20 @@ if (!indexHtml.includes(seoMarker)) {
     })}</script>`;
   indexHtml = indexHtml.replace(/(\s*<title>)/, `${seoHead}$1`);
 }
+
+// Product patches are intentionally injected at build time after all core
+// modules they extend, but before app.js starts bootstrap. This keeps the
+// source HTML clean and guarantees first-run UX hooks are installed in time.
+const appScriptTag = '    <script src="./js/app.js"></script>';
+const patchScripts = ["./js/v30-patch.js", "./js/v31-patch.js"];
+const missingPatchTags = patchScripts
+  .filter((src) => !indexHtml.includes(`src="${src}"`))
+  .map((src) => `    <script src="${src}"></script>`);
+if (missingPatchTags.length) {
+  if (!indexHtml.includes(appScriptTag)) throw new Error("index.html is missing app.js script tag");
+  indexHtml = indexHtml.replace(appScriptTag, `${missingPatchTags.join("\n")}\n${appScriptTag}`);
+}
+
 indexHtml = indexHtml.replace(
   /(<meta name="slovasyans-build" content=")[^"]*(" \/>)/,
   `$1${buildId}$2`,

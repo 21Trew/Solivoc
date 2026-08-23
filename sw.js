@@ -85,6 +85,9 @@ const CORE = [
   "./js/game/drag.js",
   "./js/progression.js",
   "./js/components/hub.js",
+  "./js/tutorial-engine.mjs",
+  "./js/v30-patch.js",
+  "./js/v31-patch.js",
   "./js/app.js"
 ];
 
@@ -94,19 +97,21 @@ const NETWORK_FIRST = new Set([
 ]);
 
 self.addEventListener("install", (event) => {
-  // Keep updates explicit. The app already has a visible update banner and
-  // sends SKIP_WAITING only after the player asks to update.
-  //
-  // cache:"reload" prevents a newly installed worker from seeding its cache
-  // with stale HTTP-cache entries after a deployment.
+  // Each deployed build owns a distinct cache. Install the complete new
+  // generation and activate it immediately: there is no manual "Обновить"
+  // step anymore. The page layer decides when a reload is safe for an active
+  // game and otherwise picks the new worker up on the next launch/navigation.
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     const requests = CORE.map((url) => new Request(url, { cache: "reload" }));
     await cache.addAll(requests);
+    await self.skipWaiting();
   })());
 });
 
 self.addEventListener("message", (event) => {
+  // Kept for compatibility with already-open older clients. New clients no
+  // longer need to send SKIP_WAITING because install activates automatically.
   if (event.data?.type === "SKIP_WAITING") {
     self.skipWaiting();
     return;
@@ -120,12 +125,11 @@ self.addEventListener("message", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches
-      .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
-      .then(() => self.clients.claim()),
-  );
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)));
+    await self.clients.claim();
+  })());
 });
 
 function shouldCache(request, url, response) {
@@ -158,8 +162,7 @@ self.addEventListener("fetch", (event) => {
 
     // Keep HTML and JS from the same cache generation. Serving a fresh HTML
     // document together with old cached scripts can break the app between
-    // deployments. SW update discovery still happens through register(), and
-    // the player switches generations explicitly via the update banner.
+    // deployments. New generations are installed automatically by the worker.
     if (event.request.mode === "navigate") {
       const shell = (await caches.match(event.request)) || (await caches.match("./index.html")) || (await caches.match("./"));
       if (shell) return shell;
