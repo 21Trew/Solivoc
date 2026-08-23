@@ -32,12 +32,16 @@ function makeLevel(level = 1, opts = {}) {
   if (state.mode === "regular") rememberCategories(state.categoryIds);
   track("level_started", { level: state.level, mode: state.mode, seed: state.seed, special: state.special?.id || "" });
   render();
+  // Commit a new round synchronously. On iOS the tab can be killed before the
+  // normal debounced render save gets a chance to run.
+  save?.({ immediate: true });
   updateCoach();
   setBackgroundMusic?.(musicModeForState?.(state) || "game");
   if (needsSpecialIntro && typeof showSpecialLevelIntro === "function") {
     showSpecialLevelIntro(state.special, () => {
       initialDealPending = true;
       render();
+      save?.({ immediate: true });
       setTimeout(() => scheduleDeadlockCheck(900), 250);
     });
   } else {
@@ -51,14 +55,14 @@ function restartCurrentLevel() {
   if (state.mode === "challenge") return makeLevel(state.level, { mode: "challenge", seed: state.seed, challengeCode: state.challengeCode, challengeRole: state.challengeRole, challengeCreatorName: state.challengeCreatorName, challengeCreatorAvatar: state.challengeCreatorAvatar, challengeCreatorResult: state.challengeCreatorResult, challengeGuestToken: state.challengeGuestToken, duelMode: state.duelMode, duelModeChoice: state.duelModeChoice, seriesId: state.seriesId, seriesRound: state.seriesRound, seriesScoreCreator: state.seriesScoreCreator, seriesScoreGuest: state.seriesScoreGuest, cardSourceMode: state.cardSourceMode });
   const reshuffled = typeof reshuffleStateFromBlueprint === "function" ? reshuffleStateFromBlueprint(state) : null;
   if (reshuffled) {
-    state = reshuffled; history = []; resetCombo(); initialDealPending = true; recordLevelKnowledge?.(state); render(); updateCoach(); setBackgroundMusic?.(musicModeForState?.(state)||"game"); markStateChanged?.();
+    state = reshuffled; history = []; resetCombo(); initialDealPending = true; recordLevelKnowledge?.(state); render(); updateCoach(); setBackgroundMusic?.(musicModeForState?.(state)||"game"); markStateChanged?.(); save?.({ immediate:true });
     setTimeout(()=>showCompanionBubble?.(companionStartLine?.(),3200),520);
     return true;
   }
   return makeLevel(state.level, { mode: state.mode, seed: `${state.seed}:retry:${Date.now()}`, cardSourceMode: state.cardSourceMode, categoryCooldownIds: state.categoryCooldownIds, specialIntro: false, customRules: state.customRules || null, forceSolvable: true });
 }
 const MAX_UNDO_SNAPSHOTS = 10;
-const IOS_UNDO_SNAPSHOTS = 6;
+const IOS_UNDO_SNAPSHOTS = 4;
 let stateSaveTimer = null, lastPersistedStateJson = "", lastBackupAt = 0;
 function snapshot() {
   try { return JSON.stringify(state); } catch { return null; }
@@ -84,7 +88,7 @@ function persistStateNow() {
       const json = JSON.stringify(state);
       if (json !== lastPersistedStateJson) {
         const now = Date.now();
-        if (lastPersistedStateJson && now - lastBackupAt > 30000) {
+        if (lastPersistedStateJson && now - lastBackupAt > 15000) {
           try { localStorage.setItem(SAVE_BACKUP_KEY, lastPersistedStateJson); lastBackupAt = now; } catch {}
         }
         try { localStorage.setItem(SAVE_KEY, json); }
@@ -106,7 +110,8 @@ function save(options = {}) {
   const immediate = options === true || options?.immediate === true;
   if (immediate) return persistStateNow();
   clearTimeout(stateSaveTimer);
-  stateSaveTimer = setTimeout(persistStateNow, 220);
+  const delay = typeof stabilityConstrainedMode === "function" && stabilityConstrainedMode() ? 110 : 220;
+  stateSaveTimer = setTimeout(persistStateNow, delay);
   return true;
 }
 function scheduleSave() { return save(); }
@@ -122,11 +127,29 @@ function pauseActiveRun() {
 function resumeActiveRun() {
   if (state?.run?.pausedAt) { state.run.pausedDurationMs = (+state.run.pausedDurationMs || 0) + Math.max(0, Date.now() - state.run.pausedAt); state.run.pausedAt = 0; }
 }
+function savedRoundAlreadyCompleted(s) {
+  return !!s && s.mode === "regular" && (
+    s.rewarded === true ||
+    (Number(s.totalCategories) > 0 && Number(s.completed) >= Number(s.totalCategories))
+  );
+}
+function clearCompletedSavedRound() {
+  try { localStorage.removeItem(SAVE_KEY); } catch {}
+  try { localStorage.removeItem(SAVE_BACKUP_KEY); } catch {}
+  lastPersistedStateJson = "";
+  lastBackupAt = 0;
+}
 function load({ render: shouldRender = true } = {}) {
   for (const key of [SAVE_KEY, SAVE_BACKUP_KEY]) {
     try {
       const raw = localStorage.getItem(key);
       const s = JSON.parse(raw);
+      if (savedRoundAlreadyCompleted(s)) {
+        // Never reopen a regular round that has already been rewarded. This was
+        // the source of the "вернулся в уровень, а он уже пройден" state.
+        clearCompletedSavedRound();
+        break;
+      }
       if (s?.columns) {
         lastPersistedStateJson = key === SAVE_KEY ? raw : "";
         const restored = normalizeLoadedLayout(s); state = restored.state;
@@ -145,7 +168,9 @@ function load({ render: shouldRender = true } = {}) {
   }
   try {
     const s = JSON.parse(localStorage.getItem(OLD_SAVE_KEY));
-    if (s?.columns) {
+    if (savedRoundAlreadyCompleted(s)) {
+      try { localStorage.removeItem(OLD_SAVE_KEY); } catch {}
+    } else if (s?.columns) {
       profile.tutorialComplete = true;
       const restored = normalizeLoadedLayout(s);
       state = restored.state;
@@ -154,7 +179,7 @@ function load({ render: shouldRender = true } = {}) {
       if (shouldRender) { render(); updateCoach(); }
       if (shouldRender && restored.repairedInvalidState) setTimeout(() => showToast("Сломанный расклад восстановлен без награды"), 120);
       else if (shouldRender && restored.migrated) setTimeout(() => showToast("Расклад адаптирован под 5 колонок"), 120);
-      return;
+      return true;
     }
   } catch {}
   if (profile.activeMarathon?.marathonId) {

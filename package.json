@@ -8,7 +8,8 @@
   },
   "scripts": {
     "vapid": "web-push generate-vapid-keys --json",
-    "check": "node scripts/check-source.mjs && npm run build:frontend && npm run build:yandex",
+    "test": "node --test tests/*.test.mjs",
+    "check": "node scripts/check-source.mjs && npm test && npm run build:frontend && npm run build:yandex",
     "build:frontend": "node scripts/build-frontend.mjs",
     "build:yandex": "node scripts/build-yandex.mjs",
     "build:deploy": "npm run build:frontend && npm run build:yandex"

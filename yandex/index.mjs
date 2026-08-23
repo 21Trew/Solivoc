@@ -7,6 +7,7 @@ import * as bootstrap from "../api/bootstrap.mjs";
 import * as challenges from "../api/challenges.mjs";
 import * as duelShare from "../api/duel-share.mjs";
 import * as leaderboard from "../api/leaderboard.mjs";
+import * as oauthYandex from "../api/oauth-yandex.mjs";
 import * as push from "../api/push.mjs";
 import * as reminders from "../api/reminders.mjs";
 import * as version from "../api/version.mjs";
@@ -19,6 +20,7 @@ const ROUTES = new Map([
   ["bootstrap", bootstrap],
   ["challenges", challenges],
   ["leaderboard", leaderboard],
+  ["oauth-yandex", oauthYandex],
   ["push", push],
   ["reminders", reminders],
   ["version", version],

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { checkRateLimit, currentSession, sameOrigin } from "./_auth-lib.mjs";
 import { redis, redisPipeline } from "./_push-lib.mjs";
 
-const BOARD_LIST = Object.freeze(["stars","levels","daily","marathon","combo","duel","time","moves","onePass"]);
+const BOARD_LIST = Object.freeze(["stars","levels","daily","marathon","zen","combo","duel","pictures","time","moves","noMistakes","onePass","hardcore"]);
 const BOARDS = new Set(BOARD_LIST);
 const LEADERBOARD_MAX_MEMBERS = 2000, LEADERBOARD_TTL = 180 * 24 * 60 * 60;
 function json(data,status=200){return Response.json(data,{status,headers:{"Cache-Control":"no-store, max-age=0"}});}
@@ -14,8 +14,8 @@ function playerKey(id){return `worditaire:leaderboard:player:${id}`;}
 function num(value,max=1e12){const n=Number(value);return Number.isFinite(n)?Math.max(0,Math.min(max,n)):0;}
 function cleanValues(v={}){return{
   stars:Math.floor(num(v.stars,1e7)), levels:Math.floor(num(v.levels,1e7)), daily:Math.floor(num(v.daily,1e7)),
-  marathon:Math.floor(num(v.marathon,1e7)), combo:Math.floor(num(v.combo,1e7)), duel:Math.floor(num(v.duel,1e7)),
-  time:Math.floor(num(v.time,86400000)), moves:Math.floor(num(v.moves,100000)), onePass:Math.floor(num(v.onePass,1e7)),
+  marathon:Math.floor(num(v.marathon,1e7)), zen:Math.floor(num(v.zen,1e7)), combo:Math.floor(num(v.combo,1e7)), duel:Math.floor(num(v.duel,1e7)), pictures:Math.floor(num(v.pictures,1e7)),
+  time:Math.floor(num(v.time,86400000)), moves:Math.floor(num(v.moves,100000)), noMistakes:Math.floor(num(v.noMistakes,1e7)), onePass:Math.floor(num(v.onePass,1e7)), hardcore:Math.floor(num(v.hardcore,1e7)),
 };}
 function scoreFor(board,value){if(board==="time")return value>0?1_000_000_000-value:0;if(board==="moves")return value>0?1_000_000-value:0;return value;}
 function accountKeyFor(session){const email=String(session?.user?.email||"").trim().toLowerCase();return email?createHash("sha256").update(`solivoc-leaderboard:${email}`).digest("hex").slice(0,32):"";}

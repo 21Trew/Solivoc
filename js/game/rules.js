@@ -12,9 +12,7 @@ function getDragPayload(card) {
     const c = state.waste[state.waste.length - 1];
     return c ? { source, groups: [{ cards: [c], faceUp: true }] } : null;
   }
-  if (source === "slot") {
-    return null;
-  }
+  if (source === "slot") return null;
   return null;
 }
 function targetFromPoint(x, y) {
@@ -25,8 +23,7 @@ function payloadGroup(p) {
   return { cards: p.groups.flatMap((g) => g.cards), faceUp: true };
 }
 function canDropTo(p, zone, idx) {
-  const moving = payloadGroup(p),
-    cc = categoryCard(moving);
+  const moving = payloadGroup(p), cc = categoryCard(moving);
   if (zone === "slot") {
     if (state.special?.lockedSlot && idx === state.slots.length - 1 && state.completed < (state.special.unlockAfter || 1)) return false;
     const dest = state.slots[idx];
@@ -52,13 +49,11 @@ function isProductiveDrop(p, zone, idx) {
   const dest = state.columns[idx];
   if (dest.length) return canMerge(dest[dest.length - 1], payloadGroup(p));
   if (p.source !== "column") return false;
-  return p.start > 0; // moving to empty column matters only when it exposes a hidden card.
+  return p.start > 0;
 }
 function detachPayload(p) {
   if (p.source === "column") {
-    const col = state.columns[p.ci],
-      start = firstOpenIndex(col),
-      groups = col.slice(start);
+    const col = state.columns[p.ci], start = firstOpenIndex(col), groups = col.slice(start);
     col.splice(start);
     revealLast(col);
     return groups;
@@ -72,24 +67,15 @@ function detachPayload(p) {
   return [];
 }
 function slotIsComplete(i) {
-  const g = state.slots[i],
-    cc = g && categoryCard(g);
+  const g = state.slots[i], cc = g && categoryCard(g);
   return !!(cc && wordCount(g) === cc.total);
 }
 async function finalizeCompletedSlot(i) {
-  const before = state.slots[i],
-    cc = before && categoryCard(before);
-  if (!cc || !slotIsComplete(i)) {
-    categoryAnimating = false;
-    return;
-  }
+  const before = state.slots[i], cc = before && categoryCard(before);
+  if (!cc || !slotIsComplete(i)) { categoryAnimating = false; return; }
   await animateCategoryCompletion(i, cc.label);
-  const current = state.slots[i],
-    currentCc = current && categoryCard(current);
-  if (!currentCc || currentCc.cat !== cc.cat || !slotIsComplete(i)) {
-    categoryAnimating = false;
-    return;
-  }
+  const current = state.slots[i], currentCc = current && categoryCard(current);
+  if (!currentCc || currentCc.cat !== cc.cat || !slotIsComplete(i)) { categoryAnimating = false; return; }
   state.slots[i] = null;
   state.completed++;
   if (state.mode !== "tutorial") {
@@ -102,16 +88,14 @@ async function finalizeCompletedSlot(i) {
   showToast(`✓ Категория «${cc.label}» собрана!`);
   categoryAnimating = false;
   render();
+  save?.({ immediate: true });
   markStateChanged();
 }
 function performDrop(p, target, options = {}) {
   if (!canDrop(p, target) || categoryAnimating) return false;
-  const zone = target.dataset.zone,
-    idx = +target.dataset.index,
-    productive = isProductiveDrop(p, zone, idx);
+  const zone = target.dataset.zone, idx = +target.dataset.index, productive = isProductiveDrop(p, zone, idx);
   pushHistory();
-  const groups = detachPayload(p),
-    moving = { cards: groups.flatMap((g) => g.cards), faceUp: true };
+  const groups = detachPayload(p), moving = { cards: groups.flatMap((g) => g.cards), faceUp: true };
   if (zone === "slot") {
     if (state.slots[idx]) state.slots[idx].cards.push(...moving.cards);
     else state.slots[idx] = moving;
@@ -123,22 +107,19 @@ function performDrop(p, target, options = {}) {
   state.run.moves++;
   if (state.mode === "tutorial") {
     const manual = (options.comboSource || "manual") !== "auto";
-    // Category placement is part of tutorial step 1 no matter whether it was
-    // dragged or auto-moved by a double tap. Record it before render so an
-    // animation/render interruption cannot leave the coach one step behind.
     if (zone === "slot" && categoryCard(moving)) noteTutorialAction?.("category");
     else if (manual) noteTutorialAction?.("manual");
   }
   if (typeof checkActiveRuleFailure === "function" && checkActiveRuleFailure()) return true;
-  if (options.comboEligible) {
-    if (productive) registerCombo(true, options.comboSource || "manual");
-    else resetCombo();
-  } else if ((options.comboSource || "manual") !== "auto") resetCombo();
+  if (options.comboEligible && productive) registerCombo(true, options.comboSource || "manual");
+  // A legal rearrangement is not an error. Preserve the current combo instead
+  // of silently zeroing it; resetCombo is reserved for errors, undo/hint,
+  // restart and other explicit interruption points.
   playSfx("drop");
   haptic(9);
-  // Tutorial progress is tiny and critical. Persist the state before render so
-  // iOS cannot roll the player back if WebKit suspends during a transition.
-  if (state.mode === "tutorial") save?.({ immediate: true });
+  // Every successful manual state transition is committed immediately on iOS.
+  // This avoids losing the last move if WebKit terminates the tab.
+  save?.({ immediate: true });
   render();
   if (zone === "slot" && slotIsComplete(idx)) {
     categoryAnimating = true;
@@ -161,8 +142,7 @@ function currentMovePayloads() {
     const start = firstOpenIndex(col);
     if (start < col.length) payloads.push({ source: "column", ci, start, groups: col.slice(start) });
   });
-  if (state.waste.length)
-    payloads.push({ source: "waste", groups: [{ cards: [state.waste.at(-1)], faceUp: true }] });
+  if (state.waste.length) payloads.push({ source: "waste", groups: [{ cards: [state.waste.at(-1)], faceUp: true }] });
   return payloads;
 }
 function findUsefulBoardMove() {
@@ -172,7 +152,6 @@ function findUsefulBoardMove() {
     ...state.columns.map((_, index) => ({ zone: "column", index })),
   ];
   for (const p of payloads) {
-    // Category slots and same-category merges are more useful than temporary empty-column moves.
     const ranked = zones.slice().sort((a, b) => (a.zone === "slot" ? -1 : 1) - (b.zone === "slot" ? -1 : 1));
     for (const t of ranked)
       if (canDropTo(p, t.zone, t.index) && isProductiveDrop(p, t.zone, t.index)) return { payload: p, ...t };
@@ -188,8 +167,7 @@ function accessibleReserveCards() {
 function reserveHasFutureMove() {
   const reserve = accessibleReserveCards();
   if (!reserve.length) return false;
-  const freeSlot = state.slots.some((g) => !g),
-    activeCats = new Set(state.slots.filter(Boolean).map(catOfGroup));
+  const freeSlot = state.slots.some((g) => !g), activeCats = new Set(state.slots.filter(Boolean).map(catOfGroup));
   return reserve.some((c) => (c.type === "category" ? freeSlot : activeCats.has(c.cat)));
 }
 function isDeadlockedState() {
