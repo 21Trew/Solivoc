@@ -17,6 +17,11 @@ const CORE = [
   "./icons/mascot-owl.svg",
   "./icons/mascot-cat.svg",
   "./icons/mascot-fox.svg",
+  "./icons/mascots/fox/fox-1.webp",
+  "./icons/mascots/fox/fox-2.webp",
+  "./icons/mascots/fox/fox-3.webp",
+  "./icons/mascots/fox/fox-4.webp",
+  "./icons/mascots/fox/fox-5.webp",
   "./icons/mascot-bear.svg",
   "./icons/mascot-raven.svg",
   "./icons/mascot-wolf.svg",
@@ -59,6 +64,7 @@ const CORE = [
   "./styles/base.css",
   "./styles/meta.css",
   "./styles/responsive.css",
+  "./styles/mascot-fox.css",
   "./data/categories.js",
   "./data/categories.json",
   "./js/host-routing.js",
@@ -88,6 +94,9 @@ const CORE = [
   "./js/tutorial-engine.mjs",
   "./js/v30-patch.js",
   "./js/v31-patch.js",
+  "./js/v31-first-run-ui.js",
+  "./js/v32-ui-fixes.js",
+  "./js/v33-fox-journey.js",
   "./js/app.js"
 ];
 

@@ -1,0 +1,56 @@
+/* Fox vertical slice: friendship, abilities, quests, training and evolutions. */
+.fox-journey-shelf{overflow:hidden}
+.fox-journey-card{
+  width:100%;display:grid;grid-template-columns:82px minmax(0,1fr) 24px;align-items:center;gap:14px;
+  padding:14px;border:1px solid rgba(255,170,74,.24);border-radius:20px;
+  background:linear-gradient(135deg,rgba(250,126,48,.16),rgba(119,84,255,.12));color:inherit;text-align:left;font:inherit;cursor:pointer
+}
+.fox-journey-image{display:grid;place-items:center;width:82px;height:82px;border-radius:18px;background:rgba(255,255,255,.08);overflow:hidden}
+.fox-journey-image img{width:100%;height:100%;object-fit:contain}
+.fox-journey-copy{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fox-journey-copy>small{font-size:9px;font-weight:950;letter-spacing:.12em;color:#ffbd72}
+.fox-journey-copy>b{font-size:18px}.fox-journey-copy>em{font-style:normal;font-size:12px;font-weight:850;opacity:.84}
+.fox-journey-copy>span:last-child{font-size:11px;opacity:.66}
+.fox-journey-arrow{font-style:normal;font-size:28px;opacity:.55}
+.fox-mini-progress{height:6px;border-radius:99px;background:rgba(255,255,255,.09);overflow:hidden;margin:3px 0}
+.fox-mini-progress i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#ff9d45,#ffd369)}
+.fox-shelf-note{display:block;margin:9px 4px 0;opacity:.62;font-size:11px}
+
+.companion-info-modal.fox-detail-open .companion-info-card{width:min(720px,calc(100vw - 24px));max-height:min(90vh,880px);overflow:auto;padding-bottom:18px}
+.fox-page{display:flex;flex-direction:column;gap:14px;padding:4px 2px 8px}
+.fox-page-hero{display:grid;grid-template-columns:150px minmax(0,1fr);align-items:center;gap:16px;padding:10px 4px 4px}
+.fox-page-hero>img{width:150px;height:150px;object-fit:contain;border-radius:24px;background:radial-gradient(circle at 50% 65%,rgba(255,167,68,.18),transparent 67%)}
+.fox-page-hero small,.fox-page-title small{font-size:9px;font-weight:950;letter-spacing:.11em;opacity:.58}
+.fox-page-hero h2{margin:4px 0 2px;font-size:25px}.fox-page-hero p{margin:0;font-size:13px;opacity:.78}
+.fox-page-hero blockquote{margin:9px 0 0;padding:9px 11px;border-left:3px solid rgba(255,157,69,.65);border-radius:0 10px 10px 0;background:rgba(255,255,255,.055);font-size:12px;line-height:1.4}
+.fox-friendship-levels{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.fox-friendship-levels span{display:grid;place-items:center;gap:2px;min-height:48px;border:1px solid rgba(255,255,255,.09);border-radius:13px;background:rgba(255,255,255,.035);opacity:.36}
+.fox-friendship-levels span.active{opacity:1;border-color:rgba(255,154,67,.3);background:rgba(255,142,57,.1)}
+.fox-friendship-levels i{font-style:normal;color:#ff9a53;font-size:15px}.fox-friendship-levels small{font-size:9px;font-weight:900}
+.fox-friendship-progress{padding:12px;border-radius:16px;background:rgba(255,255,255,.05)}
+.fox-friendship-progress>div{display:flex;justify-content:space-between;gap:12px;font-size:12px}.fox-friendship-progress>i{display:block;height:8px;margin:7px 0;border-radius:99px;background:rgba(255,255,255,.09);overflow:hidden}
+.fox-friendship-progress>i em{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#ff9847,#ffd069)}
+.fox-friendship-progress>small{display:block;line-height:1.35;opacity:.62}
+.fox-page-section{padding:13px;border:1px solid rgba(255,255,255,.08);border-radius:18px;background:rgba(255,255,255,.035)}
+.fox-page-title{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px}.fox-page-title h3{margin:0;font-size:16px}
+.fox-traits{display:grid;grid-template-columns:1fr 1fr;gap:9px}.fox-traits>div{display:flex;align-content:flex-start;flex-wrap:wrap;gap:6px;padding:10px;border-radius:13px;background:rgba(255,255,255,.04)}
+.fox-traits b{width:100%;font-size:10px;opacity:.58}.fox-traits span{padding:5px 8px;border-radius:999px;background:rgba(255,255,255,.09);font-size:11px;font-weight:800}.fox-traits span.developed{background:rgba(255,159,68,.14);color:#ffd39d}.fox-traits small{font-size:10px;line-height:1.35;opacity:.58}
+.fox-abilities,.fox-quests,.fox-training{display:grid;gap:8px}
+.fox-ability-card{display:grid;grid-template-columns:34px minmax(0,1fr);gap:9px;padding:10px;border-radius:13px;background:rgba(255,255,255,.045)}
+.fox-ability-card>i{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:rgba(255,157,69,.14);font-style:normal;font-weight:950}.fox-ability-card b,.fox-ability-card small{display:block}.fox-ability-card small{margin-top:2px;font-size:9px;opacity:.56}.fox-ability-card p{margin:5px 0 0;font-size:11px;line-height:1.4;opacity:.74}.fox-ability-card.locked{opacity:.5}
+.fox-balance-note,.fox-boss-form-note{margin:9px 1px 0;font-size:10px;line-height:1.4;opacity:.58}
+.fox-quest,.fox-training-step{display:grid;grid-template-columns:30px minmax(0,1fr);gap:9px;padding:9px;border-radius:13px;background:rgba(255,255,255,.04)}
+.fox-quest>span,.fox-training-step>i{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.08);font-style:normal;font-size:10px;font-weight:950}.fox-quest.done>span,.fox-training-step.done>i{background:rgba(91,213,147,.16);color:#9ff0c2}
+.fox-quest b,.fox-training-step b{font-size:12px}.fox-quest p,.fox-training-step p{margin:3px 0;font-size:10px;line-height:1.35;opacity:.67}.fox-quest small{font-size:9px;font-weight:900;opacity:.58}
+.fox-evolution-line{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.fox-evolution-form{display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 4px;border-radius:13px;background:rgba(255,255,255,.035);opacity:.35;text-align:center}.fox-evolution-form.reached{opacity:1;background:rgba(255,146,57,.08)}
+.fox-evolution-form img{width:100%;aspect-ratio:1;object-fit:contain}.fox-evolution-form b{font-size:9px}.fox-evolution-form small{font-size:8px;opacity:.58}
+
+.fox-ability-dock{position:fixed;right:max(10px,env(safe-area-inset-right));bottom:calc(76px + env(safe-area-inset-bottom));z-index:8800;display:flex;align-items:center;gap:6px;padding:6px;border:1px solid rgba(255,255,255,.11);border-radius:16px;background:rgba(26,20,62,.9);backdrop-filter:blur(12px);box-shadow:0 10px 34px rgba(0,0,0,.28)}
+.fox-ability-dock[hidden]{display:none}.fox-ability-dock button,.fox-passive{min-height:39px;display:flex;align-items:center;gap:5px;border:0;border-radius:11px;padding:6px 9px;background:rgba(255,255,255,.08);color:#fff;font:inherit;font-size:10px;font-weight:900}
+.fox-ability-dock button{cursor:pointer}.fox-ability-dock button i,.fox-passive i{font-style:normal;color:#ffbc72;font-size:14px}.fox-passive{cursor:default}.fox-ability-dock .spent{opacity:.38}.fox-ability-dock button:disabled{cursor:default}
+
+@media (max-width:600px){
+  .fox-page-hero{grid-template-columns:108px minmax(0,1fr);gap:10px}.fox-page-hero>img{width:108px;height:108px}.fox-page-hero h2{font-size:21px}.fox-page-hero blockquote{font-size:10px}
+  .fox-traits{grid-template-columns:1fr}.fox-evolution-line{grid-template-columns:repeat(2,1fr)}
+  .fox-ability-dock{bottom:calc(70px + env(safe-area-inset-bottom));right:8px}.fox-ability-dock button,.fox-passive{padding:5px 7px}.fox-passive b{display:none}
+}
