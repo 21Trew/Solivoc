@@ -1,0 +1,122 @@
+{
+  "id": "fox",
+  "version": 1,
+  "stages": [
+    {
+      "stage": 1,
+      "master": "./icons/mascots/fox/master/fox-1.png",
+      "game": "./icons/mascots/fox/fox-1.webp",
+      "master_size": [
+        1254,
+        1254
+      ],
+      "game_size": [
+        1024,
+        1024
+      ],
+      "transparent": true,
+      "content_bbox": [
+        0,
+        0,
+        1246,
+        1254
+      ],
+      "master_bytes": 1406980,
+      "game_bytes": 234258,
+      "sha256": "59f5a9b90a7c105dc3ef117d1e53ef20ce32df233a907979bcf4dcf0d8a34759"
+    },
+    {
+      "stage": 2,
+      "master": "./icons/mascots/fox/master/fox-2.png",
+      "game": "./icons/mascots/fox/fox-2.webp",
+      "master_size": [
+        1254,
+        1254
+      ],
+      "game_size": [
+        1024,
+        1024
+      ],
+      "transparent": true,
+      "content_bbox": [
+        0,
+        11,
+        1240,
+        1246
+      ],
+      "master_bytes": 1997637,
+      "game_bytes": 357862,
+      "sha256": "8de8348c44f8181e11b38bd7debadd0e0fa88c716baba2f543d63c34460594cf"
+    },
+    {
+      "stage": 3,
+      "master": "./icons/mascots/fox/master/fox-3.png",
+      "game": "./icons/mascots/fox/fox-3.webp",
+      "master_size": [
+        1254,
+        1254
+      ],
+      "game_size": [
+        1024,
+        1024
+      ],
+      "transparent": true,
+      "content_bbox": [
+        0,
+        10,
+        1238,
+        1239
+      ],
+      "master_bytes": 2208841,
+      "game_bytes": 395036,
+      "sha256": "de142edda0ef5d1dcd18d528d410701a1d2ae790edfb929940d56f40a53c03f7"
+    },
+    {
+      "stage": 4,
+      "master": "./icons/mascots/fox/master/fox-4.png",
+      "game": "./icons/mascots/fox/fox-4.webp",
+      "master_size": [
+        1254,
+        1254
+      ],
+      "game_size": [
+        1024,
+        1024
+      ],
+      "transparent": true,
+      "content_bbox": [
+        0,
+        1,
+        1240,
+        1236
+      ],
+      "master_bytes": 2479652,
+      "game_bytes": 479550,
+      "sha256": "0294acec474b10700f62bbf8592633b6df34718361c018ce05d888733b733219"
+    },
+    {
+      "stage": 5,
+      "master": "./icons/mascots/fox/master/fox-5.png",
+      "game": "./icons/mascots/fox/fox-5.webp",
+      "master_size": [
+        1254,
+        1254
+      ],
+      "game_size": [
+        1024,
+        1024
+      ],
+      "transparent": true,
+      "content_bbox": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "master_bytes": 2678634,
+      "game_bytes": 501006,
+      "sha256": "0e3452647ed32e8946e5a6f2ee85ac71b4af28931f6b855e01b2053ad48b9f0e"
+    }
+  ],
+  "notes": "Approved fox art only. No game code is modified by this asset pack."
+}

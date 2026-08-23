@@ -1,0 +1,43 @@
+{
+  "id": "owl",
+  "version": 2,
+  "forms_count": 3,
+  "stages": [
+    {
+      "stage": 1,
+      "title": "Лесной совёнок",
+      "master": "./icons/mascots/owl/master/owl-1.png",
+      "game": "./icons/mascots/owl/owl-1.webp",
+      "game_size": [
+        1024,
+        1024
+      ],
+      "transparent": true,
+      "sha256": "950cf31f568f8e5c44c24fbcd733a89ab95a1a31242c73cca4611766b2e5624e"
+    },
+    {
+      "stage": 2,
+      "title": "Хранительница знаний",
+      "master": "./icons/mascots/owl/master/owl-2.png",
+      "game": "./icons/mascots/owl/owl-2.webp",
+      "game_size": [
+        1024,
+        1024
+      ],
+      "transparent": true,
+      "sha256": "33f6eb54a5bb61e31dbc51d1578246f7d8c4a62f87e3c6aa63a1086d47b5e7f9"
+    },
+    {
+      "stage": 3,
+      "title": "Сова Сокровенного Слова",
+      "master": "./icons/mascots/owl/master/owl-3.png",
+      "game": "./icons/mascots/owl/owl-3.webp",
+      "game_size": [
+        1024,
+        1024
+      ],
+      "transparent": true,
+      "sha256": "ea5131873b4a3d5eabdcb52c06e7db8bc830e6576e57da079a88dcf30b40a70c"
+    }
+  ]
+}

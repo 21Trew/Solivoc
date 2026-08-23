@@ -1,0 +1,60 @@
+{
+  "id": "cat",
+  "version": 1,
+  "forms_count": 3,
+  "forms": [
+    {
+      "stage": 1,
+      "title": "Котёнок-баюн",
+      "master": "./icons/mascots/cat/master/cat-1.png",
+      "game": "./icons/mascots/cat/cat-1.webp",
+      "master_size": [
+        1254,
+        1254
+      ],
+      "game_size": [
+        1024,
+        1024
+      ],
+      "transparent": true,
+      "sha256": "d6eb0359784e3768c9b033c63349e41b37babbb154d080bcea788e57e7fbc03b"
+    },
+    {
+      "stage": 2,
+      "title": "Кот-учёный",
+      "master": "./icons/mascots/cat/master/cat-2.png",
+      "game": "./icons/mascots/cat/cat-2.webp",
+      "master_size": [
+        1254,
+        1254
+      ],
+      "game_size": [
+        1024,
+        1024
+      ],
+      "transparent": true,
+      "sha256": "2db458a64af5b5ab7adaeae29e7dda50fc6d7a9ae54e3fd9b574d81956bf0e63"
+    },
+    {
+      "stage": 3,
+      "title": "Кот Сокровенного Слова",
+      "master": "./icons/mascots/cat/master/cat-3.png",
+      "game": "./icons/mascots/cat/cat-3.webp",
+      "master_size": [
+        1254,
+        1254
+      ],
+      "game_size": [
+        1024,
+        1024
+      ],
+      "transparent": true,
+      "sha256": "5baa068b3acaca9df3bc5a358bb708efba6483e712526b4fdf5844710cef763c"
+    }
+  ],
+  "visual_rule": {
+    "form_1": "Котёнок-баюн: сидит, укрывшись хвостом; без Круга Памяти.",
+    "form_2": "Кот-учёный: взрослая форма; без Круга Памяти.",
+    "form_3": "Кот Сокровенного Слова: главный хранитель знаний; Круг Памяти, один хвост, книги под лапой."
+  }
+}

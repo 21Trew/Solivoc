@@ -1,0 +1,47 @@
+{
+  "source_repository": "21Trew/Solivoc",
+  "source_branch": "main",
+  "source_head_checked": "2a788babdd533ae395aa30544a7393e37fe870a4",
+  "mascots": {
+    "fox": {
+      "forms": 5,
+      "paths": [
+        "./icons/mascots/fox/fox-1.webp",
+        "./icons/mascots/fox/fox-2.webp",
+        "./icons/mascots/fox/fox-3.webp",
+        "./icons/mascots/fox/fox-4.webp",
+        "./icons/mascots/fox/fox-5.webp"
+      ],
+      "mapping": "уровни маскота 1/2/3/4/5 → формы 1/2/3/4/5"
+    },
+    "owl": {
+      "forms": 3,
+      "paths": [
+        "./icons/mascots/owl/owl-1.webp",
+        "./icons/mascots/owl/owl-2.webp",
+        "./icons/mascots/owl/owl-3.webp"
+      ],
+      "mapping": "уровни маскота 1–2 / 3–4 / 5 → формы 1 / 2 / 3"
+    },
+    "cat": {
+      "forms": 3,
+      "paths": [
+        "./icons/mascots/cat/cat-1.webp",
+        "./icons/mascots/cat/cat-2.webp",
+        "./icons/mascots/cat/cat-3.webp"
+      ],
+      "mapping": "уровни маскота 1–2 / 3–4 / 5 → формы 1 / 2 / 3"
+    }
+  },
+  "legacy_svg_fallbacks_kept": true,
+  "boss_preview": "Если лис ещё не приручён и показывается как босс, используется его финальная форма.",
+  "code_changed": [
+    "js/components/ui.js"
+  ],
+  "visual_form_source": "mascotProgress[id].level",
+  "notes": [
+    "evolutionStage остаётся нетронутым: это отдельное поле существующей архитектуры.",
+    "Старые SVG не удаляются и остаются fallback для остальных маскотов.",
+    "Финальный неприручённый лис показывается как босс в последней форме."
+  ]
+}
