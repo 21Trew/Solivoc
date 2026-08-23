@@ -86,6 +86,7 @@ const patchScripts = [
   "./js/v30-patch.js",
   "./js/v31-patch.js",
   "./js/v31-first-run-ui.js",
+  "./js/v32-ui-fixes.js",
 ];
 const missingPatchTags = patchScripts
   .filter((src) => !indexHtml.includes(`src="${src}"`))
