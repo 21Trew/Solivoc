@@ -40,9 +40,13 @@
       font-size:15px;
       line-height:1.48;
     }
-    .v31f-actions,
+    .v31f-actions{
+      display:grid;
+      gap:10px;
+    }
     .v31f-providers{
       display:grid;
+      grid-template-columns:1fr 1fr;
       gap:10px;
     }
     .v31f-button{
@@ -115,6 +119,7 @@
       color:#fc3f1d;
     }
     .v31f-email{
+      grid-column:1/-1;
       background:rgba(255,255,255,.12);
       border-color:rgba(255,255,255,.23);
       color:#fff;
@@ -222,14 +227,14 @@
           <p class="v31f-copy">Выбери способ. Прогресс будет храниться в облаке и восстановится на другом устройстве.</p>
         </div>
         <div class="v31f-providers">
-          <button type="button" class="v31f-button v31f-provider v31f-google" data-v31f-google>
-            <i class="v31f-provider-mark">G</i><span>Google</span>
+          <button type="button" class="v31f-button v31f-provider v31f-email" data-v31f-email>
+            <i class="v31f-provider-mark">✉</i><span>Почта</span>
           </button>
           <button type="button" class="v31f-button v31f-provider v31f-yandex" data-v31f-yandex>
             <i class="v31f-provider-mark">Я</i><span>Яндекс</span>
           </button>
-          <button type="button" class="v31f-button v31f-provider v31f-email" data-v31f-email>
-            <i class="v31f-provider-mark">✉</i><span>Почта</span>
+          <button type="button" class="v31f-button v31f-provider v31f-google" data-v31f-google>
+            <i class="v31f-provider-mark">G</i><span>Gmail</span>
           </button>
         </div>
         <p class="v31f-note">Любой способ создаёт один и тот же игровой аккаунт.</p>
