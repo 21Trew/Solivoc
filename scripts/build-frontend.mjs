@@ -82,7 +82,11 @@ if (!indexHtml.includes(seoMarker)) {
 // modules they extend, but before app.js starts bootstrap. This keeps the
 // source HTML clean and guarantees first-run UX hooks are installed in time.
 const appScriptTag = '    <script src="./js/app.js"></script>';
-const patchScripts = ["./js/v30-patch.js", "./js/v31-patch.js"];
+const patchScripts = [
+  "./js/v30-patch.js",
+  "./js/v31-patch.js",
+  "./js/v31-first-run-ui.js",
+];
 const missingPatchTags = patchScripts
   .filter((src) => !indexHtml.includes(`src="${src}"`))
   .map((src) => `    <script src="${src}"></script>`);
