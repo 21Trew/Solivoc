@@ -1,0 +1,65 @@
+{
+  "id": "bear",
+  "version": 1,
+  "forms_count": 3,
+  "stages": [
+    {
+      "stage": 1,
+      "title": "Медвежонок-хранитель",
+      "master": "./icons/mascots/bear/master/bear-1.png",
+      "game": "./icons/mascots/bear/bear-1.webp",
+      "master_size": [
+        1254,
+        1254
+      ],
+      "game_size": [
+        1024,
+        1024
+      ],
+      "transparent_background": true,
+      "sha256": "96311c4c0b8fc5171a720fdff284794f6e295665d865eec1e5ca657b2eef5d1b"
+    },
+    {
+      "stage": 2,
+      "title": "Лесной страж",
+      "master": "./icons/mascots/bear/master/bear-2.png",
+      "game": "./icons/mascots/bear/bear-2.webp",
+      "master_size": [
+        1254,
+        1254
+      ],
+      "game_size": [
+        1024,
+        1024
+      ],
+      "transparent_background": true,
+      "sha256": "8ffbfe29e8c82bc36b49c65cdcd56f180fe06d36353b2ee815fbfd4fdb60bebd"
+    },
+    {
+      "stage": 3,
+      "title": "Медвежий друид",
+      "master": "./icons/mascots/bear/master/bear-3.png",
+      "game": "./icons/mascots/bear/bear-3.webp",
+      "master_size": [
+        1254,
+        1254
+      ],
+      "game_size": [
+        1024,
+        1024
+      ],
+      "transparent_background": true,
+      "sha256": "7955b2af92c3e9d67be2fe6c9b02e8a221aa68799b08e30ced65675562d86aec"
+    }
+  ],
+  "visual_mapping": {
+    "level_1_2": "form_1",
+    "level_3_4": "form_2",
+    "level_5": "form_3"
+  },
+  "notes": [
+    "Форма 1: Медвежонок-хранитель — сидящий дружелюбный медвежонок с янтарным амулетом.",
+    "Форма 2: Лесной страж — взрослый медведь на четырёх лапах, с зелёным плащом и янтарным амулетом.",
+    "Форма 3: Медвежий друид — легендарная форма на задних лапах с посохом и церемониальной мантией."
+  ]
+}

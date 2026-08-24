@@ -45,6 +45,11 @@ const MASCOT_FORM_ASSETS = Object.freeze({
     "./icons/mascots/raven/raven-2.webp",
     "./icons/mascots/raven/raven-3.webp",
   ]),
+  bear: Object.freeze([
+    "./icons/mascots/bear/bear-1.webp",
+    "./icons/mascots/bear/bear-2.webp",
+    "./icons/mascots/bear/bear-3.webp",
+  ]),
 });
 
 const LEGACY_MASCOT_ASSET_IDS = Object.freeze({
@@ -52,6 +57,7 @@ const LEGACY_MASCOT_ASSET_IDS = Object.freeze({
   "./icons/mascot-cat.svg": "cat",
   "./icons/mascot-fox.svg": "fox",
   "./icons/mascot-raven.svg": "raven",
+  "./icons/mascot-bear.svg": "bear",
 });
 
 function mascotFormAssets(defOrId) {
@@ -110,7 +116,7 @@ function patchLegacyMascotImage(img) {
 function syncMascotImageAssets(root = document) {
   if (root instanceof HTMLImageElement) patchLegacyMascotImage(root);
   if (!root?.querySelectorAll) return;
-  root.querySelectorAll('img[src="./icons/mascot-owl.svg"],img[src="./icons/mascot-cat.svg"],img[src="./icons/mascot-fox.svg"],img[src="./icons/mascot-raven.svg"]')
+  root.querySelectorAll('img[src="./icons/mascot-owl.svg"],img[src="./icons/mascot-cat.svg"],img[src="./icons/mascot-fox.svg"],img[src="./icons/mascot-raven.svg"],img[src="./icons/mascot-bear.svg"]')
     .forEach(patchLegacyMascotImage);
 }
 
