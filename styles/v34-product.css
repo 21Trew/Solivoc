@@ -172,7 +172,8 @@
 }
 .daily-quest.done > b{color:#effff7!important}
 
-/* v35: rarity is communicated by the card outline; the filters carry the names. */
+/* Folklore rarity language: Простые → Дивные → Вещие → Заповедные → Сокровенные.
+   Technical rarity IDs remain unchanged so existing saves need no migration. */
 .v35-cardback-filters{
   display:flex;
   gap:6px;
@@ -218,7 +219,22 @@
   max-width:100%;
   overflow:hidden;
   border:2px solid var(--cardback-rarity)!important;
-  box-shadow:inset 0 0 20px rgba(255,255,255,.025)!important;
+  box-shadow:inset 0 0 18px rgba(255,255,255,.025)!important;
+}
+.cardback-tile[data-card-back-rarity="common"]{
+  box-shadow:inset 0 0 14px rgba(169,176,187,.055)!important;
+}
+.cardback-tile[data-card-back-rarity="uncommon"]{
+  box-shadow:inset 0 0 18px rgba(111,189,145,.085)!important;
+}
+.cardback-tile[data-card-back-rarity="rare"]{
+  box-shadow:inset 0 0 20px rgba(111,159,197,.10)!important;
+}
+.cardback-tile[data-card-back-rarity="epic"]{
+  box-shadow:inset 0 0 22px rgba(148,118,189,.115)!important;
+}
+.cardback-tile[data-card-back-rarity="legendary"]{
+  box-shadow:inset 0 0 24px rgba(201,170,98,.14),inset 0 0 0 1px rgba(235,211,153,.10)!important;
 }
 .cardback-tile[data-card-back-rarity]::before,
 .cardback-tile[data-card-back-rarity]::after{

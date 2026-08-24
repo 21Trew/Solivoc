@@ -497,11 +497,12 @@
 
   /* v35: card backs use visual rarity instead of noisy labels, with an explicit filter. */
   const CARD_BACK_RARITY_META = Object.freeze({
-    common: { label:"Обычные", color:"#aeb7cb" },
-    uncommon: { label:"Необычные", color:"#65d89a" },
-    rare: { label:"Редкие", color:"#66a9ff" },
-    epic: { label:"Эпические", color:"#b985ff" },
-    legendary: { label:"Легендарные", color:"#f2c55e" },
+    // Technical IDs stay stable for saves; players see the folklore vocabulary.
+    common: { label:"Простые", singular:"Простая", color:"#a9b0bb" },
+    uncommon: { label:"Дивные", singular:"Дивная", color:"#6fbd91" },
+    rare: { label:"Вещие", singular:"Вещая", color:"#6f9fc5" },
+    epic: { label:"Заповедные", singular:"Заповедная", color:"#9476bd" },
+    legendary: { label:"Сокровенные", singular:"Сокровенная", color:"#c9aa62" },
   });
   const CARD_BACK_RARITY_BY_ID = Object.freeze({
     classic:"common", "midnight-grid":"common",
@@ -558,7 +559,10 @@
     grid.querySelectorAll(".cardback-tile[data-card-back-id]").forEach((tile) => {
       const back = defs.get(String(tile.dataset.cardBackId || ""));
       const rarity = cardBackRarity(back);
-      const rarityNames = new Set(["ОБЫЧНАЯ", "НЕОБЫЧНАЯ", "РЕДКАЯ", "ЭПИЧЕСКАЯ", "ЛЕГЕНДАРНАЯ"]);
+      const rarityNames = new Set([
+        "ОБЫЧНАЯ", "НЕОБЫЧНАЯ", "РЕДКАЯ", "ЭПИЧЕСКАЯ", "ЛЕГЕНДАРНАЯ",
+        "ПРОСТАЯ", "ДИВНАЯ", "ВЕЩАЯ", "ЗАПОВЕДНАЯ", "СОКРОВЕННАЯ",
+      ]);
       tile.querySelectorAll("[data-cardback-rarity-label],.cardback-rarity-label,.rarity-label").forEach((node) => node.remove());
       [...tile.children].forEach((node) => {
         if (node.matches?.(".cardback-preview,b")) return;
@@ -567,7 +571,7 @@
       tile.dataset.cardBackRarity = rarity;
       tile.style.setProperty("--cardback-rarity", CARD_BACK_RARITY_META[rarity]?.color || CARD_BACK_RARITY_META.common.color);
       tile.classList.toggle("v35-rarity-hidden", cardBackRarityFilter !== "all" && cardBackRarityFilter !== rarity);
-      tile.setAttribute("aria-label", `${back?.name || "Рубашка"}. Редкость: ${CARD_BACK_RARITY_META[rarity]?.label || "Обычная"}`);
+      tile.setAttribute("aria-label", `${back?.name || "Рубашка"}. Степень: ${CARD_BACK_RARITY_META[rarity]?.singular || "Простая"}`);
     });
     section.classList.toggle("v35-rarity-filter-active", cardBackRarityFilter !== "all");
     return true;

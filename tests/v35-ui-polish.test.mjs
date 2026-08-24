@@ -59,3 +59,24 @@ test("card backs have no visible rarity badge and borders stay inside", () => {
   assert.match(css, /overflow:hidden/);
   assert.match(css, /outline-offset:-5px!important/);
 });
+
+test("folklore rarity vocabulary replaces generic RPG labels", () => {
+  for (const label of ["Простые", "Дивные", "Вещие", "Заповедные", "Сокровенные"]) {
+    assert.match(ui, new RegExp(`label:\"${label}\"`));
+  }
+  for (const oldLabel of ["Обычные", "Необычные", "Редкие", "Эпические", "Легендарные"]) {
+    assert.doesNotMatch(ui, new RegExp(`label:\"${oldLabel}\"`));
+  }
+  assert.match(ui, /common: \{ label:"Простые", singular:"Простая"/);
+  assert.match(ui, /legendary: \{ label:"Сокровенные", singular:"Сокровенная"/);
+  assert.match(ui, /Степень: \${CARD_BACK_RARITY_META\[rarity\]\?\.singular/);
+});
+
+test("rarity visuals use restrained folklore tier accents", () => {
+  assert.match(css, /data-card-back-rarity=\"common\"/);
+  assert.match(css, /data-card-back-rarity=\"uncommon\"/);
+  assert.match(css, /data-card-back-rarity=\"rare\"/);
+  assert.match(css, /data-card-back-rarity=\"epic\"/);
+  assert.match(css, /data-card-back-rarity=\"legendary\"/);
+  assert.match(css, /rgba\(201,170,98,\.14\)/);
+});
