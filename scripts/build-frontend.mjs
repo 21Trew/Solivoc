@@ -88,6 +88,7 @@ const patchScripts = [
   "./js/v31-first-run-ui.js",
   "./js/v32-ui-fixes.js",
   "./js/v33-fox-journey.js",
+  "./js/v34-product-update.js",
 ];
 const missingPatchTags = patchScripts
   .filter((src) => !indexHtml.includes(`src="${src}"`))
@@ -106,10 +107,11 @@ await writeFile(indexPath, indexHtml, "utf8");
 // Admin assets get a commit-specific URL without hard-coding dated cache keys
 // in the source HTML.
 const adminPath = path.join(out, "admin.html");
-const adminHtml = (await readFile(adminPath, "utf8")).replace(
-  /(\.\/js\/admin\.js)(?:\?v=[^"]*)?/,
-  `$1?v=${buildId}`,
-);
+let adminHtml = await readFile(adminPath, "utf8");
+for (const src of ["./js/admin.js", "./js/admin-mail.js", "./styles/admin-mail.css"]) {
+  const escaped = src.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  adminHtml = adminHtml.replace(new RegExp(`(${escaped})(?:\\?v=[^\"]*)?`), `$1?v=${buildId}`);
+}
 await writeFile(adminPath, adminHtml, "utf8");
 
 // A different sw.js body is emitted for every frontend commit, so every

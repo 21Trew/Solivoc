@@ -5,6 +5,7 @@ import * as auth from "../api/auth.mjs";
 import * as backup from "../api/backup.mjs";
 import * as bootstrap from "../api/bootstrap.mjs";
 import * as challenges from "../api/challenges.mjs";
+import * as developerMail from "../api/developer-mail.mjs";
 import * as duelShare from "../api/duel-share.mjs";
 import * as leaderboard from "../api/leaderboard.mjs";
 import * as oauthYandex from "../api/oauth-yandex.mjs";
@@ -20,6 +21,7 @@ const ROUTES = new Map([
   ["auth", auth],
   ["bootstrap", bootstrap],
   ["challenges", challenges],
+  ["developer-mail", developerMail],
   ["leaderboard", leaderboard],
   ["oauth-yandex", oauthYandex],
   ["oauth-google", oauthGoogle],
@@ -114,6 +116,14 @@ async function routeRequest(request) {
     && url.searchParams.get("backup") === "1"
   ) {
     return backup.GET(request);
+  }
+
+  // The admin session cookie is scoped to /api/admin. Keep the developer-mail
+  // composer under that path so the existing authenticated session is reused.
+  if (url.pathname === "/api/admin/mail") {
+    const methodHandler = developerMail[request.method];
+    if (typeof methodHandler !== "function") return Response.json({ error: "method_not_allowed" }, { status: 405 });
+    return methodHandler(request);
   }
 
   const match = url.pathname.match(/^\/api\/([a-z0-9-]+)\/?$/i);

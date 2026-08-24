@@ -1,0 +1,14 @@
+.admin-mail-box{margin:18px 0;padding:18px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(255,255,255,.035)}
+.admin-mail-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px}
+.admin-mail-head h2{margin:0;font-size:20px}
+.admin-mail-head small{opacity:.58}
+.admin-mail-grid{display:grid;grid-template-columns:minmax(190px,.7fr) minmax(220px,1.3fr);gap:12px}
+.admin-mail-grid label{display:grid;gap:6px;font-size:12px;font-weight:800}
+.admin-mail-grid label.full{grid-column:1/-1}
+.admin-mail-grid input,.admin-mail-grid select,.admin-mail-grid textarea{width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:10px 12px;background:rgba(9,12,32,.64);color:inherit;font:inherit}
+.admin-mail-grid textarea{min-height:88px;resize:vertical}
+.admin-mail-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:12px}
+.admin-mail-actions span{margin-right:auto;font-size:12px;opacity:.7}
+.admin-mail-actions span.danger{color:#ff9d9d;opacity:1}
+.admin-mail-actions button{min-width:160px}
+@media(max-width:720px){.admin-mail-grid{grid-template-columns:1fr}.admin-mail-grid label.full{grid-column:auto}.admin-mail-actions{align-items:stretch;flex-direction:column}.admin-mail-actions span{margin:0}.admin-mail-actions button{width:100%}}

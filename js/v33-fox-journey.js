@@ -14,8 +14,10 @@
   installFoxStyles();
 
   const FOX_ID = "fox";
-  const JOURNEY_VERSION = 1;
-  const LEVEL_THRESHOLDS = Object.freeze([0, 80, 240, 480, 800]);
+  const JOURNEY_VERSION = 2;
+  // Affinity is intentionally long-term. Each level has an XP phase first;
+  // only after the gauge is full do that level's personal quests begin.
+  const LEVEL_THRESHOLDS = Object.freeze([0, 300, 900, 1800, 3000]);
   const LEVEL_NAMES = Object.freeze(["", "Недоверие", "Напарник", "Друг", "Близкий друг", "Верный спутник"]);
   const CORE_TRAITS = Object.freeze(["хитрый", "быстрый", "ехидный"]);
   const ABILITIES = Object.freeze({
@@ -33,12 +35,12 @@
     },
   });
   const QUESTS = Object.freeze([
-    { id: "fox-trust", title: "Проверка на доверие", desc: "Пройди 2 уровня без подсказок после захвата Лиса.", target: 2, training: 1 },
-    { id: "fox-no-trace", title: "Не оставляя следов", desc: "Выиграй 3 расклада без обычной отмены.", target: 3 },
-    { id: "fox-combo", title: "По горячему следу", desc: "Заверши 2 расклада с ручным комбо ×5 или выше.", target: 2 },
-    { id: "fox-daily", title: "Ежедневная разведка", desc: "Пройди ежедневный расклад вместе с Лисом.", target: 1 },
-    { id: "fox-detour", title: "Обходной манёвр", desc: "Используй «Обходной путь» и доведи расклад до победы.", target: 1, training: 2 },
-    { id: "fox-sparring", title: "Спарринг", desc: "Получи ★★★, использовав в одном раскладе обе активные способности Лиса.", target: 1, training: 3 },
+    { id: "fox-trust", level: 1, title: "Проверка на доверие", desc: "После заполнения шкалы пройди 5 уровней без подсказок и без отмен.", target: 5, training: 1 },
+    { id: "fox-no-trace", level: 2, title: "Не оставляя следов", desc: "После заполнения шкалы выиграй 8 раскладов без обычной отмены.", target: 8 },
+    { id: "fox-combo", level: 2, title: "По горячему следу", desc: "Заверши 5 раскладов с ручным комбо ×6 или выше.", target: 5 },
+    { id: "fox-daily", level: 3, title: "Ежедневная разведка", desc: "Пройди ежедневный расклад вместе с Лисом в 3 разных дня.", target: 3 },
+    { id: "fox-detour", level: 3, title: "Обходной манёвр", desc: "Используй «Обходной путь» и доведи до победы 5 раскладов.", target: 5, training: 2 },
+    { id: "fox-sparring", level: 4, title: "Спарринг", desc: "Трижды получи ★★★, использовав в одном раскладе обе активные способности Лиса.", target: 3, training: 3 },
   ]);
   const TRAINING = Object.freeze([
     { level: 1, title: "Испытание", quest: "fox-trust", desc: "Лис наблюдает и решает, достоин ли ты его доверия." },
@@ -108,7 +110,10 @@
         .sort((a, b) => (parseInt(String(a.id).split(":")[0], 36) || 0) - (parseInt(String(b.id).split(":")[0], 36) || 0))
         .slice(-240)
       : [];
-    profile.foxJourney = { version: JOURNEY_VERSION, runs };
+    const questGates = raw.questGates && typeof raw.questGates === "object" && !Array.isArray(raw.questGates)
+      ? Object.fromEntries(Object.entries(raw.questGates).map(([level, at]) => [String(level), Math.max(0, Number(at) || 0)]))
+      : {};
+    profile.foxJourney = { version: JOURNEY_VERSION, runs, questGates };
     return profile.foxJourney;
   }
 
@@ -141,35 +146,80 @@
     return !!def && foxSelected() && currentLevel() >= def.unlockLevel && abilityRoundAllowed();
   }
 
+  function runTimestamp(run) {
+    const explicit = Math.max(0, Number(run?.at) || 0);
+    if (explicit) return explicit;
+    const prefix = String(run?.id || "").split(":")[0];
+    const parsed = parseInt(prefix, 36);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }
+  function questGateAt(level) {
+    return Math.max(0, Number(ensureJourney()?.questGates?.[String(level)] || 0));
+  }
+  function questRuns(quest, runs = ensureJourney()?.runs || []) {
+    const gateAt = questGateAt(quest.level);
+    if (!gateAt) return [];
+    return runs.filter((run) => runTimestamp(run) > gateAt);
+  }
   function questMeasure(id, runs = ensureJourney()?.runs || []) {
+    const quest = QUESTS.find((item) => item.id === id);
+    if (!quest) return 0;
+    const scoped = questRuns(quest, runs);
     switch (id) {
-      case "fox-trust": return runs.filter((r) => r.mode === "regular" && r.hints === 0).length;
-      case "fox-no-trace": return runs.filter((r) => r.undos === 0).length;
-      case "fox-combo": return runs.filter((r) => r.combo >= 5).length;
-      case "fox-daily": return runs.filter((r) => r.mode === "daily").length;
-      case "fox-detour": return runs.filter((r) => r.detour).length;
-      case "fox-sparring": return runs.filter((r) => r.stars === 3 && r.detour && r.secretPath).length;
+      case "fox-trust": return scoped.filter((r) => r.mode === "regular" && r.hints === 0 && r.undos === 0).length;
+      case "fox-no-trace": return scoped.filter((r) => r.undos === 0).length;
+      case "fox-combo": return scoped.filter((r) => r.combo >= 6).length;
+      case "fox-daily": return new Set(scoped.filter((r) => r.mode === "daily").map((r) => r.date || String(r.id).slice(0, 8))).size;
+      case "fox-detour": return scoped.filter((r) => r.detour).length;
+      case "fox-sparring": return scoped.filter((r) => r.stars === 3 && r.detour && r.secretPath).length;
       default: return 0;
     }
   }
   function questState(quest, runs = ensureJourney()?.runs || []) {
     const done = completedSet().has(quest.id);
-    const value = done ? quest.target : Math.min(quest.target, questMeasure(quest.id, runs));
-    return { ...quest, value, done };
+    const gateAt = questGateAt(quest.level);
+    const active = done || (quest.level === currentLevel() && gateAt > 0);
+    const value = done ? quest.target : active ? Math.min(quest.target, questMeasure(quest.id, runs)) : 0;
+    return { ...quest, value, done, active, gateAt };
   }
   function runXp(run) {
-    let value = 18;
-    if (run.stars === 3) value += 5;
-    if (run.hints === 0) value += 4;
-    if (run.undos === 0) value += 4;
-    if (run.combo >= 5) value += 5;
-    if (run.mode === "daily") value += 8;
+    let value = 20;
+    if (run.stars === 3) value += 6;
+    if (run.hints === 0) value += 5;
+    if (run.undos === 0) value += 5;
+    if (run.combo >= 6) value += 6;
+    if (run.mode === "daily") value += 10;
     if (run.detour) value += 8;
     if (run.secretPath) value += 8;
-    return value;
+    return Math.max(10, value);
   }
-  function derivedXp(runs, completed) {
-    return runs.reduce((sum, run) => sum + runXp(run), 0) + completed.size * 35;
+  function affinityTarget(level = currentLevel()) {
+    const safe = Math.max(1, Math.min(5, Math.trunc(Number(level) || 1)));
+    return LEVEL_THRESHOLDS[Math.min(4, safe)] || LEVEL_THRESHOLDS[4];
+  }
+  function addFoxAffinityXp(amount, { notify = false } = {}) {
+    if (!profileReady() || !foxCaptured()) return { applied: 0, remaining: Math.max(0, Number(amount) || 0), full: false };
+    const def = foxDef();
+    if (!def || typeof normalizeMascotProgressEntry !== "function") return { applied: 0, remaining: Math.max(0, Number(amount) || 0), full: false };
+    profile.mascotProgress ||= {};
+    const progress = normalizeMascotProgressEntry(def, foxRawProgress());
+    const level = Math.max(1, Math.min(5, Number(progress.level) || 1));
+    if (level >= 5) return { applied: 0, remaining: Math.max(0, Number(amount) || 0), full: true };
+    const journey = ensureJourney();
+    const target = affinityTarget(level);
+    const before = Math.max(LEVEL_THRESHOLDS[level - 1] || 0, Number(progress.progressXp) || 0);
+    if (questGateAt(level)) return { applied: 0, remaining: Math.max(0, Number(amount) || 0), full: true };
+    const requested = Math.max(0, Math.trunc(Number(amount) || 0));
+    const next = Math.min(target, before + requested);
+    const applied = Math.max(0, next - before);
+    progress.progressXp = next;
+    if (next >= target && !journey.questGates[String(level)]) {
+      journey.questGates[String(level)] = now();
+      if (notify) notifyFox("◆", "Шкала привязанности заполнена", `Лис готов дать задания для перехода на уровень ${level + 1}.`);
+    }
+    if (applied > 0) progress.updatedAt = now();
+    profile.mascotProgress[FOX_ID] = progress;
+    return { applied, remaining: Math.max(0, requested - applied), full: next >= target };
   }
 
   function chooseDevelopedTrait(slot, runs) {
@@ -196,21 +246,35 @@
     const before = normalizeMascotProgressEntry(def, foxRawProgress());
     const progress = normalizeMascotProgressEntry(def, foxRawProgress());
     const completed = new Set(progress.completedQuests || []);
+    let level = Math.max(1, progress.level || 1);
+
+    // Never reduce already released progress, but for every new level enforce:
+    // fill XP first -> unlock that level's quests -> complete them -> level up.
+    const floor = LEVEL_THRESHOLDS[Math.max(0, Math.min(4, level - 1))] || 0;
+    progress.progressXp = Math.max(floor, Number(progress.progressXp) || 0);
+    const target = affinityTarget(level);
+    if (level < 5 && progress.progressXp >= target && !journey.questGates[String(level)]) {
+      journey.questGates[String(level)] = now();
+      if (notify) notifyFox("◆", "Шкала привязанности заполнена", `Теперь выполни задания Лиса для перехода на уровень ${level + 1}.`);
+    }
 
     for (const quest of QUESTS) {
+      if (completed.has(quest.id)) continue;
+      if (quest.level !== level || !questGateAt(level)) continue;
       if (questMeasure(quest.id, runs) >= quest.target) completed.add(quest.id);
     }
     progress.completedQuests = [...completed];
 
-    const xpFloor = LEVEL_THRESHOLDS[Math.max(0, Math.min(4, (progress.level || 1) - 1))] || 0;
-    progress.progressXp = Math.max(progress.progressXp || 0, xpFloor, derivedXp(runs, completed));
-
-    let level = Math.max(1, progress.level || 1);
-    if (level < 2 && completed.has("fox-trust") && progress.progressXp >= LEVEL_THRESHOLDS[1]) level = 2;
-    if (level < 3 && ["fox-trust", "fox-no-trace", "fox-combo"].every((id) => completed.has(id)) && progress.progressXp >= LEVEL_THRESHOLDS[2]) level = 3;
-    if (level < 4 && ["fox-trust", "fox-no-trace", "fox-combo", "fox-daily", "fox-detour"].every((id) => completed.has(id)) && progress.progressXp >= LEVEL_THRESHOLDS[3]) level = 4;
-    if (level < 5 && QUESTS.every((quest) => completed.has(quest.id)) && progress.progressXp >= LEVEL_THRESHOLDS[4]) level = 5;
-    progress.level = level;
+    const required = QUESTS.filter((quest) => quest.level === level).map((quest) => quest.id);
+    const xpReady = level >= 5 || progress.progressXp >= target;
+    const questsReady = required.length === 0 || required.every((id) => completed.has(id));
+    if (level < 5 && xpReady && questsReady) {
+      level += 1;
+      progress.level = level;
+      progress.progressXp = Math.max(progress.progressXp, LEVEL_THRESHOLDS[level - 1] || 0);
+    } else {
+      progress.level = level;
+    }
 
     const trainingLevel = completed.has("fox-sparring") ? 3 : completed.has("fox-detour") ? 2 : completed.has("fox-trust") ? 1 : 0;
     progress.trainingLevel = Math.max(progress.trainingLevel || 0, trainingLevel);
@@ -388,18 +452,21 @@
   }
 
   function recordFoxRun(s) {
-    if (!profileReady() || !foxCaptured() || !s?.run || s.failed) return false;
+    if (!profileReady() || !foxCaptured() || !s?.run || s.failed) return null;
     const levelAtStart = currentLevel();
-    if (levelAtStart <= 1 && s.mode !== "regular") return false;
-    if (levelAtStart >= 2 && profile.settings?.companion !== FOX_ID) return false;
-    if (["tutorial", "challenge", "marathon"].includes(s.mode)) return false;
+    if (levelAtStart <= 1 && s.mode !== "regular") return null;
+    if (levelAtStart >= 2 && profile.settings?.companion !== FOX_ID) return null;
+    if (["tutorial", "challenge", "marathon"].includes(s.mode)) return null;
     const journey = ensureJourney();
-    if (!journey) return false;
+    if (!journey) return null;
     const usage = runAbilityState(s) || {};
-    const id = `${now().toString(36)}:${String(s.mode || "")}:${String(s.seed || "")}:${Number(s.level) || 0}:${Number(s.run.moves) || 0}:${Number(s.lastStars) || 0}`.slice(0, 180);
-    if (journey.runs.some((run) => run.id === id)) return false;
-    journey.runs.push({
+    const at = now();
+    const id = `${at.toString(36)}:${String(s.mode || "")}:${String(s.seed || "")}:${Number(s.level) || 0}:${Number(s.run.moves) || 0}:${Number(s.lastStars) || 0}`.slice(0, 180);
+    if (journey.runs.some((run) => run.id === id)) return null;
+    const run = {
       id,
+      at,
+      date: typeof todayKey === "function" ? todayKey() : new Date(at).toISOString().slice(0, 10),
       mode: String(s.mode || "").slice(0, 16),
       level: Math.max(0, Math.trunc(Number(s.level) || 0)),
       stars: Math.max(0, Math.min(3, Math.trunc(Number(s.lastStars) || 0))),
@@ -409,9 +476,11 @@
       detour: !!usage.detourUsed,
       secretPath: !!usage.secretPathUsed,
       freeHint: !!usage.freeHintUsed,
-    });
-    journey.runs = journey.runs.slice(-240);
-    return true;
+    };
+    run.bondXp = runXp(run);
+    journey.runs.push(run);
+    journey.runs = journey.runs.slice(-360);
+    return run;
   }
 
   if (typeof finishLevel === "function") {
@@ -420,7 +489,9 @@
       const eligibleBefore = foxCaptured();
       const alreadyRewarded = !!(typeof state !== "undefined" && state?.rewarded);
       const result = baseFinishLevel.apply(this, args);
-      if (!alreadyRewarded && eligibleBefore && typeof state !== "undefined" && state?.rewarded && !state.failed && recordFoxRun(state)) {
+      const foxRun = !alreadyRewarded && eligibleBefore && typeof state !== "undefined" && state?.rewarded && !state.failed ? recordFoxRun(state) : null;
+      if (foxRun) {
+        addFoxAffinityXp(foxRun.bondXp, { notify: true });
         syncFoxProgress({ notify: true });
         if (typeof saveProfile === "function") saveProfile();
         if (typeof save === "function") save({ immediate: true });
@@ -567,21 +638,22 @@
   function foxLevelProgress() {
     const progress = syncFoxProgress({ notify: false }) || foxRawProgress() || {};
     const level = Math.max(1, Math.min(5, Number(progress.level) || 1));
-    if (level >= 5) return { level, value: LEVEL_THRESHOLDS[4], from: LEVEL_THRESHOLDS[4], to: LEVEL_THRESHOLDS[4], ratio: 1 };
+    if (level >= 5) return { level, value: LEVEL_THRESHOLDS[4], from: LEVEL_THRESHOLDS[4], to: LEVEL_THRESHOLDS[4], ratio: 1, xpReady: true, questPhase: false };
     const from = LEVEL_THRESHOLDS[level - 1] || 0;
     const to = LEVEL_THRESHOLDS[level] || from + 1;
-    const value = Math.max(from, Number(progress.progressXp) || 0);
-    return { level, value, from, to, ratio: Math.max(0, Math.min(1, (value - from) / Math.max(1, to - from))) };
+    const value = Math.max(from, Math.min(to, Number(progress.progressXp) || 0));
+    const xpReady = value >= to;
+    return { level, value, from, to, ratio: Math.max(0, Math.min(1, (value - from) / Math.max(1, to - from))), xpReady, questPhase: xpReady && !!questGateAt(level) };
   }
 
   function nextLevelRequirements(level, quests) {
-    if (level >= 5) return "Максимальный уровень дружбы достигнут.";
-    const missing = [];
-    if (level === 1 && !quests.find((q) => q.id === "fox-trust")?.done) missing.push("завершить «Проверку на доверие»");
-    if (level === 2) for (const id of ["fox-no-trace", "fox-combo"]) if (!quests.find((q) => q.id === id)?.done) missing.push(`завершить «${QUESTS.find((q) => q.id === id)?.title}»`);
-    if (level === 3) for (const id of ["fox-daily", "fox-detour"]) if (!quests.find((q) => q.id === id)?.done) missing.push(`завершить «${QUESTS.find((q) => q.id === id)?.title}»`);
-    if (level === 4 && !quests.find((q) => q.id === "fox-sparring")?.done) missing.push("выиграть финальный спарринг");
-    return missing.length ? `Для следующего уровня: ${missing.join(" и ")}.` : "Условия выполнены — набирай дружбу совместными победами.";
+    if (level >= 5) return "Максимальный уровень привязанности достигнут.";
+    const lp = foxLevelProgress();
+    if (!lp.xpReady) return `Сначала полностью заполни шкалу привязанности: ${Math.round(lp.value)}/${lp.to} XP. После этого откроются задания Лиса.`;
+    const currentQuests = quests.filter((quest) => quest.level === level);
+    const missing = currentQuests.filter((quest) => !quest.done);
+    if (missing.length) return `Шкала заполнена. Теперь выполни: ${missing.map((quest) => `«${quest.title}»`).join(" и ")}.`;
+    return "Все условия выполнены — уровень привязанности повышается.";
   }
 
   function foxJourneyCardMarkup() {
@@ -622,7 +694,7 @@
       const unlocked = (progress.level || 1) >= ability.unlockLevel;
       return `<article class="fox-ability-card ${unlocked ? "unlocked" : "locked"}"><i>${ability.icon}</i><div><b>${esc(ability.name)}</b><small>${ability.kind === "passive" ? "Пассивная" : "Активная"} · ${unlocked ? "открыта" : `уровень ${ability.unlockLevel}`}</small><p>${esc(ability.desc)}</p></div></article>`;
     }).join("");
-    const questMarkup = quests.map((quest) => `<article class="fox-quest ${quest.done ? "done" : ""}"><span>${quest.done ? "✓" : quest.training ? `T${quest.training}` : "◆"}</span><div><b>${esc(quest.title)}</b><p>${esc(quest.desc)}</p><small>${quest.done ? "Выполнено" : `${quest.value}/${quest.target}`}</small></div></article>`).join("");
+    const questMarkup = quests.map((quest) => `<article class="fox-quest ${quest.done ? "done" : quest.active ? "active" : "locked"}"><span>${quest.done ? "✓" : quest.active ? (quest.training ? `T${quest.training}` : "◆") : "🔒"}</span><div><b>${esc(quest.title)}</b><p>${esc(quest.desc)}</p><small>${quest.done ? "Выполнено" : quest.active ? `${quest.value}/${quest.target}` : quest.level < (progress.level || 1) ? "Будет доступно позже" : `Откроется после заполнения шкалы уровня ${quest.level}`}</small></div></article>`).join("");
     const trainingMarkup = TRAINING.map((item) => {
       const done = (progress.trainingLevel || 0) >= item.level;
       return `<article class="fox-training-step ${done ? "done" : ""}"><i>${done ? "✓" : item.level}</i><div><b>${esc(item.title)}</b><p>${esc(item.desc)}</p></div></article>`;
@@ -637,11 +709,11 @@
     return `<div class="fox-page">
       <div class="fox-page-hero"><img src="${esc(image)}" alt="Хитрый лис"><div><small>МАСКОТ · ЛОВКИЙ СТРАТЕГ</small><h2>Хитрый лис</h2><p>Уровень ${progress.level || 1}/5 · <b>${esc(levelName(progress.level || 1))}</b></p><blockquote>«${esc(quote)}»</blockquote></div></div>
       <div class="fox-friendship-levels">${levelDots}</div>
-      <div class="fox-friendship-progress"><div><span>Дружба</span><b>${Math.round(Math.min(lp.value, lp.to))}/${lp.to}</b></div><i><em style="width:${lp.ratio * 100}%"></em></i><small>${esc(nextLevelRequirements(progress.level || 1, quests))}</small></div>
+      <div class="fox-friendship-progress"><div><span>Привязанность</span><b>${Math.round(Math.min(lp.value, lp.to))}/${lp.to} XP</b></div><i><em style="width:${lp.ratio * 100}%"></em></i><small>${esc(nextLevelRequirements(progress.level || 1, quests))}</small></div>
 
       <section class="fox-page-section"><div class="fox-page-title"><h3>Характер</h3><small>ядро не меняется · до 2 приобретённых черт</small></div><div class="fox-traits"><div><b>Ядро</b>${CORE_TRAITS.map((trait) => `<span>${esc(trait)}</span>`).join("")}</div><div><b>Стал рядом с тобой</b>${developed.length ? developed.map((trait) => `<span class="developed">${esc(trait)}</span>`).join("") : `<small>Первая новая черта появится на 3-м уровне дружбы.</small>`}</div></div></section>
       <section class="fox-page-section"><div class="fox-page-title"><h3>Способности</h3><small>2 активные + 1 пассивная</small></div><div class="fox-abilities">${abilityMarkup}</div><p class="fox-balance-note">Способности Лиса сейчас работают в кампании, дзене и раскладах по картинкам. В ежедневных, дуэлях, марафоне и специальных соревновательных режимах они отключены.</p></section>
-      <section class="fox-page-section"><div class="fox-page-title"><h3>Личные задания</h3><small>${quests.filter((q) => q.done).length}/${quests.length}</small></div><div class="fox-quests">${questMarkup}</div></section>
+      <section class="fox-page-section"><div class="fox-page-title"><h3>Личные задания</h3><small>открываются только после полной шкалы XP</small></div><div class="fox-quests">${questMarkup}</div></section>
       <section class="fox-page-section"><div class="fox-page-title"><h3>Тренировка</h3><small>${Math.min(3, progress.trainingLevel || 0)}/3</small></div><div class="fox-training">${trainingMarkup}</div></section>
       <section class="fox-page-section"><div class="fox-page-title"><h3>Эволюции</h3><small>${Math.min(3, progress.evolutionStage || 0)}/3</small></div><div class="fox-evolution-line">${evolutionMarkup}</div><p class="fox-boss-form-note">Пятая иллюстрация Лиса остаётся его грозной босс-формой из финала главы. Линия дружбы проходит три отдельные эволюции после захвата.</p></section>
     </div>`;
@@ -730,6 +802,9 @@
     sync: (notify = false) => syncFoxProgress({ notify: !!notify }),
     progress: () => foxRawProgress(),
     quests: () => QUESTS.map((quest) => questState(quest)),
+    addAffinityXp: (amount, notify = false) => addFoxAffinityXp(amount, { notify: !!notify }),
+    affinityTarget: (level) => affinityTarget(level),
+    thresholds: LEVEL_THRESHOLDS,
     useDetour,
     useSecretPath,
   });

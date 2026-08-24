@@ -41,6 +41,31 @@ paths:
         tag: $latest
         payload_format_version: "2.0"
 
+  /api/admin/mail:
+    x-yc-apigateway-cors:
+      origin:
+        - https://admin.solivoc.ru
+      methods:
+        - POST
+        - OPTIONS
+      allowedHeaders:
+        - Content-Type
+        - Cache-Control
+        - Pragma
+      credentials: true
+      maxAge: 3600
+      optionsSuccessStatus: 204
+
+    x-yc-apigateway-any-method:
+      summary: Admin developer mail endpoint
+      operationId: solivocAdminDeveloperMail
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: <FUNCTION_ID>
+        service_account_id: <SERVICE_ACCOUNT_ID>
+        tag: $latest
+        payload_format_version: "2.0"
+
   /d/{code}:
     x-yc-apigateway-any-method:
       summary: Public duel share page

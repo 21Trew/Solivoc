@@ -65,6 +65,7 @@ const CORE = [
   "./styles/meta.css",
   "./styles/responsive.css",
   "./styles/mascot-fox.css",
+  "./styles/v34-product.css",
   "./data/categories.js",
   "./data/categories.json",
   "./js/host-routing.js",
@@ -97,6 +98,7 @@ const CORE = [
   "./js/v31-first-run-ui.js",
   "./js/v32-ui-fixes.js",
   "./js/v33-fox-journey.js",
+  "./js/v34-product-update.js",
   "./js/app.js"
 ];
 
