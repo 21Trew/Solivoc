@@ -38,5 +38,24 @@ test("rarity groups use five distinct visual tiers", () => {
     assert.match(ui, new RegExp(`${tier}: \\{ label:`));
   }
   assert.match(css, /\.cardback-tile\[data-card-back-rarity\]/);
-  assert.match(css, /box-shadow:0 0 0 1\.5px var\(--cardback-rarity\)/);
+  assert.match(css, /border:2px solid var\(--cardback-rarity\)!important/);
+  assert.match(css, /outline-offset:-5px!important/);
+  assert.match(css, /cardback-tile\[data-card-back-rarity\]::before/);
+});
+
+
+test("fox info and mascot portrait entry points stay clean", async () => {
+  const fox = await readFile(new URL("../js/v33-fox-journey.js", import.meta.url), "utf8");
+  assert.match(fox, /<small>ЛОВКИЙ СТРАТЕГ<\/small>/);
+  assert.doesNotMatch(fox, /МАСКОТ · ЛОВКИЙ СТРАТЕГ/);
+  assert.match(ui, /closest\?\.\(\"\.companion-info-hero img,\.fox-page-hero>img\"\)/);
+  assert.doesNotMatch(ui, /fox-journey-image img,\.companion-tile img,\.fox-evolution-form img/);
+});
+
+test("card backs have no visible rarity badge and borders stay inside", () => {
+  assert.match(ui, /rarityNames = new Set/);
+  assert.match(ui, /cardback-rarity-label/);
+  assert.match(css, /box-sizing:border-box!important/);
+  assert.match(css, /overflow:hidden/);
+  assert.match(css, /outline-offset:-5px!important/);
 });

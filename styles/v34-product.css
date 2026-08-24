@@ -65,10 +65,7 @@
 .v34-mascot-daily.done{border-color:rgba(255,216,106,.35)}
 
 .companion-info-hero img,
-.fox-page-hero>img,
-.fox-journey-image img,
-.companion-tile img,
-.fox-evolution-form img{cursor:zoom-in}
+.fox-page-hero>img{cursor:zoom-in}
 .fox-quest:not(.done)[data-locked],
 .fox-quest.locked{opacity:.46}
 
@@ -214,13 +211,23 @@
   color:#fff;
   box-shadow:0 0 0 1px var(--rarity);
 }
+.cardback-grid{overflow:hidden}
 .cardback-tile[data-card-back-rarity]{
-  border-color:transparent!important;
-  box-shadow:0 0 0 1.5px var(--cardback-rarity), inset 0 0 20px rgba(255,255,255,.025)!important;
+  box-sizing:border-box!important;
+  width:100%;
+  max-width:100%;
+  overflow:hidden;
+  border:2px solid var(--cardback-rarity)!important;
+  box-shadow:inset 0 0 20px rgba(255,255,255,.025)!important;
+}
+.cardback-tile[data-card-back-rarity]::before,
+.cardback-tile[data-card-back-rarity]::after{
+  content:none!important;
+  display:none!important;
 }
 .cardback-tile[data-card-back-rarity].selected{
   outline:2px solid #fff!important;
-  outline-offset:2px!important;
+  outline-offset:-5px!important;
   background:rgba(255,255,255,.09)!important;
 }
 .cardback-tile[data-card-back-rarity].locked{

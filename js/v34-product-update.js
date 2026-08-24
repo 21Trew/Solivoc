@@ -259,7 +259,7 @@
     return true;
   }
   document.addEventListener("click", (event) => {
-    const image = event.target?.closest?.(".companion-info-hero img,.fox-page-hero>img,.fox-journey-image img,.companion-tile img,.fox-evolution-form img");
+    const image = event.target?.closest?.(".companion-info-hero img,.fox-page-hero>img");
     if (!image) return;
     const tile = image.closest("[data-companion-open]");
     const modal = image.closest("#companionInfoModal");
@@ -558,6 +558,12 @@
     grid.querySelectorAll(".cardback-tile[data-card-back-id]").forEach((tile) => {
       const back = defs.get(String(tile.dataset.cardBackId || ""));
       const rarity = cardBackRarity(back);
+      const rarityNames = new Set(["ОБЫЧНАЯ", "НЕОБЫЧНАЯ", "РЕДКАЯ", "ЭПИЧЕСКАЯ", "ЛЕГЕНДАРНАЯ"]);
+      tile.querySelectorAll("[data-cardback-rarity-label],.cardback-rarity-label,.rarity-label").forEach((node) => node.remove());
+      [...tile.children].forEach((node) => {
+        if (node.matches?.(".cardback-preview,b")) return;
+        if (rarityNames.has(String(node.textContent || "").trim().toUpperCase())) node.remove();
+      });
       tile.dataset.cardBackRarity = rarity;
       tile.style.setProperty("--cardback-rarity", CARD_BACK_RARITY_META[rarity]?.color || CARD_BACK_RARITY_META.common.color);
       tile.classList.toggle("v35-rarity-hidden", cardBackRarityFilter !== "all" && cardBackRarityFilter !== rarity);

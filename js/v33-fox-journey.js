@@ -707,7 +707,7 @@
     }).join("");
 
     return `<div class="fox-page">
-      <div class="fox-page-hero"><img src="${esc(image)}" alt="Хитрый лис"><div><small>МАСКОТ · ЛОВКИЙ СТРАТЕГ</small><h2>Хитрый лис</h2><p>Уровень ${progress.level || 1}/5 · <b>${esc(levelName(progress.level || 1))}</b></p><blockquote>«${esc(quote)}»</blockquote></div></div>
+      <div class="fox-page-hero"><img src="${esc(image)}" alt="Хитрый лис"><div><small>ЛОВКИЙ СТРАТЕГ</small><h2>Хитрый лис</h2><p>Уровень ${progress.level || 1}/5 · <b>${esc(levelName(progress.level || 1))}</b></p><blockquote>«${esc(quote)}»</blockquote></div></div>
       <div class="fox-friendship-levels">${levelDots}</div>
       <div class="fox-friendship-progress"><div><span>Привязанность</span><b>${Math.round(Math.min(lp.value, lp.to))}/${lp.to} XP</b></div><i><em style="width:${lp.ratio * 100}%"></em></i><small>${esc(nextLevelRequirements(progress.level || 1, quests))}</small></div>
 
