@@ -38,9 +38,9 @@ function rarityLabel(id, gender = "n") { const labels = rarityDef(id).labels; re
 function collectibleSource(type, label, extra = {}) { return Object.freeze({ type:String(type || "progression"), label:String(label || "Прогресс"), ...extra }); }
 
 const APP_ICON_DEFS = Object.freeze([
-  { id: "classic", name: "Классическая", preview: "✦", manifest: "./manifest.webmanifest", apple: "./icons/icon-192.png", favicon: "./icons/icon.svg" },
-  { id: "owl", name: "Мудрая сова", preview: "🦉", manifest: "./manifest-owl.webmanifest", apple: "./icons/icon-owl-192.png", favicon: "./icons/icon-owl.svg" },
-  { id: "cat", name: "Кот-учёный", preview: "🐱", manifest: "./manifest-cat.webmanifest", apple: "./icons/icon-cat-192.png", favicon: "./icons/icon-cat.svg" },
+  { id: "classic", name: "Классическая", preview: "✦", manifest: "./manifest.webmanifest", apple: "./icons/icon-192.png", favicon: "./icons/icon.svg", rarity: "common", source: collectibleSource("starter", "Изначально") },
+  { id: "owl", name: "Мудрая сова", preview: "🦉", manifest: "./manifest-owl.webmanifest", apple: "./icons/icon-owl-192.png", favicon: "./icons/icon-owl.svg", rarity: "common", source: collectibleSource("starter", "Изначально") },
+  { id: "cat", name: "Кот-учёный", preview: "🐱", manifest: "./manifest-cat.webmanifest", apple: "./icons/icon-cat-192.png", favicon: "./icons/icon-cat.svg", rarity: "common", source: collectibleSource("starter", "Изначально") },
 ]);
 function appIconDef(id) { return APP_ICON_DEFS.find((x) => x.id === id) || APP_ICON_DEFS[0]; }
 
@@ -693,10 +693,10 @@ function syncBirthdayRewards(date = new Date()) {
 }
 
 const APP_ICON_FRAME_DEFS = Object.freeze([
-  { id: "none", name: "Без рамки", desc: "Базовый вид", unlock: () => true },
-  { id: "bronze", name: "Исследователь", desc: "За 10 пройденных уровней", unlock: (p) => (p.stats?.levelsCompleted || 0) >= 10 },
-  { id: "gold", name: "Мастер", desc: "За 50 пройденных уровней", unlock: (p) => (p.stats?.levelsCompleted || 0) >= 50 },
-  { id: "prism", name: "Комбо", desc: "За достижение комбо ×10", unlock: (p) => (p.achievements || []).includes("combo10") },
+  { id: "none", name: "Без рамки", desc: "Базовый вид", rarity: "common", source: collectibleSource("starter", "Изначально"), unlock: () => true },
+  { id: "bronze", name: "Исследователь", desc: "За 10 пройденных уровней", rarity: "common", source: collectibleSource("campaign", "Кампания", { levels:10 }), unlock: (p) => (p.stats?.levelsCompleted || 0) >= 10 },
+  { id: "gold", name: "Мастер", desc: "За 50 пройденных уровней", rarity: "uncommon", source: collectibleSource("campaign", "Кампания", { levels:50 }), unlock: (p) => (p.stats?.levelsCompleted || 0) >= 50 },
+  { id: "prism", name: "Комбо", desc: "За достижение комбо ×10", rarity: "rare", source: collectibleSource("achievement", "Достижение", { id:"combo10" }), unlock: (p) => (p.achievements || []).includes("combo10") },
 ]);
 function appIconFrameDef(id) { return APP_ICON_FRAME_DEFS.find((x) => x.id === id) || APP_ICON_FRAME_DEFS[0]; }
 function appIconFrameUnlocked(def, p = profile) { return !!def?.unlock?.(p); }
@@ -757,35 +757,58 @@ function rankRewardAvatar(level) {
   return level >= 2 ? (RANK_AVATAR_REWARDS[level - 2] || null) : null;
 }
 const LOGIN_REWARD_DEFS = [
-  { days: 30, id: "visits30", emoji: "📅", title: "30 дней" },
-  { days: 50, id: "visits50", emoji: "🧭", title: "50 дней" },
-  { days: 100, id: "visits100", emoji: "🏛️", title: "100 дней" },
-  { days: 180, id: "visits180", emoji: "🌳", title: "Полгода" },
-  { days: 365, id: "visits365", emoji: "🏅", title: "Год вместе" },
+  { days: 30, id: "visits30", emoji: "📅", title: "30 дней", rarity: "uncommon", source: collectibleSource("retention", "Дни вместе", { days:30 }) },
+  { days: 50, id: "visits50", emoji: "🧭", title: "50 дней", rarity: "uncommon", source: collectibleSource("retention", "Дни вместе", { days:50 }) },
+  { days: 100, id: "visits100", emoji: "🏛️", title: "100 дней", rarity: "rare", source: collectibleSource("retention", "Дни вместе", { days:100 }) },
+  { days: 180, id: "visits180", emoji: "🌳", title: "Полгода", rarity: "epic", source: collectibleSource("retention", "Дни вместе", { days:180 }) },
+  { days: 365, id: "visits365", emoji: "🏅", title: "Год вместе", rarity: "epic", source: collectibleSource("retention", "Дни вместе", { days:365 }) },
 ];
-function avatarRankRarity(rank) { return rank <= 10 ? "common" : rank <= 30 ? "uncommon" : rank <= 70 ? "rare" : "epic"; }
-function avatarLoginRarity(days) { return days < 100 ? "uncommon" : days < 365 ? "rare" : "epic"; }
+function avatarRankRarity(rank) { return rank <= 15 ? "common" : rank <= 40 ? "uncommon" : rank <= 90 ? "rare" : "epic"; }
+function avatarLoginRarity(days) { return days < 100 ? "uncommon" : days < 180 ? "rare" : "epic"; }
+function lowerRarityId(a, b) {
+  const ai = Math.max(0, RARITY_IDS.indexOf(a)), bi = Math.max(0, RARITY_IDS.indexOf(b));
+  return RARITY_IDS[Math.min(ai, bi)] || "common";
+}
 const AVATAR_DEFS = Object.freeze((() => {
   const byEmoji = new Map();
-  AVATAR_EMOJIS.forEach((emoji, index) => byEmoji.set(emoji, Object.freeze({ id:`base-${index+1}`, emoji, rarity:"common", source:collectibleSource("starter", "Изначально"), unlock:{ type:"starter" } })));
+  const ensure = (emoji, seed) => {
+    if (!byEmoji.has(emoji)) byEmoji.set(emoji, { ...seed, unlocks: [], sources: [] });
+    return byEmoji.get(emoji);
+  };
+  AVATAR_EMOJIS.forEach((emoji, index) => {
+    const def = ensure(emoji, { id:`base-${index+1}`, emoji });
+    def.unlocks.push({ type:"starter" });
+    def.sources.push(collectibleSource("starter", "Изначально"));
+  });
   RANK_AVATAR_REWARDS.forEach((emoji, index) => {
-    if (byEmoji.has(emoji)) return;
-    const rank = index + 2;
-    byEmoji.set(emoji, Object.freeze({ id:`rank-${rank}`, emoji, rarity:avatarRankRarity(rank), source:collectibleSource("rank", "Ранг", { rank }), unlock:{ type:"rank", rank } }));
+    const rank = index + 2, def = ensure(emoji, { id:`rank-${rank}`, emoji });
+    def.unlocks.push({ type:"rank", rank });
+    def.sources.push(collectibleSource("rank", "Ранг", { rank }));
   });
   LOGIN_REWARD_DEFS.forEach((reward) => {
-    if (byEmoji.has(reward.emoji)) return;
-    byEmoji.set(reward.emoji, Object.freeze({ id:`login-${reward.days}`, emoji:reward.emoji, rarity:avatarLoginRarity(reward.days), source:collectibleSource("retention", "Дни вместе", { days:reward.days }), unlock:{ type:"days", days:reward.days } }));
+    const def = ensure(reward.emoji, { id:`login-${reward.days}`, emoji:reward.emoji });
+    def.unlocks.push({ type:"days", days:reward.days });
+    def.sources.push(reward.source);
   });
-  return [...byEmoji.values()];
+  return [...byEmoji.values()].map((def) => {
+    const rarity = def.unlocks.reduce((value, route) => {
+      const routeRarity = route.type === "starter" ? "common" : route.type === "rank" ? avatarRankRarity(route.rank) : avatarLoginRarity(route.days);
+      return value ? lowerRarityId(value, routeRarity) : routeRarity;
+    }, "");
+    const source = def.sources.length > 1 ? collectibleSource("multiple", "Несколько путей", { paths:def.sources }) : def.sources[0];
+    return Object.freeze({ id:def.id, emoji:def.emoji, rarity:rarity || "common", source, unlock:Object.freeze({ ...def.unlocks[0] }), unlocks:Object.freeze(def.unlocks.map((route)=>Object.freeze({ ...route }))) });
+  });
 })());
 function avatarDefByEmoji(emoji) { return AVATAR_DEFS.find((x) => x.emoji === emoji) || AVATAR_DEFS[0]; }
 function avatarUnlocked(def, p = typeof profile !== "undefined" ? profile : null) {
   if (!def) return false;
-  if (def.unlock?.type === "starter") return true;
-  if (def.unlock?.type === "rank") return rankLevelFromXp(+p?.xp || 0) >= def.unlock.rank;
-  if (def.unlock?.type === "days") return (+p?.retention?.totalOpenDays || 0) >= def.unlock.days;
-  return false;
+  const routes = Array.isArray(def.unlocks) && def.unlocks.length ? def.unlocks : def.unlock ? [def.unlock] : [];
+  return routes.some((route) => {
+    if (route?.type === "starter") return true;
+    if (route?.type === "rank") return rankLevelFromXp(+p?.xp || 0) >= route.rank;
+    if (route?.type === "days") return (+p?.retention?.totalOpenDays || 0) >= route.days;
+    return false;
+  });
 }
 function availableAvatarEmojis(p = typeof profile !== "undefined" ? profile : null) { return AVATAR_DEFS.filter((def) => avatarUnlocked(def, p)).map((def) => def.emoji); }
 
@@ -1216,7 +1239,7 @@ const THEME_DEFS = [
   { id: "violet", name: "Фиолетовая", stars: 0, rarity: "common", source: collectibleSource("starter", "Изначально") },
   { id: "ocean", name: "Океан", stars: 30, rarity: "common", source: collectibleSource("campaign_stars", "Звёзды кампании", { stars:30 }) },
   { id: "sunset", name: "Закат", stars: 75, rarity: "common", source: collectibleSource("campaign_stars", "Звёзды кампании", { stars:75 }) },
-  { id: "paper", name: "Бумага", stars: 100, rarity: "common", source: collectibleSource("campaign_stars", "Звёзды кампании", { stars:100 }) },
+  { id: "paper", name: "Бумага", stars: 100, rarity: "uncommon", source: collectibleSource("campaign_stars", "Звёзды кампании", { stars:100 }) },
   { id: "aurora", name: "Сияние", stars: 150, rarity: "uncommon", source: collectibleSource("campaign_stars", "Звёзды кампании", { stars:150 }) },
   { id: "neon", name: "Неон", stars: 225, rarity: "uncommon", source: collectibleSource("campaign_stars", "Звёзды кампании", { stars:225 }) },
   { id: "forest", name: "Лес", stars: 300, rarity: "uncommon", source: collectibleSource("campaign_stars", "Звёзды кампании", { stars:300 }) },
@@ -1224,32 +1247,32 @@ const THEME_DEFS = [
   { id: "candy", name: "Конфетная", stars: 450, rarity: "rare", source: collectibleSource("campaign_stars", "Звёзды кампании", { stars:450 }) },
   { id: "midnight", name: "Полночь", stars: 550, rarity: "rare", source: collectibleSource("campaign_stars", "Звёзды кампании", { stars:550 }) },
   { id: "gold", name: "Золото", stars: 700, rarity: "rare", source: collectibleSource("campaign_stars", "Звёзды кампании", { stars:700 }) },
-  { id: "galaxy", name: "Галактика", stars: 1000, rarity: "epic", source: collectibleSource("campaign_stars", "Звёзды кампании", { stars:1000 }) },
+  { id: "galaxy", name: "Галактика", stars: 1000, rarity: "rare", source: collectibleSource("campaign_stars", "Звёзды кампании", { stars:1000 }) },
 ];
 const CARD_BACK_DEFS = [
   { id: "classic", name: "Классика", desc: "Базовая рубашка", minAchievements: 0 , rarity: "common", source: collectibleSource("starter", "Изначально") },
-  { id: "prism", name: "Призма", desc: "За 4 достижения", minAchievements: 4 , rarity: "uncommon", source: collectibleSource("achievements", "Достижения", { count:4 }) },
+  { id: "prism", name: "Призма", desc: "За 4 достижения", minAchievements: 4 , rarity: "common", source: collectibleSource("achievements", "Достижения", { count:4 }) },
   { id: "constellation", name: "Созвездия", desc: "За 8 достижений", minAchievements: 8 , rarity: "uncommon", source: collectibleSource("achievements", "Достижения", { count:8 }) },
-  { id: "trophy", name: "Трофей", desc: "За 12 достижений", minAchievements: 12 , rarity: "rare", source: collectibleSource("achievements", "Достижения", { count:12 }) },
-  { id: "mosaic", name: "Мозаика", desc: "За 16 достижений", minAchievements: 16 , rarity: "rare", source: collectibleSource("achievements", "Достижения", { count:16 }) },
-  { id: "velvet", name: "Бархат", desc: "За 20 достижений", minAchievements: 20 , rarity: "epic", source: collectibleSource("achievements", "Достижения", { count:20 }) },
-  { id: "glacier", name: "Ледник", desc: "За 24 достижения", minAchievements: 24 , rarity: "epic", source: collectibleSource("achievements", "Достижения", { count:24 }) },
-  { id: "lotus", name: "Бамбук", desc: "За 28 достижений", minAchievements: 28 , rarity: "epic", source: collectibleSource("achievements", "Достижения", { count:28 }) },
-  { id: "duelist", name: "Дуэлянт", desc: "За 10 побед в дуэлях", achievement: "duelWins10", rare: true , rarity: "rare", source: collectibleSource("achievement", "Достижение", { id:"duelWins10" }) },
+  { id: "trophy", name: "Трофей", desc: "За 12 достижений", minAchievements: 12 , rarity: "uncommon", source: collectibleSource("achievements", "Достижения", { count:12 }) },
+  { id: "mosaic", name: "Мозаика", desc: "За 16 достижений", minAchievements: 16 , rarity: "uncommon", source: collectibleSource("achievements", "Достижения", { count:16 }) },
+  { id: "velvet", name: "Бархат", desc: "За 20 достижений", minAchievements: 20 , rarity: "uncommon", source: collectibleSource("achievements", "Достижения", { count:20 }) },
+  { id: "glacier", name: "Ледник", desc: "За 24 достижения", minAchievements: 24 , rarity: "uncommon", source: collectibleSource("achievements", "Достижения", { count:24 }) },
+  { id: "lotus", name: "Бамбук", desc: "За 28 достижений", minAchievements: 28 , rarity: "rare", source: collectibleSource("achievements", "Достижения", { count:28 }) },
+  { id: "duelist", name: "Дуэлянт", desc: "За 10 побед в дуэлях", achievement: "duelWins10", rare: false , rarity: "uncommon", source: collectibleSource("achievement", "Достижение", { id:"duelWins10" }) },
   { id: "anniversary", name: "Годовщина", desc: "За 365 дней в игре", achievement: "visits365", rare: true , rarity: "epic", source: collectibleSource("achievement", "Достижение", { id:"visits365" }) },
   { id: "crown", name: "Корона", desc: "За идеальную главу", achievement: "chapterPerfect1", rare: true , rarity: "rare", source: collectibleSource("achievement", "Достижение", { id:"chapterPerfect1" }) },
   { id: "ember", name: "Пламя", desc: "За серию 30 дней", achievement: "streak30", rare: true , rarity: "rare", source: collectibleSource("achievement", "Достижение", { id:"streak30" }) },
   { id: "master", name: "Мастер", desc: "За комбо ×10", achievement: "combo10", rare: true , rarity: "rare", source: collectibleSource("achievement", "Достижение", { id:"combo10" }) },
-  { id: "atlas", name: "Атлас", desc: "За всю коллекцию категорий", achievement: "collectorAll", rare: true , rarity: "epic", source: collectibleSource("achievement", "Достижение", { id:"collectorAll" }) },
+  { id: "atlas", name: "Атлас", desc: "За всю коллекцию категорий", achievement: "collectorAll", rare: true , rarity: "rare", source: collectibleSource("achievement", "Достижение", { id:"collectorAll" }) },
   { id: "chronicle", name: "Хроника", desc: "За 100 ежедневных раскладов", achievement: "daily100", rare: true , rarity: "epic", source: collectibleSource("achievement", "Достижение", { id:"daily100" }) },
-  { id: "phoenix", name: "Феникс", desc: "За 25 особых уровней", achievement: "special25", rare: true , rarity: "epic", source: collectibleSource("achievement", "Достижение", { id:"special25" }) },
-  { id: "legend", name: "Легенда", desc: "За 3 идеальные главы", achievement: "chapterPerfect3", rare: true , rarity: "epic", source: collectibleSource("achievement", "Достижение", { id:"chapterPerfect3" }) },
-  { id: "obsidian", name: "Обсидиан", desc: "За 5 идеальных глав", achievement: "chapterPerfect5", rare: true , rarity: "epic", source: collectibleSource("achievement", "Достижение", { id:"chapterPerfect5" }) },
+  { id: "phoenix", name: "Феникс", desc: "За 25 особых уровней", achievement: "special25", rare: true , rarity: "rare", source: collectibleSource("achievement", "Достижение", { id:"special25" }) },
+  { id: "legend", name: "Легенда", desc: "За 3 идеальные главы", achievement: "chapterPerfect3", rare: true , rarity: "rare", source: collectibleSource("achievement", "Достижение", { id:"chapterPerfect3" }) },
+  { id: "obsidian", name: "Обсидиан", desc: "За 5 идеальных глав", achievement: "chapterPerfect5", rare: true , rarity: "rare", source: collectibleSource("achievement", "Достижение", { id:"chapterPerfect5" }) },
   { id: "midnight-grid", name: "Ночная сетка", desc: "За 2 достижения", minAchievements: 2 , rarity: "common", source: collectibleSource("achievements", "Достижения", { count:2 }) },
-  { id: "sunrise", name: "Рассвет", desc: "За 6 достижений", minAchievements: 6 , rarity: "uncommon", source: collectibleSource("achievements", "Достижения", { count:6 }) },
+  { id: "sunrise", name: "Рассвет", desc: "За 6 достижений", minAchievements: 6 , rarity: "common", source: collectibleSource("achievements", "Достижения", { count:6 }) },
   { id: "lion", name: "Лев", desc: "За открытие всех карточек с рисунками", achievement: "allPictures", rare: true , rarity: "epic", source: collectibleSource("achievement", "Достижение", { id:"allPictures" }) },
   { id: "parrot", name: "Птица-говорун", desc: "За открытие всех карточек со словами", achievement: "allWords", rare: true , rarity: "epic", source: collectibleSource("achievement", "Достижение", { id:"allWords" }) },
-  { id: "grand-trophy", name: "Кубок", desc: "За все достижения", achievement: "allAchievements", rare: true , rarity: "epic", source: collectibleSource("achievement", "Достижение", { id:"allAchievements" }) },
+  { id: "grand-trophy", name: "Кубок", desc: "За все достижения", achievement: "allAchievements", rare: true , rarity: "legendary", source: collectibleSource("achievement", "Достижение", { id:"allAchievements" }) },
 ];
 
 function achievementMode90Counts(p = profile) {
@@ -1457,62 +1480,65 @@ const MONTHLY_DEFS = [
 ];
 
 const EFFECT_DEFS = [
-  { id: "spark", name: "Искры", desc: "Базовый эффект", minAchievements: 0 },
-  { id: "confetti", name: "Конфетти", desc: "За 8 достижений", minAchievements: 8 },
-  { id: "petals", name: "Лепестки", desc: "За идеальную главу", achievement: "chapterPerfect1" },
-  { id: "comet", name: "Кометы", desc: "За ручное комбо ×10", achievement: "combo10", rare: true },
-  { id: "aurora", name: "Сияние", desc: "За 3 недельных испытания", minWeekly: 3, rare: true },
-  { id: "legend", name: "Легенда", desc: "За 5 идеальных глав", achievement: "chapterPerfect5", rare: true },
-  { id: "duel", name: "Искры дуэли", desc: "За 25 побед в дуэлях", achievement: "duelWins25", rare: true },
-  { id: "moon", name: "Лунное сияние", desc: "За первое месячное испытание", minMonthly: 1, rare: true },
-  { id: "fireworks", name: "Фейерверк", desc: "За 6 достижений", minAchievements: 6 },
-  { id: "ribbons", name: "Ленты", desc: "За 12 достижений", minAchievements: 12 },
-  { id: "stars", name: "Звёздный дождь", desc: "За 18 достижений", minAchievements: 18 },
-  { id: "crown-rain", name: "Дождь корон", desc: "За 10 золотых медалей", achievement: "duelGold10", rare: true },
+  { id: "spark", name: "Искры", desc: "Базовый эффект", minAchievements: 0, rarity: "common", source: collectibleSource("starter", "Изначально") },
+  { id: "confetti", name: "Конфетти", desc: "За 8 достижений", minAchievements: 8, rarity: "uncommon", source: collectibleSource("achievements", "Достижения", { count:8 }) },
+  { id: "petals", name: "Лепестки", desc: "За идеальную главу", achievement: "chapterPerfect1", rarity: "rare", source: collectibleSource("achievement", "Достижение", { id:"chapterPerfect1" }) },
+  { id: "comet", name: "Кометы", desc: "За ручное комбо ×10", achievement: "combo10", rare: true, rarity: "rare", source: collectibleSource("achievement", "Достижение", { id:"combo10" }) },
+  { id: "aurora", name: "Сияние", desc: "За 3 недельных испытания", minWeekly: 3, rare: true, rarity: "rare", source: collectibleSource("weekly", "Недельные испытания", { count:3 }) },
+  { id: "legend", name: "Легенда", desc: "За 5 идеальных глав", achievement: "chapterPerfect5", rare: true, rarity: "rare", source: collectibleSource("achievement", "Достижение", { id:"chapterPerfect5" }) },
+  { id: "duel", name: "Искры дуэли", desc: "За 25 побед в дуэлях", achievement: "duelWins25", rare: true, rarity: "rare", source: collectibleSource("achievement", "Достижение", { id:"duelWins25" }) },
+  { id: "moon", name: "Лунное сияние", desc: "За первое месячное испытание", minMonthly: 1, rare: true, rarity: "rare", source: collectibleSource("monthly", "Месячное испытание", { count:1 }) },
+  { id: "fireworks", name: "Фейерверк", desc: "За 6 достижений", minAchievements: 6, rarity: "uncommon", source: collectibleSource("achievements", "Достижения", { count:6 }) },
+  { id: "ribbons", name: "Ленты", desc: "За 12 достижений", minAchievements: 12, rarity: "uncommon", source: collectibleSource("achievements", "Достижения", { count:12 }) },
+  { id: "stars", name: "Звёздный дождь", desc: "За 18 достижений", minAchievements: 18, rarity: "uncommon", source: collectibleSource("achievements", "Достижения", { count:18 }) },
+  { id: "crown-rain", name: "Дождь корон", desc: "За 10 золотых медалей", achievement: "duelGold10", rare: true, rarity: "rare", source: collectibleSource("achievement", "Достижение", { id:"duelGold10" }) },
 ];
 
 const FRAME_DEFS = [
   { id: "none", name: "Без рамки", chapter: 0, hue: 250 , rarity: "common", source: collectibleSource("starter", "Изначально") },
   { id: "chapter1", name: "Первые связи", chapter: 1, hue: 258 , rarity: "common", source: collectibleSource("campaign", "Кампания", { chapter:1 }) },
   { id: "chapter2", name: "Знакомые миры", chapter: 2, hue: 195 , rarity: "common", source: collectibleSource("campaign", "Кампания", { chapter:2 }) },
-  { id: "chapter3", name: "Переплетения", chapter: 3, hue: 335 , rarity: "uncommon", source: collectibleSource("campaign", "Кампания", { chapter:3 }) },
+  { id: "chapter3", name: "Переплетения", chapter: 3, hue: 335 , rarity: "common", source: collectibleSource("campaign", "Кампания", { chapter:3 }) },
   { id: "chapter4", name: "Тонкие намёки", chapter: 4, hue: 145 , rarity: "uncommon", source: collectibleSource("campaign", "Кампания", { chapter:4 }) },
   { id: "chapter5", name: "Большой словарь", chapter: 5, hue: 42 , rarity: "uncommon", source: collectibleSource("campaign", "Кампания", { chapter:5 }) },
-  { id: "chapter6", name: "Мастер ассоциаций", chapter: 6, hue: 285 , rarity: "rare", source: collectibleSource("campaign", "Кампания", { chapter:6 }) },
-  { id: "chapter7", name: "Скрытые смыслы", chapter: 7, hue: 12 , rarity: "rare", source: collectibleSource("campaign", "Кампания", { chapter:7 }) },
+  { id: "chapter6", name: "Мастер ассоциаций", chapter: 6, hue: 285 , rarity: "uncommon", source: collectibleSource("campaign", "Кампания", { chapter:6 }) },
+  { id: "chapter7", name: "Скрытые смыслы", chapter: 7, hue: 12 , rarity: "uncommon", source: collectibleSource("campaign", "Кампания", { chapter:7 }) },
   { id: "chapter8", name: "Словесный лабиринт", chapter: 8, hue: 174 , rarity: "rare", source: collectibleSource("campaign", "Кампания", { chapter:8 }) },
   { id: "chapter9", name: "Точные связи", chapter: 9, hue: 220 , rarity: "rare", source: collectibleSource("campaign", "Кампания", { chapter:9 }) },
   { id: "chapter10", name: "Эрудит", chapter: 10, hue: 55 , rarity: "rare", source: collectibleSource("campaign", "Кампания", { chapter:10 }) },
-  { id: "chapter11", name: "Большая энциклопедия", chapter: 11, hue: 316 , rarity: "epic", source: collectibleSource("campaign", "Кампания", { chapter:11 }) },
-  { id: "chapter12", name: "За гранью очевидного", chapter: 12, hue: 105 , rarity: "epic", source: collectibleSource("campaign", "Кампания", { chapter:12 }) },
+  { id: "chapter11", name: "Большая энциклопедия", chapter: 11, hue: 316 , rarity: "rare", source: collectibleSource("campaign", "Кампания", { chapter:11 }) },
+  { id: "chapter12", name: "За гранью очевидного", chapter: 12, hue: 105 , rarity: "rare", source: collectibleSource("campaign", "Кампания", { chapter:12 }) },
   { id: "duel-silver", name: "Серебряный дуэлянт", minDuelXp: 30, hue: 210 , rarity: "uncommon", source: collectibleSource("duel", "Дуэли", { xp:30 }) },
   { id: "duel-gold", name: "Золотой дуэлянт", minDuelXp: 75, hue: 45 , rarity: "rare", source: collectibleSource("duel", "Дуэли", { xp:75 }) },
 ];
 
 const SOUND_PACK_DEFS = [
-  { id: "classic", name: "Классика", minDuelXp: 0 },
-  { id: "crystal", name: "Кристалл", minDuelXp: 20 },
-  { id: "arcade", name: "Аркада", minDuelXp: 50 },
-  { id: "royal", name: "Королевский", minDuelXp: 100 },
+  { id: "classic", name: "Классика", minDuelXp: 0, rarity: "common", source: collectibleSource("starter", "Изначально") },
+  { id: "crystal", name: "Кристалл", minDuelXp: 20, rarity: "common", source: collectibleSource("duel", "Дуэльный опыт", { xp:20 }) },
+  { id: "arcade", name: "Аркада", minDuelXp: 50, rarity: "uncommon", source: collectibleSource("duel", "Дуэльный опыт", { xp:50 }) },
+  { id: "royal", name: "Королевский", minDuelXp: 100, rarity: "rare", source: collectibleSource("duel", "Дуэльный опыт", { xp:100 }) },
 ];
 
 const TITLE_DEFS = [
   { id: "player", name: "Игрок", icon: "◇" , rarity: "common", source: collectibleSource("starter", "Изначально") },
   { id: "rank-linker", name: "Связист", icon: "⌁", minXp: xpThresholdForRank(5) , rarity: "common", source: collectibleSource("rank", "Ранг", { rank:5 }) },
-  { id: "rank-associator", name: "Ассоциатор", icon: "✦", minXp: xpThresholdForRank(10) , rarity: "uncommon", source: collectibleSource("rank", "Ранг", { rank:10 }) },
+  { id: "rank-associator", name: "Ассоциатор", icon: "✦", minXp: xpThresholdForRank(10) , rarity: "common", source: collectibleSource("rank", "Ранг", { rank:10 }) },
   { id: "rank-researcher", name: "Исследователь", icon: "◎", minXp: xpThresholdForRank(20) , rarity: "uncommon", source: collectibleSource("rank", "Ранг", { rank:20 }) },
-  { id: "rank-erudite", name: "Эрудит", icon: "▦", minXp: xpThresholdForRank(30) , rarity: "rare", source: collectibleSource("rank", "Ранг", { rank:30 }) },
+  { id: "rank-erudite", name: "Эрудит", icon: "▦", minXp: xpThresholdForRank(30) , rarity: "uncommon", source: collectibleSource("rank", "Ранг", { rank:30 }) },
   { id: "rank-master", name: "Мастер", icon: "★", minXp: xpThresholdForRank(40) , rarity: "rare", source: collectibleSource("rank", "Ранг", { rank:40 }) },
   { id: "rank-archivist", name: "Архивариус", icon: "♜", minXp: xpThresholdForRank(50) , rarity: "rare", source: collectibleSource("rank", "Ранг", { rank:50 }) },
-  { id: "rank-legend", name: "Легенда", icon: "♛", minXp: xpThresholdForRank(75) , rarity: "epic", source: collectibleSource("rank", "Ранг", { rank:75 }) },
-  { id: "collector", name: "Коллекционер", icon: "▦", achievement: "collector" , rarity: "rare", source: collectibleSource("achievement", "Достижение", { id:"collector" }) },
-  { id: "perfectionist", name: "Перфекционист", icon: "★", achievement: "perfect10" , rarity: "rare", source: collectibleSource("achievement", "Достижение", { id:"perfect10" }) },
+  { id: "rank-legend", name: "Легенда", icon: "♛", minXp: xpThresholdForRank(75) , rarity: "rare", source: collectibleSource("rank", "Ранг", { rank:75 }) },
+  { id: "collector", name: "Коллекционер", icon: "▦", achievement: "collector" , rarity: "uncommon", source: collectibleSource("achievement", "Достижение", { id:"collector" }) },
+  { id: "perfectionist", name: "Перфекционист", icon: "★", achievement: "perfect10" , rarity: "uncommon", source: collectibleSource("achievement", "Достижение", { id:"perfect10" }) },
   { id: "hand", name: "Мастер движений", icon: "×", achievement: "combo10" , rarity: "rare", source: collectibleSource("achievement", "Достижение", { id:"combo10" }) },
-  { id: "explorer", name: "Исследователь", icon: "◎", achievement: "discover75" , rarity: "rare", source: collectibleSource("achievement", "Достижение", { id:"discover75" }) },
+  { id: "explorer", name: "Исследователь", icon: "◎", achievement: "discover75" , rarity: "uncommon", source: collectibleSource("achievement", "Достижение", { id:"discover75" }) },
   { id: "legend", name: "Легенда", icon: "✦", achievement: "chapterPerfect5" , rarity: "rare", source: collectibleSource("achievement", "Достижение", { id:"chapterPerfect5" }) },
 ];
 
-function achievementRarity(a) { return a?.legendary ? "epic" : a?.rare ? "rare" : "uncommon"; }
+function achievementRarity(a) {
+  if (a?.rarity && RARITY_IDS.includes(a.rarity)) return a.rarity;
+  return a?.legendary ? "epic" : a?.rare ? "rare" : "common";
+}
 function achievementTitleDef(a) {
   return a ? { id: `achievement:${a.id}`, name: a.title, icon: a.icon || "★", achievement: a.id, rarity:achievementRarity(a), source:collectibleSource("achievement", "Достижение", { id:a.id }) } : null;
 }
@@ -1578,6 +1604,89 @@ ACHIEVEMENTS.push(
   { id: "duelWins10", icon: "⚔10", title: "Дуэлянт", desc: "Победить в 10 дуэлях", rare: true, test: (p) => (p.stats.duelWins || 0) >= 10 },
   { id: "duelWins25", icon: "👑", title: "Чемпион дуэлей", desc: "Победить в 25 дуэлях", rare: true, test: (p) => (p.stats.duelWins || 0) >= 25 },
 );
+
+
+const ACHIEVEMENT_RARITY_BY_ID = Object.freeze({
+  "first": "common",
+  "ten": "common",
+  "fifty": "uncommon",
+  "hundred": "rare",
+  "clean": "common",
+  "perfect10": "uncommon",
+  "nohint": "uncommon",
+  "noundo": "uncommon",
+  "discover25": "common",
+  "discover50": "uncommon",
+  "discover75": "uncommon",
+  "collector": "uncommon",
+  "encyclopedia": "rare",
+  "daily": "common",
+  "combo5": "uncommon",
+  "special5": "uncommon",
+  "chapter1": "common",
+  "chapter3": "uncommon",
+  "chapter5": "uncommon",
+  "chapterPerfect1": "rare",
+  "chapterPerfect3": "rare",
+  "chapterPerfect5": "rare",
+  "streak7": "uncommon",
+  "streak30": "rare",
+  "twentyfive": "uncommon",
+  "twofifty": "rare",
+  "fivehundred": "rare",
+  "perfect25": "uncommon",
+  "perfect50": "rare",
+  "perfect100": "rare",
+  "nohint50": "uncommon",
+  "nohint100": "rare",
+  "noundo50": "uncommon",
+  "noundo100": "rare",
+  "collectorAll": "rare",
+  "games100": "uncommon",
+  "daily7": "uncommon",
+  "daily30": "rare",
+  "daily100": "epic",
+  "combo3": "common",
+  "combo10": "rare",
+  "special10": "uncommon",
+  "special25": "rare",
+  "duelGold10": "rare",
+  "allPictures": "epic",
+  "allWords": "epic",
+  "retro90": "legendary",
+  "allAchievements": "legendary",
+  "weekly1": "uncommon",
+  "weekly10": "epic",
+  "moves1000": "common",
+  "records10": "uncommon",
+  "challenge1": "common",
+  "challenge25": "uncommon",
+  "calm10": "uncommon",
+  "marathon5": "rare",
+  "marathon15": "epic",
+  "mastery10": "uncommon",
+  "mastery50": "rare",
+  "final1": "common",
+  "final6": "rare",
+  "bonus10": "uncommon",
+  "series3": "uncommon",
+  "visits30": "uncommon",
+  "visits50": "uncommon",
+  "visits100": "rare",
+  "visits180": "epic",
+  "visits365": "epic",
+  "duel1": "common",
+  "duelWin1": "common",
+  "duelWins5": "uncommon",
+  "duelWins10": "uncommon",
+  "duelWins25": "rare",
+});
+for (const achievement of ACHIEVEMENTS) {
+  achievement.rarity = ACHIEVEMENT_RARITY_BY_ID[achievement.id] || "common";
+  achievement.source = collectibleSource("achievement", "Достижение", { id:achievement.id });
+  achievement.rare = ["rare","epic","legendary"].includes(achievement.rarity);
+  achievement.legendary = ["epic","legendary"].includes(achievement.rarity);
+}
 
 function achievementProgressData(a, p = profile) {
   const map = {
