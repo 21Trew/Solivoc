@@ -1,8 +1,13 @@
 /* Словасьянс v34: mascot daily, portrait scene, compact controls and navigation fixes. */
 .v32-challenge-reward{
+  min-height:0!important;
+  padding:0!important;
   border:0!important;
+  border-radius:0!important;
   outline:0!important;
+  background:transparent!important;
   box-shadow:none!important;
+  color:rgba(242,239,255,.78)!important;
 }
 .chapter-head .v32-chapter-trigger{
   padding-right:8px!important;
@@ -161,4 +166,75 @@
   .v34-world-caption{left:20px;top:max(20px,env(safe-area-inset-top));max-width:72%}
   .v34-world-caption b{font-size:20px}
   .v34-mascot-close{top:max(16px,env(safe-area-inset-top));right:16px}
+}
+
+/* v35: daily task titles must stay readable over every mode/theme background. */
+.daily-quest > b{
+  color:#f9f8ff!important;
+  text-shadow:0 1px 3px rgba(5,7,25,.62)!important;
+}
+.daily-quest.done > b{color:#effff7!important}
+
+/* v35: rarity is communicated by the card outline; the filters carry the names. */
+.v35-cardback-filters{
+  display:flex;
+  gap:6px;
+  margin:0 0 10px;
+  overflow-x:auto;
+  padding:1px 1px 3px;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+}
+.v35-cardback-filters::-webkit-scrollbar{display:none}
+.v35-cardback-filters button{
+  --rarity:rgba(255,255,255,.42);
+  flex:0 0 auto;
+  min-height:31px;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 9px;
+  border:1px solid var(--rarity);
+  border-radius:999px;
+  background:rgba(255,255,255,.045);
+  color:#e9e6f7;
+  font:inherit;
+  font-size:9px;
+  font-weight:850;
+  cursor:pointer;
+}
+.v35-cardback-filters button small{
+  color:inherit;
+  font-size:8px;
+  opacity:.62;
+}
+.v35-cardback-filters button.active{
+  background:rgba(255,255,255,.10);
+  border-color:var(--rarity);
+  color:#fff;
+  box-shadow:0 0 0 1px var(--rarity);
+}
+.cardback-tile[data-card-back-rarity]{
+  border-color:transparent!important;
+  box-shadow:0 0 0 1.5px var(--cardback-rarity), inset 0 0 20px rgba(255,255,255,.025)!important;
+}
+.cardback-tile[data-card-back-rarity].selected{
+  outline:2px solid #fff!important;
+  outline-offset:2px!important;
+  background:rgba(255,255,255,.09)!important;
+}
+.cardback-tile[data-card-back-rarity].locked{
+  opacity:.44;
+  filter:saturate(.48);
+}
+.cardback-tile.v35-rarity-hidden{display:none!important}
+.cosmetic-section.v35-rarity-filter-active .cosmetic-clip{
+  max-height:none!important;
+  overflow:visible!important;
+}
+.cosmetic-section.v35-rarity-filter-active .cosmetic-expand{display:none!important}
+
+@media(max-width:420px){
+  .v35-cardback-filters{margin-left:-2px;margin-right:-2px}
+  .v35-cardback-filters button{padding:6px 8px;font-size:8.6px}
 }

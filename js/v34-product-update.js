@@ -361,7 +361,7 @@
     const quest = dailyQuestState(def.id); if (!quest) return "";
     const ratio = Math.min(1, quest.progress / Math.max(1, quest.target));
     const image = typeof companionAsset === "function" ? companionAsset(def) : def.image || "";
-    return `<section class="hub-section v34-mascot-daily ${quest.completed ? "done" : ""}"><img src="${esc(image)}" alt=""><div><small>ЕЖЕДНЕВКА ОТ МАСКОТА · БЕЗ XP ИГРОКА</small><b>${esc(quest.title)}</b><span>${esc(quest.desc)}</span><div class="v34-mascot-daily-progress"><i style="width:${ratio*100}%"></i></div><em>${Math.min(quest.target,quest.progress)}/${quest.target}${quest.completed ? " ✓" : ""} · +${quest.reward} привязанности</em></div></section>`;
+    return `<section class="hub-section v34-mascot-daily ${quest.completed ? "done" : ""}"><img src="${esc(image)}" alt=""><div><small>ЕЖЕДНЕВКА ОТ МАСКОТА</small><b>${esc(quest.title)}</b><span>${esc(quest.desc)}</span><div class="v34-mascot-daily-progress"><i style="width:${ratio*100}%"></i></div><em>${Math.min(quest.target,quest.progress)}/${quest.target}${quest.completed ? " ✓" : ""} · +${quest.reward} привязанности</em></div></section>`;
   }
   if (typeof finishLevel === "function") {
     const baseFinishLevel = finishLevel;
@@ -494,6 +494,88 @@
     openDeveloperMailModal=function v34DeveloperMailModal(...args){const result=baseOpenDeveloperMailModal.apply(this,args);fetchDeveloperMail({force:true}).then((changed)=>{if(changed&&document.querySelector("#developerMailModal")?.classList.contains("show"))baseOpenDeveloperMailModal({markRead:false});});return result;};
   }
 
-  root.__solivocV34 = Object.freeze({ openCampaignPicker, openMascotPortrait, fetchDeveloperMail, mascotDailyMarkup, syncCompanionActionControls });
-  queueMicrotask(()=>{ syncCompanionActionControls(); ensureMascotDaily(); fetchDeveloperMail(); });
+
+  /* v35: card backs use visual rarity instead of noisy labels, with an explicit filter. */
+  const CARD_BACK_RARITY_META = Object.freeze({
+    common: { label:"Обычные", color:"#aeb7cb" },
+    uncommon: { label:"Необычные", color:"#65d89a" },
+    rare: { label:"Редкие", color:"#66a9ff" },
+    epic: { label:"Эпические", color:"#b985ff" },
+    legendary: { label:"Легендарные", color:"#f2c55e" },
+  });
+  const CARD_BACK_RARITY_BY_ID = Object.freeze({
+    classic:"common", "midnight-grid":"common",
+    prism:"uncommon", sunrise:"uncommon", constellation:"uncommon",
+    trophy:"rare", mosaic:"rare", duelist:"rare", crown:"rare", ember:"rare", master:"rare",
+    velvet:"epic", glacier:"epic", lotus:"epic", chronicle:"epic", phoenix:"epic", lion:"epic", parrot:"epic",
+    anniversary:"legendary", atlas:"legendary", legend:"legendary", obsidian:"legendary", "grand-trophy":"legendary",
+  });
+  let cardBackRarityFilter = "all";
+  function cardBackRarity(back) {
+    if (!back) return "common";
+    const explicit = CARD_BACK_RARITY_BY_ID[String(back.id || "")];
+    if (explicit) return explicit;
+    const achievements = Math.max(0, Number(back.minAchievements) || 0);
+    if (achievements >= 20) return "epic";
+    if (achievements >= 12) return "rare";
+    if (achievements >= 4) return "uncommon";
+    return back.rare ? "rare" : "common";
+  }
+  function cardBackRarityCounts() {
+    const counts = { common:0, uncommon:0, rare:0, epic:0, legendary:0 };
+    for (const back of (typeof CARD_BACK_DEFS !== "undefined" ? CARD_BACK_DEFS : [])) {
+      const rarity = cardBackRarity(back);
+      if (Object.prototype.hasOwnProperty.call(counts, rarity)) counts[rarity]++;
+    }
+    return counts;
+  }
+  function decorateCardBackRarity() {
+    const section = document.querySelector('[data-cosmetic-section="backs"]');
+    if (!section || typeof CARD_BACK_DEFS === "undefined") return false;
+    const clip = section.querySelector(".cosmetic-clip");
+    const grid = section.querySelector(".cardback-grid");
+    if (!clip || !grid) return false;
+
+    let filters = section.querySelector(".v35-cardback-filters");
+    if (!filters) {
+      filters = document.createElement("div");
+      filters.className = "v35-cardback-filters";
+      clip.before(filters);
+    }
+    const counts = cardBackRarityCounts();
+    filters.innerHTML = [
+      ["all", "Все", CARD_BACK_DEFS.length],
+      ...Object.entries(CARD_BACK_RARITY_META).map(([id, meta]) => [id, meta.label, counts[id] || 0]),
+    ].map(([id, label, count]) => `<button type="button" class="${cardBackRarityFilter === id ? "active" : ""}" data-v35-cardback-filter="${id}"${id !== "all" ? ` style="--rarity:${CARD_BACK_RARITY_META[id].color}"` : ""}><span>${label}</span><small>${count}</small></button>`).join("");
+    filters.querySelectorAll("[data-v35-cardback-filter]").forEach((button) => {
+      button.onclick = () => {
+        cardBackRarityFilter = String(button.dataset.v35CardbackFilter || "all");
+        decorateCardBackRarity();
+      };
+    });
+
+    const defs = new Map(CARD_BACK_DEFS.map((back) => [String(back.id), back]));
+    grid.querySelectorAll(".cardback-tile[data-card-back-id]").forEach((tile) => {
+      const back = defs.get(String(tile.dataset.cardBackId || ""));
+      const rarity = cardBackRarity(back);
+      tile.dataset.cardBackRarity = rarity;
+      tile.style.setProperty("--cardback-rarity", CARD_BACK_RARITY_META[rarity]?.color || CARD_BACK_RARITY_META.common.color);
+      tile.classList.toggle("v35-rarity-hidden", cardBackRarityFilter !== "all" && cardBackRarityFilter !== rarity);
+      tile.setAttribute("aria-label", `${back?.name || "Рубашка"}. Редкость: ${CARD_BACK_RARITY_META[rarity]?.label || "Обычная"}`);
+    });
+    section.classList.toggle("v35-rarity-filter-active", cardBackRarityFilter !== "all");
+    return true;
+  }
+  if (typeof renderHub === "function" && !renderHub.__v35CardBackRarity) {
+    const baseRenderHub = renderHub;
+    renderHub = function v35CardBackRarityRender(...args) {
+      const result = baseRenderHub.apply(this, args);
+      queueMicrotask(decorateCardBackRarity);
+      return result;
+    };
+    renderHub.__v35CardBackRarity = true;
+  }
+
+  root.__solivocV34 = Object.freeze({ openCampaignPicker, openMascotPortrait, fetchDeveloperMail, mascotDailyMarkup, syncCompanionActionControls, decorateCardBackRarity, cardBackRarity });
+  queueMicrotask(()=>{ syncCompanionActionControls(); ensureMascotDaily(); decorateCardBackRarity(); fetchDeveloperMail(); });
 })();
