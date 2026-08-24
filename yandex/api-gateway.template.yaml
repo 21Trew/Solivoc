@@ -44,6 +44,8 @@ paths:
   /api/admin/mail:
     x-yc-apigateway-cors:
       origin:
+        - https://solivoc.ru
+        - https://www.solivoc.ru
         - https://admin.solivoc.ru
       methods:
         - POST
