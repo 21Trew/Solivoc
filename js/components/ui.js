@@ -40,12 +40,18 @@ const MASCOT_FORM_ASSETS = Object.freeze({
     "./icons/mascots/fox/fox-4.webp",
     "./icons/mascots/fox/fox-5.webp",
   ]),
+  raven: Object.freeze([
+    "./icons/mascots/raven/raven-1.webp",
+    "./icons/mascots/raven/raven-2.webp",
+    "./icons/mascots/raven/raven-3.webp",
+  ]),
 });
 
 const LEGACY_MASCOT_ASSET_IDS = Object.freeze({
   "./icons/mascot-owl.svg": "owl",
   "./icons/mascot-cat.svg": "cat",
   "./icons/mascot-fox.svg": "fox",
+  "./icons/mascot-raven.svg": "raven",
 });
 
 function mascotFormAssets(defOrId) {
@@ -73,7 +79,7 @@ function mascotVisualFormIndex(def, p = profile) {
   }
 
   if (forms.length === 3) {
-    // Owl and Cat: early / developed / legendary.
+    // Three-form mascots: early / developed / legendary.
     return level >= 5 ? 2 : level >= 3 ? 1 : 0;
   }
 
@@ -104,7 +110,7 @@ function patchLegacyMascotImage(img) {
 function syncMascotImageAssets(root = document) {
   if (root instanceof HTMLImageElement) patchLegacyMascotImage(root);
   if (!root?.querySelectorAll) return;
-  root.querySelectorAll('img[src="./icons/mascot-owl.svg"],img[src="./icons/mascot-cat.svg"],img[src="./icons/mascot-fox.svg"]')
+  root.querySelectorAll('img[src="./icons/mascot-owl.svg"],img[src="./icons/mascot-cat.svg"],img[src="./icons/mascot-fox.svg"],img[src="./icons/mascot-raven.svg"]')
     .forEach(patchLegacyMascotImage);
 }
 
