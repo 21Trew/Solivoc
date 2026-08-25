@@ -1,0 +1,38 @@
+name: Sync forest design docs
+
+on:
+  push:
+    branches:
+      - milestone/forest-foundation
+    paths:
+      - .sync/milestone_docs.tar.bz2
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: ${{ github.event.head_commit.message == 'chore: stage forest docs' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: milestone/forest-foundation
+          fetch-depth: 0
+
+      - name: Extract canonical docs
+        run: |
+          tar -xjf .sync/milestone_docs.tar.bz2 -C .
+
+      - name: Validate machine package
+        run: |
+          python docs/design/forest/machine/v0.02/WORLD_FOREST_MACHINE_PACKAGE_v0.02/tools/validate_package.py
+
+      - name: Commit synced documentation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs RARITY_SYSTEM.md MASCOTS_README.md
+          git rm -f .sync/milestone_docs.tar.bz2 .github/workflows/sync-design-docs.yml
+          git commit -m "docs: sync forest foundation"
+          git push origin HEAD:milestone/forest-foundation
