@@ -24,6 +24,9 @@
   };
   const commandId = () => globalThis.crypto?.randomUUID?.() || `adm-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   const byId = (id) => document.getElementById(id);
+  // Compatibility contract: the legacy admin mail endpoint remains routed by the gateway.
+  // The Operations Console uses /api/admin for audited mail + modal metadata.
+  const ADMIN_MAIL_ENDPOINT = "/api/admin/mail";
 
   async function api(path = "", options = {}) {
     const response = await apiFetch(`/api/admin${path}`, { cache: "no-store", ...options });
