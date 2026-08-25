@@ -1,40 +1,28 @@
-name: Sync forest design docs
+name: Inspect forest docs payload
 
 on:
   push:
     branches:
       - "milestone/forest-foundation"
     paths:
-      - ".sync/milestone_docs.tar.bz2"
+      - ".sync/docs.b64"
       - ".github/workflows/sync-design-docs.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  sync:
+  inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout milestone
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: "milestone/forest-foundation"
           fetch-depth: 0
-
-      - name: Extract canonical docs
-        shell: bash
-        run: tar -xjf .sync/milestone_docs.tar.bz2 -C .
-
-      - name: Validate machine package
-        shell: bash
-        run: python docs/design/forest/machine/v0.02/WORLD_FOREST_MACHINE_PACKAGE_v0.02/tools/validate_package.py
-
-      - name: Commit synced documentation
+      - name: Decode and inspect
         shell: bash
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs RARITY_SYSTEM.md MASCOTS_README.md
-          git rm -f .sync/milestone_docs.tar.bz2 .github/workflows/sync-design-docs.yml
-          git commit -m "docs: sync forest foundation"
-          git push origin HEAD:milestone/forest-foundation
+          base64 -d .sync/docs.b64 > /tmp/docs.tar.bz2
+          bzip2 -tv /tmp/docs.tar.bz2
+          echo "--- CONTENTS ---"
+          tar -tjf /tmp/docs.tar.bz2
