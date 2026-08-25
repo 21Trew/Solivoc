@@ -3,32 +3,34 @@ name: Sync forest design docs
 on:
   push:
     branches:
-      - milestone/forest-foundation
+      - "milestone/forest-foundation"
     paths:
-      - .sync/milestone_docs.tar.bz2
+      - ".sync/milestone_docs.tar.bz2"
+      - ".github/workflows/sync-design-docs.yml"
 
 permissions:
   contents: write
 
 jobs:
   sync:
-    if: ${{ github.event.head_commit.message == 'chore: stage forest docs' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout milestone
+        uses: actions/checkout@v4
         with:
-          ref: milestone/forest-foundation
+          ref: "milestone/forest-foundation"
           fetch-depth: 0
 
       - name: Extract canonical docs
-        run: |
-          tar -xjf .sync/milestone_docs.tar.bz2 -C .
+        shell: bash
+        run: tar -xjf .sync/milestone_docs.tar.bz2 -C .
 
       - name: Validate machine package
-        run: |
-          python docs/design/forest/machine/v0.02/WORLD_FOREST_MACHINE_PACKAGE_v0.02/tools/validate_package.py
+        shell: bash
+        run: python docs/design/forest/machine/v0.02/WORLD_FOREST_MACHINE_PACKAGE_v0.02/tools/validate_package.py
 
       - name: Commit synced documentation
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
