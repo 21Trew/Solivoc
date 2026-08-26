@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "worldId": "forest",
+  "packageVersion": "0.03",
+  "status": "foundation-contract",
+  "relationRules": [],
+  "notes": [
+    "No Forest authored relation rule is activated by this foundation export.",
+    "Populate relationRules only from a validated machine-package export.",
+    "TBD, unknown rule types and incomplete definitions remain non-executable."
+  ]
+}
