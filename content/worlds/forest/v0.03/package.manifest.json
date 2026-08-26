@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "worldId": "forest",
+  "packageVersion": "0.03",
+  "status": "foundation-contract",
+  "source": {
+    "designArchive": "docs/design/forest/machine/v0.03/WORLD_FOREST_MACHINE_PACKAGE_v0.03.zip",
+    "machineSpec": "docs/design/forest/WORLD_FOREST_MACHINE_PACKAGE_SPEC_v0.03.md",
+    "stateSchema": "docs/design/forest/WORLD_FOREST_STATE_SCHEMA_v0.05.md",
+    "productStructure": "docs/design/PRODUCT_STRUCTURE_MANIFEST_v0.01.md",
+    "narrativePresentation": "docs/design/NARRATIVE_PRESENTATION_MANIFEST_v0.01.md"
+  },
+  "runtimeFiles": [],
+  "notes": [
+    "This manifest establishes the production runtime boundary without duplicating authored meaning.",
+    "Machine-package extraction into validated runtime JSON is a separate content-export step.",
+    "No current gameplay path consumes this manifest yet."
+  ]
+}

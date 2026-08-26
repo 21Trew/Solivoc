@@ -3,6 +3,7 @@ import {
   sha256, userKey,
 } from "./_auth-lib.mjs";
 import { redis } from "./_push-lib.mjs";
+import { purgeSemanticData } from "./_semantic-lib.mjs";
 
 const BOARDS = Object.freeze(["stars","levels","daily","marathon","combo","duel","time","moves","onePass"]);
 
@@ -98,19 +99,20 @@ export async function deleteAccountData(userIdValue, emailHint = "") {
 
   const user = await readJsonKey(userKey(userId));
   if (!user && !emailHint) {
-    return { deleted: false, userId, email: "", sessionsDeleted: 0, challengesDeleted: 0, authKeysDeleted: 0 };
+    return { deleted: false, userId, email: "", sessionsDeleted: 0, challengesDeleted: 0, authKeysDeleted: 0, narrativeKeysDeleted: 0 };
   }
 
   const email = cleanEmail(user?.email || emailHint);
   const mappedId = email ? String(await redis(["GET", emailKey(email)]) || "") : "";
 
-  // Remove game-facing data first.
+  // Remove game-facing and semantic account data first.
   await redis(["DEL", playerKey(userId)]);
   await Promise.all(BOARDS.map((board) => redis(["ZREM", boardKey(board), userId])));
 
-  const [sessionsDeleted, challengesDeleted] = await Promise.all([
+  const [sessionsDeleted, challengesDeleted, narrativeKeysDeleted] = await Promise.all([
     deleteUserSessions(userId),
     deleteUserChallenges(userId),
+    purgeSemanticData(userId),
   ]);
 
   await redis(["DEL", profileKey(userId), profileVersionKey(userId), userKey(userId)]);
@@ -124,5 +126,6 @@ export async function deleteAccountData(userIdValue, emailHint = "") {
     sessionsDeleted,
     challengesDeleted,
     authKeysDeleted,
+    narrativeKeysDeleted,
   };
 }
