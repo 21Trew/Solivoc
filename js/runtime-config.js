@@ -102,6 +102,9 @@
     stored.stats = { ...objectValue(stored.stats) };
     stored.stats.levelsCompleted = Math.max(nonNegativeInt(stored.stats.levelsCompleted), evidence);
     stored.stats.chapterFinalsCompleted = Math.max(nonNegativeInt(stored.stats.chapterFinalsCompleted), Math.floor(evidence / 10));
+    // Modern progress must never be treated as the old synthetic migration,
+    // including the historical XP subtraction coupled to that repair.
+    stored.campaignRepairXpAdjusted = true;
     try { localStorage.setItem(key, JSON.stringify(stored)); } catch {}
   }
 
@@ -201,8 +204,8 @@
   };
 
   const requestedAt = () => {
-    try { return Number(sessionStorage.getItem(REQUEST_KEY) || 0) || 0; }
-    catch { return 0; }
+    try { return Number(sessionStorage.getItem(REQUEST_KEY) || 0) || 0;
+    } catch { return 0; }
   };
 
   const recentlyRequested = () => {
