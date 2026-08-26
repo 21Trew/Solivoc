@@ -79,6 +79,7 @@ const CORE = [
   "./js/stability.js",
   "./js/ui/constants.js",
   "./js/components/ui.js",
+  "./js/narrative/relation-rule-engine.js",
   "./js/generator.js",
   "./js/meta/systems.js",
   "./js/retention.js",

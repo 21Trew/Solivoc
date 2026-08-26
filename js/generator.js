@@ -360,7 +360,7 @@ function isLikelySolvable(s) {
       for (let b = 0; b < cols.length; b++) {
         if (a === b || !cols[b].length) continue;
         const tb = cols[b][cols[b].length - 1];
-        if (tb.type === "word" && ta.cat === tb.cat) {
+        if (tb.type === "word" && globalThis.relationRuleEngine?.canRelate(ta, tb, { purpose: "solver-merge", state: s })) {
           tb.count += ta.count;
           cols[a].pop();
           merged = progress = true;

@@ -167,8 +167,13 @@ function accessibleReserveCards() {
 function reserveHasFutureMove() {
   const reserve = accessibleReserveCards();
   if (!reserve.length) return false;
-  const freeSlot = state.slots.some((g) => !g), activeCats = new Set(state.slots.filter(Boolean).map(catOfGroup));
-  return reserve.some((c) => (c.type === "category" ? freeSlot : activeCats.has(c.cat)));
+  const freeSlot = state.slots.some((g) => !g), activeGroups = state.slots.filter(Boolean);
+  return reserve.some((c) => {
+    if (c.type === "category") return freeSlot;
+    if (c.type !== "word") return false;
+    const moving = { cards: [c], faceUp: true };
+    return activeGroups.some((group) => canMerge(group, moving));
+  });
 }
 function isDeadlockedState() {
   if (!state || state.rewarded || state.completed >= state.totalCategories) return false;

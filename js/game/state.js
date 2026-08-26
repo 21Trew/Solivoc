@@ -206,7 +206,7 @@ function groupLabel(g) {
   return cc ? `${cc.label} ${wordCount(g)}/${cc.total}` : g.cards[0].label;
 }
 function canMerge(a, b) {
-  return a && b && catOfGroup(a) === catOfGroup(b);
+  return !!(a && b && globalThis.relationRuleEngine?.canRelate(a, b, { purpose: "gameplay-merge", state }));
 }
 function firstOpenIndex(col) {
   const i = col.findIndex((g) => g.faceUp);
