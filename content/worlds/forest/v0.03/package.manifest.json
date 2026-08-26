@@ -11,11 +11,13 @@
     "narrativePresentation": "docs/design/NARRATIVE_PRESENTATION_MANIFEST_v0.01.md"
   },
   "runtimeFiles": [
-    "data/rules.json"
+    "data/rules.json",
+    "data/scenes.json"
   ],
   "notes": [
     "This manifest establishes the production runtime boundary without duplicating authored meaning.",
     "Machine-package extraction into validated runtime JSON is a separate content-export step.",
-    "Relation runtime accepts only explicitly exported authored ID pairs; no semantic inference is allowed."
+    "Relation runtime accepts only explicitly exported authored ID pairs; no semantic inference is allowed.",
+    "The current scenes export is intentionally limited to the first Forest vertical slice."
   ]
 }
