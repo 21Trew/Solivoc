@@ -52,13 +52,18 @@ function makeRuntime(shared = {}) {
 
 test("Forest scene export contains only the authored first vertical-slice anchor", () => {
   assert.ok(manifest.runtimeFiles.includes("data/scenes.json"));
-  assert.deepEqual(scenes.scenes, [{
-    id: "SCN_FOREST_L001_CORE",
-    level: 1,
-    areaId: "AREA_FOREST_CLEARING",
-    status: "BOUND",
-    meaning: "Появление",
-  }]);
+  assert.equal(scenes.scenes.length, 1);
+  const scene = scenes.scenes[0];
+  assert.deepEqual(
+    { id: scene.id, level: scene.level, areaId: scene.areaId, status: scene.status, meaning: scene.meaning },
+    {
+      id: "SCN_FOREST_L001_CORE",
+      level: 1,
+      areaId: "AREA_FOREST_CLEARING",
+      status: "BOUND",
+      meaning: "Появление",
+    },
+  );
 });
 
 test("bootstrap loads authored content without implicitly starting the scene", async () => {

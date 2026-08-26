@@ -9,7 +9,14 @@
       "level": 1,
       "areaId": "AREA_FOREST_CLEARING",
       "status": "BOUND",
-      "meaning": "Появление"
+      "meaning": "Появление",
+      "presentation": {
+        "worldLabel": "Мир Леса",
+        "areaLabel": "Поляна",
+        "gameplaySummary": "Самое базовое различение и очевидная связь.",
+        "characters": ["cat", "owl"],
+        "encounterId": "ENC_FOREST_01"
+      }
     }
   ]
 }

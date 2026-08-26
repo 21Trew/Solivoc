@@ -87,6 +87,15 @@
     this.ruleIds = () => rules.map((rule) => rule.id);
   }
 
+  function installStoryPresentation() {
+    if (typeof document === "undefined" || document.querySelector('script[data-solivoc-story-presentation="1"]')) return;
+    const script = document.createElement("script");
+    script.src = "./js/narrative/story-presentation.js";
+    script.async = true;
+    script.dataset.solivocStoryPresentation = "1";
+    document.head.appendChild(script);
+  }
+
   const engine = new RelationRuleEngine();
   engine.register({
     id: "legacy-category",
@@ -99,4 +108,5 @@
 
   globalThis.RelationRuleEngine = RelationRuleEngine;
   globalThis.relationRuleEngine = engine;
+  installStoryPresentation();
 })();
