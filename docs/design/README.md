@@ -9,6 +9,8 @@
 - `DOCUMENTATION_STANDARD_v1.00.md`
 - `RARITY_SYSTEM_v1.00.md`
 - `GAME_VISION_MANIFEST_v0.12.md`
+- `PRODUCT_STRUCTURE_MANIFEST_v0.01.md`
+- `NARRATIVE_PRESENTATION_MANIFEST_v0.01.md`
 - `WORLD_CAMPAIGN_MANIFEST_v0.21.md`
 - `CHARACTER_WORLD_MANIFEST_v0.15.md`
 
@@ -31,6 +33,8 @@
 ```text
 GAME VISION
 ↓
+PRODUCT STRUCTURE / NARRATIVE PRESENTATION
+↓
 WORLD / CAMPAIGN
 ↓
 CHARACTER WORLD / RARITY
@@ -46,23 +50,49 @@ MACHINE PACKAGE
 IMPLEMENTATION
 ```
 
-Machine package не имеет права создавать authored-смысл, которого нет в design registries.
+`PRODUCT_STRUCTURE_MANIFEST` фиксирует player-facing разделение `История / Расклады`, границы прогрессий и совместимость legacy-маскотов.
+
+`NARRATIVE_PRESENTATION_MANIFEST` фиксирует принцип `один канон / одна story history / разная глубина presentation` и не имеет права создавать отдельную семантическую кампанию для brief/full подачи.
+
+Machine package не имеет права создавать authored-смысл, которого нет в design registries и вышестоящем каноне.
 
 ## Текущий статус
 
 ```text
-100-level blueprint       ✓
-state map / schema        ✓
-content identity          ✓
-encounter architecture    ✓
-knowledge architecture    ✓
-revisit architecture      ✓
-synthesis architecture    ✓
-machine-readable export   ✓
-automatic validation      ✓
+product structure          ✓
+narrative presentation     ✓
+100-level blueprint        ✓
+state map / schema         ✓
+content identity           ✓
+encounter architecture     ✓
+knowledge architecture     ✓
+revisit architecture       ✓
+synthesis architecture     ✓
+machine-readable export    ✓
+automatic validation       ✓
+implementation audit       ✓
+migration direction        ✓
 ```
 
-Следующий этап: **implementation architecture audit существующего кода и migration plan**.
+Зафиксированное направление реализации:
+
+```text
+История
+→ отдельный World Campaign progress
+→ Мир Леса начинается из реально прожитых событий
+
+Расклады
+→ сохраняют legacy/free-play progression
+
+Коллекционный маскот
+≠ персонаж Истории
+≠ спутник Истории
+
+Semantic state
+≠ presentation depth
+```
+
+Следующий этап: **implementation foundation в отдельной рабочей ветке без изменения `main` и без записи implementation-кода в milestone-документационную ветку**.
 
 ## Legacy paths
 
