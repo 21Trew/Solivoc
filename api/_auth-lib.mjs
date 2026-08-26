@@ -254,9 +254,8 @@ function normalizeCampaignProfile(profile) {
   }
 
   // Old clients could migrate a corrupted currentLevel by manufacturing one-star
-  // clears for every preceding level. Apply the same conservative repair as the
-  // client before deriving canonical campaign counters, so stale cloud data cannot
-  // reintroduce a synthetic tail during account sync.
+  // clears for every preceding level. This destructive repair is now legacy-only:
+  // modern campaign profiles are append-only and may never be reduced by sync.
   const rawCurrent = Math.max(1, Math.trunc(Number(profile?.currentLevel) || 1));
   const storedCompleted = Math.max(0, Math.trunc(Number(profile?.stats?.levelsCompleted) || 0));
   const storedFinals = Math.max(0, Math.trunc(Number(profile?.stats?.chapterFinalsCompleted) || 0));
@@ -268,7 +267,7 @@ function normalizeCampaignProfile(profile) {
     .filter(Number.isFinite));
   let credibleThrough = storedFinals * CAMPAIGN_CHAPTER_SIZE;
   while (recordedLevels.has(credibleThrough + 1)) credibleThrough++;
-  if (profile?.legacyStarsMigrated && credibleThrough >= CAMPAIGN_CHAPTER_SIZE && rawCurrent - 1 > credibleThrough + CAMPAIGN_CHAPTER_SIZE * 3) {
+  if (Number(profile.campaignProgressVersion || 0) < 2 && profile?.legacyStarsMigrated && credibleThrough >= CAMPAIGN_CHAPTER_SIZE && rawCurrent - 1 > credibleThrough + CAMPAIGN_CHAPTER_SIZE * 3) {
     const tailLevels = Object.keys(stars).map(Number).filter((level) => level > credibleThrough);
     if (tailLevels.length >= CAMPAIGN_CHAPTER_SIZE * 2 && tailLevels.every((level) => stars[level] === 1)) {
       for (const level of tailLevels) delete stars[level];
@@ -285,7 +284,7 @@ function normalizeCampaignProfile(profile) {
   const highestStarLevel = Math.max(0, ...Object.keys(stars).map(Number).filter(Number.isFinite));
   const highestRecordLevel = Math.max(0, ...[...recordedLevels]);
   const progressFloor = Math.max(0, Math.trunc(Number(profile.campaignProgressFloor) || 0));
-  const versionedFloor = !syntheticTailRemoved && Number(profile.campaignProgressVersion || 0) >= 2 ? Math.max(storedCompleted, rawCurrent - 1) : 0;
+  const versionedFloor = Number(profile.campaignProgressVersion || 0) >= 2 ? Math.max(storedCompleted, rawCurrent - 1) : 0;
   const evidenceThrough = Math.max(completedThrough, highestStarLevel, highestRecordLevel, progressFloor, versionedFloor);
   const hadMissingStarHistory = evidenceThrough > Object.keys(stars).length;
   if (evidenceThrough > completedThrough && evidenceThrough <= 10000) {
@@ -311,6 +310,7 @@ function normalizeCampaignProfile(profile) {
   profile.cosmeticStarsPeak = Math.max(0, Number(profile.cosmeticStarsPeak) || 0, previousTotal, campaignStars + dailyStars);
   profile.stats = { ...(profile.stats || {}), levelsCompleted: completedThrough, chapterFinalsCompleted: Math.floor(completedThrough / CAMPAIGN_CHAPTER_SIZE), tripleStarWins: Object.values(stars).filter((value) => Number(value) === 3).length };
   profile.campaignProgressVersion = Math.max(2, Number(profile.campaignProgressVersion) || 0);
+  profile.campaignProgressFloor = Math.max(progressFloor, completedThrough);
   return profile;
 }
 
