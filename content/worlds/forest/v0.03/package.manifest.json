@@ -24,8 +24,8 @@
     "The Forest core scene registry is exported for all levels 1-100.",
     "Authored world facts, choices, encounter routing, encounter presentation kernels, Story primitive contracts and late-world structures are exported as separate runtime registries.",
     "Ordinary core levels reuse shared procedural Story generation instead of per-level implementations.",
-    "TBD weights, final dialogue, effects and exact mechanics remain explicit and are never inferred by runtime export.",
-    "Relationship synthesis, required revisit and elemental manifestation have generic authored-kernel runtimes; world synthesis remains fail-closed until SYN_FOREST_WORLD_01_BOARD is authored.",
+    "TBD weights, final dialogue, final art/voice and non-blocking mastery tuning remain explicit and are never inferred by runtime export.",
+    "Relationship synthesis, required revisit, world synthesis and elemental manifestation have generic runtimes; SYN_FOREST_WORLD_01_BOARD v0.01 is the beta-runnable production draft for level 99.",
     "Relation runtime accepts only explicitly exported authored ID pairs; no semantic inference is allowed."
   ]
 }

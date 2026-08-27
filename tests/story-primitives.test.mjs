@@ -6,11 +6,11 @@ import vm from 'node:vm';
 const source = await readFile(new URL('../js/narrative/story-primitives.js', import.meta.url), 'utf8');
 const contract = JSON.parse(await readFile(new URL('../content/worlds/forest/v0.03/data/primitives.json', import.meta.url), 'utf8'));
 
-function setup({ level=98, sceneId='SCN_FOREST_L098_CORE' }={}) {
+function setup({ level=98, sceneId='SCN_FOREST_L098_CORE', highestCompleted=97 }={}) {
   let state = { worldId:'forest', packageVersion:'0.03', sceneId, areaId:'AREA_FOREST_WHOLE', levelId:level, status:'active' };
   const meta = new Map(); const commands=[];
   const store = { async getMeta(k){ return meta.get(k) ?? null; }, async setMeta(k,v){ meta.set(k,v); }, async commit(c,k,v){ commands.push(c); meta.set(k,v); return c; }, async pending(){ return []; } };
-  const projection = { world_id:'forest', world:{highest_completed_level:97,world_flags:{forest_synthesis_complete:false}}, synthesis:{first_companion:'cat'}, routing_snapshot:{relationships:{cat:{identityKnown:true,acquainted:true,narrativeCompatibility:true,milestones:{understanding_established:true,reciprocity_established:true,cooperation_established:true}}}}, encounters:{completed_ids:[]}, revisits:{completed_ids:[]} };
+  const projection = { world_id:'forest', world:{highest_completed_level:highestCompleted,world_flags:{forest_synthesis_complete:false}}, synthesis:{first_companion:'cat'}, routing_snapshot:{relationships:{cat:{identityKnown:true,acquainted:true,narrativeCompatibility:true,milestones:{understanding_established:true,reciprocity_established:true,cooperation_established:true}}}}, encounters:{completed_ids:[]}, revisits:{completed_ids:[]} };
   const content = { async loadManifest(){return {runtimeFiles:['data/primitives.json']};}, async loadRuntimeFile(){return contract;} };
   const base = { async bootstrap(){return {document:{scenes:[]}};}, async restore(){return state;}, async sync(){return {ok:true};}, async beginScene(){return {state};}, async completeScene(){return {state:{...state,status:'completed'}};} };
   const sandbox = { console, Date, SolivocNarrativeStore:store, SolivocWorldContent:content, SolivocForestStory:base, accountSignedIn:()=>true, apiFetch:async()=>({ok:true,status:200,json:async()=>({projection})}) };
@@ -25,10 +25,37 @@ test('contract exposes all four late-world primitives and stable knowledge actio
   assert.equal(contract.knowledgeActions.find(a=>a.id==='KACT_FOREST_CONTINUE_TOGETHER').action,'CONTINUE_TOGETHER');
 });
 
-test('world synthesis fails closed while exact authored board is missing',async()=>{
-  const x=setup({level:99,sceneId:'SCN_FOREST_L099_CORE'}); const p=x.sandbox.SolivocStoryPrimitives;
-  assert.equal(p.validateWorldSynthesisBoard(contract.worldSynthesis).ok,false);
-  await assert.rejects(()=>p.assertSceneStart({level:99,requiredPrimitive:'world-synthesis'}),/story_primitive_authoring_required:world-synthesis/);
+test('world synthesis production board v0.01 is structurally authored and beta-runnable',()=>{
+  const x=setup({level:99,sceneId:'SCN_FOREST_L099_CORE',highestCompleted:98}); const p=x.sandbox.SolivocStoryPrimitives;
+  const definition=contract.worldSynthesis, board=definition.board;
+  assert.equal(definition.betaRunnable,true);
+  assert.equal(definition.contentVersion,'0.01');
+  assert.equal(definition.contentStatus,'BOUND_PRODUCTION_DRAFT_V0_01');
+  assert.equal(p.validateWorldSynthesisBoard(definition).ok,true);
+  assert.equal(board.id,'SYN_FOREST_WORLD_01_BOARD');
+  assert.ok(board.nodes.length>=9);
+  assert.ok(board.relations.filter(r=>r.truth==='core').length>=12);
+  assert.ok(board.relations.filter(r=>r.truth==='distractor').length>=4);
+  const relationIds=new Set(board.relations.map(r=>r.id));
+  for(const phase of board.phases){
+    assert.ok(phase.requiredRelationIds.length>0);
+    assert.ok(phase.candidateRelationIds.length>=phase.requiredRelationIds.length);
+    for(const id of phase.requiredRelationIds){
+      assert.ok(relationIds.has(id));
+      assert.notEqual(board.relations.find(r=>r.id===id)?.truth,'distractor');
+    }
+  }
+});
+
+test('L99 board keeps the same hard target for all companions and no optional-history gate',()=>{
+  const board=contract.worldSynthesis.board;
+  assert.equal(board.requiredHistoryPolicy,'CORE_1_98_ONLY');
+  assert.equal(board.optionalHistoryPolicy,'PROVENANCE_AND_ECHO_ONLY');
+  assert.deepEqual(Object.keys(board.companionLenses).sort(),['cat','fox','owl']);
+  const whole=board.phases.find(p=>p.id==='SYN_FOREST_WORLD_01_WHOLE');
+  assert.ok(whole.requiredRelationIds.includes('SYN_REL_WOOD_MEDIATES_BERRY'));
+  assert.ok(whole.requiredRelationIds.includes('SYN_REL_SOIL_SUPPORTS_BERRY'));
+  assert.ok(!whole.requiredRelationIds.includes('SYN_REL_BIRD_PRESSURES_BERRY'));
 });
 
 test('required L98 revisit records start and completion without inventing knowledge transitions',async()=>{

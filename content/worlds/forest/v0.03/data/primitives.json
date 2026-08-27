@@ -4,14 +4,46 @@
   "packageVersion": "0.03",
   "primitiveContractVersion": "forest-story-primitives@1",
   "knowledgeActions": [
-    {"id":"KACT_FOREST_LINK_OBSERVATIONS","action":"LINK_OBSERVATIONS","label":"Связать"},
-    {"id":"KACT_FOREST_MAKE_INFERENCE","action":"MAKE_INFERENCE","label":"Сделать вывод"},
-    {"id":"KACT_FOREST_REVISE","action":"REVISE_INTERPRETATION","label":"Пересмотреть"},
-    {"id":"KACT_FOREST_RECONSTRUCT_EVENT","action":"RECONSTRUCT_EVENT","label":"Восстановить событие"},
-    {"id":"KACT_FOREST_SEE_PATTERN","action":"SEE_PATTERN","label":"Увидеть закономерность"},
-    {"id":"KACT_FOREST_RECOGNIZE_ENTITY","action":"RECOGNIZE_ENTITY","label":"Узнать"},
-    {"id":"KACT_FOREST_CONTINUE_TOGETHER","action":"CONTINUE_TOGETHER","label":"Продолжить путь вместе"},
-    {"id":"KACT_FOREST_INTEGRATE_SYSTEM","action":"INTEGRATE_SYSTEM","label":"Увидеть целое"}
+    {
+      "id": "KACT_FOREST_LINK_OBSERVATIONS",
+      "action": "LINK_OBSERVATIONS",
+      "label": "Связать"
+    },
+    {
+      "id": "KACT_FOREST_MAKE_INFERENCE",
+      "action": "MAKE_INFERENCE",
+      "label": "Сделать вывод"
+    },
+    {
+      "id": "KACT_FOREST_REVISE",
+      "action": "REVISE_INTERPRETATION",
+      "label": "Пересмотреть"
+    },
+    {
+      "id": "KACT_FOREST_RECONSTRUCT_EVENT",
+      "action": "RECONSTRUCT_EVENT",
+      "label": "Восстановить событие"
+    },
+    {
+      "id": "KACT_FOREST_SEE_PATTERN",
+      "action": "SEE_PATTERN",
+      "label": "Увидеть закономерность"
+    },
+    {
+      "id": "KACT_FOREST_RECOGNIZE_ENTITY",
+      "action": "RECOGNIZE_ENTITY",
+      "label": "Узнать"
+    },
+    {
+      "id": "KACT_FOREST_CONTINUE_TOGETHER",
+      "action": "CONTINUE_TOGETHER",
+      "label": "Продолжить путь вместе"
+    },
+    {
+      "id": "KACT_FOREST_INTEGRATE_SYSTEM",
+      "action": "INTEGRATE_SYSTEM",
+      "label": "Увидеть целое"
+    }
   ],
   "perception": {
     "runtimeMode": "authored-target-only",
@@ -23,62 +55,419 @@
     "definitionsFrom": "data/world-structures.json"
   },
   "relationshipSynthesis": {
-    "primitive":"relationship-synthesis",
-    "level":90,
-    "encounterId":"ENC_FOREST_10",
-    "sceneRef":"SCN_FOREST_L090_RELATIONSHIP_SYNTHESIS",
-    "betaRunnable":true,
-    "copyStatus":"AUTHORED_KERNEL_NOT_FINAL_DIALOGUE",
-    "revealActionId":"KACT_FOREST_CONTINUE_TOGETHER",
+    "primitive": "relationship-synthesis",
+    "level": 90,
+    "encounterId": "ENC_FOREST_10",
+    "sceneRef": "SCN_FOREST_L090_RELATIONSHIP_SYNTHESIS",
+    "betaRunnable": true,
+    "copyStatus": "AUTHORED_KERNEL_NOT_FINAL_DIALOGUE",
+    "revealActionId": "KACT_FOREST_CONTINUE_TOGETHER",
     "candidates": {
-      "cat":{"synthesisId":"SYN_FOREST_REL_CAT_01","tag":"LIVING_MEMORY"},
-      "owl":{"synthesisId":"SYN_FOREST_REL_OWL_01","tag":"TESTABLE_WHOLE"},
-      "fox":{"synthesisId":"SYN_FOREST_REL_FOX_01","tag":"RESPONSIBLE_PATH"}
+      "cat": {
+        "synthesisId": "SYN_FOREST_REL_CAT_01",
+        "tag": "LIVING_MEMORY"
+      },
+      "owl": {
+        "synthesisId": "SYN_FOREST_REL_OWL_01",
+        "tag": "TESTABLE_WHOLE"
+      },
+      "fox": {
+        "synthesisId": "SYN_FOREST_REL_FOX_01",
+        "tag": "RESPONSIBLE_PATH"
+      }
     }
   },
   "requiredRevisit": {
-    "primitive":"authored-revisit",
-    "level":98,
-    "revisitId":"REV_FOREST_CLEARING_L98",
-    "sceneRef":"SCN_FOREST_L098_CLEARING_REVISIT",
-    "areaId":"AREA_FOREST_CLEARING",
-    "betaRunnable":true,
-    "title":"Поляна, увиденная снова",
-    "meaning":"Это было здесь с самого начала.",
-    "forcedKnowledgeTransitions":[]
+    "primitive": "authored-revisit",
+    "level": 98,
+    "revisitId": "REV_FOREST_CLEARING_L98",
+    "sceneRef": "SCN_FOREST_L098_CLEARING_REVISIT",
+    "areaId": "AREA_FOREST_CLEARING",
+    "betaRunnable": true,
+    "title": "Поляна, увиденная снова",
+    "meaning": "Это было здесь с самого начала.",
+    "forcedKnowledgeTransitions": []
   },
   "worldSynthesis": {
-    "primitive":"world-synthesis",
-    "level":99,
-    "synthesisId":"SYN_FOREST_WORLD_01",
-    "boardId":"SYN_FOREST_WORLD_01_BOARD",
-    "sceneRef":"SCN_FOREST_L099_WORLD_SYNTHESIS",
-    "revelationSceneRef":"SCN_FOREST_L099_SYNTHESIS_REVELATION",
-    "reconstructionId":"REC_FOREST_WORLD_SYNTHESIS_01",
-    "revealActionId":"KACT_FOREST_INTEGRATE_SYSTEM",
-    "betaRunnable":false,
-    "contentStatus":"TBD_AUTHORED_BOARD",
-    "board":null,
-    "phases":[
-      {"id":"SYN_FOREST_WORLD_01_DISTINGUISH","order":1,"question":"Какие ближайшие отношения здесь действительно существуют?"},
-      {"id":"SYN_FOREST_WORLD_01_MULTI_RELATION","order":2,"question":"Как одна и та же вещь может быть частью нескольких систем одновременно?"},
-      {"id":"SYN_FOREST_WORLD_01_DIRECTION","order":3,"question":"Куда именно проходит влияние — и обязательно ли оно прямое?"},
-      {"id":"SYN_FOREST_WORLD_01_TIME","order":4,"question":"Что происходит со связью после того, как исходное действие закончилось?"},
-      {"id":"SYN_FOREST_WORLD_01_WHOLE","order":5,"question":"При какой структуре эти части становятся одной работающей системой?"}
+    "primitive": "world-synthesis",
+    "level": 99,
+    "synthesisId": "SYN_FOREST_WORLD_01",
+    "boardId": "SYN_FOREST_WORLD_01_BOARD",
+    "sceneRef": "SCN_FOREST_L099_WORLD_SYNTHESIS",
+    "revelationSceneRef": "SCN_FOREST_L099_SYNTHESIS_REVELATION",
+    "reconstructionId": "REC_FOREST_WORLD_SYNTHESIS_01",
+    "revealActionId": "KACT_FOREST_INTEGRATE_SYSTEM",
+    "betaRunnable": true,
+    "contentStatus": "BOUND_PRODUCTION_DRAFT_V0_01",
+    "contentVersion": "0.01",
+    "masteryStatus": "TBD_POST_BETA",
+    "copyStatus": "BOUND_BETA_COPY_V0_01",
+    "visualStatus": "BOUND_BETA_LAYOUT_V0_01",
+    "phases": [
+      {
+        "id": "SYN_FOREST_WORLD_01_DISTINGUISH",
+        "order": 1,
+        "question": "Какие ближайшие отношения здесь действительно существуют?"
+      },
+      {
+        "id": "SYN_FOREST_WORLD_01_MULTI_RELATION",
+        "order": 2,
+        "question": "Как одна и та же вещь может быть частью нескольких систем одновременно?"
+      },
+      {
+        "id": "SYN_FOREST_WORLD_01_DIRECTION",
+        "order": 3,
+        "question": "Куда именно проходит влияние — и обязательно ли оно прямое?"
+      },
+      {
+        "id": "SYN_FOREST_WORLD_01_TIME",
+        "order": 4,
+        "question": "Что происходит со связью после того, как исходное действие закончилось?"
+      },
+      {
+        "id": "SYN_FOREST_WORLD_01_WHOLE",
+        "order": 5,
+        "question": "При какой структуре эти части становятся одной работающей системой?"
+      }
     ],
-    "boardRequirements":{"minNodes":6,"minRelations":7,"minRelationFamilies":4,"requiresMultiRoleNode":true,"requiresDirectionalRelation":true,"requiresMediatedRelation":true,"requiresTemporalContinuation":true,"requiresFeedbackFragment":true}
+    "boardRequirements": {
+      "minNodes": 6,
+      "minRelations": 7,
+      "minRelationFamilies": 4,
+      "requiresMultiRoleNode": true,
+      "requiresDirectionalRelation": true,
+      "requiresMediatedRelation": true,
+      "requiresTemporalContinuation": true,
+      "requiresFeedbackFragment": true
+    },
+    "board": {
+      "id": "SYN_FOREST_WORLD_01_BOARD",
+      "contentVersion": "0.01",
+      "premise": "После сильного ветра крупная ветка старого дерева упала на участок. Она открыла световое окно и стала частью новых процессов. Игрок восстанавливает, как одно локальное изменение проходит через укрытие, питание, перенос, разложение и почву.",
+      "semanticQuestion": "Как локальное изменение становится частью распределённой системы, если ни один объект не управляет всем участком?",
+      "requiredHistoryPolicy": "CORE_1_98_ONLY",
+      "optionalHistoryPolicy": "PROVENANCE_AND_ECHO_ONLY",
+      "layout": {
+        "coordinateSpace": "normalized-100",
+        "nodes": {
+          "SYN_NODE_TREE": {"x": 12, "y": 30},
+          "SYN_NODE_WOOD": {"x": 24, "y": 65},
+          "SYN_NODE_LIGHT": {"x": 35, "y": 15},
+          "SYN_NODE_BERRY": {"x": 51, "y": 32},
+          "SYN_NODE_BIRD": {"x": 72, "y": 20},
+          "SYN_NODE_SEED": {"x": 84, "y": 46},
+          "SYN_NODE_LITTER": {"x": 64, "y": 67},
+          "SYN_NODE_FUNGI": {"x": 40, "y": 80},
+          "SYN_NODE_SOIL": {"x": 72, "y": 84}
+        }
+      },
+      "nodes": [
+        {
+          "id": "SYN_NODE_TREE",
+          "label": "Старое дерево",
+          "roles": ["STRUCTURAL_LIVING_NODE"],
+          "sourceFactRefs": ["WF_F03", "WF_F06"],
+          "state": "После ветра потеряло крупную ветку."
+        },
+        {
+          "id": "SYN_NODE_WOOD",
+          "label": "Упавшая ветка",
+          "roles": ["RESIDUE_OR_TRACE"],
+          "sourceFactRefs": ["WF_F52"],
+          "state": "Лежит на земле и уже не выполняет прежнюю роль в кроне."
+        },
+        {
+          "id": "SYN_NODE_LIGHT",
+          "label": "Световое окно",
+          "roles": ["RESOURCE_OR_CONDITION"],
+          "sourceFactRefs": ["WF_F09"],
+          "state": "На участок попадает больше света."
+        },
+        {
+          "id": "SYN_NODE_BERRY",
+          "label": "Ягодный куст",
+          "roles": ["PLANT_OR_SEED", "RESOURCE_OR_CONDITION"],
+          "sourceFactRefs": ["WF_F23", "WF_F54"],
+          "state": "Получает больше света и остаётся пищевым ресурсом."
+        },
+        {
+          "id": "SYN_NODE_BIRD",
+          "label": "Лесная птица",
+          "roles": ["MOBILE_CREATURE"],
+          "sourceFactRefs": ["WF_F21", "WF_F23", "WF_F24"],
+          "state": "Питается на участке и переносит семена."
+        },
+        {
+          "id": "SYN_NODE_SEED",
+          "label": "Семя",
+          "roles": ["PLANT_OR_SEED"],
+          "sourceFactRefs": ["WF_F23"],
+          "state": "Перемещается за пределы исходного куста."
+        },
+        {
+          "id": "SYN_NODE_LITTER",
+          "label": "Растительный остаток",
+          "roles": ["RESIDUE_OR_TRACE"],
+          "sourceFactRefs": ["WF_F52", "WF_F53"],
+          "state": "Остаётся после завершившегося роста и питания."
+        },
+        {
+          "id": "SYN_NODE_FUNGI",
+          "label": "Грибница",
+          "roles": ["DECOMPOSER"],
+          "sourceFactRefs": ["WF_F28", "WF_F31", "WF_F32"],
+          "state": "Разлагает органический материал в почве и на древесине."
+        },
+        {
+          "id": "SYN_NODE_SOIL",
+          "label": "Почва",
+          "roles": ["SOIL_OR_SUBSTRATE", "RESOURCE_OR_CONDITION"],
+          "sourceFactRefs": ["WF_F31", "WF_F54"],
+          "state": "Меняется после разложения и остаётся средой следующего роста."
+        }
+      ],
+      "relations": [
+        {
+          "id": "SYN_REL_TREE_SHELTER_BIRD",
+          "from": "SYN_NODE_TREE",
+          "to": "SYN_NODE_BIRD",
+          "family": "FUNCTION_USE",
+          "label": "даёт укрытие",
+          "directional": true,
+          "truth": "core",
+          "feedback": "Птица использует дерево как укрытие; соседство здесь подтверждено функцией."
+        },
+        {
+          "id": "SYN_REL_BERRY_FEEDS_BIRD",
+          "from": "SYN_NODE_BERRY",
+          "to": "SYN_NODE_BIRD",
+          "family": "FUNCTION_USE",
+          "label": "служит пищей",
+          "directional": true,
+          "truth": "core",
+          "feedback": "Куст является пищевым ресурсом для птицы."
+        },
+        {
+          "id": "SYN_REL_BIRD_CARRIES_SEED",
+          "from": "SYN_NODE_BIRD",
+          "to": "SYN_NODE_SEED",
+          "family": "MOVEMENT_TRANSPORT",
+          "label": "переносит",
+          "directional": true,
+          "truth": "core",
+          "feedback": "Перенос меняет место, где семя может продолжить историю."
+        },
+        {
+          "id": "SYN_REL_LIGHT_SUPPORTS_BERRY",
+          "from": "SYN_NODE_LIGHT",
+          "to": "SYN_NODE_BERRY",
+          "family": "DEPENDENCY_CONDITION",
+          "label": "создаёт условие роста",
+          "directional": true,
+          "truth": "core",
+          "feedback": "Свет — условие, а не управляющий центр системы."
+        },
+        {
+          "id": "SYN_REL_WOOD_OPENS_LIGHT",
+          "from": "SYN_NODE_WOOD",
+          "to": "SYN_NODE_LIGHT",
+          "family": "MOVEMENT_TRANSPORT",
+          "label": "открывает доступ свету",
+          "directional": true,
+          "truth": "core",
+          "semanticRoles": ["ROUTE_OR_ACCESS"],
+          "feedback": "Падение ветки изменило доступ света к участку."
+        },
+        {
+          "id": "SYN_REL_WOOD_FEEDS_FUNGI",
+          "from": "SYN_NODE_WOOD",
+          "to": "SYN_NODE_FUNGI",
+          "family": "TRANSFORMATION",
+          "label": "становится субстратом",
+          "directional": true,
+          "temporal": true,
+          "truth": "core",
+          "feedback": "Завершившая прежнюю роль древесина становится материалом следующего процесса."
+        },
+        {
+          "id": "SYN_REL_FUNGI_CHANGES_SOIL",
+          "from": "SYN_NODE_FUNGI",
+          "to": "SYN_NODE_SOIL",
+          "family": "TRANSFORMATION",
+          "label": "изменяет состояние почвы",
+          "directional": true,
+          "temporal": true,
+          "truth": "core",
+          "feedback": "Разложение меняет среду, через которую продолжается влияние."
+        },
+        {
+          "id": "SYN_REL_SOIL_SUPPORTS_BERRY",
+          "from": "SYN_NODE_SOIL",
+          "to": "SYN_NODE_BERRY",
+          "family": "DEPENDENCY_CONDITION",
+          "label": "поддерживает следующий рост",
+          "directional": true,
+          "feedback": true,
+          "truth": "core",
+          "feedbackText": "Почва становится условием следующего роста и замыкает fragment обратной связи."
+        },
+        {
+          "id": "SYN_REL_BERRY_LEAVES_LITTER",
+          "from": "SYN_NODE_BERRY",
+          "to": "SYN_NODE_LITTER",
+          "family": "TRACE_CONSEQUENCE",
+          "label": "оставляет растительный остаток",
+          "directional": true,
+          "temporal": true,
+          "truth": "core",
+          "feedback": "Результат роста остаётся после завершения текущего действия."
+        },
+        {
+          "id": "SYN_REL_LITTER_FEEDS_FUNGI",
+          "from": "SYN_NODE_LITTER",
+          "to": "SYN_NODE_FUNGI",
+          "family": "TRANSFORMATION",
+          "label": "разлагается через грибницу",
+          "directional": true,
+          "temporal": true,
+          "truth": "core",
+          "feedback": "Остаток становится входом следующего процесса."
+        },
+        {
+          "id": "SYN_REL_BIRD_PRESSURES_BERRY",
+          "from": "SYN_NODE_BIRD",
+          "to": "SYN_NODE_BERRY",
+          "family": "PRESSURE_CONSTRAINT",
+          "label": "уменьшает часть плодов",
+          "directional": true,
+          "truth": "core",
+          "feedback": "Обратное направление существует, но означает уже не питание птицы, а изменение ресурса куста."
+        },
+        {
+          "id": "SYN_REL_WOOD_MEDIATES_BERRY",
+          "from": "SYN_NODE_WOOD",
+          "to": "SYN_NODE_BERRY",
+          "family": "MEDIATED_INFLUENCE",
+          "label": "через грибницу и почву меняет условия роста",
+          "directional": true,
+          "mediated": true,
+          "via": ["SYN_NODE_FUNGI", "SYN_NODE_SOIL"],
+          "truth": "core",
+          "feedback": "Влияние проходит не напрямую: древесина → грибница → почва → условия роста."
+        },
+        {
+          "id": "SYN_DIST_TREE_SAME_FUNCTION",
+          "from": "SYN_NODE_TREE",
+          "to": "SYN_NODE_BERRY",
+          "family": "FUNCTION_USE",
+          "label": "имеет ту же функцию из-за похожего ветвления",
+          "directional": false,
+          "truth": "distractor",
+          "feedback": "Похожая форма не подтверждает одинаковую функцию."
+        },
+        {
+          "id": "SYN_DIST_BIRD_DIRECT_SOIL",
+          "from": "SYN_NODE_BIRD",
+          "to": "SYN_NODE_SOIL",
+          "family": "TRANSFORMATION",
+          "label": "напрямую изменяет почву",
+          "directional": true,
+          "truth": "distractor",
+          "feedback": "Для прямого влияния птицы на почву здесь нет достаточного основания; текущая модель показывает другие промежуточные пути."
+        },
+        {
+          "id": "SYN_DIST_LIGHT_FEEDS_FUNGI",
+          "from": "SYN_NODE_LIGHT",
+          "to": "SYN_NODE_FUNGI",
+          "family": "FUNCTION_USE",
+          "label": "служит грибнице пищей",
+          "directional": true,
+          "truth": "distractor",
+          "feedback": "Свет и питание грибницы — не одна и та же relation."
+        },
+        {
+          "id": "SYN_DIST_TREE_CONTROLS_FUNGI",
+          "from": "SYN_NODE_TREE",
+          "to": "SYN_NODE_FUNGI",
+          "family": "PRESSURE_CONSTRAINT",
+          "label": "управляет разложением",
+          "directional": true,
+          "truth": "distractor",
+          "feedback": "Наличие дерева не делает его управляющим центром разложения."
+        }
+      ],
+      "phases": [
+        {
+          "id": "SYN_FOREST_WORLD_01_DISTINGUISH",
+          "requiredRelationIds": ["SYN_REL_TREE_SHELTER_BIRD", "SYN_REL_BERRY_FEEDS_BIRD", "SYN_REL_LIGHT_SUPPORTS_BERRY", "SYN_REL_WOOD_FEEDS_FUNGI"],
+          "candidateRelationIds": ["SYN_REL_TREE_SHELTER_BIRD", "SYN_REL_BERRY_FEEDS_BIRD", "SYN_REL_LIGHT_SUPPORTS_BERRY", "SYN_REL_WOOD_FEEDS_FUNGI", "SYN_DIST_TREE_SAME_FUNCTION", "SYN_DIST_LIGHT_FEEDS_FUNGI"],
+          "focusNodeIds": ["SYN_NODE_TREE", "SYN_NODE_BIRD", "SYN_NODE_BERRY", "SYN_NODE_LIGHT", "SYN_NODE_WOOD", "SYN_NODE_FUNGI"],
+          "hint": "Какая связь подтверждается тем, что эти вещи действительно делают друг с другом, а не просто находятся рядом или похожи?"
+        },
+        {
+          "id": "SYN_FOREST_WORLD_01_MULTI_RELATION",
+          "requiredRelationIds": ["SYN_REL_BERRY_FEEDS_BIRD", "SYN_REL_BIRD_CARRIES_SEED", "SYN_REL_BIRD_PRESSURES_BERRY"],
+          "candidateRelationIds": ["SYN_REL_TREE_SHELTER_BIRD", "SYN_REL_BERRY_FEEDS_BIRD", "SYN_REL_BIRD_CARRIES_SEED", "SYN_REL_BIRD_PRESSURES_BERRY", "SYN_DIST_BIRD_DIRECT_SOIL", "SYN_DIST_TREE_SAME_FUNCTION"],
+          "focusNodeIds": ["SYN_NODE_BIRD", "SYN_NODE_BERRY", "SYN_NODE_SEED"],
+          "hint": "Может ли один и тот же участник одновременно получать ресурс, менять его и переносить что-то дальше?"
+        },
+        {
+          "id": "SYN_FOREST_WORLD_01_DIRECTION",
+          "requiredRelationIds": ["SYN_REL_BERRY_FEEDS_BIRD", "SYN_REL_BIRD_PRESSURES_BERRY", "SYN_REL_WOOD_MEDIATES_BERRY"],
+          "candidateRelationIds": ["SYN_REL_BERRY_FEEDS_BIRD", "SYN_REL_BIRD_PRESSURES_BERRY", "SYN_REL_WOOD_MEDIATES_BERRY", "SYN_REL_WOOD_FEEDS_FUNGI", "SYN_REL_FUNGI_CHANGES_SOIL", "SYN_DIST_BIRD_DIRECT_SOIL", "SYN_DIST_TREE_CONTROLS_FUNGI"],
+          "focusNodeIds": ["SYN_NODE_BIRD", "SYN_NODE_BERRY", "SYN_NODE_WOOD", "SYN_NODE_FUNGI", "SYN_NODE_SOIL"],
+          "hint": "Если влияние идёт отсюда, куда именно оно приходит — и проходит ли оно через промежуточное звено?"
+        },
+        {
+          "id": "SYN_FOREST_WORLD_01_TIME",
+          "requiredRelationIds": ["SYN_REL_BERRY_LEAVES_LITTER", "SYN_REL_LITTER_FEEDS_FUNGI", "SYN_REL_FUNGI_CHANGES_SOIL", "SYN_REL_SOIL_SUPPORTS_BERRY"],
+          "candidateRelationIds": ["SYN_REL_BERRY_LEAVES_LITTER", "SYN_REL_LITTER_FEEDS_FUNGI", "SYN_REL_FUNGI_CHANGES_SOIL", "SYN_REL_SOIL_SUPPORTS_BERRY", "SYN_REL_LIGHT_SUPPORTS_BERRY", "SYN_DIST_LIGHT_FEEDS_FUNGI"],
+          "focusNodeIds": ["SYN_NODE_BERRY", "SYN_NODE_LITTER", "SYN_NODE_FUNGI", "SYN_NODE_SOIL"],
+          "hint": "Что становится условием следующего изменения после того, как прежнее действие уже закончилось?",
+          "acceptAnyEntryPoint": true
+        },
+        {
+          "id": "SYN_FOREST_WORLD_01_WHOLE",
+          "requiredRelationIds": ["SYN_REL_TREE_SHELTER_BIRD", "SYN_REL_BERRY_FEEDS_BIRD", "SYN_REL_BIRD_CARRIES_SEED", "SYN_REL_LIGHT_SUPPORTS_BERRY", "SYN_REL_WOOD_OPENS_LIGHT", "SYN_REL_WOOD_FEEDS_FUNGI", "SYN_REL_FUNGI_CHANGES_SOIL", "SYN_REL_SOIL_SUPPORTS_BERRY", "SYN_REL_BERRY_LEAVES_LITTER", "SYN_REL_LITTER_FEEDS_FUNGI", "SYN_REL_WOOD_MEDIATES_BERRY"],
+          "candidateRelationIds": ["SYN_REL_TREE_SHELTER_BIRD", "SYN_REL_BERRY_FEEDS_BIRD", "SYN_REL_BIRD_CARRIES_SEED", "SYN_REL_LIGHT_SUPPORTS_BERRY", "SYN_REL_WOOD_OPENS_LIGHT", "SYN_REL_WOOD_FEEDS_FUNGI", "SYN_REL_FUNGI_CHANGES_SOIL", "SYN_REL_SOIL_SUPPORTS_BERRY", "SYN_REL_BERRY_LEAVES_LITTER", "SYN_REL_LITTER_FEEDS_FUNGI", "SYN_REL_BIRD_PRESSURES_BERRY", "SYN_REL_WOOD_MEDIATES_BERRY", "SYN_DIST_TREE_SAME_FUNCTION", "SYN_DIST_BIRD_DIRECT_SOIL", "SYN_DIST_LIGHT_FEEDS_FUNGI", "SYN_DIST_TREE_CONTROLS_FUNGI"],
+          "focusNodeIds": ["SYN_NODE_TREE", "SYN_NODE_WOOD", "SYN_NODE_LIGHT", "SYN_NODE_BERRY", "SYN_NODE_BIRD", "SYN_NODE_SEED", "SYN_NODE_LITTER", "SYN_NODE_FUNGI", "SYN_NODE_SOIL"],
+          "hint": "Если убрать предполагаемый главный узел, останутся ли другие пути, которые удерживают систему связанной?"
+        }
+      ],
+      "companionLenses": {
+        "cat": {
+          "preferredPhases": ["SYN_FOREST_WORLD_01_TIME", "SYN_FOREST_WORLD_01_WHOLE"],
+          "hint": "Что изменилось по сравнению с тем, что уже было — и что продолжилось после самого события?"
+        },
+        "owl": {
+          "preferredPhases": ["SYN_FOREST_WORLD_01_DISTINGUISH", "SYN_FOREST_WORLD_01_DIRECTION"],
+          "hint": "Что здесь наблюдение, а что только объяснение? Какая стрелка действительно подтверждается?"
+        },
+        "fox": {
+          "preferredPhases": ["SYN_FOREST_WORLD_01_DIRECTION", "SYN_FOREST_WORLD_01_WHOLE"],
+          "hint": "Каким другим путём это влияние может пройти, если самый очевидный маршрут убрать?"
+        }
+      },
+      "revelation": {
+        "knowledgeRecordId": "KR_FOREST_WORLD_SYNTHESIS",
+        "reconstructionId": "REC_FOREST_WORLD_SYNTHESIS_01",
+        "proposition": "Лес является целым не потому, что рядом находится много живого, а потому, что между его частями существует распределённая сеть взаимного влияния.",
+        "actionId": "KACT_FOREST_INTEGRATE_SYSTEM"
+      }
+    },
+    "boardSource": "docs/design/forest/WORLD_FOREST_SYNTHESIS_BOARD_v0.01.md"
   },
   "elementalManifestation": {
-    "primitive":"elemental-manifestation",
-    "level":100,
-    "encounterId":"ENC_FOREST_11",
-    "variantId":"ENC_FOREST_11_ELEMENTAL",
-    "sceneRef":"SCN_FOREST_L100_ELEMENTAL_MANIFESTATION",
-    "worldEventId":"WE_FOREST_ELEMENTAL_FULL_MANIFESTATION_01",
-    "revealActionId":"KACT_FOREST_RECOGNIZE_ENTITY",
-    "betaRunnable":true,
-    "copyStatus":"BOUND_VISUAL_VOICE_TBD",
-    "title":"Лес становится различим",
-    "coreContradiction":"Лес становится различим как целое, но не превращается в один центр или одну сущность."
+    "primitive": "elemental-manifestation",
+    "level": 100,
+    "encounterId": "ENC_FOREST_11",
+    "variantId": "ENC_FOREST_11_ELEMENTAL",
+    "sceneRef": "SCN_FOREST_L100_ELEMENTAL_MANIFESTATION",
+    "worldEventId": "WE_FOREST_ELEMENTAL_FULL_MANIFESTATION_01",
+    "revealActionId": "KACT_FOREST_RECOGNIZE_ENTITY",
+    "betaRunnable": true,
+    "copyStatus": "BOUND_VISUAL_VOICE_TBD",
+    "title": "Лес становится различим",
+    "coreContradiction": "Лес становится различим как целое, но не превращается в один центр или одну сущность."
   }
 }

@@ -25,6 +25,7 @@
       ["story-encounter-lifecycle", "./js/narrative/story-encounter-lifecycle.js"],
       ["story-encounter-presentation", "./js/narrative/story-encounter-presentation.js"],
       ["story-primitives", "./js/narrative/story-primitives.js"],
+      ["story-synthesis-board-runtime", "./js/narrative/story-synthesis-board-runtime.js"],
       ["story-presentation", "./js/narrative/story-presentation.js"],
     ];
     for (const [key, src] of modules) { if (document.querySelector(`script[data-solivoc-story-module="${key}"]`)) continue; const script = document.createElement("script"); script.src = src; script.async = false; script.dataset.solivocStoryModule = key; document.head.appendChild(script); }
