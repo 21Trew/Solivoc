@@ -1,5 +1,6 @@
 import { checkRateLimit, currentSession, json, sameOrigin } from "./_auth-lib.mjs";
-import { appendSemanticCommand, normalizeSemanticCommand, readSemanticEvents, readSemanticProjection } from "./_semantic-lib.mjs";
+import { appendSemanticCommand, normalizeSemanticCommand, readSemanticEvents } from "./_semantic-lib.mjs";
+import { advanceForestProjectionCache, ensureForestProjection } from "./_forest-projection-store.mjs";
 
 export function OPTIONS() { return json({ ok: true }); }
 
@@ -10,8 +11,8 @@ export async function GET(request) {
     if (!session) return json({ error: "unauthorized" }, 401);
     const url = new URL(request.url);
     if (url.searchParams.get("projection") === "1") {
-      const data = await readSemanticProjection(session.userId, url.searchParams.get("world") || "forest");
-      return json({ ok: true, ...data });
+      const data = await ensureForestProjection(session.userId);
+      return json({ ok: true, projection: data.projection, version: data.version, rebuilt: data.rebuilt, mode: data.mode });
     }
     const data = await readSemanticEvents(session.userId, {
       after: url.searchParams.get("after"),
@@ -34,7 +35,26 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}));
     const command = normalizeSemanticCommand(session.userId, body);
     const result = await appendSemanticCommand(command);
-    return json(result);
+
+    let projection = { ok: false, error: "projection_not_updated" };
+    try {
+      const projected = result.replayed === true
+        ? await ensureForestProjection(session.userId)
+        : await advanceForestProjectionCache(session.userId, result.accepted || []);
+      projection = {
+        ok: true,
+        sourceSequence: Number(projected.projection?.source_sequence) || 0,
+        projectionVersion: Number(projected.projection?.projection_version) || projected.version || 0,
+        rebuilt: projected.rebuilt === true,
+        mode: projected.mode,
+      };
+    } catch (projectionError) {
+      // Canonical append-only history wins. Projection is rebuildable and may repair on the next GET/write.
+      console.error("semantic projection update", projectionError);
+      projection = { ok: false, error: "projection_update_failed" };
+    }
+
+    return json({ ...result, projection });
   } catch (error) {
     const status = Math.max(400, Math.min(599, Number(error?.status) || 500));
     if (error?.message === "REDIS_NOT_CONFIGURED") return json({ error: "redis_not_configured" }, 503);
