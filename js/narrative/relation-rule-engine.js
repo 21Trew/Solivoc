@@ -4,14 +4,12 @@
     const card = Array.isArray(value?.cards) ? value.cards[0] : value;
     return card?.cat;
   }
-
   function normalizeList(value) {
     if (value == null) return null;
     const list = Array.isArray(value) ? value : [value];
     const normalized = [...new Set(list.map((item) => String(item || "").trim()).filter(Boolean))];
     return normalized.length ? Object.freeze(normalized) : null;
   }
-
   function normalizeContext(context = {}) {
     const state = context?.state || null;
     return Object.freeze({
@@ -25,31 +23,19 @@
       state,
     });
   }
-
   function normalizePolicy(value = {}) {
     const policy = {
-      purposes: normalizeList(value?.purposes),
-      modes: normalizeList(value?.modes),
-      worldIds: normalizeList(value?.worldIds),
-      sceneIds: normalizeList(value?.sceneIds),
-      encounterIds: normalizeList(value?.encounterIds),
-      sourceRoles: normalizeList(value?.sourceRoles),
-      targetRoles: normalizeList(value?.targetRoles),
+      purposes: normalizeList(value?.purposes), modes: normalizeList(value?.modes), worldIds: normalizeList(value?.worldIds),
+      sceneIds: normalizeList(value?.sceneIds), encounterIds: normalizeList(value?.encounterIds),
+      sourceRoles: normalizeList(value?.sourceRoles), targetRoles: normalizeList(value?.targetRoles),
     };
-    const scoped = Object.values(policy).some(Boolean);
-    return Object.freeze({ ...policy, scoped });
+    return Object.freeze({ ...policy, scoped: Object.values(policy).some(Boolean) });
   }
-
   function policyAllows(policy, context) {
     if (!policy?.scoped) return false;
-    const checks = [
-      [policy.purposes, context.purpose], [policy.modes, context.mode], [policy.worldIds, context.worldId],
-      [policy.sceneIds, context.sceneId], [policy.encounterIds, context.encounterId],
-      [policy.sourceRoles, context.sourceRole], [policy.targetRoles, context.targetRole],
-    ];
-    return checks.every(([allowed, actual]) => !allowed || (actual != null && allowed.includes(String(actual))));
+    return [[policy.purposes, context.purpose], [policy.modes, context.mode], [policy.worldIds, context.worldId], [policy.sceneIds, context.sceneId], [policy.encounterIds, context.encounterId], [policy.sourceRoles, context.sourceRole], [policy.targetRoles, context.targetRole]]
+      .every(([allowed, actual]) => !allowed || (actual != null && allowed.includes(String(actual))));
   }
-
   function RelationRuleEngine() {
     const rules = [], ids = new Set();
     this.register = (rule) => {
@@ -88,6 +74,7 @@
     const modules = [
       ["story-generation", "./js/narrative/story-generation.js"],
       ["story-perspective-runtime", "./js/narrative/story-perspective-runtime.js"],
+      ["story-choice-runtime", "./js/narrative/story-choice-runtime.js"],
       ["story-presentation", "./js/narrative/story-presentation.js"],
     ];
     for (const [key, src] of modules) {

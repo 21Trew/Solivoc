@@ -18,6 +18,7 @@
     "This manifest establishes the production runtime boundary without duplicating authored meaning.",
     "Machine-package extraction into validated runtime JSON is a separate content-export step.",
     "Relation runtime accepts only explicitly exported authored ID pairs; no semantic inference is allowed.",
-    "The current scenes export is intentionally limited to the first Forest vertical slice."
+    "The current scenes export covers the authored first-pass runtime contract for Forest chapter 1, levels 1-10.",
+    "Exact card sets, final ability effects and non-authored mechanics remain outside the runtime export."
   ]
 }

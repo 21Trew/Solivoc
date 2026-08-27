@@ -64,7 +64,8 @@ test("Story generation always requests solver guard and owns only Story mode", (
   assert.notEqual(built.options.seed, "legacy-global-seed");
 });
 
-test("scene data declares generation profiles instead of authored card sets", () => {
+test("all exported chapter scenes declare procedural generation profiles rather than card sets", () => {
+  assert.equal(scenes.scenes.length, 10);
   for (const scene of scenes.scenes) {
     assert.ok(scene.generation?.profile);
     assert.equal(scene.generation.cardSourceMode, "words");
@@ -77,10 +78,14 @@ test("scene data declares generation profiles instead of authored card sets", ()
 test("Story generation is loaded once before reusable flow and presentation runtimes", async () => {
   const engine = await readFile(new URL("../js/narrative/relation-rule-engine.js", import.meta.url), "utf8");
   const sw = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(engine.indexOf('"story-generation"') < engine.indexOf('"story-perspective-runtime"'));
-  assert.ok(engine.indexOf('"story-perspective-runtime"') < engine.indexOf('"story-presentation"'));
-  assert.doesNotMatch(engine, /story-level1|story-level2/);
+  const generationAt = engine.indexOf('"story-generation"');
+  const perspectiveAt = engine.indexOf('"story-perspective-runtime"');
+  const choiceAt = engine.indexOf('"story-choice-runtime"');
+  const presentationAt = engine.indexOf('"story-presentation"');
+  assert.ok(generationAt >= 0 && perspectiveAt > generationAt && choiceAt > perspectiveAt && presentationAt > choiceAt);
+  assert.doesNotMatch(engine, /story-level1|story-level2|story-level3/);
   assert.match(sw, /"\.\/js\/narrative\/story-generation\.js"/);
   assert.match(sw, /"\.\/js\/narrative\/story-perspective-runtime\.js"/);
-  assert.doesNotMatch(sw, /story-level1\.js|story-level2\.js/);
+  assert.match(sw, /"\.\/js\/narrative\/story-choice-runtime\.js"/);
+  assert.doesNotMatch(sw, /story-level1\.js|story-level2\.js|story-level3\.js/);
 });

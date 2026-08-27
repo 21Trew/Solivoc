@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "worldId": "forest",
   "packageVersion": "0.03",
-  "exportStatus": "vertical-slice",
+  "exportStatus": "chapter-1-runtime",
   "campaign": {
     "worldLabel": "Мир Леса",
     "totalLevels": 100,
@@ -16,11 +16,11 @@
       "status": "BOUND",
       "meaning": "Появление",
       "nextSceneId": "SCN_FOREST_L002_CORE",
-      "generation": {
-        "profile": "guided",
-        "cardSourceMode": "words",
-        "forceSolvable": true
-      },
+      "generation": { "profile": "guided", "cardSourceMode": "words", "forceSolvable": true },
+      "worldFacts": [
+        { "id": "WF_F01", "exposureMode": "background_visible", "visibilityStrength": "subtle", "requiredForCoreProgression": false },
+        { "id": "WF_F02", "exposureMode": "background_visible", "visibilityStrength": "subtle", "requiredForCoreProgression": false }
+      ],
       "presentation": {
         "worldLabel": "Мир Леса",
         "areaLabel": "Поляна",
@@ -28,9 +28,7 @@
         "characters": ["cat", "owl"],
         "encounterId": "ENC_FOREST_01_CAT_OWL",
         "startsEncounter": true,
-        "gameplayGuide": {
-          "type": "core-loop-intro"
-        }
+        "gameplayGuide": { "type": "core-loop-intro" }
       }
     },
     {
@@ -39,18 +37,10 @@
       "areaId": "AREA_FOREST_CLEARING",
       "status": "BOUND",
       "meaning": "Уже увиденное",
-      "generation": {
-        "profile": "guided",
-        "cardSourceMode": "words",
-        "forceSolvable": true
-      },
+      "nextSceneId": "SCN_FOREST_L003_CORE",
+      "generation": { "profile": "guided", "cardSourceMode": "words", "forceSolvable": true },
       "worldFacts": [
-        {
-          "id": "WF_F03",
-          "exposureMode": "background_visible",
-          "visibilityStrength": "subtle",
-          "requiredForCoreProgression": false
-        }
+        { "id": "WF_F03", "exposureMode": "background_visible", "visibilityStrength": "subtle", "requiredForCoreProgression": false }
       ],
       "flow": {
         "beforeGameplay": [
@@ -72,6 +62,211 @@
         "gameplaySummary": "Знакомый мотив из уровня 1 появляется в новом контексте.",
         "characters": ["cat"],
         "encounterId": "ENC_FOREST_01_CAT_OWL"
+      }
+    },
+    {
+      "id": "SCN_FOREST_L003_CORE",
+      "level": 3,
+      "areaId": "AREA_FOREST_CLEARING",
+      "status": "BOUND",
+      "meaning": "Посмотреть точнее",
+      "nextSceneId": "SCN_FOREST_L004_CORE",
+      "generation": { "profile": "guided", "cardSourceMode": "words", "forceSolvable": true },
+      "worldFacts": [
+        { "id": "WF_F04", "exposureMode": "background_visible", "visibilityStrength": "subtle", "requiredForCoreProgression": false }
+      ],
+      "flow": {
+        "beforeGameplay": [
+          {
+            "type": "forced-perspective",
+            "sceneId": "SCN_FOREST_L003_OWL_PERSPECTIVE_TUTORIAL",
+            "perspectiveId": "owl_close_look",
+            "label": "Пристальный взгляд",
+            "characterId": "owl",
+            "threadId": "THREAD_FOREST_OWL",
+            "forced": true,
+            "effectStatus": "TBD_AUTHORED"
+          }
+        ]
+      },
+      "presentation": {
+        "worldLabel": "Мир Леса",
+        "areaLabel": "Поляна",
+        "gameplaySummary": "Два похожих элемента требуют различить конкретный признак.",
+        "characters": ["owl"],
+        "encounterId": "ENC_FOREST_01_CAT_OWL"
+      }
+    },
+    {
+      "id": "SCN_FOREST_L004_CORE",
+      "level": 4,
+      "areaId": "AREA_FOREST_CLEARING",
+      "status": "BOUND",
+      "meaning": "Теперь сам",
+      "nextSceneId": "SCN_FOREST_L005_CORE",
+      "generation": { "profile": "standard", "cardSourceMode": "words", "forceSolvable": true },
+      "worldFacts": [
+        { "id": "WF_F05", "exposureMode": "background_visible", "visibilityStrength": "subtle", "requiredForCoreProgression": false }
+      ],
+      "presentation": {
+        "worldLabel": "Мир Леса",
+        "areaLabel": "Поляна",
+        "gameplaySummary": "Первый расклад без обязательной перспективы.",
+        "characters": ["cat", "owl"],
+        "encounterId": "ENC_FOREST_01_CAT_OWL",
+        "endsEncounter": true
+      }
+    },
+    {
+      "id": "SCN_FOREST_L005_CORE",
+      "level": 5,
+      "areaId": "AREA_FOREST_CLEARING",
+      "status": "BOUND",
+      "meaning": "Контекст",
+      "nextSceneId": "SCN_FOREST_L006_CORE",
+      "generation": { "profile": "standard", "cardSourceMode": "words", "forceSolvable": true },
+      "flow": {
+        "afterGameplay": [
+          {
+            "type": "choice",
+            "choiceId": "CHOICE_FOREST_L05_ATTENTION",
+            "kind": "attention",
+            "required": true,
+            "profileEligible": true,
+            "preferenceEligible": true,
+            "prompt": "На Поляне есть несколько вещей, на которые можно обратить внимание. Что осмотреть сейчас?",
+            "options": [
+              { "id": "old_tree_mark", "label": "Осмотреть старую отметину", "weights": { "memory": 2, "comparison": 1, "depth": 2, "cat_thread": 1 } },
+              { "id": "damaged_sapling", "label": "Проверить повреждённый молодой росток", "weights": { "observation": 2, "verification": 2, "comparison": 1, "owl_thread": 1 } },
+              { "id": "bent_grass", "label": "Посмотреть на примятую траву у края Поляны", "weights": { "discovery": 2, "intuition": 1, "observation": 1 }, "conditionalWeights": [{ "key": "fox_thread", "delta": 1, "condition": "factual_evidence" }] },
+              { "id": "flower_pattern", "label": "Проверить странный рисунок цветов", "weights": { "comparison": 2, "observation": 2, "reinterpretation": 1 } }
+            ]
+          }
+        ]
+      },
+      "presentation": {
+        "worldLabel": "Мир Леса",
+        "areaLabel": "Поляна",
+        "gameplaySummary": "Две правдоподобные связи; контекст делает одну сильнее.",
+        "characters": []
+      }
+    },
+    {
+      "id": "SCN_FOREST_L006_CORE",
+      "level": 6,
+      "areaId": "AREA_FOREST_CLEARING",
+      "status": "BOUND",
+      "meaning": "Похожее — не одно и то же",
+      "nextSceneId": "SCN_FOREST_L007_CORE",
+      "generation": { "profile": "standard", "cardSourceMode": "words", "forceSolvable": true },
+      "presentation": {
+        "worldLabel": "Мир Леса",
+        "areaLabel": "Поляна",
+        "gameplaySummary": "Близкие элементы относятся к разным группам по содержательному признаку.",
+        "characters": []
+      }
+    },
+    {
+      "id": "SCN_FOREST_L007_CORE",
+      "level": 7,
+      "areaId": "AREA_FOREST_CLEARING",
+      "status": "BOUND",
+      "meaning": "Что именно я увидел?",
+      "nextSceneId": "SCN_FOREST_L008_CORE",
+      "generation": { "profile": "standard", "cardSourceMode": "words", "forceSolvable": true },
+      "authoredMarkers": [
+        { "type": "perception-gate", "status": "NON_EXECUTABLE_UNTIL_AUTHORED", "failurePenalty": "none" }
+      ],
+      "presentation": {
+        "worldLabel": "Мир Леса",
+        "areaLabel": "Поляна",
+        "gameplaySummary": "Отличить внешний признак от содержательной связи.",
+        "characters": []
+      }
+    },
+    {
+      "id": "SCN_FOREST_L008_CORE",
+      "level": 8,
+      "areaId": "AREA_FOREST_CLEARING",
+      "status": "BOUND",
+      "meaning": "Как я хочу посмотреть?",
+      "nextSceneId": "SCN_FOREST_L009_CORE",
+      "generation": { "profile": "standard", "cardSourceMode": "words", "forceSolvable": true },
+      "worldFacts": [
+        { "id": "WF_F02", "exposureMode": "foreground_visible", "visibilityStrength": "clear", "requiredForCoreProgression": false }
+      ],
+      "flow": {
+        "beforeGameplay": [
+          {
+            "type": "choice",
+            "choiceId": "CHOICE_FOREST_L08_PERSPECTIVE",
+            "kind": "perspective",
+            "required": true,
+            "profileEligible": true,
+            "preferenceEligible": true,
+            "sceneId": "SCN_FOREST_L008_VOLUNTARY_PERSPECTIVE",
+            "prompt": "Как ты хочешь посмотреть на эту задачу сейчас?",
+            "options": [
+              { "id": "cat_memory_echo", "label": "Эхо памяти", "weights": { "memory": 2, "cat_understanding": 1, "cat_thread": 1 } },
+              { "id": "owl_close_look", "label": "Пристальный взгляд", "weights": { "observation": 2, "verification": 1, "owl_understanding": 1, "owl_thread": 1 } },
+              { "id": "no_borrowed_perspective", "label": "Без заимствованной перспективы", "weights": {} }
+            ]
+          }
+        ]
+      },
+      "presentation": {
+        "worldLabel": "Мир Леса",
+        "areaLabel": "Поляна",
+        "gameplaySummary": "Один расклад допускает обычное решение, но знакомые перспективы предлагают разные способы анализа.",
+        "characters": ["cat", "owl"]
+      }
+    },
+    {
+      "id": "SCN_FOREST_L009_CORE",
+      "level": 9,
+      "areaId": "AREA_FOREST_CLEARING",
+      "status": "BOUND",
+      "meaning": "Не вся информация дана сразу",
+      "nextSceneId": "SCN_FOREST_L010_CORE",
+      "generation": { "profile": "standard", "cardSourceMode": "words", "forceSolvable": true },
+      "presentation": {
+        "worldLabel": "Мир Леса",
+        "areaLabel": "Поляна",
+        "gameplaySummary": "Работа с неполной информацией и моментом раскрытия новых карт.",
+        "characters": []
+      }
+    },
+    {
+      "id": "SCN_FOREST_L010_CORE",
+      "level": 10,
+      "areaId": "AREA_FOREST_CLEARING",
+      "status": "BOUND",
+      "meaning": "Поляна как целое",
+      "generation": { "profile": "standard", "cardSourceMode": "words", "forceSolvable": true },
+      "flow": {
+        "afterGameplay": [
+          {
+            "type": "choice",
+            "choiceId": "CHOICE_FOREST_L10_ROUTING",
+            "kind": "routing_question",
+            "required": true,
+            "profileEligible": true,
+            "preferenceEligible": true,
+            "prompt": "Куда направить исследование после Поляны?",
+            "options": [
+              { "id": "old_tree", "label": "Старое дерево", "weights": { "memory": 3, "depth": 2, "comparison": 1, "cat_thread": 2 } },
+              { "id": "damaged_young_tree", "label": "Молодое повреждённое дерево", "weights": { "observation": 3, "verification": 2, "comparison": 1, "owl_thread": 2 } },
+              { "id": "narrow_path", "label": "Узкая тропа", "weights": { "discovery": 3, "intuition": 2 }, "conditionalWeights": [{ "key": "fox_thread", "delta": 1, "condition": "factual_evidence" }] },
+              { "id": "stay_on_clearing", "label": "Остаться на Поляне", "weights": { "comparison": 2, "reinterpretation": 2, "depth": 1, "observation": 1 } }
+            ]
+          }
+        ]
+      },
+      "presentation": {
+        "worldLabel": "Мир Леса",
+        "areaLabel": "Поляна",
+        "gameplaySummary": "Мини-синтез главы: отдельные объекты и одна контролируемая неоднозначность.",
+        "characters": ["cat", "owl"]
       }
     }
   ]

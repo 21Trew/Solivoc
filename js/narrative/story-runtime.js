@@ -7,16 +7,44 @@
   const ACTIVE_META_KEY = "story:forest:active";
   const SCENES_SCHEMA = 1;
   const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:-]*$/;
-  const FLOW_STEP_TYPES = new Set(["forced-perspective"]);
+  const FLOW_PHASES = Object.freeze(["beforeGameplay", "afterGameplay"]);
+  const FLOW_STEP_TYPES = new Set(["forced-perspective", "choice"]);
   let loaded = null;
   let onlineSyncInstalled = false;
 
-  function beforeGameplaySteps(scene) {
-    return Array.isArray(scene?.flow?.beforeGameplay) ? scene.flow.beforeGameplay : [];
+  function flowSteps(scene, phase = "beforeGameplay") {
+    return Array.isArray(scene?.flow?.[phase]) ? scene.flow[phase] : [];
   }
 
-  function forcedPerspectiveSteps(scene) {
-    return beforeGameplaySteps(scene).filter((step) => step?.type === "forced-perspective");
+  function allFlowSteps(scene) {
+    return FLOW_PHASES.flatMap((phase) => flowSteps(scene, phase).map((step) => ({ ...step, phase })));
+  }
+
+  function forcedPerspectiveSteps(scene, phase = "beforeGameplay") {
+    return flowSteps(scene, phase).filter((step) => step?.type === "forced-perspective");
+  }
+
+  function choiceSteps(scene, phase = null) {
+    const source = phase ? flowSteps(scene, phase) : allFlowSteps(scene);
+    return source.filter((step) => step?.type === "choice");
+  }
+
+  function validateChoiceStep(step, errors) {
+    if (!ID_PATTERN.test(String(step?.choiceId || ""))) errors.push("invalid_story_choice_id");
+    if (!String(step?.kind || "").trim()) errors.push("invalid_story_choice_kind");
+    if (!Array.isArray(step?.options) || step.options.length < 2) {
+      errors.push("invalid_story_choice_options");
+      return;
+    }
+    const optionIds = new Set();
+    for (const option of step.options) {
+      const id = String(option?.id || "");
+      if (!ID_PATTERN.test(id)) errors.push("invalid_story_choice_option_id");
+      else if (optionIds.has(id)) errors.push("duplicate_story_choice_option_id");
+      else optionIds.add(id);
+      if (!String(option?.label || "").trim()) errors.push("invalid_story_choice_option_label");
+      if (option?.weights != null && (typeof option.weights !== "object" || Array.isArray(option.weights))) errors.push("invalid_story_choice_weights");
+    }
   }
 
   function validateScenesDocument(value) {
@@ -42,28 +70,31 @@
         if (scene?.status !== "BOUND") errors.push("scene_not_bound");
         const encounterId = scene?.presentation?.encounterId;
         if (encounterId != null && !ID_PATTERN.test(String(encounterId))) errors.push("invalid_scene_encounter");
-        if (scene?.presentation?.startsEncounter === true && !encounterId) errors.push("missing_scene_encounter");
+        if ((scene?.presentation?.startsEncounter === true || scene?.presentation?.endsEncounter === true) && !encounterId) errors.push("missing_scene_encounter");
         for (const fact of Array.isArray(scene?.worldFacts) ? scene.worldFacts : []) {
           if (!ID_PATTERN.test(String(fact?.id || ""))) errors.push("invalid_world_fact_id");
           if (!String(fact?.exposureMode || "").trim()) errors.push("invalid_world_fact_exposure");
         }
-        for (const step of beforeGameplaySteps(scene)) {
-          if (!FLOW_STEP_TYPES.has(String(step?.type || ""))) {
-            errors.push("unsupported_story_flow_step");
-            continue;
-          }
-          if (step.type === "forced-perspective") {
-            if (!ID_PATTERN.test(String(step.sceneId || ""))) errors.push("invalid_tutorial_scene");
-            if (!ID_PATTERN.test(String(step.perspectiveId || ""))) errors.push("invalid_tutorial_perspective");
-            if (!ID_PATTERN.test(String(step.characterId || ""))) errors.push("invalid_tutorial_character");
-            if (!ID_PATTERN.test(String(step.threadId || ""))) errors.push("invalid_tutorial_thread");
-            if (step.forced !== true) errors.push("tutorial_not_forced");
+        for (const phase of FLOW_PHASES) {
+          for (const step of flowSteps(scene, phase)) {
+            if (!FLOW_STEP_TYPES.has(String(step?.type || ""))) {
+              errors.push("unsupported_story_flow_step");
+              continue;
+            }
+            if (step.type === "forced-perspective") {
+              if (!ID_PATTERN.test(String(step.sceneId || ""))) errors.push("invalid_tutorial_scene");
+              if (!ID_PATTERN.test(String(step.perspectiveId || ""))) errors.push("invalid_tutorial_perspective");
+              if (!ID_PATTERN.test(String(step.characterId || ""))) errors.push("invalid_tutorial_character");
+              if (!ID_PATTERN.test(String(step.threadId || ""))) errors.push("invalid_tutorial_thread");
+              if (step.forced !== true) errors.push("tutorial_not_forced");
+            } else if (step.type === "choice") {
+              validateChoiceStep(step, errors);
+            }
           }
         }
       }
       for (const scene of value.scenes) {
-        if (scene?.nextSceneId != null && (!ID_PATTERN.test(String(scene.nextSceneId)) || !ids.has(String(scene.nextSceneId))))
-          errors.push("invalid_next_scene");
+        if (scene?.nextSceneId != null && (!ID_PATTERN.test(String(scene.nextSceneId)) || !ids.has(String(scene.nextSceneId)))) errors.push("invalid_next_scene");
       }
     }
     return { ok: errors.length === 0, errors };
@@ -81,8 +112,7 @@
     const document = await content.loadRuntimeFile(manifest, SCENES_FILE);
     const validation = validateScenesDocument(document);
     if (!validation.ok) throw Object.assign(new Error("invalid_story_scenes"), { validation });
-    if (manifest.runtimeFiles?.includes(content.rulesFile) && typeof content.loadAndRegisterRelations === "function")
-      await content.loadAndRegisterRelations(WORLD_ID, PACKAGE_VERSION);
+    if (manifest.runtimeFiles?.includes(content.rulesFile) && typeof content.loadAndRegisterRelations === "function") await content.loadAndRegisterRelations(WORLD_ID, PACKAGE_VERSION);
     loaded = Object.freeze({ manifest, document });
     return loaded;
   }
@@ -96,9 +126,10 @@
       sceneId: scene.id,
       areaId: scene.areaId,
       levelId: scene.level,
-      encounterId: scene?.presentation?.encounterId || previous?.encounterId || null,
+      encounterId: scene?.presentation?.encounterId || null,
       nextSceneId: scene.nextSceneId || null,
       forcedTutorials: sameScene ? { ...(previous?.forcedTutorials || {}) } : {},
+      choiceSelections: sameScene ? { ...(previous?.choiceSelections || {}) } : {},
       status,
       startedAt: sameScene ? (previous?.startedAt || now) : now,
       completedAt: status === "completed" ? now : null,
@@ -165,9 +196,7 @@
     const state = stateFor(scene, "active");
     const events = [semanticEvent(scene, "FOREST_LEVEL_STARTED", `${scene.id}:started:first-pass`)];
     const encounterId = scene?.presentation?.encounterId;
-    if (scene?.presentation?.startsEncounter === true && encounterId) {
-      events.push(semanticEvent(scene, "FOREST_ENCOUNTER_STARTED", `${encounterId}:started:first-pass`, { encounterId }, ["encounter"]));
-    }
+    if (scene?.presentation?.startsEncounter === true && encounterId) events.push(semanticEvent(scene, "FOREST_ENCOUNTER_STARTED", `${encounterId}:started:first-pass`, { encounterId }, ["encounter"]));
     for (const fact of Array.isArray(scene.worldFacts) ? scene.worldFacts : []) {
       events.push(semanticEvent(scene, "FOREST_WORLD_FACT_EXPOSED", `${fact.id}:exposed:${scene.id}:first-pass`, {
         world_fact_id: fact.id,
@@ -226,6 +255,54 @@
     return Object.freeze({ state: nextState, replayed: false });
   }
 
+  async function selectChoice(sceneId, choiceId, optionId) {
+    const store = globalThis.SolivocNarrativeStore;
+    if (!store?.commit) throw new Error("narrative_store_unavailable");
+    const { document } = await load();
+    const scene = sceneById(document, String(sceneId || ""));
+    if (!scene) throw new Error("unknown_story_scene");
+    const step = choiceSteps(scene).find((candidate) => candidate.choiceId === String(choiceId || ""));
+    if (!step) throw new Error("unknown_story_choice");
+    const option = step.options.find((candidate) => candidate.id === String(optionId || ""));
+    if (!option) throw new Error("unknown_story_choice_option");
+    const current = await restore();
+    if (!current || current.sceneId !== scene.id || current.status !== "active") throw new Error("story_scene_not_active");
+    const existing = current.choiceSelections?.[step.choiceId];
+    if (existing?.optionId) {
+      if (existing.optionId !== option.id) throw new Error("story_choice_already_selected");
+      sync().catch(() => {});
+      return Object.freeze({ state: current, replayed: true });
+    }
+    const selectedAt = new Date().toISOString();
+    const selection = Object.freeze({ optionId: option.id, kind: step.kind, phase: step.phase || null, selectedAt });
+    const nextState = Object.freeze({
+      ...current,
+      choiceSelections: { ...(current.choiceSelections || {}), [step.choiceId]: selection },
+    });
+    const event = semanticEvent(scene, "FOREST_CHOICE_SELECTED", `${step.choiceId}:${option.id}:first-pass`, {
+      choiceId: step.choiceId,
+      choiceKind: step.kind,
+      optionId: option.id,
+      authoredWeights: option.weights || {},
+      conditionalWeights: option.conditionalWeights || null,
+      profileEligible: step.profileEligible !== false,
+      preferenceEligible: step.preferenceEligible !== false,
+      projectionStatus: "EVENT_ONLY",
+    }, ["choice", step.kind]);
+    await store.commit(commandFor(scene, `choice:${step.choiceId}`, [event]), ACTIVE_META_KEY, nextState);
+    sync().catch(() => {});
+    return Object.freeze({ state: nextState, replayed: false });
+  }
+
+  function incompleteRequiredStep(scene, current) {
+    for (const step of allFlowSteps(scene)) {
+      if (step.required === false) continue;
+      if (step.type === "forced-perspective" && current.forcedTutorials?.[step.perspectiveId]?.used !== true) return step;
+      if (step.type === "choice" && !current.choiceSelections?.[step.choiceId]?.optionId) return step;
+    }
+    return null;
+  }
+
   async function completeScene(sceneId = DEFAULT_SCENE_ID) {
     const store = globalThis.SolivocNarrativeStore;
     if (!store?.commit) throw new Error("narrative_store_unavailable");
@@ -238,11 +315,12 @@
       sync().catch(() => {});
       return Object.freeze({ state: current, replayed: true });
     }
-    const incomplete = forcedPerspectiveSteps(scene).find((step) => current.forcedTutorials?.[step.perspectiveId]?.used !== true);
-    if (incomplete) throw new Error("story_forced_tutorial_incomplete");
+    if (incompleteRequiredStep(scene, current)) throw new Error("story_required_flow_incomplete");
     const state = stateFor(scene, "completed", current);
-    const event = semanticEvent(scene, "FOREST_LEVEL_COMPLETED", `${scene.id}:completed:first-pass`);
-    await store.commit(commandFor(scene, "completed", [event]), ACTIVE_META_KEY, state);
+    const events = [semanticEvent(scene, "FOREST_LEVEL_COMPLETED", `${scene.id}:completed:first-pass`)];
+    const encounterId = scene?.presentation?.encounterId;
+    if (scene?.presentation?.endsEncounter === true && encounterId) events.push(semanticEvent(scene, "FOREST_ENCOUNTER_COMPLETED", `${encounterId}:completed:first-pass`, { encounterId }, ["encounter"]));
+    await store.commit(commandFor(scene, "completed", events), ACTIVE_META_KEY, state);
     sync().catch(() => {});
     return Object.freeze({ state, replayed: false });
   }
@@ -251,12 +329,14 @@
     bootstrap,
     beginScene,
     useForcedPerspective,
+    selectChoice,
     completeScene,
     restore,
     sync,
     validateScenesDocument,
-    beforeGameplaySteps,
+    flowSteps,
     forcedPerspectiveSteps,
+    choiceSteps,
     defaultSceneId: DEFAULT_SCENE_ID,
     scenesFile: SCENES_FILE,
   });

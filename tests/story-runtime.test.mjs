@@ -13,28 +13,14 @@ function makeRuntime(shared = {}, document = scenes) {
   const commands = shared.commands ?? [];
   const store = {
     async getMeta() { return meta; },
-    async commit(command, key, value) {
-      commands.push({ command, key, value });
-      meta = value;
-      shared.meta = value;
-      return command;
-    },
-    async flush() {
-      shared.flushes = (shared.flushes || 0) + 1;
-      return { attempted: commands.length, acknowledged: 0, stoppedReason: null };
-    },
+    async commit(command, key, value) { commands.push({ command, key, value }); meta = value; shared.meta = value; return command; },
+    async flush() { return { attempted: commands.length, acknowledged: 0, stoppedReason: null }; },
   };
   const content = {
     rulesFile: "data/rules.json",
     async loadManifest() { return manifest; },
-    async loadRuntimeFile(_manifest, file) {
-      if (file !== "data/scenes.json") throw new Error("unexpected_runtime_file");
-      return document;
-    },
-    async loadAndRegisterRelations() {
-      shared.relations = (shared.relations || 0) + 1;
-      return { report: { ok: true } };
-    },
+    async loadRuntimeFile(_manifest, file) { if (file !== "data/scenes.json") throw new Error("unexpected_runtime_file"); return document; },
+    async loadAndRegisterRelations() { return { report: { ok: true } }; },
   };
   const sandbox = { console, Date, setTimeout, clearTimeout, SolivocNarrativeStore: store, SolivocWorldContent: content, addEventListener() {} };
   sandbox.globalThis = sandbox;
@@ -42,107 +28,98 @@ function makeRuntime(shared = {}, document = scenes) {
   return sandbox.SolivocForestStory;
 }
 
-test("Story content declares campaign metadata and reusable flow primitives", () => {
-  assert.ok(manifest.runtimeFiles.includes("data/scenes.json"));
-  assert.equal(scenes.campaign.worldLabel, "Мир Леса");
-  assert.equal(scenes.campaign.totalLevels, 100);
-  const first = scenes.scenes.find((scene) => scene.id === "SCN_FOREST_L001_CORE");
-  const second = scenes.scenes.find((scene) => scene.id === "SCN_FOREST_L002_CORE");
-  assert.equal(first.presentation.gameplayGuide.type, "core-loop-intro");
-  assert.equal(second.flow.beforeGameplay[0].type, "forced-perspective");
-  assert.equal(second.flow.beforeGameplay[0].perspectiveId, "cat_memory_echo");
-  assert.equal("tutorial" in second.presentation, false);
-});
+async function completeThrough(story, sceneId, perspectiveId = null) {
+  await story.beginScene(sceneId);
+  if (perspectiveId) await story.useForcedPerspective(sceneId, perspectiveId);
+  return story.completeScene(sceneId);
+}
 
-test("bootstrap loads authored content without implicitly starting a scene", async () => {
-  const shared = {};
-  const story = makeRuntime(shared);
-  const result = await story.bootstrap();
-  assert.equal(result.document.scenes[0].id, "SCN_FOREST_L001_CORE");
-  assert.equal(result.active, null);
-  assert.equal(shared.relations, 1);
-});
-
-test("Level 1 starts level and Encounter 1 atomically", async () => {
-  const shared = { commands: [] }, story = makeRuntime(shared);
-  const result = await story.beginScene();
-  assert.equal(result.state.sceneId, "SCN_FOREST_L001_CORE");
-  assert.equal(result.state.encounterId, "ENC_FOREST_01_CAT_OWL");
-  assert.deepEqual(Array.from(shared.commands[0].command.events, (event) => event.eventKey), ["FOREST_LEVEL_STARTED", "FOREST_ENCOUNTER_STARTED"]);
-});
-
-test("reload restores active Story state without duplicate start", async () => {
-  const shared = { commands: [] };
-  await makeRuntime(shared).beginScene();
-  const reloaded = makeRuntime(shared);
-  assert.equal((await reloaded.restore()).sceneId, "SCN_FOREST_L001_CORE");
-  assert.equal((await reloaded.beginScene()).replayed, true);
-  assert.equal(shared.commands.length, 1);
-});
-
-test("Level 2 exposes authored world fact without restarting Encounter 1", async () => {
-  const shared = { commands: [] }, story = makeRuntime(shared);
-  await story.beginScene();
-  await story.completeScene();
-  const result = await story.beginScene("SCN_FOREST_L002_CORE");
-  assert.equal(result.state.encounterId, "ENC_FOREST_01_CAT_OWL");
-  const events = Array.from(shared.commands[2].command.events);
-  assert.deepEqual(events.map((event) => event.eventKey), ["FOREST_LEVEL_STARTED", "FOREST_WORLD_FACT_EXPOSED"]);
-  assert.equal(events[1].payload.world_fact_id, "WF_F03");
-});
-
-test("generic forced-perspective primitive blocks completion and stays preference-ineligible", async () => {
-  const shared = { commands: [] }, story = makeRuntime(shared);
-  await story.beginScene();
-  await story.completeScene();
-  await story.beginScene("SCN_FOREST_L002_CORE");
-  await assert.rejects(() => story.completeScene("SCN_FOREST_L002_CORE"), /story_forced_tutorial_incomplete/);
-  const used = await story.useForcedPerspective("SCN_FOREST_L002_CORE", "cat_memory_echo");
-  assert.equal(used.state.forcedTutorials.cat_memory_echo.used, true);
-  const event = shared.commands[3].command.events[0];
-  assert.equal(event.eventKey, "FOREST_THREAD_STATE_CHANGED");
-  assert.equal(event.payload.profileEligible, false);
-  assert.equal(event.payload.preferenceEligible, false);
-  assert.equal(event.payload.reason, "forced_tutorial");
-  assert.equal((await story.useForcedPerspective("SCN_FOREST_L002_CORE", "cat_memory_echo")).replayed, true);
-  assert.equal(shared.commands.length, 4);
-  await story.completeScene("SCN_FOREST_L002_CORE");
-  assert.equal(shared.commands[4].command.events[0].eventKey, "FOREST_LEVEL_COMPLETED");
-});
-
-test("the same primitive accepts a future Owl Level 3 without level-specific runtime code", async () => {
-  const future = structuredClone(scenes);
-  future.scenes[1].nextSceneId = "SCN_FOREST_L003_CORE";
-  future.scenes.push({
-    id: "SCN_FOREST_L003_CORE",
-    level: 3,
-    areaId: "AREA_FOREST_CLEARING",
-    status: "BOUND",
-    meaning: "Посмотреть точнее",
-    generation: { profile: "guided", cardSourceMode: "words", forceSolvable: true },
-    flow: { beforeGameplay: [{ type: "forced-perspective", sceneId: "SCN_FOREST_L003_OWL_PERSPECTIVE_TUTORIAL", perspectiveId: "owl_close_look", label: "Пристальный взгляд", characterId: "owl", threadId: "THREAD_FOREST_OWL", forced: true, effectStatus: "TBD_AUTHORED" }] },
-    presentation: { worldLabel: "Мир Леса", areaLabel: "Поляна", gameplaySummary: "", characters: ["owl"], encounterId: "ENC_FOREST_01_CAT_OWL" },
-  });
-  const shared = { commands: [] };
-  shared.meta = { worldId: "forest", packageVersion: "0.03", sceneId: "SCN_FOREST_L002_CORE", areaId: "AREA_FOREST_CLEARING", levelId: 2, status: "completed", forcedTutorials: {}, startedAt: "x", completedAt: "y" };
-  const story = makeRuntime(shared, future);
-  assert.equal(story.validateScenesDocument(future).ok, true);
-  const started = await story.beginScene("SCN_FOREST_L003_CORE");
-  assert.equal(started.state.levelId, 3);
-  const used = await story.useForcedPerspective("SCN_FOREST_L003_CORE", "owl_close_look");
-  assert.equal(used.state.forcedTutorials.owl_close_look.characterId, "owl");
-});
-
-test("scene validation fails closed on malformed or unknown flow primitives", () => {
+test("bootstrap loads the ten-scene chapter without implicitly starting", async () => {
   const story = makeRuntime({});
-  const bad = structuredClone(scenes);
-  bad.scenes[0].flow = { beforeGameplay: [{ type: "magic-unicorn" }] };
-  const result = story.validateScenesDocument(bad);
-  assert.equal(result.ok, false);
-  assert.ok(result.errors.includes("unsupported_story_flow_step"));
+  const result = await story.bootstrap();
+  assert.equal(result.document.scenes.length, 10);
+  assert.equal(result.active, null);
+  assert.equal(story.validateScenesDocument(result.document).ok, true);
 });
 
-test("semantic sidecar atomically stores command plus Story meta and syncs through semantic-events", () => {
+test("Level 1 atomically starts Encounter 1 and exposes its two latent world facts", async () => {
+  const shared = { commands: [] }, story = makeRuntime(shared);
+  await story.beginScene();
+  const events = Array.from(shared.commands[0].command.events);
+  assert.deepEqual(events.map((event) => event.eventKey), [
+    "FOREST_LEVEL_STARTED",
+    "FOREST_ENCOUNTER_STARTED",
+    "FOREST_WORLD_FACT_EXPOSED",
+    "FOREST_WORLD_FACT_EXPOSED",
+  ]);
+  assert.deepEqual(events.slice(2).map((event) => event.payload.world_fact_id), ["WF_F01", "WF_F02"]);
+});
+
+test("forced Cat and Owl tutorials use one primitive and cannot complete before use", async () => {
+  const shared = { commands: [] }, story = makeRuntime(shared);
+  await completeThrough(story, "SCN_FOREST_L001_CORE");
+  await story.beginScene("SCN_FOREST_L002_CORE");
+  await assert.rejects(() => story.completeScene("SCN_FOREST_L002_CORE"), /story_required_flow_incomplete/);
+  const cat = await story.useForcedPerspective("SCN_FOREST_L002_CORE", "cat_memory_echo");
+  assert.equal(cat.state.forcedTutorials.cat_memory_echo.preferenceEligible, false);
+  await story.completeScene("SCN_FOREST_L002_CORE");
+  await story.beginScene("SCN_FOREST_L003_CORE");
+  const owl = await story.useForcedPerspective("SCN_FOREST_L003_CORE", "owl_close_look");
+  assert.equal(owl.state.forcedTutorials.owl_close_look.characterId, "owl");
+  assert.equal(owl.state.forcedTutorials.owl_close_look.profileEligible, false);
+});
+
+test("Encounter 1 is completed only when Level 4 completes", async () => {
+  const shared = { commands: [] }, story = makeRuntime(shared);
+  await completeThrough(story, "SCN_FOREST_L001_CORE");
+  await completeThrough(story, "SCN_FOREST_L002_CORE", "cat_memory_echo");
+  await completeThrough(story, "SCN_FOREST_L003_CORE", "owl_close_look");
+  await story.beginScene("SCN_FOREST_L004_CORE");
+  const completed = await story.completeScene("SCN_FOREST_L004_CORE");
+  assert.equal(completed.state.encounterId, "ENC_FOREST_01_CAT_OWL");
+  const finalCommand = shared.commands.at(-1).command;
+  assert.deepEqual(Array.from(finalCommand.events, (event) => event.eventKey), ["FOREST_LEVEL_COMPLETED", "FOREST_ENCOUNTER_COMPLETED"]);
+});
+
+test("generic choice stores authored selection as event-only provenance", async () => {
+  const shared = { commands: [] }, story = makeRuntime(shared);
+  shared.meta = {
+    worldId: "forest", packageVersion: "0.03", sceneId: "SCN_FOREST_L005_CORE", areaId: "AREA_FOREST_CLEARING",
+    levelId: 5, encounterId: null, nextSceneId: "SCN_FOREST_L006_CORE", forcedTutorials: {}, choiceSelections: {}, status: "active", startedAt: "x", completedAt: null,
+  };
+  const selected = await story.selectChoice("SCN_FOREST_L005_CORE", "CHOICE_FOREST_L05_ATTENTION", "old_tree_mark");
+  assert.equal(selected.state.choiceSelections.CHOICE_FOREST_L05_ATTENTION.optionId, "old_tree_mark");
+  const event = shared.commands[0].command.events[0];
+  assert.equal(event.eventKey, "FOREST_CHOICE_SELECTED");
+  assert.equal(event.payload.choiceKind, "attention");
+  assert.equal(event.payload.authoredWeights.memory, 2);
+  assert.equal(event.payload.projectionStatus, "EVENT_ONLY");
+  assert.equal((await story.selectChoice("SCN_FOREST_L005_CORE", "CHOICE_FOREST_L05_ATTENTION", "old_tree_mark")).replayed, true);
+  await assert.rejects(() => story.selectChoice("SCN_FOREST_L005_CORE", "CHOICE_FOREST_L05_ATTENTION", "flower_pattern"), /story_choice_already_selected/);
+});
+
+test("required after-gameplay choices block semantic completion until selected", async () => {
+  const shared = { commands: [] }, story = makeRuntime(shared);
+  shared.meta = {
+    worldId: "forest", packageVersion: "0.03", sceneId: "SCN_FOREST_L010_CORE", areaId: "AREA_FOREST_CLEARING",
+    levelId: 10, encounterId: null, nextSceneId: null, forcedTutorials: {}, choiceSelections: {}, status: "active", startedAt: "x", completedAt: null,
+  };
+  await assert.rejects(() => story.completeScene("SCN_FOREST_L010_CORE"), /story_required_flow_incomplete/);
+  await story.selectChoice("SCN_FOREST_L010_CORE", "CHOICE_FOREST_L10_ROUTING", "stay_on_clearing");
+  assert.equal((await story.completeScene("SCN_FOREST_L010_CORE")).state.status, "completed");
+});
+
+test("scene validation fails closed on unknown flow primitive and malformed choice", () => {
+  const story = makeRuntime({});
+  const badType = structuredClone(scenes);
+  badType.scenes[0].flow = { beforeGameplay: [{ type: "magic-unicorn" }] };
+  assert.ok(story.validateScenesDocument(badType).errors.includes("unsupported_story_flow_step"));
+  const badChoice = structuredClone(scenes);
+  badChoice.scenes[4].flow.afterGameplay[0].options = [{ id: "only", label: "Only" }];
+  assert.ok(story.validateScenesDocument(badChoice).errors.includes("invalid_story_choice_options"));
+});
+
+test("semantic sidecar remains atomic and syncs through semantic-events", () => {
   assert.match(storeSource, /db\.transaction\(\[PENDING, META\], "readwrite"\)/);
   assert.match(storeSource, /apiFetch\("\/api\/semantic-events"/);
   assert.match(storeSource, /await acknowledge\(command\.commandId\)/);

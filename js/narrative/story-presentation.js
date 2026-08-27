@@ -1,4 +1,4 @@
-/* Generic player-facing Story gateway and scene flow. */
+/* Generic player-facing Story gateway, scene flow and gameplay bridge. */
 (() => {
   if (typeof document === "undefined" || globalThis.__solivocStoryPresentation) return;
   globalThis.__solivocStoryPresentation = true;
@@ -40,7 +40,7 @@
       snapshot = await globalThis.SolivocForestStory.bootstrap();
       globalThis.SolivocStoryGeneration?.registerRuntimeSnapshot?.(snapshot);
       const current = gameState(), a = snapshot.active;
-      if (current && a && current.mode !== "story" && current.worldId === WORLD_ID && current.sceneId === a.sceneId && String(current.seed || "").startsWith("story:") && !current.rewarded && !current.failed) {
+      if (current && a && current.mode !== "story" && current.worldId === WORLD_ID && current.sceneId === a.sceneId && String(current.seed || "").startsWith("story:") && !current.failed) {
         current.mode = "story"; try { save?.({ immediate: true }); } catch {}
       }
       return snapshot;
@@ -53,7 +53,7 @@
     if (!a) return [`Новый мир · 0/${c.totalLevels}`, "Начать мир"];
     if (a.status === "active") return [`Уровень ${a.levelId} · продолжить`, "Продолжить"];
     if (next) return [`${a.levelId}/${c.totalLevels} · дальше: «${next.meaning}»`, "Продолжить"];
-    return [`${a.levelId}/${c.totalLevels} · доступный контент пройден`, "История"];
+    return [`${a.levelId}/${c.totalLevels} · доступная глава пройдена`, "История"];
   }
 
   function gatewayMarkup() {
@@ -75,6 +75,30 @@
     document.body.appendChild(modal); modal.querySelector(".story-scene-back").onclick = () => { modal.hidden = true; }; return modal;
   }
 
+  function stepDone(step, stateValue) {
+    if (step?.type === "forced-perspective") return globalThis.SolivocStoryPerspective?.stepCompleted?.(step, stateValue) === true;
+    if (step?.type === "choice") return globalThis.SolivocStoryChoice?.stepCompleted?.(step, stateValue) === true;
+    return true;
+  }
+
+  function firstPending(scene, stateValue, phase) {
+    return (globalThis.SolivocForestStory?.flowSteps?.(scene, phase) || []).find((step) => step.required !== false && !stepDone(step, stateValue)) || null;
+  }
+
+  async function runPhase(scene, phase, runtimeState, allowCancel) {
+    let current = runtimeState;
+    for (const step of globalThis.SolivocForestStory?.flowSteps?.(scene, phase) || []) {
+      if (step.required === false || stepDone(step, current)) continue;
+      let result;
+      if (step.type === "forced-perspective") result = await globalThis.SolivocStoryPerspective.runStep(scene, step, current, { allowCancel });
+      else if (step.type === "choice") result = await globalThis.SolivocStoryChoice.runStep(scene, step, current, { allowCancel });
+      else continue;
+      if (result.cancelled) return result;
+      current = result.state;
+    }
+    return { state: current, cancelled: false };
+  }
+
   function showScene(scene) {
     const modal = ensureModal(), a = active(), same = a?.sceneId === scene.id, exhausted = same && a.status === "completed" && !scene.nextSceneId;
     modal.querySelector(".story-scene-cast").innerHTML = cast(scene.presentation?.characters || []);
@@ -82,9 +106,10 @@
     modal.querySelector("h2").textContent = scene.meaning || `Уровень ${scene.level}`;
     modal.querySelector(".story-scene-meta").textContent = `${scene.presentation?.areaLabel || ""} · Уровень ${scene.level}`;
     modal.querySelector(".story-scene-summary").textContent = scene.presentation?.gameplaySummary || "";
-    const pending = same ? globalThis.SolivocStoryPerspective?.pendingStep?.(scene, a) : scene.flow?.beforeGameplay?.[0];
-    modal.querySelector(".story-scene-status").textContent = exhausted ? "Доступный Story-контент завершён." : pending ? `${pending.label || "Новая перспектива"} · обязательное знакомство перед раскладом` : same && a.status === "active" ? "Сцена уже начата — продолжим." : "Процедурный расклад будет сохранён отдельно от Классики.";
-    const start = modal.querySelector(".story-scene-start"); start.textContent = exhausted ? "К Раскладам →" : same && a.status === "active" ? "Продолжить →" : "Начать расклад →";
+    const game = gameState(), phase = game?.sceneId === scene.id && game.rewarded ? "afterGameplay" : "beforeGameplay";
+    const pending = same ? firstPending(scene, a, phase) : firstPending(scene, {}, "beforeGameplay");
+    modal.querySelector(".story-scene-status").textContent = exhausted ? "Доступная глава завершена." : pending ? `${pending.label || pending.prompt || "Сюжетный шаг"}` : same && a.status === "active" ? "Сцена уже начата — продолжим." : "Процедурный расклад будет сохранён отдельно от Классики.";
+    const start = modal.querySelector(".story-scene-start"); start.textContent = exhausted ? "К Раскладам →" : game?.sceneId === scene.id && game.rewarded ? "Завершить сюжетный шаг →" : same && a.status === "active" ? "Продолжить →" : "Начать расклад →";
     start.onclick = exhausted ? () => { modal.hidden = true; try { hubTab = "modes"; renderHub(); } catch {} } : () => startScene(scene).catch(handleError);
     modal.hidden = false;
   }
@@ -93,17 +118,38 @@
   function resume() { const modal = document.getElementById("storySceneModal"); if (modal) modal.hidden = true; try { closeHub?.(); render?.(); updateCoach?.(); syncGameCompanion?.(); } catch {} }
   function attach(scene) { const current = gameState(); if (!current) return; Object.assign(current, { worldId: WORLD_ID, sceneId: scene.id, areaId: scene.areaId, encounterId: scene.presentation?.encounterId || null, nextStorySceneId: scene.nextSceneId || null, storyPackageVersion: PACKAGE_VERSION, storyMeaning: scene.meaning || "" }); try { save?.({ immediate: true }); syncGameCompanion?.(); } catch {} }
 
+  async function launchGameplay(scene, runtimeState) {
+    const before = await runPhase(scene, "beforeGameplay", runtimeState, true);
+    if (before.cancelled) return false;
+    const modal = document.getElementById("storySceneModal"); if (modal) modal.hidden = true; try { closeHub?.(); } catch {}
+    const opts = { mode: "story", storyWorldId: WORLD_ID, storySceneId: scene.id, forceSolvable: true };
+    buildGeneratedLevel?.(scene.level, opts); const result = makeLevel?.(scene.level, opts); if (result === false) throw new Error("story_level_launch_failed");
+    attach(scene); try { track?.("story_level_started", { world: WORLD_ID, scene: scene.id, level: scene.level }); } catch {}
+    return true;
+  }
+
+  async function finalizeScene(scene, stars = 1) {
+    await ensureRuntime();
+    let current = await globalThis.SolivocForestStory.restore();
+    if (!current || current.sceneId !== scene.id) throw new Error("story_scene_not_active");
+    const after = await runPhase(scene, "afterGameplay", current, false);
+    current = after.state;
+    await globalThis.SolivocForestStory.completeScene(scene.id);
+    await ensureRuntime(true);
+    showWin?.(stars, [], null, false);
+    resetCombo?.();
+    return current;
+  }
+
   async function startScene(scene) {
+    const game = gameState();
+    if (game?.mode === "story" && game.sceneId === scene.id && game.rewarded) return finalizeScene(scene, game.lastStars || 1);
     if (resumable(scene)) return resume();
     const runtime = globalThis.SolivocForestStory; if (!runtime?.beginScene) throw new Error("story_runtime_unavailable");
     globalThis.SolivocStoryGeneration?.prepare?.(scene, WORLD_ID);
     let current = await runtime.restore();
     if (current?.sceneId !== scene.id || current.status !== "active") current = (await runtime.beginScene(scene.id)).state;
-    if (globalThis.SolivocStoryPerspective?.runPending) { const result = await globalThis.SolivocStoryPerspective.runPending(scene, current); if (result.cancelled) return; }
-    const modal = document.getElementById("storySceneModal"); if (modal) modal.hidden = true; try { closeHub?.(); } catch {}
-    const opts = { mode: "story", storyWorldId: WORLD_ID, storySceneId: scene.id, forceSolvable: true };
-    buildGeneratedLevel?.(scene.level, opts); const result = makeLevel?.(scene.level, opts); if (result === false) throw new Error("story_level_launch_failed");
-    attach(scene); try { track?.("story_level_started", { world: WORLD_ID, scene: scene.id, level: scene.level }); } catch {}
+    return launchGameplay(scene, current);
   }
 
   function guideCopy(type, value) { if (type !== "core-loop-intro") return ""; if ((value?.completed || 0) > 0) return "Первая категория собрана. Остальные работают по тому же принципу."; if ((value?.run?.moves || 0) > 0) return "Связь найдена. Собирай слова одной темы вместе."; return "Начни с самой очевидной связи: перенеси одно связанное слово на другое."; }
@@ -114,14 +160,35 @@
     strip.querySelector(".story-guide-cast").innerHTML = cast(scene.presentation?.characters || [], true); strip.querySelector("small").textContent = `${scene.presentation?.areaLabel || campaign().worldLabel} · ${(scene.presentation?.characters || []).map(charName).join(" И ").toUpperCase()}`; strip.querySelector("b").textContent = scene.meaning; strip.querySelector("span").textContent = guideCopy(guide.type, current);
   }
 
-  function decorateWin() { const current = gameState(); if (current?.mode !== "story") return; const scene = sceneById(current.sceneId), next = nextScene(scene), c = campaign(); const title = document.getElementById("winTitle"), text = document.getElementById("winText"), xp = document.getElementById("winXp"), nextBtn = document.getElementById("next"); if (title) title.textContent = `${scene?.meaning || `Уровень ${current.level}`} · завершено`; if (text) { text.textContent = `${c.worldLabel} · ${current.level}/${c.totalLevels}${next ? ` · дальше: «${next.meaning}»` : ""}`; text.hidden = false; } if (xp) xp.innerHTML = "<b>История сохраняется отдельно от Классики</b>"; if (nextBtn) nextBtn.textContent = "Вернуться в Историю →"; }
-  function finishStory() { const current = gameState(); if (!current || current.rewarded) return false; if (!(current.totalCategories > 0 && current.completed === current.totalCategories && (current.run?.moves || 0) > 0 && isPlayableGeneratedState?.(current))) return false; current.rewarded = true; const stars = calculateStars?.() || 1; current.lastStars = stars; current.run.xpEarned = 0; profile.stats.gamesPlayed = (profile.stats.gamesPlayed || 0) + 1; try { save?.({ immediate: true }); } catch {} completionPromise = ensureRuntime().then(() => globalThis.SolivocForestStory.completeScene(current.sceneId)).then(() => ensureRuntime(true)).catch(handleError); showWin?.(stars, [], null, false); resetCombo?.(); return true; }
+  function decorateWin() {
+    const current = gameState(); if (current?.mode !== "story") return;
+    const scene = sceneById(current.sceneId), next = nextScene(scene), c = campaign();
+    const title = document.getElementById("winTitle"), text = document.getElementById("winText"), xp = document.getElementById("winXp"), goals = document.getElementById("winGoals"), nextBtn = document.getElementById("next"), share = document.getElementById("winShare"), companion = document.getElementById("winCompanion");
+    if (title) title.textContent = `${scene?.meaning || `Уровень ${current.level}`} · завершено`;
+    if (text) { text.textContent = `${c.worldLabel} · ${current.level}/${c.totalLevels}${next ? ` · дальше: «${next.meaning}»` : ""}`; text.hidden = false; }
+    if (xp) xp.innerHTML = "<b>История сохраняется отдельно от Классики</b>";
+    if (goals) goals.innerHTML = ""; if (nextBtn) nextBtn.textContent = "Вернуться в Историю →"; if (share) share.hidden = true; if (companion) companion.hidden = true;
+  }
+
+  function finishStory() {
+    const current = gameState();
+    if (!current || current.rewarded) return false;
+    if (!(current.totalCategories > 0 && current.completed === current.totalCategories && (current.run?.moves || 0) > 0 && isPlayableGeneratedState?.(current))) return false;
+    const scene = sceneById(current.sceneId); if (!scene) return false;
+    current.rewarded = true;
+    const stars = calculateStars?.() || 1; current.lastStars = stars; current.run.xpEarned = 0; current.run.xpBaseEarned = 0;
+    if (profile?.stats) { profile.stats.gamesPlayed = (profile.stats.gamesPlayed || 0) + 1; profile.stats.totalMoves = (profile.stats.totalMoves || 0) + (current.run.moves || 0); }
+    try { save?.({ immediate: true }); flushProfileSave?.({ skipCloud: true }); } catch {}
+    completionPromise = finalizeScene(scene, stars).catch(handleError);
+    return true;
+  }
+
   function handleError(error) { console.error("story presentation", error); try { showToast?.("Историю пока не удалось открыть"); } catch {} }
   async function openStory() { try { await ensureRuntime(true); const scene = targetScene(); if (!scene) throw new Error("story_scene_missing"); if (resumable(scene)) return resume(); showScene(scene); } catch (error) { handleError(error); } }
 
   function install() {
     if (installed) return true;
-    if (typeof homeTabMarkup !== "function" || typeof bindHubHandlers !== "function" || typeof finishLevel !== "function" || typeof render !== "function") return false;
+    if (typeof homeTabMarkup !== "function" || typeof bindHubHandlers !== "function" || typeof finishLevel !== "function" || typeof render !== "function" || !globalThis.SolivocStoryPerspective || !globalThis.SolivocStoryChoice) return false;
     installed = true; installStyles();
     const home = homeTabMarkup; homeTabMarkup = () => `${gatewayMarkup()}${home()}`;
     if (typeof modesTabMarkup === "function") { const modes = modesTabMarkup; modesTabMarkup = () => modes().replace("<h3>Режимы игры</h3>", "<h3>Расклады</h3>"); }
@@ -136,6 +203,6 @@
     return true;
   }
 
-  globalThis.SolivocStoryPresentation = Object.freeze({ gatewayModel, targetScene, guideCopy, openStoryEntry: openStory, startScene });
+  globalThis.SolivocStoryPresentation = Object.freeze({ gatewayModel, targetScene, guideCopy, runPhase, openStoryEntry: openStory, startScene });
   let attempts = 0; const timer = setInterval(() => { attempts++; if (install() || attempts > 180) clearInterval(timer); }, 50); if (document.readyState === "complete") install(); else window.addEventListener("load", install, { once:true });
 })();
