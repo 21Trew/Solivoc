@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "worldId": "forest",
   "packageVersion": "0.03",
-  "status": "foundation-contract",
+  "status": "full-world-core-export",
   "source": {
     "designArchive": "docs/design/forest/machine/v0.03/WORLD_FOREST_MACHINE_PACKAGE_v0.03.zip",
     "machineSpec": "docs/design/forest/WORLD_FOREST_MACHINE_PACKAGE_SPEC_v0.03.md",
@@ -13,14 +13,17 @@
   "runtimeFiles": [
     "data/rules.json",
     "data/scenes.json",
-    "data/encounters.json"
+    "data/encounters.json",
+    "data/world-facts.json",
+    "data/choices.json",
+    "data/world-structures.json"
   ],
   "notes": [
-    "This manifest establishes the production runtime boundary without duplicating authored meaning.",
-    "Machine-package extraction into validated runtime JSON is a separate content-export step.",
-    "Relation runtime accepts only explicitly exported authored ID pairs; no semantic inference is allowed.",
-    "The current scenes export covers the authored first-pass runtime contract for Forest chapter 1, levels 1-10.",
-    "Encounter routing definitions cover authored encounter windows 2-10 and remain evidence-gated and deterministic.",
-    "Exact card sets, final ability effects and non-authored mechanics remain outside the runtime export."
+    "The Forest core scene registry is exported for all levels 1-100.",
+    "Authored world facts, choices, encounter routing and late-world structures are exported as separate runtime registries.",
+    "Ordinary core levels reuse shared procedural Story generation instead of per-level implementations.",
+    "TBD weights, scripts, effects and exact mechanics remain explicit and are never inferred by runtime export.",
+    "Levels requiring relationship synthesis, authored revisit, world synthesis or elemental manifestation remain non-executable until their generic primitives exist.",
+    "Relation runtime accepts only explicitly exported authored ID pairs; no semantic inference is allowed."
   ]
 }
