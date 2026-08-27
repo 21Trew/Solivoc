@@ -1,4 +1,4 @@
-/* Minimal end-to-end Story runtime for the first Forest vertical slice. */
+/* End-to-end Forest Story runtime driven by authored scene data. */
 (() => {
   const WORLD_ID = "forest";
   const PACKAGE_VERSION = "0.03";
@@ -7,8 +7,17 @@
   const ACTIVE_META_KEY = "story:forest:active";
   const SCENES_SCHEMA = 1;
   const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:-]*$/;
+  const FLOW_STEP_TYPES = new Set(["forced-perspective"]);
   let loaded = null;
   let onlineSyncInstalled = false;
+
+  function beforeGameplaySteps(scene) {
+    return Array.isArray(scene?.flow?.beforeGameplay) ? scene.flow.beforeGameplay : [];
+  }
+
+  function forcedPerspectiveSteps(scene) {
+    return beforeGameplaySteps(scene).filter((step) => step?.type === "forced-perspective");
+  }
 
   function validateScenesDocument(value) {
     const errors = [];
@@ -16,6 +25,10 @@
     if (value?.schemaVersion !== SCENES_SCHEMA) errors.push("unsupported_scenes_schema");
     if (value?.worldId !== WORLD_ID) errors.push("invalid_scenes_world");
     if (value?.packageVersion !== PACKAGE_VERSION) errors.push("invalid_scenes_package");
+    if (value?.campaign != null) {
+      if (!Number.isInteger(value.campaign?.totalLevels) || value.campaign.totalLevels < 1) errors.push("invalid_campaign_total_levels");
+      if (!String(value.campaign?.worldLabel || "").trim()) errors.push("invalid_campaign_world_label");
+    }
     if (!Array.isArray(value?.scenes) || !value.scenes.length) errors.push("missing_scenes");
     else {
       const ids = new Set();
@@ -34,13 +47,18 @@
           if (!ID_PATTERN.test(String(fact?.id || ""))) errors.push("invalid_world_fact_id");
           if (!String(fact?.exposureMode || "").trim()) errors.push("invalid_world_fact_exposure");
         }
-        const tutorial = scene?.presentation?.tutorial;
-        if (tutorial) {
-          if (!ID_PATTERN.test(String(tutorial.sceneId || ""))) errors.push("invalid_tutorial_scene");
-          if (!ID_PATTERN.test(String(tutorial.perspectiveId || ""))) errors.push("invalid_tutorial_perspective");
-          if (!ID_PATTERN.test(String(tutorial.characterId || ""))) errors.push("invalid_tutorial_character");
-          if (!ID_PATTERN.test(String(tutorial.threadId || ""))) errors.push("invalid_tutorial_thread");
-          if (tutorial.forced !== true) errors.push("tutorial_not_forced");
+        for (const step of beforeGameplaySteps(scene)) {
+          if (!FLOW_STEP_TYPES.has(String(step?.type || ""))) {
+            errors.push("unsupported_story_flow_step");
+            continue;
+          }
+          if (step.type === "forced-perspective") {
+            if (!ID_PATTERN.test(String(step.sceneId || ""))) errors.push("invalid_tutorial_scene");
+            if (!ID_PATTERN.test(String(step.perspectiveId || ""))) errors.push("invalid_tutorial_perspective");
+            if (!ID_PATTERN.test(String(step.characterId || ""))) errors.push("invalid_tutorial_character");
+            if (!ID_PATTERN.test(String(step.threadId || ""))) errors.push("invalid_tutorial_thread");
+            if (step.forced !== true) errors.push("tutorial_not_forced");
+          }
         }
       }
       for (const scene of value.scenes) {
@@ -71,6 +89,7 @@
 
   function stateFor(scene, status, previous = null) {
     const now = new Date().toISOString();
+    const sameScene = previous?.sceneId === scene.id;
     return Object.freeze({
       worldId: WORLD_ID,
       packageVersion: PACKAGE_VERSION,
@@ -79,9 +98,9 @@
       levelId: scene.level,
       encounterId: scene?.presentation?.encounterId || previous?.encounterId || null,
       nextSceneId: scene.nextSceneId || null,
-      forcedTutorials: previous?.sceneId === scene.id ? { ...(previous?.forcedTutorials || {}) } : {},
+      forcedTutorials: sameScene ? { ...(previous?.forcedTutorials || {}) } : {},
       status,
-      startedAt: previous?.sceneId === scene.id ? (previous?.startedAt || now) : now,
+      startedAt: sameScene ? (previous?.startedAt || now) : now,
       completedAt: status === "completed" ? now : null,
     });
   }
@@ -101,12 +120,7 @@
 
   function commandFor(scene, phase, events) {
     const commandId = `forest:${scene.id}:${phase}:v${PACKAGE_VERSION}`;
-    return {
-      commandId,
-      transactionId: commandId,
-      worldId: WORLD_ID,
-      events,
-    };
+    return { commandId, transactionId: commandId, worldId: WORLD_ID, events };
   }
 
   async function restore() {
@@ -173,9 +187,8 @@
     const { document } = await load();
     const scene = sceneById(document, String(sceneId || ""));
     if (!scene) throw new Error("unknown_story_scene");
-    const tutorial = scene?.presentation?.tutorial;
-    if (!tutorial || tutorial.forced !== true || tutorial.perspectiveId !== String(perspectiveId || ""))
-      throw new Error("unknown_forced_perspective");
+    const tutorial = forcedPerspectiveSteps(scene).find((step) => step.perspectiveId === String(perspectiveId || ""));
+    if (!tutorial) throw new Error("unknown_forced_perspective");
     const current = await restore();
     if (!current || current.sceneId !== scene.id || current.status !== "active") throw new Error("story_scene_not_active");
     if (current.forcedTutorials?.[tutorial.perspectiveId]?.used === true) {
@@ -225,9 +238,8 @@
       sync().catch(() => {});
       return Object.freeze({ state: current, replayed: true });
     }
-    const tutorial = scene?.presentation?.tutorial;
-    if (tutorial?.forced === true && current.forcedTutorials?.[tutorial.perspectiveId]?.used !== true)
-      throw new Error("story_forced_tutorial_incomplete");
+    const incomplete = forcedPerspectiveSteps(scene).find((step) => current.forcedTutorials?.[step.perspectiveId]?.used !== true);
+    if (incomplete) throw new Error("story_forced_tutorial_incomplete");
     const state = stateFor(scene, "completed", current);
     const event = semanticEvent(scene, "FOREST_LEVEL_COMPLETED", `${scene.id}:completed:first-pass`);
     await store.commit(commandFor(scene, "completed", [event]), ACTIVE_META_KEY, state);
@@ -243,6 +255,8 @@
     restore,
     sync,
     validateScenesDocument,
+    beforeGameplaySteps,
+    forcedPerspectiveSteps,
     defaultSceneId: DEFAULT_SCENE_ID,
     scenesFile: SCENES_FILE,
   });

@@ -1,4 +1,4 @@
-/* Ordered semantic relation rules shared by gameplay, solver and future authored content. */
+/* Ordered semantic relation rules shared by gameplay, solver and authored Story content. */
 (() => {
   function categoryIdOf(value) {
     const card = Array.isArray(value?.cards) ? value.cards[0] : value;
@@ -43,74 +43,57 @@
   function policyAllows(policy, context) {
     if (!policy?.scoped) return false;
     const checks = [
-      [policy.purposes, context.purpose],
-      [policy.modes, context.mode],
-      [policy.worldIds, context.worldId],
-      [policy.sceneIds, context.sceneId],
-      [policy.encounterIds, context.encounterId],
-      [policy.sourceRoles, context.sourceRole],
-      [policy.targetRoles, context.targetRole],
+      [policy.purposes, context.purpose], [policy.modes, context.mode], [policy.worldIds, context.worldId],
+      [policy.sceneIds, context.sceneId], [policy.encounterIds, context.encounterId],
+      [policy.sourceRoles, context.sourceRole], [policy.targetRoles, context.targetRole],
     ];
     return checks.every(([allowed, actual]) => !allowed || (actual != null && allowed.includes(String(actual))));
   }
 
   function RelationRuleEngine() {
-    const rules = [];
-    const ids = new Set();
-
+    const rules = [], ids = new Set();
     this.register = (rule) => {
       const id = String(rule?.id || "").trim();
       if (!id) throw new TypeError("Relation rule requires a stable id");
       if (ids.has(id)) throw new Error(`Relation rule already registered: ${id}`);
       if (typeof rule?.matches !== "function") throw new TypeError(`Relation rule ${id} requires matches(left, right, context)`);
       const normalized = Object.freeze({ id, policy: normalizePolicy(rule.policy), matches: rule.matches });
-      rules.push(normalized);
-      ids.add(id);
-      return normalized;
+      rules.push(normalized); ids.add(id); return normalized;
     };
-
     this.matchingRule = (left, right, context = {}) => {
       if (!left || !right) return null;
       const normalizedContext = normalizeContext(context);
       for (const rule of rules) {
         if (!policyAllows(rule.policy, normalizedContext)) continue;
-        try {
-          if (rule.matches(left, right, normalizedContext) === true) return rule.id;
-        } catch (error) {
-          console.warn?.("relation rule failed", { rule: rule.id, error });
-        }
+        try { if (rule.matches(left, right, normalizedContext) === true) return rule.id; }
+        catch (error) { console.warn?.("relation rule failed", { rule: rule.id, error }); }
       }
       return null;
     };
-
     this.canRelate = (left, right, context = {}) => this.matchingRule(left, right, context) !== null;
     this.ruleIds = () => rules.map((rule) => rule.id);
   }
 
-  function installStoryPresentation() {
+  function installStoryRuntimeModules() {
     if (typeof document === "undefined") return;
     if (!Object.prototype.hasOwnProperty.call(globalThis, "state")) {
       try {
         Object.defineProperty(globalThis, "state", {
-          configurable: true,
-          enumerable: false,
+          configurable: true, enumerable: false,
           get() { try { return state; } catch { return undefined; } },
           set(value) { try { state = value; } catch {} },
         });
       } catch {}
     }
     const modules = [
-      ["story-presentation", "./js/narrative/story-presentation.js"],
       ["story-generation", "./js/narrative/story-generation.js"],
-      ["story-level1", "./js/narrative/story-level1.js"],
-      ["story-level2", "./js/narrative/story-level2.js"],
+      ["story-perspective-runtime", "./js/narrative/story-perspective-runtime.js"],
+      ["story-presentation", "./js/narrative/story-presentation.js"],
     ];
     for (const [key, src] of modules) {
       if (document.querySelector(`script[data-solivoc-story-module="${key}"]`)) continue;
       const script = document.createElement("script");
-      script.src = src;
-      script.async = false;
-      script.dataset.solivocStoryModule = key;
+      script.src = src; script.async = false; script.dataset.solivocStoryModule = key;
       document.head.appendChild(script);
     }
   }
@@ -127,5 +110,5 @@
 
   globalThis.RelationRuleEngine = RelationRuleEngine;
   globalThis.relationRuleEngine = engine;
-  installStoryPresentation();
+  installStoryRuntimeModules();
 })();

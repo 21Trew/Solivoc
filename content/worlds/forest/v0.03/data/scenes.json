@@ -3,6 +3,11 @@
   "worldId": "forest",
   "packageVersion": "0.03",
   "exportStatus": "vertical-slice",
+  "campaign": {
+    "worldLabel": "Мир Леса",
+    "totalLevels": 100,
+    "gatewayCharacters": ["cat", "owl"]
+  },
   "scenes": [
     {
       "id": "SCN_FOREST_L001_CORE",
@@ -22,7 +27,10 @@
         "gameplaySummary": "Самое базовое различение и очевидная связь.",
         "characters": ["cat", "owl"],
         "encounterId": "ENC_FOREST_01_CAT_OWL",
-        "startsEncounter": true
+        "startsEncounter": true,
+        "gameplayGuide": {
+          "type": "core-loop-intro"
+        }
       }
     },
     {
@@ -44,22 +52,26 @@
           "requiredForCoreProgression": false
         }
       ],
+      "flow": {
+        "beforeGameplay": [
+          {
+            "type": "forced-perspective",
+            "sceneId": "SCN_FOREST_L002_CAT_PERSPECTIVE_TUTORIAL",
+            "perspectiveId": "cat_memory_echo",
+            "label": "Эхо памяти",
+            "characterId": "cat",
+            "threadId": "THREAD_FOREST_CAT",
+            "forced": true,
+            "effectStatus": "TBD_AUTHORED"
+          }
+        ]
+      },
       "presentation": {
         "worldLabel": "Мир Леса",
         "areaLabel": "Поляна",
         "gameplaySummary": "Знакомый мотив из уровня 1 появляется в новом контексте.",
         "characters": ["cat"],
-        "encounterId": "ENC_FOREST_01_CAT_OWL",
-        "tutorial": {
-          "sceneId": "SCN_FOREST_L002_CAT_PERSPECTIVE_TUTORIAL",
-          "status": "BOUND_CONCEPT_EFFECT_TBD",
-          "perspectiveId": "cat_memory_echo",
-          "label": "Эхо памяти",
-          "characterId": "cat",
-          "threadId": "THREAD_FOREST_CAT",
-          "forced": true,
-          "effectStatus": "TBD_AUTHORED"
-        }
+        "encounterId": "ENC_FOREST_01_CAT_OWL"
       }
     }
   ]

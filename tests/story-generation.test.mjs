@@ -65,10 +65,8 @@ test("Story generation always requests solver guard and owns only Story mode", (
 });
 
 test("scene data declares generation profiles instead of authored card sets", () => {
-  const level1 = scenes.scenes.find((scene) => scene.id === "SCN_FOREST_L001_CORE");
-  const level2 = scenes.scenes.find((scene) => scene.id === "SCN_FOREST_L002_CORE");
-  for (const scene of [level1, level2]) {
-    assert.equal(scene.generation.profile, "guided");
+  for (const scene of scenes.scenes) {
+    assert.ok(scene.generation?.profile);
     assert.equal(scene.generation.cardSourceMode, "words");
     assert.equal(scene.generation.forceSolvable, true);
     assert.equal("cards" in scene.generation, false);
@@ -76,19 +74,13 @@ test("scene data declares generation profiles instead of authored card sets", ()
   }
 });
 
-test("level-specific Story modules no longer own procedural configuration", async () => {
-  const level1 = await readFile(new URL("../js/narrative/story-level1.js", import.meta.url), "utf8");
-  const level2 = await readFile(new URL("../js/narrative/story-level2.js", import.meta.url), "utf8");
-  assert.doesNotMatch(level1, /levelOneConfig|forestLevelOneConfig|configForMode\s*=/);
-  assert.doesNotMatch(level2, /levelTwoConfig|forestLevelTwoConfig|STORY_SEED|configForMode\s*=/);
-  assert.match(level2, /storySceneId: SCENE_ID/);
-});
-
-test("Story generation loads after presentation and before level-specific UI, and is precached", async () => {
+test("Story generation is loaded once before reusable flow and presentation runtimes", async () => {
   const engine = await readFile(new URL("../js/narrative/relation-rule-engine.js", import.meta.url), "utf8");
   const sw = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(engine.indexOf('"story-presentation"') < engine.indexOf('"story-generation"'));
-  assert.ok(engine.indexOf('"story-generation"') < engine.indexOf('"story-level1"'));
-  assert.ok(engine.indexOf('"story-generation"') < engine.indexOf('"story-level2"'));
+  assert.ok(engine.indexOf('"story-generation"') < engine.indexOf('"story-perspective-runtime"'));
+  assert.ok(engine.indexOf('"story-perspective-runtime"') < engine.indexOf('"story-presentation"'));
+  assert.doesNotMatch(engine, /story-level1|story-level2/);
   assert.match(sw, /"\.\/js\/narrative\/story-generation\.js"/);
+  assert.match(sw, /"\.\/js\/narrative\/story-perspective-runtime\.js"/);
+  assert.doesNotMatch(sw, /story-level1\.js|story-level2\.js/);
 });

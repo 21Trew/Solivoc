@@ -1,60 +1,65 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import vm from "node:vm";
 
 const source = await readFile(new URL("../js/narrative/story-presentation.js", import.meta.url), "utf8");
-const levelOneSource = await readFile(new URL("../js/narrative/story-level1.js", import.meta.url), "utf8");
+const perspectiveSource = await readFile(new URL("../js/narrative/story-perspective-runtime.js", import.meta.url), "utf8");
 const relationSource = await readFile(new URL("../js/narrative/relation-rule-engine.js", import.meta.url), "utf8");
 const swSource = await readFile(new URL("../sw.js", import.meta.url), "utf8");
 const scenes = JSON.parse(await readFile(new URL("../content/worlds/forest/v0.03/data/scenes.json", import.meta.url), "utf8"));
 
-test("Story gateway presents Story and free-play Layouts as separate product intents", () => {
-  assert.match(source, /<small>ИСТОРИЯ<\/small><h2>Мир Леса<\/h2>/);
+test("Story gateway remains separate from free-play Layouts and reads campaign metadata", () => {
+  assert.match(source, /story-gateway/);
   assert.match(source, /<b>Расклады<\/b><small>Свободная игра и режимы<\/small>/);
+  assert.match(source, /campaign\(\)/);
+  assert.match(source, /totalLevels/);
   assert.match(source, /replace\("<span>Режимы<\/span>", "<span>Расклады<\/span>"\)/);
 });
 
-test("first Forest presentation uses exported authored scene and encounter metadata", () => {
-  const scene = scenes.scenes.find((item) => item.id === "SCN_FOREST_L001_CORE");
-  assert.equal(scene?.meaning, "Появление");
-  assert.equal(scene?.presentation?.areaLabel, "Поляна");
-  assert.equal(scene?.presentation?.gameplaySummary, "Самое базовое различение и очевидная связь.");
-  assert.deepEqual(scene?.presentation?.characters, ["cat", "owl"]);
-  assert.equal(scene?.presentation?.encounterId, "ENC_FOREST_01_CAT_OWL");
-  assert.equal(scene?.presentation?.startsEncounter, true);
+test("presentation is scene-driven instead of hardcoding Level 1 or Level 2", () => {
+  assert.doesNotMatch(source, /SCN_FOREST_L00[12]_CORE/);
+  assert.doesNotMatch(source, /STORY_SEED|levelOneConfig|levelTwoConfig|forestLevelOneConfig|forestLevelTwoConfig/);
+  assert.match(source, /SolivocStoryGeneration\?\.prepare/);
+  assert.match(source, /SolivocStoryPerspective/);
+  assert.match(source, /presentation\?\.gameplayGuide/);
 });
 
-test("Story launch preflights gameplay before committing the semantic start", () => {
-  const preflight = source.indexOf("buildGeneratedLevel?.(scene.level");
-  const semanticStart = source.indexOf("await runtime.beginScene(scene.id)");
-  const launch = source.indexOf("makeLevel?.(scene.level");
-  assert.ok(preflight >= 0 && semanticStart > preflight && launch > semanticStart);
-  assert.match(source, /mode: "story"/);
-  assert.match(source, /cardSourceMode: "words"/);
+test("Level 1 onboarding is now a reusable gameplayGuide declaration", () => {
+  const first = scenes.scenes.find((scene) => scene.id === "SCN_FOREST_L001_CORE");
+  assert.equal(first.presentation.gameplayGuide.type, "core-loop-intro");
+  assert.deepEqual(first.presentation.characters, ["cat", "owl"]);
+  assert.match(source, /function guideCopy\(type, value\)/);
+  assert.match(source, /type !== "core-loop-intro"/);
+});
+
+test("forced perspective runtime discovers Level 2 from flow data", () => {
+  const sandbox = { console };
+  sandbox.globalThis = sandbox;
+  vm.runInNewContext(perspectiveSource, sandbox, { filename: "story-perspective-runtime.js" });
+  const second = scenes.scenes.find((scene) => scene.id === "SCN_FOREST_L002_CORE");
+  const runtime = sandbox.SolivocStoryPerspective;
+  assert.equal(runtime.pendingStep(second, { forcedTutorials: {} }).perspectiveId, "cat_memory_echo");
+  assert.equal(runtime.pendingStep(second, { forcedTutorials: { cat_memory_echo: { used: true } } }), null);
 });
 
 test("Story completion stays out of legacy Classic progression", () => {
-  const start = source.indexOf("function finishStoryLevel()");
-  const end = source.indexOf("function installHooks()", start);
+  const start = source.indexOf("function finishStory()");
+  const end = source.indexOf("function handleError", start);
   const finishSource = source.slice(start, end);
   assert.match(finishSource, /SolivocForestStory\.completeScene/);
   assert.doesNotMatch(finishSource, /currentLevel|starsByLevel|levelsCompleted/);
   assert.match(finishSource, /profile\.stats\.gamesPlayed/);
 });
 
-test("collection mascot presence is suppressed while authored Cat and Owl presence comes from Level 1", () => {
-  assert.match(source, /if \(state\?\.mode === "story"\)[\s\S]*gameCompanion[\s\S]*hidden = true/);
-  assert.match(levelOneSource, /mascot-cat\.svg/);
-  assert.match(levelOneSource, /mascot-owl\.svg/);
-});
-
-test("Story presentation and Level 1 onboarding are lazy-loaded and precached", () => {
-  assert.match(relationSource, /story-presentation/);
-  assert.match(relationSource, /story-level1/);
-  assert.match(relationSource, /typeof document === "undefined"/);
+test("Story bootstrap loads reusable runtimes and PWA no longer references per-level modules", () => {
+  assert.ok(relationSource.indexOf('"story-generation"') < relationSource.indexOf('"story-perspective-runtime"'));
+  assert.ok(relationSource.indexOf('"story-perspective-runtime"') < relationSource.indexOf('"story-presentation"'));
+  assert.doesNotMatch(relationSource, /story-level1|story-level2/);
   for (const asset of [
+    "./js/narrative/story-generation.js",
+    "./js/narrative/story-perspective-runtime.js",
     "./js/narrative/story-presentation.js",
-    "./js/narrative/story-level1.js",
     "./js/narrative/content-loader.js",
     "./js/narrative/event-store.js",
     "./js/narrative/story-runtime.js",
@@ -62,4 +67,5 @@ test("Story presentation and Level 1 onboarding are lazy-loaded and precached", 
     "./content/worlds/forest/v0.03/data/scenes.json",
     "./content/worlds/forest/v0.03/data/rules.json",
   ]) assert.ok(swSource.includes(JSON.stringify(asset)), `missing SW asset: ${asset}`);
+  assert.doesNotMatch(swSource, /story-level1\.js|story-level2\.js/);
 });
