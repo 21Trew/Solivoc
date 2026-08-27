@@ -1,6 +1,7 @@
 const list = (value) => Array.isArray(value) ? value : [];
 const object = (value) => value && typeof value === "object" && !Array.isArray(value) ? value : {};
 const clone = (value) => { try { return JSON.parse(JSON.stringify(value)); } catch { return {}; } };
+const ROUTING_CHARACTERS = Object.freeze({ cat:"THREAD_FOREST_CAT", owl:"THREAD_FOREST_OWL", fox:"THREAD_FOREST_FOX" });
 
 function routingRelationships(projection) {
   const relationships = clone(object(projection?.routing_snapshot?.relationships));
@@ -16,9 +17,43 @@ function routingRelationships(projection) {
   return relationships;
 }
 
+function latestCompletedEncounterSequence(projection, characterId) {
+  let latest = 0;
+  for (const entry of list(projection?.encounters?.history)) {
+    if (entry?.type !== "completed" || !list(entry?.participants).includes(characterId)) continue;
+    latest = Math.max(latest, Number(entry?.sequence) || 0);
+  }
+  return latest;
+}
+
+function routingThreads(projection) {
+  const threads = clone(object(projection?.routing_snapshot?.threads));
+  const canonicalThreads = object(projection?.threads);
+  const authoredSignals = object(projection?.cognition?.authored_signals);
+  for (const [characterId, threadId] of Object.entries(ROUTING_CHARACTERS)) {
+    const source = canonicalThreads[threadId];
+    if (!source) continue;
+    const readiness = list(source.readiness_evidence_event_ids);
+    const lastEvidenceEventId = readiness.at(-1) || null;
+    const initiativeEventIds = new Set(list(authoredSignals[`${characterId}_thread`]?.evidence_event_ids));
+    const latestEncounterSequence = latestCompletedEncounterSequence(projection, characterId);
+    const lastMeaningfulSequence = Math.max(0, Number(source.last_meaningful_sequence) || 0);
+    const freshVoluntaryContinuation = !!lastEvidenceEventId
+      && initiativeEventIds.has(lastEvidenceEventId)
+      && lastMeaningfulSequence > latestEncounterSequence;
+    for (const key of [threadId, characterId]) {
+      if (!threads[key]) continue;
+      threads[key].freshVoluntaryContinuation = freshVoluntaryContinuation;
+      threads[key].lastPlayerInitiativeSequence = freshVoluntaryContinuation ? lastMeaningfulSequence : 0;
+    }
+  }
+  return threads;
+}
+
 export function routingProjectionView(projection) {
   const snapshot = clone(object(projection?.routing_snapshot));
   snapshot.relationships = routingRelationships(projection);
+  snapshot.threads = routingThreads(projection);
   return {
     world_id: projection?.world_id || "forest",
     source_sequence: Math.max(0, Number(projection?.source_sequence) || 0),
