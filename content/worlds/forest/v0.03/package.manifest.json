@@ -12,13 +12,15 @@
   },
   "runtimeFiles": [
     "data/rules.json",
-    "data/scenes.json"
+    "data/scenes.json",
+    "data/encounters.json"
   ],
   "notes": [
     "This manifest establishes the production runtime boundary without duplicating authored meaning.",
     "Machine-package extraction into validated runtime JSON is a separate content-export step.",
     "Relation runtime accepts only explicitly exported authored ID pairs; no semantic inference is allowed.",
     "The current scenes export covers the authored first-pass runtime contract for Forest chapter 1, levels 1-10.",
+    "Encounter routing definitions cover authored encounter windows 2-10 and remain evidence-gated and deterministic.",
     "Exact card sets, final ability effects and non-authored mechanics remain outside the runtime export."
   ]
 }

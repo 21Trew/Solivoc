@@ -75,6 +75,7 @@
       ["story-generation", "./js/narrative/story-generation.js"],
       ["story-perspective-runtime", "./js/narrative/story-perspective-runtime.js"],
       ["story-choice-runtime", "./js/narrative/story-choice-runtime.js"],
+      ["story-encounter-routing", "./js/narrative/story-encounter-routing.js"],
       ["story-presentation", "./js/narrative/story-presentation.js"],
     ];
     for (const [key, src] of modules) {
