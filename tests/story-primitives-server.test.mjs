@@ -26,9 +26,10 @@ test('primitive projection exposes guards but never hidden KnowledgeProjection',
 
 test('semantic endpoint chooses primitive-safe view explicitly',async()=>{
   const source=await readFile(new URL('../api/semantic-events.mjs',import.meta.url),'utf8');
-  assert.match(source,/view"\) === "primitives"/);
-  assert.match(source,/primitiveProjectionView/);
-  assert.match(source,/Hidden KnowledgeProjection/);
+  assert.match(source,/const requested = url\.searchParams\.get\("view"\)/);
+  assert.match(source,/requested === "primitives"/);
+  assert.match(source,/primitiveProjectionView\(data\.projection\)/);
+  assert.match(source,/routingProjectionView\(data\.projection\)/);
 });
 
 test('Encounter 9 alone cannot fabricate narrative compatibility without earned cooperation',()=>{

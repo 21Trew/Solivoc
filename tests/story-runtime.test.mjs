@@ -70,7 +70,7 @@ test("late unique mechanics are hard-blocked before semantic start", async () =>
 });
 
 test("routed encounter decision is persisted exactly once", async () => {
-  const shared = { commands: [] }, story = makeRuntime(shared); shared.meta = { worldId: "forest", packageVersion: "0.03", sceneId: "SCN_FOREST_L016_CORE", areaId: "AREA_FOREST_TREES", levelId: 16, nextSceneId: "SCN_FOREST_L017_CORE", forcedTutorials: {}, choiceSelections: {}, status: "active", startedAt: "x", completedAt: null };
+  const shared = { commands: [], meta: { worldId: "forest", packageVersion: "0.03", sceneId: "SCN_FOREST_L016_CORE", areaId: "AREA_FOREST_TREES", levelId: 16, nextSceneId: "SCN_FOREST_L017_CORE", forcedTutorials: {}, choiceSelections: {}, status: "active", startedAt: "x", completedAt: null } }, story = makeRuntime(shared);
   const decision = { status: "selected", encounterId: "ENC_FOREST_02", selectedVariant: "ENC_FOREST_02_CAT", participants: ["cat"], eligibleVariants: ["ENC_FOREST_02_CAT", "ENC_FOREST_02_OWL"], reasons: ["THREAD_CONTINUITY"], routingContractVersion: "forest-routing@1", deadline: false };
   const first = await story.beginRoutedEncounter("SCN_FOREST_L016_CORE", decision); assert.equal(first.state.encounterVariantId, "ENC_FOREST_02_CAT"); assert.equal(shared.commands[0].command.events[0].eventKey, "FOREST_ENCOUNTER_STARTED"); assert.equal((await story.beginRoutedEncounter("SCN_FOREST_L016_CORE", decision)).replayed, true); assert.equal(shared.commands.length, 1);
 });
