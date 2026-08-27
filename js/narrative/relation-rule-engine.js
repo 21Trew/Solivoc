@@ -28,6 +28,7 @@
       ["story-primitives", "./js/narrative/story-primitives.js"],
       ["story-synthesis-board-runtime", "./js/narrative/story-synthesis-board-runtime.js"],
       ["story-presentation", "./js/narrative/story-presentation.js"],
+      ["product-mode-compat", "./js/narrative/product-mode-compat.js"],
       ["story-knowledge-ui", "./js/narrative/story-knowledge-ui.js"],
     ];
     for (const [key, src] of modules) { if (document.querySelector(`script[data-solivoc-story-module="${key}"]`)) continue; const script = document.createElement("script"); script.src = src; script.async = false; script.dataset.solivocStoryModule = key; document.head.appendChild(script); }
