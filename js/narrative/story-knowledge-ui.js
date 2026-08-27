@@ -99,7 +99,7 @@
 
   function renderKnowledge(item) {
     const levels = arr(item.provenance?.scene_ids).map(levelFromScene).filter(Boolean);
-    const where = levels.length ? `Впервые связано с ур. ${Math.min(...levels)}` : "";
+    const where = levels.length ? `Основание: ур. ${Math.min(...levels)}` : "";
     const provenance = [item.confidence, item.kind, where].filter(Boolean).join(" · ");
     const extras = []; if (item.linkedCount) extras.push(`Связано записей: ${item.linkedCount}`); if (item.reconstructionCount) extras.push(`Реконструкций: ${item.reconstructionCount}`);
     return `<article class="forest-knowledge-card"><h3>${esc(item.title)}</h3><div class="forest-knowledge-meta">${esc(provenance)}</div>${extras.length ? `<div class="forest-knowledge-chips">${extras.map(x=>`<span class="forest-knowledge-chip">${esc(x)}</span>`).join("")}</div>` : ""}</article>`;
