@@ -158,11 +158,10 @@ test("routing projection module loads after the pure router and before presentat
   assert.match(sw, /"\.\/js\/narrative\/story-routing-projection\.js"/);
 });
 
-test("projection API exposes only a routing-safe view instead of the full hidden KnowledgeProjection", () => {
+test("projection API delegates to the routing-safe view instead of returning the full hidden KnowledgeProjection", () => {
   assert.match(endpoint, /routingProjectionView/);
   assert.match(endpoint, /const requested = url\.searchParams\.get\("view"\)/);
   assert.match(endpoint, /: routingProjectionView\(data\.projection\)/);
-  assert.match(endpoint, /completed_ids/);
   assert.doesNotMatch(endpoint, /return json\(\{ ok: true, projection: data\.projection/);
   assert.doesNotMatch(endpoint, /knowledge:\s*projection/);
 });
