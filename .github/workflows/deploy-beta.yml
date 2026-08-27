@@ -1,0 +1,237 @@
+name: Deploy beta
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: solivoc-beta
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    environment: Beta
+    outputs:
+      app_origin: ${{ steps.guard.outputs.app_origin }}
+      api_origin: ${{ steps.guard.outputs.api_origin }}
+    steps:
+      - name: Validate isolated beta contract
+        id: guard
+        shell: bash
+        env:
+          BETA_APP_URL: ${{ vars.BETA_APP_URL }}
+          BETA_API_URL: ${{ vars.BETA_API_URL }}
+          BETA_YC_BUCKET: ${{ vars.BETA_YC_BUCKET }}
+          BETA_YC_FUNCTION_ID: ${{ vars.BETA_YC_FUNCTION_ID }}
+          BETA_YC_GATEWAY_ID: ${{ vars.BETA_YC_GATEWAY_ID }}
+          BETA_YC_GATEWAY_INVOKER_SA_ID: ${{ vars.BETA_YC_GATEWAY_INVOKER_SA_ID }}
+          BETA_YC_SA_ID: ${{ vars.BETA_YC_SA_ID }}
+        run: |
+          set -euo pipefail
+          for name in BETA_APP_URL BETA_API_URL BETA_YC_BUCKET BETA_YC_FUNCTION_ID BETA_YC_GATEWAY_ID BETA_YC_GATEWAY_INVOKER_SA_ID BETA_YC_SA_ID; do
+            value="${!name:-}"
+            if [ -z "$value" ]; then echo "Missing Beta environment variable: $name"; exit 1; fi
+          done
+          node --input-type=module <<'NODE'
+          const forbidden = new Set(['solivoc.ru','www.solivoc.ru','admin.solivoc.ru','api.solivoc.ru']);
+          for (const name of ['BETA_APP_URL','BETA_API_URL']) {
+            const url = new URL(process.env[name]);
+            if (url.protocol !== 'https:') throw new Error(`${name} must use https`);
+            const host = url.hostname.toLowerCase();
+            if (!host.includes('beta')) throw new Error(`${name} hostname must contain beta`);
+            if (forbidden.has(host)) throw new Error(`${name} points at production`);
+          }
+          if (!String(process.env.BETA_YC_BUCKET).toLowerCase().includes('beta')) throw new Error('BETA_YC_BUCKET must contain beta');
+          NODE
+          echo "app_origin=${BETA_APP_URL%/}" >> "$GITHUB_OUTPUT"
+          echo "api_origin=${BETA_API_URL%/}" >> "$GITHUB_OUTPUT"
+
+  backend:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: Beta
+    steps:
+      - name: Checkout beta branch
+        uses: actions/checkout@v5
+        with:
+          ref: forest-world-campaign
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Build backend bundle
+        run: npm run build:yandex
+      - name: Create deploy archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd yandex-function
+          zip -qr "$RUNNER_TEMP/solivoc-beta-function.zip" . -x "*.DS_Store"
+          test -s "$RUNNER_TEMP/solivoc-beta-function.zip"
+      - name: Deploy isolated beta function
+        shell: bash
+        env:
+          YC_SA_ID: ${{ vars.BETA_YC_SA_ID }}
+          YC_FUNCTION_ID: ${{ vars.BETA_YC_FUNCTION_ID }}
+        run: |
+          set -euo pipefail
+          oidc_response="$(curl --fail --silent --show-error -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}")"
+          github_oidc_token="$(printf '%s' "$oidc_response" | jq -r '.value')"
+          exchange_response="$(curl --fail --silent --show-error --request POST 'https://auth.yandex.cloud/oauth/token' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'grant_type=urn:ietf:params:oauth-grant-type:token-exchange' --data-urlencode 'requested_token_type=urn:ietf:params:oauth:token-type:access_token' --data-urlencode "audience=${YC_SA_ID}" --data-urlencode "subject_token=${github_oidc_token}" --data-urlencode 'subject_token_type=urn:ietf:params:oauth:token-type:id_token')"
+          iam_token="$(printf '%s' "$exchange_response" | jq -r '.access_token')"
+
+          curl --fail --silent --show-error --get 'https://serverless-functions.api.cloud.yandex.net/functions/v1/versions:byTag' -H "Authorization: Bearer ${iam_token}" --data-urlencode "functionId=${YC_FUNCTION_ID}" --data-urlencode 'tag=$latest' > "$RUNNER_TEMP/current-beta-function.json"
+          jq 'if (.versions? | type) == "array" then .versions[0] else . end' "$RUNNER_TEMP/current-beta-function.json" > "$RUNNER_TEMP/current-beta-version.json"
+          jq -e '.id and .functionId and .runtime and .entrypoint and .resources.memory' "$RUNNER_TEMP/current-beta-version.json" >/dev/null || { echo 'Beta function must be provisioned once before this workflow can update it.'; exit 1; }
+          previous_version_id="$(jq -r '.id' "$RUNNER_TEMP/current-beta-version.json")"
+          while IFS= read -r secret_value; do [ -z "$secret_value" ] || echo "::add-mask::$secret_value"; done < <(jq -r '.environment // {} | to_entries[] | .value' "$RUNNER_TEMP/current-beta-version.json")
+          base64 -w 0 "$RUNNER_TEMP/solivoc-beta-function.zip" > "$RUNNER_TEMP/solivoc-beta-function.b64"
+          jq --rawfile content "$RUNNER_TEMP/solivoc-beta-function.b64" '{functionId:.functionId,runtime:.runtime,description:(.description//"Solivoc beta"),entrypoint:.entrypoint,resources:.resources,executionTimeout:(.executionTimeout//"5s"),serviceAccountId:(.serviceAccountId//""),content:$content,environment:(.environment//{}),namedServiceAccounts:(.namedServiceAccounts//{}),concurrency:(.concurrency//"0"),connectivity:(.connectivity//{}),secrets:(.secrets//[]),logOptions:(.logOptions//{}),storageMounts:(.storageMounts//[]),asyncInvocationConfig:(.asyncInvocationConfig//{}),tmpfsSize:(.tmpfsSize//"0"),mounts:(.mounts//[]),metadataOptions:(.metadataOptions//{})} | with_entries(select(.value != null and .value != "" and .value != [] and .value != {}))' "$RUNNER_TEMP/current-beta-version.json" > "$RUNNER_TEMP/create-beta-version.json"
+          create_response="$(curl --fail --silent --show-error --request POST 'https://serverless-functions.api.cloud.yandex.net/functions/v1/versions' -H "Authorization: Bearer ${iam_token}" -H 'Content-Type: application/json' --data-binary "@$RUNNER_TEMP/create-beta-version.json")"
+          operation_id="$(printf '%s' "$create_response" | jq -r '.id')"; test -n "$operation_id" && test "$operation_id" != null
+          for attempt in $(seq 1 45); do
+            sleep 2
+            latest_json="$(curl --fail --silent --show-error --get 'https://serverless-functions.api.cloud.yandex.net/functions/v1/versions:byTag' -H "Authorization: Bearer ${iam_token}" --data-urlencode "functionId=${YC_FUNCTION_ID}" --data-urlencode 'tag=$latest')"
+            candidate="$(printf '%s' "$latest_json" | jq -r 'if (.versions? | type) == "array" then (.versions[0].id // "") else (.id // "") end')"
+            if [ -n "$candidate" ] && [ "$candidate" != "$previous_version_id" ]; then echo "Beta function version: $candidate"; exit 0; fi
+          done
+          echo "Beta function rollout timed out. Operation: ${operation_id}"; exit 1
+
+  gateway:
+    needs: [validate, backend]
+    runs-on: ubuntu-latest
+    environment: Beta
+    steps:
+      - name: Checkout beta branch
+        uses: actions/checkout@v5
+        with:
+          ref: forest-world-campaign
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Render isolated beta gateway
+        env:
+          BETA_YC_FUNCTION_ID: ${{ vars.BETA_YC_FUNCTION_ID }}
+          BETA_YC_GATEWAY_INVOKER_SA_ID: ${{ vars.BETA_YC_GATEWAY_INVOKER_SA_ID }}
+          BETA_APP_URL: ${{ vars.BETA_APP_URL }}
+        run: node scripts/render-beta-api-gateway.mjs "$RUNNER_TEMP/solivoc-beta-api-gateway.yaml"
+      - name: Deploy isolated beta gateway
+        shell: bash
+        env:
+          YC_SA_ID: ${{ vars.BETA_YC_SA_ID }}
+          YC_GATEWAY_ID: ${{ vars.BETA_YC_GATEWAY_ID }}
+        run: |
+          set -euo pipefail
+          oidc_response="$(curl --fail --silent --show-error -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}")"
+          github_oidc_token="$(printf '%s' "$oidc_response" | jq -r '.value')"
+          exchange_response="$(curl --fail --silent --show-error --request POST 'https://auth.yandex.cloud/oauth/token' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'grant_type=urn:ietf:params:oauth-grant-type:token-exchange' --data-urlencode 'requested_token_type=urn:ietf:params:oauth:token-type:access_token' --data-urlencode "audience=${YC_SA_ID}" --data-urlencode "subject_token=${github_oidc_token}" --data-urlencode 'subject_token_type=urn:ietf:params:oauth:token-type:id_token')"
+          iam_token="$(printf '%s' "$exchange_response" | jq -r '.access_token')"
+          jq -n --rawfile spec "$RUNNER_TEMP/solivoc-beta-api-gateway.yaml" '{updateMask:"openapiSpec",openapiSpec:$spec}' > "$RUNNER_TEMP/update-beta-gateway.json"
+          response="$(curl --fail --silent --show-error --request PATCH "https://serverless-apigateway.api.cloud.yandex.net/apigateways/v1/apigateways/${YC_GATEWAY_ID}" -H "Authorization: Bearer ${iam_token}" -H 'Content-Type: application/json' --data-binary "@$RUNNER_TEMP/update-beta-gateway.json")"
+          operation_id="$(printf '%s' "$response" | jq -r '.id')"; test -n "$operation_id" && test "$operation_id" != null
+          for attempt in $(seq 1 45); do
+            sleep 2
+            op="$(curl --fail --silent --show-error -H "Authorization: Bearer ${iam_token}" "https://operation.api.cloud.yandex.net/operations/${operation_id}")"
+            if [ "$(printf '%s' "$op" | jq -r '.done // false')" = true ]; then
+              error_message="$(printf '%s' "$op" | jq -r '.error.message // ""')"
+              if [ -z "$error_message" ]; then exit 0; fi
+              printf '%s' "$op" | jq '.error'; exit 1
+            fi
+          done
+          echo "Beta gateway rollout timed out"; exit 1
+      - name: Smoke beta API and CORS
+        shell: bash
+        env:
+          BETA_API_URL: ${{ vars.BETA_API_URL }}
+          BETA_APP_URL: ${{ vars.BETA_APP_URL }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 20); do
+            headers="$RUNNER_TEMP/beta-headers.txt"
+            if curl --fail --silent --show-error --dump-header "$headers" -H "Origin: ${BETA_APP_URL%/}" -H 'Cache-Control: no-cache' "${BETA_API_URL%/}/api/version?beta_ci=${GITHUB_SHA}-${attempt}" > "$RUNNER_TEMP/beta-version.json"; then
+              origin="$(grep -i -m1 '^Access-Control-Allow-Origin:' "$headers" | cut -d: -f2- | sed 's/^[[:space:]]*//;s/\r$//' || true)"
+              build="$(jq -r '.build // ""' "$RUNNER_TEMP/beta-version.json")"
+              if [ -n "$build" ] && [ "$origin" = "${BETA_APP_URL%/}" ]; then echo "Beta API healthy: $build"; exit 0; fi
+            fi
+            sleep 3
+          done
+          exit 1
+
+  frontend:
+    needs: [validate, gateway]
+    runs-on: ubuntu-latest
+    environment: Beta
+    steps:
+      - name: Checkout beta branch
+        uses: actions/checkout@v5
+        with:
+          ref: forest-world-campaign
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Build frontend
+        run: npm run build:frontend
+      - name: Prepare beta-only frontend
+        env:
+          BETA_API_URL: ${{ vars.BETA_API_URL }}
+        run: node scripts/prepare-beta-frontend.mjs dist-frontend
+      - name: Verify beta bundle cannot point at production API
+        shell: bash
+        env:
+          BETA_API_URL: ${{ vars.BETA_API_URL }}
+        run: |
+          set -euo pipefail
+          grep -q 'window.SOLIVOC_BETA=true' dist-frontend/index.html
+          grep -Fq "${BETA_API_URL%/}" dist-frontend/index.html
+          grep -q 'noindex,nofollow,noarchive' dist-frontend/index.html
+          grep -q '^Disallow: /$' dist-frontend/robots.txt
+          test -f dist-frontend/beta-build.json
+          if grep -q 'window.SOLIVOC_API_BASE="https://api.solivoc.ru"' dist-frontend/index.html; then echo 'Production API leaked into beta index'; exit 1; fi
+      - name: Upload beta frontend assets
+        uses: yc-actions/yc-obj-storage-upload@v4
+        with:
+          yc-sa-id: ${{ vars.BETA_YC_SA_ID }}
+          bucket: ${{ vars.BETA_YC_BUCKET }}
+          root: ./dist-frontend
+          include: '**/*'
+          exclude: 'sw.js'
+          clear: false
+          skip-unchanged: true
+          fail-on-error: true
+          cache-control: |
+            *.html: no-cache
+            **/*.js, **/*.css, **/*.json, **/*.webmanifest: no-cache
+            *.xml, *.txt: no-cache
+            *: public, max-age=3600
+      - name: Publish beta service worker last
+        uses: yc-actions/yc-obj-storage-upload@v4
+        with:
+          yc-sa-id: ${{ vars.BETA_YC_SA_ID }}
+          bucket: ${{ vars.BETA_YC_BUCKET }}
+          root: ./dist-frontend
+          include: 'sw.js'
+          clear: false
+          skip-unchanged: false
+          fail-on-error: true
+          cache-control: |
+            sw.js: no-cache
+            *: no-cache
+      - name: Smoke beta frontend
+        shell: bash
+        env:
+          BETA_APP_URL: ${{ vars.BETA_APP_URL }}
+          BETA_API_URL: ${{ vars.BETA_API_URL }}
+        run: |
+          set -euo pipefail
+          html="$(curl --fail --silent --show-error --retry 10 --retry-delay 3 --retry-all-errors -H 'Cache-Control: no-cache' "${BETA_APP_URL%/}/?beta_ci=${GITHUB_SHA}")"
+          printf '%s' "$html" | grep -q 'window.SOLIVOC_BETA=true'
+          printf '%s' "$html" | grep -Fq "${BETA_API_URL%/}"
+          printf '%s' "$html" | grep -q 'noindex,nofollow,noarchive'
+          curl --fail --silent --show-error "${BETA_APP_URL%/}/robots.txt?beta_ci=${GITHUB_SHA}" | grep -q '^Disallow: /$'
+          echo "Solivoc beta is deployed and isolated from production."

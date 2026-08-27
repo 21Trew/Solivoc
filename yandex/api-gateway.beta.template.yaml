@@ -1,0 +1,82 @@
+openapi: 3.0.0
+info:
+  title: Словасьянс Beta API
+  version: 1.0.0-beta
+
+paths:
+  /api/{endpoint}:
+    x-yc-apigateway-cors:
+      origin:
+        - <APP_ORIGIN>
+      methods:
+        - GET
+        - POST
+        - OPTIONS
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+        - Cache-Control
+        - Pragma
+        - X-Solivoc-Owner-Token
+        - X-Solivoc-Guest-Token
+      credentials: true
+      maxAge: 3600
+      optionsSuccessStatus: 204
+
+    x-yc-apigateway-any-method:
+      summary: Solivoc Beta API endpoint
+      operationId: solivocBetaApi
+      parameters:
+        - name: endpoint
+          in: path
+          required: true
+          schema:
+            type: string
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: <FUNCTION_ID>
+        service_account_id: <SERVICE_ACCOUNT_ID>
+        tag: $latest
+        payload_format_version: "2.0"
+
+  /api/admin/mail:
+    x-yc-apigateway-cors:
+      origin:
+        - <APP_ORIGIN>
+      methods:
+        - POST
+        - OPTIONS
+      allowedHeaders:
+        - Content-Type
+        - Cache-Control
+        - Pragma
+      credentials: true
+      maxAge: 3600
+      optionsSuccessStatus: 204
+
+    x-yc-apigateway-any-method:
+      summary: Solivoc Beta admin developer mail endpoint
+      operationId: solivocBetaAdminDeveloperMail
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: <FUNCTION_ID>
+        service_account_id: <SERVICE_ACCOUNT_ID>
+        tag: $latest
+        payload_format_version: "2.0"
+
+  /d/{code}:
+    x-yc-apigateway-any-method:
+      summary: Solivoc Beta duel share page
+      operationId: solivocBetaDuelShare
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: <FUNCTION_ID>
+        service_account_id: <SERVICE_ACCOUNT_ID>
+        tag: $latest
+        payload_format_version: "2.0"
