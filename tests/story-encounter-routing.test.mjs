@@ -55,7 +55,7 @@ test('Encounter 9 permits ally continuity and only authored switch state',()=>{
  const noSwitch=r.routeEncounter({encounter:enc('ENC_FOREST_09'),level:84,snapshot:{relationships:base}});
  assert.equal(noSwitch.status,'selected'); assert.equal(noSwitch.selectedVariant,'ENC_FOREST_09_OWL');
  const withSwitch=r.routeEncounter({encounter:enc('ENC_FOREST_09'),level:84,snapshot:{relationships:base,variantEvidence:{ENC_FOREST_09_CAT:{unresolvedMutualContradiction:true}}}});
- assert.equal(withSwitch.status,'defer');
+ assert.equal(withSwitch.status,'selected'); assert.equal(withSwitch.selectedVariant,'ENC_FOREST_09_CAT');
 });
 
 test('Encounter 10 uses only its exact authored tie break',()=>{
@@ -90,7 +90,30 @@ test('encounter completion resets freshness until a later authored initiative',(
  assert.equal(routingProjectionView(p).routing_snapshot.threads.cat.freshVoluntaryContinuation,true);
 });
 
-test('router source has no RNG, default semantic factor order or repetition sort',()=>{
+test('router source has no RNG or default semantic factor order',()=>{
  assert.doesNotMatch(source,/Math\.random|crypto\.getRandomValues/);
- assert.doesNotMatch(source,/DEFAULT_FACTOR_ORDER|repetitionCost/);
+ assert.doesNotMatch(source,/DEFAULT_FACTOR_ORDER/);
+});
+
+test('Encounter 3 late/no-meeting entry mode is derived at the authored deadline',()=>{
+ const r=load();
+ const late=r.routeEncounter({encounter:enc('ENC_FOREST_03'),level:29,snapshot:{relationships:{fox:{acquainted:false}}}});
+ assert.equal(late.status,'selected');
+ assert.equal(late.selectedVariant,'ENC_FOREST_03_FOX');
+ assert.ok(late.reasons.includes('AUTHORED_ENTRY_MODE'));
+});
+
+test('unresolved reciprocal question can switch Encounter 9 and drive Encounter 10',()=>{
+ const r=load();
+ const base={
+  cat:{...ready('understanding_established','reciprocity_established','cooperation_established','temporary_alliance_completed'),meaningfulRelationshipEvents:8,narrativeCompatibility:true},
+  fox:{...ready('understanding_established','reciprocity_established'),meaningfulRelationshipEvents:5},
+ };
+ const threads={fox:{unresolvedQuestionKeys:['FOX_ROUTE_NEEDS_VERIFICATION']},cat:{unresolvedQuestionKeys:[]}};
+ const e9=r.routeEncounter({encounter:enc('ENC_FOREST_09'),level:84,snapshot:{relationships:base,threads}});
+ assert.equal(e9.status,'selected'); assert.equal(e9.selectedVariant,'ENC_FOREST_09_FOX');
+ base.fox.milestones.cooperation_established=true; base.fox.narrativeCompatibility=true; base.fox.meaningfulRelationshipEvents=7;
+ const e10=r.routeEncounter({encounter:enc('ENC_FOREST_10'),level:89,snapshot:{relationships:base,threads}});
+ assert.equal(e10.status,'selected'); assert.equal(e10.selectedVariant,'ENC_FOREST_10_FOX');
+ assert.ok(e10.reasons.includes('UNRESOLVED_MUTUAL_CONTRADICTION'));
 });

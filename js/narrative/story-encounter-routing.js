@@ -47,6 +47,12 @@
     return true;
   }
 
+  function unresolvedQuestionMatches(variant, snapshot) {
+    const key = String(variant?.unresolvedQuestionKey || "");
+    if (!key) return false;
+    return array(thread(snapshot, array(variant.participants)[0])?.unresolvedQuestionKeys).includes(key);
+  }
+
   function encounter9TransferEligible(characterId, variant, encounter, snapshot) {
     const policy = encounter?.transferEligibility;
     if (!policy) return true;
@@ -56,6 +62,7 @@
     const hard = mergeHardRequirements({}, policy.switchRequirements || {});
     if (!hardRequirementsSatisfied(characterId, hard, snapshot)) return false;
     const evidenceKey = String(policy?.switchRequirements?.requiresVariantEvidence || "");
+    if (evidenceKey === "unresolvedMutualContradiction" && unresolvedQuestionMatches(variant, snapshot)) return true;
     if (evidenceKey && snapshot?.variantEvidence?.[variant.id]?.[evidenceKey] !== true) return false;
     return true;
   }
@@ -82,7 +89,7 @@
     if (factor === "SCENE_FIT") return bool(snapshot?.variantEvidence?.[variant.id]?.sceneFit) || sceneSignals.includes(`variant:${variant.id}`) ? 1 : 0;
     if (factor === "STAGE_FIT") return bool(snapshot?.variantEvidence?.[variant.id]?.stageFit) ? 1 : 0;
     if (factor === "PLAYER_COMPLEMENTARITY") return bool(snapshot?.variantEvidence?.[variant.id]?.playerComplementarity) ? 1 : 0;
-    if (factor === "UNRESOLVED_MUTUAL_CONTRADICTION") return bool(snapshot?.variantEvidence?.[variant.id]?.unresolvedMutualContradiction) ? 1 : 0;
+    if (factor === "UNRESOLVED_MUTUAL_CONTRADICTION") return bool(snapshot?.variantEvidence?.[variant.id]?.unresolvedMutualContradiction) || unresolvedQuestionMatches(variant, snapshot) ? 1 : 0;
     if (factor === "COOPERATION_TRANSFER") return bool(snapshot?.variantEvidence?.[variant.id]?.cooperationTransfer) ? 1 : 0;
     if (factor === "THREAD_CONTINUITY") return participants.some((id) => bool(thread(snapshot, id)?.unfinishedQuestion)) ? 1 : 0;
     if (factor === "PLAYER_INITIATIVE" || factor === "FRESH_VOLUNTARY_PLAYER_CONTINUATION") return participants.some((id) => bool(thread(snapshot, id)?.freshVoluntaryContinuation)) ? 1 : 0;
@@ -129,31 +136,49 @@
     });
   }
 
-  function genericEvidenceReasons(variant, snapshot, sceneSignals) {
+  function strongThirdRepeatReason(variant, snapshot = {}, sceneSignals = []) {
+    const evidence = snapshot?.variantEvidence?.[variant.id] || {};
+    return bool(evidence.sceneFit) || bool(evidence.stageFit) || bool(evidence.playerComplementarity) || bool(evidence.unresolvedMutualContradiction) || sceneSignals.includes(`variant:${variant.id}`);
+  }
+
+  function repetitionGuardCost(variant, snapshot = {}, sceneSignals = []) {
+    const participants = array(variant?.participants);
+    if (participants.length !== 1 || strongThirdRepeatReason(variant, snapshot, sceneSignals)) return 0;
+    const characterId = participants[0];
+    const recent = array(snapshot?.recentEncounterParticipants);
+    return recent.length >= 2 && recent.at(-1) === characterId && recent.at(-2) === characterId ? 1 : 0;
+  }
+
+  function rankGenericVariants(variants, encounter, snapshot = {}, sceneSignals = []) {
+    const index = authoredIndex(encounter);
+    return [...variants].sort((a,b) => repetitionGuardCost(a,snapshot,sceneSignals) - repetitionGuardCost(b,snapshot,sceneSignals) || (index.get(a.id) ?? 999) - (index.get(b.id) ?? 999));
+  }
+
+  function genericEvidenceReasons(variant, effectiveSnapshot, sceneSignals) {
     const reasons = [];
     if (variant.requiresSceneSignal && sceneSignals.includes(variant.requiresSceneSignal)) reasons.push("AUTHORED_SCENE_SIGNAL");
-    if (array(variant.validEntryModes).some((mode) => array(snapshot?.entryModes).includes(mode))) reasons.push("AUTHORED_ENTRY_MODE");
-    for (const factor of GENERIC_EVIDENCE_FACTORS) if (factorValue(factor, variant, snapshot, sceneSignals) > 0) reasons.push(factor);
+    if (array(variant.validEntryModes).some((mode) => array(effectiveSnapshot?.entryModes).includes(mode))) reasons.push("AUTHORED_ENTRY_MODE");
+    for (const factor of GENERIC_EVIDENCE_FACTORS) if (factorValue(factor, variant, effectiveSnapshot, sceneSignals) > 0) reasons.push(factor);
     return [...new Set(reasons)];
   }
 
-  function authoredRankingReasons(preferred, ranked, encounter, snapshot, sceneSignals) {
+  function authoredRankingReasons(preferred, ranked, encounter, effectiveSnapshot, sceneSignals) {
     const reasons = [];
     for (const factor of array(encounter?.authoredTieBreakOrder)) {
       if (factor === "DETERMINISTIC_CHARACTER_ORDER") break;
-      const value = factorValue(factor, preferred, snapshot, sceneSignals);
-      const otherValues = ranked.filter((variant) => variant.id !== preferred.id).map((variant) => factorValue(factor, variant, snapshot, sceneSignals));
+      const value = factorValue(factor, preferred, effectiveSnapshot, sceneSignals);
+      const otherValues = ranked.filter((variant) => variant.id !== preferred.id).map((variant) => factorValue(factor, variant, effectiveSnapshot, sceneSignals));
       if (otherValues.some((other) => value > other)) reasons.push(factor);
     }
     return reasons;
   }
 
-  function hasAuthoredDistinction(ranked, encounter, snapshot, sceneSignals) {
+  function hasAuthoredDistinction(ranked, encounter, effectiveSnapshot, sceneSignals) {
     if (ranked.length <= 1) return true;
     const [first, second] = ranked;
     for (const factor of array(encounter?.authoredTieBreakOrder)) {
       if (factor === "DETERMINISTIC_CHARACTER_ORDER") break;
-      if (factorValue(factor, first, snapshot, sceneSignals) !== factorValue(factor, second, snapshot, sceneSignals)) return true;
+      if (factorValue(factor, first, effectiveSnapshot, sceneSignals) !== factorValue(factor, second, effectiveSnapshot, sceneSignals)) return true;
     }
     return false;
   }
@@ -184,7 +209,11 @@
     if (completedEncounterIds.includes(encounter.id)) return { status: "already-completed", encounterId: encounter.id };
 
     const deadline = selectionDeadline(encounter, currentLevel, end);
-    const eligible = array(encounter.variants).filter((variant) => variantEligible(variant, encounter, snapshot, sceneSignals));
+    let effectiveSnapshot = snapshot;
+    if (encounter.id === "ENC_FOREST_03" && currentLevel === end && relationship(snapshot, "fox").acquainted !== true) {
+      effectiveSnapshot = { ...snapshot, entryModes: [...new Set([...array(effectiveSnapshot?.entryModes), "LATE_NO_MEETING_YET"])] };
+    }
+    const eligible = array(encounter.variants).filter((variant) => variantEligible(variant, encounter, effectiveSnapshot, sceneSignals));
     if (!eligible.length) {
       if (deadline && encounter.deadlinePolicy === "error-if-none") return { status: "p0-no-eligible-variant", encounterId: encounter.id, level: currentLevel, eligibleVariants: [] };
       return { status: deadline ? "deadline-unresolved" : "defer", encounterId: encounter.id, level: currentLevel, eligibleVariants: [] };
@@ -196,28 +225,30 @@
     }
 
     if (array(encounter.authoredTieBreakOrder).length) {
-      const ranked = rankVariants(eligible, encounter, snapshot, sceneSignals);
+      const ranked = rankVariants(eligible, encounter, effectiveSnapshot, sceneSignals);
       const preferred = ranked[0];
-      if (!deadline && !hasAuthoredDistinction(ranked, encounter, snapshot, sceneSignals)) {
+      if (!deadline && !hasAuthoredDistinction(ranked, encounter, effectiveSnapshot, sceneSignals)) {
         return { status: "defer", encounterId: encounter.id, level: currentLevel, eligibleVariants: ranked.map((variant) => variant.id) };
       }
-      const reasons = authoredRankingReasons(preferred, ranked, encounter, snapshot, sceneSignals);
+      const reasons = authoredRankingReasons(preferred, ranked, encounter, effectiveSnapshot, sceneSignals);
       const usedDeterministicFallback = reasons.length === 0;
       if (deadline) reasons.push(currentLevel === Number(encounter.requiredStartLevel) ? "REQUIRED_START_LEVEL" : "WINDOW_DEADLINE");
       if (usedDeterministicFallback) reasons.push("DETERMINISTIC_CHARACTER_ORDER");
       return selectedResult(encounter, currentLevel, preferred, ranked, reasons, deadline);
     }
 
-    const ordered = rankVariants(eligible, encounter, snapshot, sceneSignals);
+    const ordered = rankGenericVariants(eligible, encounter, effectiveSnapshot, sceneSignals);
     if (!deadline && encounter.selectionMode === "evidence-gated") {
       if (ordered.length === 1) return selectedResult(encounter, currentLevel, ordered[0], ordered, ["SOLE_ELIGIBLE_VARIANT"], false);
-      const evidenced = ordered.map((variant) => ({ variant, reasons: genericEvidenceReasons(variant, snapshot, sceneSignals) })).filter((row) => row.reasons.length);
+      const minimumRepetitionCost = Math.min(...ordered.map((variant) => repetitionGuardCost(variant, effectiveSnapshot, sceneSignals)));
+      const routingPool = ordered.filter((variant) => repetitionGuardCost(variant, effectiveSnapshot, sceneSignals) === minimumRepetitionCost);
+      const evidenced = routingPool.map((variant) => ({ variant, reasons: genericEvidenceReasons(variant, effectiveSnapshot, sceneSignals) })).filter((row) => row.reasons.length);
       if (evidenced.length !== 1) return { status: "defer", encounterId: encounter.id, level: currentLevel, eligibleVariants: ordered.map((variant) => variant.id) };
       return selectedResult(encounter, currentLevel, evidenced[0].variant, ordered, evidenced[0].reasons, false);
     }
 
     const preferred = ordered[0];
-    const reasons = genericEvidenceReasons(preferred, snapshot, sceneSignals);
+    const reasons = genericEvidenceReasons(preferred, effectiveSnapshot, sceneSignals);
     if (deadline) reasons.push(currentLevel === Number(encounter.requiredStartLevel) ? "REQUIRED_START_LEVEL" : "WINDOW_DEADLINE", "DETERMINISTIC_AUTHORED_ORDER");
     if (!reasons.length) reasons.push("DETERMINISTIC_AUTHORED_ORDER");
     return selectedResult(encounter, currentLevel, preferred, ordered, reasons, deadline);

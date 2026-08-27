@@ -1,4 +1,5 @@
 import { advanceForestProjection, projectForestEvents, PROJECTION_VERSION } from "./_forest-projection-lib.mjs";
+import { applyForestRoutingEvidence } from "./_forest-routing-evidence.mjs";
 import { readSemanticEvents, readSemanticProjection, semanticKeys } from "./_semantic-lib.mjs";
 import { redis } from "./_push-lib.mjs";
 
@@ -54,7 +55,7 @@ export async function readAllForestSemanticEvents(userId) {
 
 export async function rebuildForestProjection(userId) {
   const { events, lastSequence } = await readAllForestSemanticEvents(userId);
-  const projection = projectForestEvents(events);
+  const projection = applyForestRoutingEvidence(projectForestEvents(events), events, 0);
   if (projection.source_sequence !== lastSequence) {
     throw Object.assign(new Error("projection_source_sequence_mismatch"), {
       code: "projection_source_sequence_mismatch",
@@ -76,7 +77,7 @@ export async function advanceForestProjectionCache(userId, acceptedEvents = []) 
   const currentVersion = Number(currentProjection?.projection_version) || 0;
   const firstAccepted = Math.min(...accepted.map((event) => Number(event.sequence_no) || 0).filter((value) => value > 0));
   if (!currentProjection || currentVersion !== PROJECTION_VERSION || firstAccepted !== currentSequence + 1) return rebuildForestProjection(userId);
-  const projection = advanceForestProjection(currentProjection, accepted);
+  const projection = applyForestRoutingEvidence(advanceForestProjection(currentProjection, accepted), accepted, currentSequence);
   const write = await writeForestProjection(userId, projection);
   if (write.written === false && Number(write.source_sequence) > projection.source_sequence) return ensureForestProjection(userId);
   return { projection, version: PROJECTION_VERSION, rebuilt: false, mode: "incremental", write };
