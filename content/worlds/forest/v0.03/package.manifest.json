@@ -16,16 +16,18 @@
     "data/encounters.json",
     "data/encounter-presentation.json",
     "data/primitives.json",
+    "data/knowledge-ui.json",
     "data/world-facts.json",
     "data/choices.json",
     "data/world-structures.json"
   ],
   "notes": [
     "The Forest core scene registry is exported for all levels 1-100.",
-    "Authored world facts, choices, encounter routing, encounter presentation kernels, Story primitive contracts and late-world structures are exported as separate runtime registries.",
+    "Authored world facts, choices, encounter routing, encounter presentation kernels, Story primitive contracts, Knowledge UX presentation definitions and late-world structures are exported as separate runtime registries.",
     "Ordinary core levels reuse shared procedural Story generation instead of per-level implementations.",
     "TBD weights, final dialogue, final art/voice and non-blocking mastery tuning remain explicit and are never inferred by runtime export.",
     "Relationship synthesis, required revisit, world synthesis and elemental manifestation have generic runtimes; SYN_FOREST_WORLD_01_BOARD v0.01 is the beta-runnable production draft for level 99.",
+    "Knowledge UI consumes a spoiler-safe projection and never receives hidden subject identity, raw relationship evidence event ids, unresolved question keys or Cognition state.",
     "Relation runtime accepts only explicitly exported authored ID pairs; no semantic inference is allowed."
   ]
 }
