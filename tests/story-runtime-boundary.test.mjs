@@ -25,17 +25,17 @@ function makeSandbox() {
   const store = {
     async commit(command, key, value) { calls.commits.push({ command, key, value }); persisted = value; return command; },
   };
-  const runtime = {
+  const sandbox = { console, SolivocNarrativeStore: store };
+  sandbox.SolivocForestStory = {
     async bootstrap() { return { document, encounters, active: persisted }; },
     async beginRoutedEncounter(sceneId, decision) {
       const routing = { encounterId: decision.encounterId, selectedVariant: decision.selectedVariant, participants: [...decision.participants], eligibleVariants: [...decision.eligibleVariants], reasons: [...(decision.reasons || [])], routingContractVersion: decision.routingContractVersion, routedAtLevel: 16 };
       const state = { worldId: "forest", sceneId, levelId: 16, status: "active", encounterRouting: routing };
       const event = { eventKey: "FOREST_ENCOUNTER_STARTED", payload: { encounterId: decision.encounterId, variantId: decision.selectedVariant, participants: [...decision.participants] } };
-      await globalThis.SolivocNarrativeStore.commit({ commandId: "c1", events: [event] }, "story:forest:active", state);
+      await sandbox.SolivocNarrativeStore.commit({ commandId: "c1", events: [event] }, "story:forest:active", state);
       return { state, replayed: false };
     },
   };
-  const sandbox = { console, SolivocNarrativeStore: store, SolivocForestStory: runtime };
   sandbox.globalThis = sandbox;
   vm.runInNewContext(source, sandbox, { filename: "story-runtime-boundary.js" });
   return { sandbox, calls, get persisted() { return persisted; } };
