@@ -1,21 +1,25 @@
-/* L99 production-board preflight. Keeps authored Synthesis progression fail-closed before scene start. */
+/* L99 production-board preflight and data-driven phase presentation binding. */
 (() => {
   if (globalThis.SolivocStorySynthesisBoard) return;
   const WORLD = "forest", MARK = "__solivocSynthesisBoardPreflight";
-  let runtimeValue = globalThis.SolivocForestStory;
+  let runtimeValue = globalThis.SolivocForestStory, presentationObserver = null, presentationBusy = false;
   const arr = (value) => Array.isArray(value) ? value : [];
   const txt = (value) => String(value ?? "").trim();
   const num = (value) => Math.max(0, Number(value) || 0);
+
+  async function contractAndDefinition() {
+    const primitives = globalThis.SolivocStoryPrimitives;
+    if (!primitives?.loadContract) throw new Error("story_primitives_unavailable");
+    const contract = await primitives.loadContract();
+    return { primitives, contract, definition: contract?.worldSynthesis };
+  }
 
   async function preflight(runtime, sceneId) {
     const snapshot = await runtime.bootstrap();
     const scene = arr(snapshot?.document?.scenes).find((item) => item?.id === txt(sceneId || runtime.defaultSceneId)) || null;
     if (!scene || scene.requiredPrimitive !== "world-synthesis") return { snapshot, scene };
 
-    const primitives = globalThis.SolivocStoryPrimitives;
-    if (!primitives?.loadContract || !primitives?.primitiveProjection) throw new Error("story_primitives_unavailable");
-    const contract = await primitives.loadContract();
-    const definition = contract?.worldSynthesis;
+    const { primitives, definition } = await contractAndDefinition();
     const validation = primitives.validateWorldSynthesisBoard?.(definition) || { ok: false };
     if (definition?.betaRunnable !== true || validation.ok !== true) {
       const error = new Error("story_world_synthesis_authored_board_required");
@@ -37,6 +41,47 @@
       throw error;
     }
     return { snapshot, scene };
+  }
+
+  function phaseFromModal(modal, definition) {
+    const label = txt(modal?.querySelector("small")?.textContent);
+    const match = label.match(/СИНТЕЗ\s*·\s*ЭТАП\s*(\d+)/i);
+    if (!match) return null;
+    const authored = arr(definition?.phases).find((phase) => num(phase.order) === num(match[1]));
+    return arr(definition?.board?.phases).find((phase) => phase.id === authored?.id) || null;
+  }
+
+  async function bindPhasePresentation() {
+    if (presentationBusy || typeof document === "undefined") return;
+    const modal = document.getElementById("storyPrimitiveModal");
+    if (!modal || modal.hidden) return;
+    presentationBusy = true;
+    try {
+      const { definition } = await contractAndDefinition();
+      const phase = phaseFromModal(modal, definition);
+      if (!phase) return;
+      const relationMap = new Map(arr(definition?.board?.relations).map((relation) => [relation.id, relation]));
+      const candidates = new Set(arr(phase.candidateRelationIds).length ? phase.candidateRelationIds : relationMap.keys());
+      for (const button of modal.querySelectorAll(".story-primitive-relation[data-id]")) {
+        button.hidden = !candidates.has(button.dataset.id);
+      }
+
+      const detail = modal.querySelector(".story-primitive-detail");
+      if (!detail || !txt(detail.textContent).startsWith("Модель пока не выдерживает проверку")) return;
+      const selected = [...modal.querySelectorAll(".story-primitive-relation.selected[data-id]:not([hidden])")].map((button) => relationMap.get(button.dataset.id)).filter(Boolean);
+      const authoredFailure = selected.find((relation) => relation.truth === "distractor" && typeof relation.feedback === "string");
+      detail.textContent = authoredFailure?.feedback || phase.hint || "Проверь, какая связь действительно подтверждается текущим состоянием участка.";
+    } finally {
+      presentationBusy = false;
+    }
+  }
+
+  function installPresentationBinding() {
+    if (typeof document === "undefined" || presentationObserver) return false;
+    presentationObserver = new MutationObserver(() => { bindPhasePresentation().catch(() => {}); });
+    presentationObserver.observe(document.documentElement, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["hidden", "class"] });
+    bindPhasePresentation().catch(() => {});
+    return true;
   }
 
   function wrap(runtime) {
@@ -69,6 +114,7 @@
     } catch { return false; }
   }
 
-  globalThis.SolivocStorySynthesisBoard = Object.freeze({ preflight, installRuntimeBinding: bind });
+  globalThis.SolivocStorySynthesisBoard = Object.freeze({ preflight, bindPhasePresentation, installPresentationBinding, installRuntimeBinding: bind });
   bind();
+  installPresentationBinding();
 })();
