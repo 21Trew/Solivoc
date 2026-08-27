@@ -21,6 +21,7 @@
       ["story-perspective-runtime", "./js/narrative/story-perspective-runtime.js"],
       ["story-choice-runtime", "./js/narrative/story-choice-runtime.js"],
       ["story-encounter-routing", "./js/narrative/story-encounter-routing.js"],
+      ["story-runtime-boundary", "./js/narrative/story-runtime-boundary.js"],
       ["story-routing-projection", "./js/narrative/story-routing-projection.js"],
       ["story-encounter-lifecycle", "./js/narrative/story-encounter-lifecycle.js"],
       ["story-encounter-presentation", "./js/narrative/story-encounter-presentation.js"],

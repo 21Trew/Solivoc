@@ -84,6 +84,7 @@ const CORE = [
   "./js/narrative/story-perspective-runtime.js",
   "./js/narrative/story-choice-runtime.js",
   "./js/narrative/story-encounter-routing.js",
+  "./js/narrative/story-runtime-boundary.js",
   "./js/narrative/story-routing-projection.js",
   "./js/narrative/story-encounter-lifecycle.js",
   "./js/narrative/story-encounter-presentation.js",
