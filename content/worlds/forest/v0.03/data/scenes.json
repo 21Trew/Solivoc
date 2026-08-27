@@ -10,12 +10,28 @@
       "areaId": "AREA_FOREST_CLEARING",
       "status": "BOUND",
       "meaning": "Появление",
+      "nextSceneId": "SCN_FOREST_L002_CORE",
       "presentation": {
         "worldLabel": "Мир Леса",
         "areaLabel": "Поляна",
         "gameplaySummary": "Самое базовое различение и очевидная связь.",
         "characters": ["cat", "owl"],
-        "encounterId": "ENC_FOREST_01"
+        "encounterId": "ENC_FOREST_01_CAT_OWL",
+        "startsEncounter": true
+      }
+    },
+    {
+      "id": "SCN_FOREST_L002_CORE",
+      "level": 2,
+      "areaId": "AREA_FOREST_CLEARING",
+      "status": "BOUND",
+      "meaning": "Уже увиденное",
+      "presentation": {
+        "worldLabel": "Мир Леса",
+        "areaLabel": "Поляна",
+        "gameplaySummary": "Знакомый мотив из уровня 1 появляется в новом контексте.",
+        "characters": ["cat"],
+        "encounterId": "ENC_FOREST_01_CAT_OWL"
       }
     }
   ]

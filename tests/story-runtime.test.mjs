@@ -36,33 +36,23 @@ function makeRuntime(shared = {}) {
       return { report: { ok: true } };
     },
   };
-  const sandbox = {
-    console,
-    Date,
-    setTimeout,
-    clearTimeout,
-    SolivocNarrativeStore: store,
-    SolivocWorldContent: content,
-    addEventListener() {},
-  };
+  const sandbox = { console, Date, setTimeout, clearTimeout, SolivocNarrativeStore: store, SolivocWorldContent: content, addEventListener() {} };
   sandbox.globalThis = sandbox;
   vm.runInNewContext(storySource, sandbox, { filename: "story-runtime.js" });
   return sandbox.SolivocForestStory;
 }
 
-test("Forest scene export contains only the authored first vertical-slice anchor", () => {
+test("Forest scene export contains canonical Level 1 and Level 2 anchors", () => {
   assert.ok(manifest.runtimeFiles.includes("data/scenes.json"));
-  assert.equal(scenes.scenes.length, 1);
-  const scene = scenes.scenes[0];
+  const first = scenes.scenes.find((scene) => scene.id === "SCN_FOREST_L001_CORE");
+  const second = scenes.scenes.find((scene) => scene.id === "SCN_FOREST_L002_CORE");
   assert.deepEqual(
-    { id: scene.id, level: scene.level, areaId: scene.areaId, status: scene.status, meaning: scene.meaning },
-    {
-      id: "SCN_FOREST_L001_CORE",
-      level: 1,
-      areaId: "AREA_FOREST_CLEARING",
-      status: "BOUND",
-      meaning: "Появление",
-    },
+    { id: first?.id, level: first?.level, areaId: first?.areaId, status: first?.status, meaning: first?.meaning, nextSceneId: first?.nextSceneId },
+    { id: "SCN_FOREST_L001_CORE", level: 1, areaId: "AREA_FOREST_CLEARING", status: "BOUND", meaning: "Появление", nextSceneId: "SCN_FOREST_L002_CORE" },
+  );
+  assert.deepEqual(
+    { id: second?.id, level: second?.level, areaId: second?.areaId, status: second?.status, meaning: second?.meaning },
+    { id: "SCN_FOREST_L002_CORE", level: 2, areaId: "AREA_FOREST_CLEARING", status: "BOUND", meaning: "Уже увиденное" },
   );
 });
 
@@ -75,21 +65,25 @@ test("bootstrap loads authored content without implicitly starting the scene", a
   assert.equal(shared.relations, 1);
 });
 
-test("beginScene records FOREST_LEVEL_STARTED with stable authored anchors", async () => {
+test("beginScene atomically records Level 1 and canonical Encounter 1 start", async () => {
   const shared = { commands: [] };
   const story = makeRuntime(shared);
   const result = await story.beginScene();
   assert.equal(result.replayed, false);
   assert.equal(result.state.status, "active");
-  const event = shared.commands[0].command.events[0];
-  assert.equal(event.eventKey, "FOREST_LEVEL_STARTED");
-  assert.equal(event.sceneId, "SCN_FOREST_L001_CORE");
-  assert.equal(event.areaId, "AREA_FOREST_CLEARING");
-  assert.equal(event.levelId, 1);
+  assert.equal(result.state.encounterId, "ENC_FOREST_01_CAT_OWL");
+  assert.equal(result.state.nextSceneId, "SCN_FOREST_L002_CORE");
+  const events = Array.from(shared.commands[0].command.events);
+  assert.deepEqual(events.map((event) => event.eventKey), ["FOREST_LEVEL_STARTED", "FOREST_ENCOUNTER_STARTED"]);
+  assert.equal(events[0].sceneId, "SCN_FOREST_L001_CORE");
+  assert.equal(events[0].areaId, "AREA_FOREST_CLEARING");
+  assert.equal(events[0].levelId, 1);
+  assert.equal(events[1].semanticScope, "ENC_FOREST_01_CAT_OWL:started:first-pass");
+  assert.equal(events[1].payload.encounterId, "ENC_FOREST_01_CAT_OWL");
   assert.equal(shared.commands[0].key, "story:forest:active");
 });
 
-test("reload restores active Story state without duplicating the start command", async () => {
+test("reload restores active Story state without duplicating Level or Encounter start", async () => {
   const shared = { commands: [] };
   await makeRuntime(shared).beginScene();
   const reloaded = makeRuntime(shared);
@@ -98,12 +92,23 @@ test("reload restores active Story state without duplicating the start command",
   assert.equal(shared.commands.length, 1);
 });
 
-test("completion records FOREST_LEVEL_COMPLETED and is idempotent across reload", async () => {
+test("Encounter 1 continues into Level 2 without being started a second time", async () => {
+  const shared = { commands: [] };
+  const story = makeRuntime(shared);
+  await story.beginScene();
+  await story.completeScene();
+  const levelTwo = await story.beginScene("SCN_FOREST_L002_CORE");
+  assert.equal(levelTwo.state.encounterId, "ENC_FOREST_01_CAT_OWL");
+  assert.deepEqual(Array.from(shared.commands[2].command.events, (event) => event.eventKey), ["FOREST_LEVEL_STARTED"]);
+});
+
+test("completion records FOREST_LEVEL_COMPLETED, points to Level 2 and stays idempotent", async () => {
   const shared = { commands: [] };
   const story = makeRuntime(shared);
   await story.beginScene();
   const completed = await story.completeScene();
   assert.equal(completed.state.status, "completed");
+  assert.equal(completed.state.nextSceneId, "SCN_FOREST_L002_CORE");
   assert.equal(shared.commands[1].command.events[0].eventKey, "FOREST_LEVEL_COMPLETED");
   const reloaded = makeRuntime(shared);
   assert.equal((await reloaded.restore()).status, "completed");
@@ -111,17 +116,17 @@ test("completion records FOREST_LEVEL_COMPLETED and is idempotent across reload"
   assert.equal(shared.commands.length, 2);
 });
 
-test("scene validation rejects malformed or non-executable authored content", () => {
+test("scene validation rejects malformed, broken encounter and broken next-scene content", () => {
   const story = makeRuntime({});
   const bad = {
     schemaVersion: 1,
     worldId: "forest",
     packageVersion: "0.03",
-    scenes: [{ id: "bad id", level: 0, areaId: "", status: "TBD_AUTHORED" }],
+    scenes: [{ id: "bad id", level: 0, areaId: "", status: "TBD_AUTHORED", nextSceneId: "SCN_MISSING", presentation: { startsEncounter: true } }],
   };
   const result = story.validateScenesDocument(bad);
   assert.equal(result.ok, false);
-  for (const expected of ["invalid_scene_id", "invalid_scene_level", "invalid_scene_area", "scene_not_bound"])
+  for (const expected of ["invalid_scene_id", "invalid_scene_level", "invalid_scene_area", "scene_not_bound", "missing_scene_encounter", "invalid_next_scene"])
     assert.ok(result.errors.includes(expected));
 });
 

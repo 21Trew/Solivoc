@@ -27,6 +27,13 @@
         if (!Number.isInteger(scene?.level) || scene.level < 1) errors.push("invalid_scene_level");
         if (!ID_PATTERN.test(String(scene?.areaId || ""))) errors.push("invalid_scene_area");
         if (scene?.status !== "BOUND") errors.push("scene_not_bound");
+        const encounterId = scene?.presentation?.encounterId;
+        if (encounterId != null && !ID_PATTERN.test(String(encounterId))) errors.push("invalid_scene_encounter");
+        if (scene?.presentation?.startsEncounter === true && !encounterId) errors.push("missing_scene_encounter");
+      }
+      for (const scene of value.scenes) {
+        if (scene?.nextSceneId != null && (!ID_PATTERN.test(String(scene.nextSceneId)) || !ids.has(String(scene.nextSceneId))))
+          errors.push("invalid_next_scene");
       }
     }
     return { ok: errors.length === 0, errors };
@@ -58,29 +65,34 @@
       sceneId: scene.id,
       areaId: scene.areaId,
       levelId: scene.level,
+      encounterId: scene?.presentation?.encounterId || previous?.encounterId || null,
+      nextSceneId: scene.nextSceneId || null,
       status,
       startedAt: previous?.startedAt || now,
       completedAt: status === "completed" ? now : null,
     });
   }
 
-  function commandFor(scene, eventKey, phase, payload = {}) {
-    const semanticScope = `${scene.id}:${phase}:first-pass`;
+  function semanticEvent(scene, eventKey, semanticScope, payload = {}, semanticTags = []) {
+    return {
+      eventKey,
+      semanticScope,
+      areaId: scene.areaId,
+      levelId: scene.level,
+      sceneId: scene.id,
+      payload,
+      semanticTags: [...new Set(["story", "first-pass", ...semanticTags])],
+      canonVersion: { worldPackage: PACKAGE_VERSION },
+    };
+  }
+
+  function commandFor(scene, phase, events) {
     const commandId = `forest:${scene.id}:${phase}:v${PACKAGE_VERSION}`;
     return {
       commandId,
       transactionId: commandId,
       worldId: WORLD_ID,
-      events: [{
-        eventKey,
-        semanticScope,
-        areaId: scene.areaId,
-        levelId: scene.level,
-        sceneId: scene.id,
-        payload,
-        semanticTags: ["story", "first-pass"],
-        canonVersion: { worldPackage: PACKAGE_VERSION },
-      }],
+      events,
     };
   }
 
@@ -124,7 +136,12 @@
       return Object.freeze({ state: current, replayed: true });
     }
     const state = stateFor(scene, "active");
-    await store.commit(commandFor(scene, "FOREST_LEVEL_STARTED", "started"), ACTIVE_META_KEY, state);
+    const events = [semanticEvent(scene, "FOREST_LEVEL_STARTED", `${scene.id}:started:first-pass`)];
+    const encounterId = scene?.presentation?.encounterId;
+    if (scene?.presentation?.startsEncounter === true && encounterId) {
+      events.push(semanticEvent(scene, "FOREST_ENCOUNTER_STARTED", `${encounterId}:started:first-pass`, { encounterId }, ["encounter"]));
+    }
+    await store.commit(commandFor(scene, "started", events), ACTIVE_META_KEY, state);
     sync().catch(() => {});
     return Object.freeze({ state, replayed: false });
   }
@@ -142,7 +159,8 @@
       return Object.freeze({ state: current, replayed: true });
     }
     const state = stateFor(scene, "completed", current);
-    await store.commit(commandFor(scene, "FOREST_LEVEL_COMPLETED", "completed"), ACTIVE_META_KEY, state);
+    const event = semanticEvent(scene, "FOREST_LEVEL_COMPLETED", `${scene.id}:completed:first-pass`);
+    await store.commit(commandFor(scene, "completed", [event]), ACTIVE_META_KEY, state);
     sync().catch(() => {});
     return Object.freeze({ state, replayed: false });
   }

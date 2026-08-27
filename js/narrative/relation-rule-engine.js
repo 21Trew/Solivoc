@@ -88,12 +88,19 @@
   }
 
   function installStoryPresentation() {
-    if (typeof document === "undefined" || document.querySelector('script[data-solivoc-story-presentation="1"]')) return;
-    const script = document.createElement("script");
-    script.src = "./js/narrative/story-presentation.js";
-    script.async = true;
-    script.dataset.solivocStoryPresentation = "1";
-    document.head.appendChild(script);
+    if (typeof document === "undefined") return;
+    const modules = [
+      ["story-presentation", "./js/narrative/story-presentation.js"],
+      ["story-level1", "./js/narrative/story-level1.js"],
+    ];
+    for (const [key, src] of modules) {
+      if (document.querySelector(`script[data-solivoc-story-module="${key}"]`)) continue;
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = true;
+      script.dataset.solivocStoryModule = key;
+      document.head.appendChild(script);
+    }
   }
 
   const engine = new RelationRuleEngine();
