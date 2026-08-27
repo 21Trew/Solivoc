@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "worldId": "forest",
+  "packageVersion": "0.03",
+  "uxContractVersion": "forest-knowledge-ui@1",
+  "copyStatus": "BETA_WORKING_COPY",
+  "groups": [
+    {"id":"observation","label":"Наблюдения","empty":"Здесь появляется только то, что ты действительно заметил, связал или восстановил."},
+    {"id":"character","label":"Персонажи","empty":"Пока никто не стал частью твоей истории."},
+    {"id":"companion","label":"Спутники","empty":"Спутник появляется только после прожитого Синтеза отношений."}
+  ],
+  "confidence": {
+    "SUSPECTED":"Предположение",
+    "LIKELY":"Вероятно",
+    "INFERRED":"Вывод",
+    "CONFIRMED":"Подтверждено"
+  },
+  "kindLabels": {
+    "observation":"Наблюдение",
+    "entity_history":"История",
+    "phenomenon":"Явление",
+    "pattern":"Закономерность",
+    "reconstruction":"Реконструкция",
+    "system_model":"Модель",
+    "cross_world_observation":"Наблюдение"
+  },
+  "characters": {
+    "cat":{"name":"Кот","avatar":"./icons/mascot-cat.svg"},
+    "owl":{"name":"Сова","avatar":"./icons/mascot-owl.svg"},
+    "fox":{"name":"Лис","avatar":"./icons/mascot-fox.svg"}
+  },
+  "relationship": {
+    "acquaintedLabel":"Знакомство",
+    "milestones": [
+      {"key":"understanding_established","label":"Понимание"},
+      {"key":"reciprocity_established","label":"Взаимность"},
+      {"key":"cooperation_established","label":"Сотрудничество"},
+      {"key":"temporary_alliance_completed","label":"Временный союз"},
+      {"key":"relationship_synthesis_completed","label":"Синтез отношений"},
+      {"key":"companion","label":"Спутник"}
+    ],
+    "perspectiveSeen":"Ты уже видел его способ смотреть на мир.",
+    "perspectiveVoluntary":"Ты сам возвращался к его способу смотреть на мир."
+  },
+  "definitions": [
+    {"id":"KR_FOREST_CAT_CHARACTER","kind":"entity_history","group":"character","displayStateKey":"character.cat","title":"Кот","status":"BOUND"},
+    {"id":"KR_FOREST_CAT_COMPANION","kind":"entity_history","group":"companion","displayStateKey":"companion.cat","title":"Кот","status":"BOUND"},
+    {"id":"KR_FOREST_OWL_CHARACTER","kind":"entity_history","group":"character","displayStateKey":"character.owl","title":"Сова","status":"BOUND"},
+    {"id":"KR_FOREST_OWL_COMPANION","kind":"entity_history","group":"companion","displayStateKey":"companion.owl","title":"Сова","status":"BOUND"},
+    {"id":"KR_FOREST_FOX_TRACE_UNKNOWN","kind":"entity_history","group":"observation","displayStateKey":"fox.trace.unknown","title":"Неизвестный след","status":"BOUND"},
+    {"id":"KR_FOREST_FOX_TRACE_SMALL_CREATURE","kind":"entity_history","group":"observation","displayStateKey":"fox.trace.small_creature","title":"Следы небольшого зверя","status":"BOUND"},
+    {"id":"KR_FOREST_FOX_TRACE_FOX_LIKE","kind":"entity_history","group":"observation","displayStateKey":"fox.trace.fox_like","title":"Следы похожи на лисьи","status":"BOUND"},
+    {"id":"KR_FOREST_FOX_TRACE_YOUNG_FOX","kind":"entity_history","group":"observation","displayStateKey":"fox.trace.young_fox","title":"Вероятно, лисёнок","status":"BOUND"},
+    {"id":"KR_FOREST_FOX_CHARACTER","kind":"entity_history","group":"character","displayStateKey":"character.fox","title":"Лис","status":"BOUND"},
+    {"id":"KR_FOREST_FOX_COMPANION","kind":"entity_history","group":"companion","displayStateKey":"companion.fox","title":"Лис","status":"BOUND"},
+    {"id":"KR_FOREST_PATTERN_REPEATING","kind":"pattern","group":"observation","displayStateKey":"forest.pattern.repeating","title":"Повторяющийся узор","status":"BOUND"},
+    {"id":"KR_FOREST_RESPONSE_COORDINATED","kind":"phenomenon","group":"observation","displayStateKey":"forest.response.coordinated","title":"Согласованный Отклик","status":"BOUND"},
+    {"id":"KR_FOREST_MANIFESTATION_PARTIAL","kind":"phenomenon","group":"observation","displayStateKey":"forest.manifestation.partial","title":"Частичное проявление","status":"BOUND"},
+    {"id":"KR_FOREST_ELEMENTAL_CHARACTER","kind":"entity_history","group":"character","displayStateKey":"character.forest_elemental","title":"Лесной элементаль","status":"TITLE_TBD"},
+    {"id":"KR_FOREST_RECONSTRUCTION_PASSAGE","kind":"reconstruction","group":"observation","displayStateKey":"forest.reconstruction.creature_passage","title":"Здесь недавно прошло крупное существо","status":"BOUND_CONCEPT_COPY_TBD"},
+    {"id":"KR_FOREST_NETWORK_MODEL","kind":"system_model","group":"observation","displayStateKey":"forest.network.shared_space","title":"Сеть отношений участка","status":"BOUND_CONCEPT_COPY_TBD"},
+    {"id":"KR_FOREST_CYCLE_MODEL","kind":"system_model","group":"observation","displayStateKey":"forest.cycle.closed_loop","title":"Устойчивая петля","status":"BOUND_CONCEPT_COPY_TBD"},
+    {"id":"KR_FOREST_WORLD_SYNTHESIS","kind":"system_model","group":"observation","displayStateKey":"forest.system.whole","title":"Лес как целая система","status":"BOUND_CONCEPT_COPY_TBD"},
+    {"id":"KR_FOREST_CONSTELLATION_INCOMPLETE","kind":"cross_world_observation","group":"observation","displayStateKey":"constellation.incomplete_pattern","title":"Неполный узор","status":"BOUND"},
+    {"id":"KR_FOREST_OBS_PARTIAL_TRACK","kind":"observation","group":"observation","displayStateKey":"forest.obs.partial_track","title":"Неполный след","status":"BOUND_CONCEPT_COPY_TBD"},
+    {"id":"KR_FOREST_OBS_BENT_GRASS","kind":"observation","group":"observation","displayStateKey":"forest.obs.bent_grass","title":"Примятая трава","status":"BOUND_CONCEPT_COPY_TBD"},
+    {"id":"KR_FOREST_OBS_BARK_MARK","kind":"observation","group":"observation","displayStateKey":"forest.obs.bark_mark","title":"Свежая отметина на коре","status":"BOUND_CONCEPT_COPY_TBD"},
+    {"id":"KR_FOREST_OBS_FUR_SNAG","kind":"observation","group":"observation","displayStateKey":"forest.obs.fur_snag","title":"Рыжеватая шерсть","status":"BOUND_CONCEPT_COPY_TBD"},
+    {"id":"KR_FOREST_OBS_FULL_SMALL_TRACK","kind":"observation","group":"observation","displayStateKey":"forest.obs.full_small_track","title":"Чёткий маленький след","status":"BOUND_CONCEPT_COPY_TBD"},
+    {"id":"KR_FOREST_OBS_FRESH_TRACKS","kind":"observation","group":"observation","displayStateKey":"forest.obs.fresh_tracks","title":"Свежие следы","status":"BOUND_CONCEPT_COPY_TBD"},
+    {"id":"KR_FOREST_OBS_TRACE_AGE","kind":"observation","group":"observation","displayStateKey":"forest.obs.trace_age","title":"Следы разной давности","status":"BOUND_CONCEPT_COPY_TBD"},
+    {"id":"KR_FOREST_OBS_BROKEN_BRANCH","kind":"observation","group":"observation","displayStateKey":"forest.obs.broken_branch","title":"Сломанная ветвь","status":"BOUND_CONCEPT_COPY_TBD"},
+    {"id":"KR_FOREST_OBS_MISSING_TRACE","kind":"observation","group":"observation","displayStateKey":"forest.obs.missing_trace","title":"Оборвавшаяся цепочка следов","status":"BOUND_CONCEPT_COPY_TBD"},
+    {"id":"KR_FOREST_OBS_TRACE_OVERLAP","kind":"observation","group":"observation","displayStateKey":"forest.obs.trace_overlap","title":"Перекрывающиеся следы","status":"BOUND_CONCEPT_COPY_TBD"},
+    {"id":"KR_FOREST_OBS_CONTRADICTION","kind":"observation","group":"observation","displayStateKey":"forest.obs.contradiction","title":"След, который не сходится","status":"BOUND_CONCEPT_COPY_TBD"},
+    {"id":"KR_FOREST_RECONSTRUCTION_TRACE_SEQUENCE","kind":"reconstruction","group":"observation","displayStateKey":"forest.reconstruction.trace_sequence","title":"Последовательность событий","status":"BOUND_CONCEPT_COPY_TBD"}
+  ]
+}
