@@ -21,6 +21,16 @@
     }) || null;
   }
 
+  function isEncounterDeadline(definitions, level) {
+    const encounter = encounterForLevel(definitions, level);
+    return !!encounter && Number(level) === Number(encounter.window?.[1]);
+  }
+
+  function deadlineBlocked(definitions, level, decision) {
+    if (!isEncounterDeadline(definitions, level)) return false;
+    return ["routing-unavailable", "deadline-unresolved", "p0-no-eligible-variant"].includes(String(decision?.status || ""));
+  }
+
   function sceneSignals(packageData, state, extras = []) {
     const scene = array(packageData?.document?.scenes).find((item) => item?.id === state?.sceneId) || null;
     return [...new Set([
@@ -195,6 +205,12 @@
       const active = await runtime.restore?.();
       if (active?.status === "active") {
         const routed = await decideAndCommit(runtime, { ...snapshot, active }, active);
+        if (deadlineBlocked(snapshot.encounters, active.levelId, routed.decision)) {
+          const error = new Error(`story_encounter_routing_blocked:${routed.decision.status}`);
+          error.code = "story_encounter_routing_blocked";
+          error.routingDecision = routed.decision;
+          throw error;
+        }
         snapshot = Object.freeze({ ...snapshot, active: routed.state });
         packageData = snapshot;
       }
