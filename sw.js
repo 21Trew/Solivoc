@@ -91,6 +91,9 @@ const CORE = [
   "./content/worlds/forest/v0.03/package.manifest.json",
   "./content/worlds/forest/v0.03/data/scenes.json",
   "./content/worlds/forest/v0.03/data/encounters.json",
+  "./content/worlds/forest/v0.03/data/world-facts.json",
+  "./content/worlds/forest/v0.03/data/choices.json",
+  "./content/worlds/forest/v0.03/data/world-structures.json",
   "./content/worlds/forest/v0.03/data/rules.json",
   "./js/generator.js",
   "./js/meta/systems.js",
@@ -115,128 +118,18 @@ const CORE = [
   "./js/app.js"
 ];
 
-const NETWORK_FIRST = new Set([
-  "/js/host-routing.js",
-  "/js/runtime-config.js",
-]);
-
-self.addEventListener("install", (event) => {
-  event.waitUntil((async () => {
-    const cache = await caches.open(CACHE);
-    const requests = CORE.map((url) => new Request(url, { cache: "reload" }));
-    await cache.addAll(requests);
-    await self.skipWaiting();
-  })());
-});
-
-self.addEventListener("message", (event) => {
-  if (event.data?.type === "SKIP_WAITING") {
-    self.skipWaiting();
-    return;
-  }
-  if (event.data?.type === "CLEAR_APP_CACHE") {
-    event.waitUntil((async () => {
-      try { await caches.delete(CACHE); } catch {}
-      try { event.ports?.[0]?.postMessage({ ok: true }); } catch {}
-    })());
-  }
-});
-
-self.addEventListener("activate", (event) => {
-  event.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)));
-    await self.clients.claim();
-  })());
-});
-
-function shouldCache(request, url, response) {
-  if (!response?.ok || request.method !== "GET") return false;
-  if (url.origin !== self.location.origin) return false;
-  if (url.pathname.startsWith("/api/")) return false;
-  return true;
-}
-
+const NETWORK_FIRST = new Set(["/js/host-routing.js", "/js/runtime-config.js"]);
+self.addEventListener("install", (event) => { event.waitUntil((async () => { const cache = await caches.open(CACHE); const requests = CORE.map((url) => new Request(url, { cache: "reload" })); await cache.addAll(requests); await self.skipWaiting(); })()); });
+self.addEventListener("message", (event) => { if (event.data?.type === "SKIP_WAITING") { self.skipWaiting(); return; } if (event.data?.type === "CLEAR_APP_CACHE") event.waitUntil((async () => { try { await caches.delete(CACHE); } catch {} try { event.ports?.[0]?.postMessage({ ok: true }); } catch {} })()); });
+self.addEventListener("activate", (event) => { event.waitUntil((async () => { const keys = await caches.keys(); await Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))); await self.clients.claim(); })()); });
+function shouldCache(request, url, response) { return !!response?.ok && request.method === "GET" && url.origin === self.location.origin && !url.pathname.startsWith("/api/"); }
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
-  if (["/admin", "/admin.html", "/js/admin.js", "/styles/admin.css"].includes(url.pathname)) return;
-
+  if (event.request.method !== "GET") return; const url = new URL(event.request.url); if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return; if (["/admin", "/admin.html", "/js/admin.js", "/styles/admin.css"].includes(url.pathname)) return;
   event.respondWith((async () => {
-    if (NETWORK_FIRST.has(url.pathname)) {
-      try {
-        const response = await fetch(event.request, { cache: "no-store" });
-        if (shouldCache(event.request, url, response)) {
-          try { await caches.open(CACHE).then((cache) => cache.put(event.request, response.clone())); } catch {}
-        }
-        return response;
-      } catch {
-        return (await caches.match(event.request)) || Response.error();
-      }
-    }
-
-    if (event.request.mode === "navigate") {
-      const shell = (await caches.match(event.request)) || (await caches.match("./index.html")) || (await caches.match("./"));
-      if (shell) return shell;
-      try {
-        const response = await fetch(event.request);
-        if (response?.ok) {
-          try { await caches.open(CACHE).then((cache) => cache.put("./index.html", response.clone())); } catch {}
-        }
-        return response;
-      } catch {
-        return Response.error();
-      }
-    }
-
-    const cached = await caches.match(event.request);
-    if (cached) return cached;
-    try {
-      const response = await fetch(event.request);
-      if (shouldCache(event.request, url, response)) {
-        try { await caches.open(CACHE).then((cache) => cache.put(event.request, response.clone())); } catch {}
-      }
-      return response;
-    } catch {
-      return Response.error();
-    }
+    if (NETWORK_FIRST.has(url.pathname)) { try { const response = await fetch(event.request, { cache: "no-store" }); if (shouldCache(event.request, url, response)) try { await caches.open(CACHE).then((cache) => cache.put(event.request, response.clone())); } catch {} return response; } catch { return (await caches.match(event.request)) || Response.error(); } }
+    if (event.request.mode === "navigate") { const shell = (await caches.match(event.request)) || (await caches.match("./index.html")) || (await caches.match("./")); if (shell) return shell; try { const response = await fetch(event.request); if (response?.ok) try { await caches.open(CACHE).then((cache) => cache.put("./index.html", response.clone())); } catch {} return response; } catch { return Response.error(); } }
+    const cached = await caches.match(event.request); if (cached) return cached; try { const response = await fetch(event.request); if (shouldCache(event.request, url, response)) try { await caches.open(CACHE).then((cache) => cache.put(event.request, response.clone())); } catch {} return response; } catch { return Response.error(); }
   })());
 });
-
-self.addEventListener("push", (event) => {
-  let data = {};
-  try {
-    data = event.data?.json() || {};
-  } catch {
-    data = { body: event.data?.text() || "" };
-  }
-  const title = data.title || "Словасьянс";
-  event.waitUntil(
-    self.registration.showNotification(title, {
-      body: data.body || "В игре появилось новое событие.",
-      icon: "./icons/icon-192.png",
-      badge: "./icons/icon-192.png",
-      tag: data.tag || "worditaire",
-      renotify: false,
-      data: { url: data.url || "/" },
-    }),
-  );
-});
-
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-  const target = new URL(event.notification.data?.url || "/", self.location.origin).href;
-  event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
-      for (const client of clients) {
-        if (new URL(client.url).origin === self.location.origin) {
-          await client.focus();
-          if ("navigate" in client && client.url !== target) await client.navigate(target);
-          return;
-        }
-      }
-      return self.clients.openWindow ? self.clients.openWindow(target) : undefined;
-    }),
-  );
-});
+self.addEventListener("push", (event) => { let data = {}; try { data = event.data?.json() || {}; } catch { data = { body: event.data?.text() || "" }; } const title = data.title || "Словасьянс"; event.waitUntil(self.registration.showNotification(title, { body: data.body || "В игре появилось новое событие.", icon: "./icons/icon-192.png", badge: "./icons/icon-192.png", tag: data.tag || "worditaire", renotify: false, data: { url: data.url || "/" } })); });
+self.addEventListener("notificationclick", (event) => { event.notification.close(); const target = new URL(event.notification.data?.url || "/", self.location.origin).href; event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => { for (const client of clients) if (new URL(client.url).origin === self.location.origin) { await client.focus(); if ("navigate" in client && client.url !== target) await client.navigate(target); return; } return self.clients.openWindow ? self.clients.openWindow(target) : undefined; })); });
