@@ -11,6 +11,11 @@
       "status": "BOUND",
       "meaning": "Появление",
       "nextSceneId": "SCN_FOREST_L002_CORE",
+      "generation": {
+        "profile": "guided",
+        "cardSourceMode": "words",
+        "forceSolvable": true
+      },
       "presentation": {
         "worldLabel": "Мир Леса",
         "areaLabel": "Поляна",
@@ -26,6 +31,11 @@
       "areaId": "AREA_FOREST_CLEARING",
       "status": "BOUND",
       "meaning": "Уже увиденное",
+      "generation": {
+        "profile": "guided",
+        "cardSourceMode": "words",
+        "forceSolvable": true
+      },
       "worldFacts": [
         {
           "id": "WF_F03",

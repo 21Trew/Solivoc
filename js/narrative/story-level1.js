@@ -20,10 +20,6 @@
     catch { return runtimeCompleted; }
   }
 
-  function levelOneConfig() {
-    return { cols: 3, cats: 3, difficulty: 1, words: [3, 3] };
-  }
-
   function onboardingCopy(value = globalThis.state) {
     if ((value?.completed || 0) > 0) return "Первая категория собрана. Остальные работают по тому же принципу.";
     if ((value?.run?.moves || 0) > 0) return "Связь найдена. Собирай слова одной темы вместе и закрепляй готовую категорию сверху.";
@@ -124,9 +120,8 @@
 
   function storyHooksReady() {
     try {
-      return typeof globalThis.configForMode === "function" && typeof globalThis.render === "function" &&
-        typeof globalThis.renderHub === "function" && typeof globalThis.showWin === "function" &&
-        /storyFinishLevel/.test(String(globalThis.finishLevel));
+      return typeof globalThis.render === "function" && typeof globalThis.renderHub === "function" &&
+        typeof globalThis.showWin === "function" && /storyFinishLevel/.test(String(globalThis.finishLevel));
     } catch { return false; }
   }
 
@@ -135,12 +130,6 @@
     if (!storyHooksReady()) return false;
     installed = true;
     installStyles();
-
-    const originalConfigForMode = globalThis.configForMode;
-    globalThis.configForMode = function forestLevelOneConfig(level, mode, rng, special = null, opts = {}) {
-      if (mode === "story" && +level === 1) return levelOneConfig();
-      return originalConfigForMode(level, mode, rng, special, opts);
-    };
 
     const originalRender = globalThis.render;
     globalThis.render = function forestLevelOneRender(...args) {
@@ -172,7 +161,6 @@
   globalThis.SolivocForestLevel1 = Object.freeze({
     encounterId: ENCOUNTER_ID,
     nextSceneId: NEXT_SCENE_ID,
-    levelOneConfig,
     onboardingCopy,
   });
 

@@ -8,7 +8,6 @@
   const SCENE_ID = "SCN_FOREST_L002_CORE";
   const TUTORIAL_SCENE_ID = "SCN_FOREST_L002_CAT_PERSPECTIVE_TUTORIAL";
   const PERSPECTIVE_ID = "cat_memory_echo";
-  const STORY_SEED = "story:forest:SCN_FOREST_L002_CORE:v0.03";
   let installed = false;
   let runtimeSnapshot = null;
   let refreshPending = false;
@@ -19,10 +18,6 @@
 
   function isLevelTwoGame(value = gameState()) {
     return !!(value?.mode === "story" && value?.worldId === WORLD_ID && value?.sceneId === SCENE_ID && +value?.level === 2);
-  }
-
-  function levelTwoConfig() {
-    return { cols: 3, cats: 3, difficulty: 1, words: [3, 3] };
   }
 
   function currentScene() {
@@ -113,11 +108,12 @@
   }
 
   function launchGeneratedLevel(scene) {
-    try { buildGeneratedLevel?.(2, { mode: "story", seed: STORY_SEED, cardSourceMode: "words", forceSolvable: true }); }
+    const options = { mode: "story", storyWorldId: WORLD_ID, storySceneId: SCENE_ID };
+    try { buildGeneratedLevel?.(2, options); }
     catch (error) { throw Object.assign(new Error("story_level2_generation_failed"), { cause: error }); }
     closeModal();
     try { closeHub?.(); } catch {}
-    const result = makeLevel?.(2, { mode: "story", seed: STORY_SEED, cardSourceMode: "words", forceSolvable: true });
+    const result = makeLevel?.(2, options);
     if (result === false) throw new Error("story_level2_launch_failed");
     attachStoryContext(scene);
     try { track?.("story_forced_perspective_used", { world: WORLD_ID, scene: SCENE_ID, tutorialScene: TUTORIAL_SCENE_ID, perspective: PERSPECTIVE_ID, profileEligible: false }); } catch {}
@@ -136,6 +132,7 @@
     runtimeSnapshot = await runtime.bootstrap();
     const scene = currentScene();
     if (!scene) throw new Error("story_level2_scene_missing");
+    globalThis.SolivocStoryGeneration?.prepare?.(scene, WORLD_ID);
     if (isLevelTwoGame() && !gameState()?.rewarded && !gameState()?.failed) return resumeGame();
     launchGeneratedLevel(scene);
   }
@@ -181,6 +178,7 @@
     refreshPending = false;
     try {
       runtimeSnapshot = await globalThis.SolivocForestStory?.bootstrap?.();
+      globalThis.SolivocStoryGeneration?.registerRuntimeSnapshot?.(runtimeSnapshot);
       decorateGateway();
     } catch {}
   }
@@ -211,7 +209,7 @@
 
   function hooksReady() {
     try {
-      return !!(globalThis.SolivocForestStory && typeof configForMode === "function" && typeof renderHub === "function" && typeof showWin === "function" && typeof restartCurrentLevel === "function");
+      return !!(globalThis.SolivocForestStory && typeof renderHub === "function" && typeof showWin === "function" && typeof restartCurrentLevel === "function");
     } catch { return false; }
   }
 
@@ -220,12 +218,6 @@
     if (!hooksReady()) return false;
     installed = true;
     installStyles();
-
-    const originalConfigForMode = configForMode;
-    configForMode = function forestLevelTwoConfig(level, mode, rng, special = null, opts = {}) {
-      if (mode === "story" && +level === 2) return levelTwoConfig();
-      return originalConfigForMode(level, mode, rng, special, opts);
-    };
 
     const originalRenderHub = renderHub;
     renderHub = function forestLevelTwoRenderHub(...args) {
@@ -246,7 +238,8 @@
       if (!isLevelTwoGame()) return originalRestartCurrentLevel();
       const scene = currentScene();
       if (!scene) return false;
-      const result = makeLevel?.(2, { mode: "story", seed: STORY_SEED, cardSourceMode: "words", forceSolvable: true });
+      globalThis.SolivocStoryGeneration?.prepare?.(scene, WORLD_ID);
+      const result = makeLevel?.(2, { mode: "story", storyWorldId: WORLD_ID, storySceneId: SCENE_ID });
       if (result !== false) attachStoryContext(scene);
       return result;
     };
@@ -268,7 +261,6 @@
     sceneId: SCENE_ID,
     tutorialSceneId: TUTORIAL_SCENE_ID,
     perspectiveId: PERSPECTIVE_ID,
-    levelTwoConfig,
     canEnterLevelTwo,
     tutorialUsed,
   });

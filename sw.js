@@ -80,6 +80,7 @@ const CORE = [
   "./js/ui/constants.js",
   "./js/components/ui.js",
   "./js/narrative/relation-rule-engine.js",
+  "./js/narrative/story-generation.js",
   "./js/narrative/story-presentation.js",
   "./js/narrative/story-level1.js",
   "./js/narrative/story-level2.js",

@@ -101,6 +101,7 @@
     }
     const modules = [
       ["story-presentation", "./js/narrative/story-presentation.js"],
+      ["story-generation", "./js/narrative/story-generation.js"],
       ["story-level1", "./js/narrative/story-level1.js"],
       ["story-level2", "./js/narrative/story-level2.js"],
     ];
