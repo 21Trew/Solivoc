@@ -85,6 +85,7 @@ const CORE = [
   "./js/narrative/story-choice-runtime.js",
   "./js/narrative/story-encounter-routing.js",
   "./js/narrative/story-routing-projection.js",
+  "./js/narrative/story-encounter-lifecycle.js",
   "./js/narrative/story-presentation.js",
   "./js/narrative/content-loader.js",
   "./js/narrative/event-store.js",
