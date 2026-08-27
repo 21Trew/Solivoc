@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "worldId": "forest",
+  "packageVersion": "0.03",
+  "primitiveContractVersion": "forest-story-primitives@1",
+  "knowledgeActions": [
+    {"id":"KACT_FOREST_LINK_OBSERVATIONS","action":"LINK_OBSERVATIONS","label":"Связать"},
+    {"id":"KACT_FOREST_MAKE_INFERENCE","action":"MAKE_INFERENCE","label":"Сделать вывод"},
+    {"id":"KACT_FOREST_REVISE","action":"REVISE_INTERPRETATION","label":"Пересмотреть"},
+    {"id":"KACT_FOREST_RECONSTRUCT_EVENT","action":"RECONSTRUCT_EVENT","label":"Восстановить событие"},
+    {"id":"KACT_FOREST_SEE_PATTERN","action":"SEE_PATTERN","label":"Увидеть закономерность"},
+    {"id":"KACT_FOREST_RECOGNIZE_ENTITY","action":"RECOGNIZE_ENTITY","label":"Узнать"},
+    {"id":"KACT_FOREST_CONTINUE_TOGETHER","action":"CONTINUE_TOGETHER","label":"Продолжить путь вместе"},
+    {"id":"KACT_FOREST_INTEGRATE_SYSTEM","action":"INTEGRATE_SYSTEM","label":"Увидеть целое"}
+  ],
+  "perception": {
+    "runtimeMode": "authored-target-only",
+    "nonBlockingWhenTargetMissing": true,
+    "failurePenalty": "none"
+  },
+  "reconstruction": {
+    "runtimeMode": "player-initiated-explicit-sources",
+    "definitionsFrom": "data/world-structures.json"
+  },
+  "relationshipSynthesis": {
+    "primitive":"relationship-synthesis",
+    "level":90,
+    "encounterId":"ENC_FOREST_10",
+    "sceneRef":"SCN_FOREST_L090_RELATIONSHIP_SYNTHESIS",
+    "betaRunnable":true,
+    "copyStatus":"AUTHORED_KERNEL_NOT_FINAL_DIALOGUE",
+    "revealActionId":"KACT_FOREST_CONTINUE_TOGETHER",
+    "candidates": {
+      "cat":{"synthesisId":"SYN_FOREST_REL_CAT_01","tag":"LIVING_MEMORY"},
+      "owl":{"synthesisId":"SYN_FOREST_REL_OWL_01","tag":"TESTABLE_WHOLE"},
+      "fox":{"synthesisId":"SYN_FOREST_REL_FOX_01","tag":"RESPONSIBLE_PATH"}
+    }
+  },
+  "requiredRevisit": {
+    "primitive":"authored-revisit",
+    "level":98,
+    "revisitId":"REV_FOREST_CLEARING_L98",
+    "sceneRef":"SCN_FOREST_L098_CLEARING_REVISIT",
+    "areaId":"AREA_FOREST_CLEARING",
+    "betaRunnable":true,
+    "title":"Поляна, увиденная снова",
+    "meaning":"Это было здесь с самого начала.",
+    "forcedKnowledgeTransitions":[]
+  },
+  "worldSynthesis": {
+    "primitive":"world-synthesis",
+    "level":99,
+    "synthesisId":"SYN_FOREST_WORLD_01",
+    "boardId":"SYN_FOREST_WORLD_01_BOARD",
+    "sceneRef":"SCN_FOREST_L099_WORLD_SYNTHESIS",
+    "revelationSceneRef":"SCN_FOREST_L099_SYNTHESIS_REVELATION",
+    "reconstructionId":"REC_FOREST_WORLD_SYNTHESIS_01",
+    "revealActionId":"KACT_FOREST_INTEGRATE_SYSTEM",
+    "betaRunnable":false,
+    "contentStatus":"TBD_AUTHORED_BOARD",
+    "board":null,
+    "phases":[
+      {"id":"SYN_FOREST_WORLD_01_DISTINGUISH","order":1,"question":"Какие ближайшие отношения здесь действительно существуют?"},
+      {"id":"SYN_FOREST_WORLD_01_MULTI_RELATION","order":2,"question":"Как одна и та же вещь может быть частью нескольких систем одновременно?"},
+      {"id":"SYN_FOREST_WORLD_01_DIRECTION","order":3,"question":"Куда именно проходит влияние — и обязательно ли оно прямое?"},
+      {"id":"SYN_FOREST_WORLD_01_TIME","order":4,"question":"Что происходит со связью после того, как исходное действие закончилось?"},
+      {"id":"SYN_FOREST_WORLD_01_WHOLE","order":5,"question":"При какой структуре эти части становятся одной работающей системой?"}
+    ],
+    "boardRequirements":{"minNodes":6,"minRelations":7,"minRelationFamilies":4,"requiresMultiRoleNode":true,"requiresDirectionalRelation":true,"requiresMediatedRelation":true,"requiresTemporalContinuation":true,"requiresFeedbackFragment":true}
+  },
+  "elementalManifestation": {
+    "primitive":"elemental-manifestation",
+    "level":100,
+    "encounterId":"ENC_FOREST_11",
+    "variantId":"ENC_FOREST_11_ELEMENTAL",
+    "sceneRef":"SCN_FOREST_L100_ELEMENTAL_MANIFESTATION",
+    "worldEventId":"WE_FOREST_ELEMENTAL_FULL_MANIFESTATION_01",
+    "revealActionId":"KACT_FOREST_RECOGNIZE_ENTITY",
+    "betaRunnable":true,
+    "copyStatus":"BOUND_VISUAL_VOICE_TBD",
+    "title":"Лес становится различим",
+    "coreContradiction":"Лес становится различим как целое, но не превращается в один центр или одну сущность."
+  }
+}

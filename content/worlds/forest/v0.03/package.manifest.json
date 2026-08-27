@@ -15,16 +15,17 @@
     "data/scenes.json",
     "data/encounters.json",
     "data/encounter-presentation.json",
+    "data/primitives.json",
     "data/world-facts.json",
     "data/choices.json",
     "data/world-structures.json"
   ],
   "notes": [
     "The Forest core scene registry is exported for all levels 1-100.",
-    "Authored world facts, choices, encounter routing, encounter presentation kernels and late-world structures are exported as separate runtime registries.",
+    "Authored world facts, choices, encounter routing, encounter presentation kernels, Story primitive contracts and late-world structures are exported as separate runtime registries.",
     "Ordinary core levels reuse shared procedural Story generation instead of per-level implementations.",
     "TBD weights, final dialogue, effects and exact mechanics remain explicit and are never inferred by runtime export.",
-    "Levels requiring relationship synthesis, authored revisit, world synthesis or elemental manifestation remain non-executable until their generic primitives exist.",
+    "Relationship synthesis, required revisit and elemental manifestation have generic authored-kernel runtimes; world synthesis remains fail-closed until SYN_FOREST_WORLD_01_BOARD is authored.",
     "Relation runtime accepts only explicitly exported authored ID pairs; no semantic inference is allowed."
   ]
 }
