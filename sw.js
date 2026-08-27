@@ -82,6 +82,7 @@ const CORE = [
   "./js/narrative/relation-rule-engine.js",
   "./js/narrative/story-presentation.js",
   "./js/narrative/story-level1.js",
+  "./js/narrative/story-level2.js",
   "./js/narrative/content-loader.js",
   "./js/narrative/event-store.js",
   "./js/narrative/story-runtime.js",
@@ -117,10 +118,6 @@ const NETWORK_FIRST = new Set([
 ]);
 
 self.addEventListener("install", (event) => {
-  // Each deployed build owns a distinct cache. Install the complete new
-  // generation and activate it immediately: there is no manual "Обновить"
-  // step anymore. The page layer decides when a reload is safe for an active
-  // game and otherwise picks the new worker up on the next launch/navigation.
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     const requests = CORE.map((url) => new Request(url, { cache: "reload" }));
@@ -130,8 +127,6 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("message", (event) => {
-  // Kept for compatibility with already-open older clients. New clients no
-  // longer need to send SKIP_WAITING because install activates automatically.
   if (event.data?.type === "SKIP_WAITING") {
     self.skipWaiting();
     return;
@@ -163,8 +158,6 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
-  // The game service worker owns the root scope. Admin pages must always go to
-  // the network instead of falling back to the cached game shell.
   if (["/admin", "/admin.html", "/js/admin.js", "/styles/admin.css"].includes(url.pathname)) return;
 
   event.respondWith((async () => {
@@ -180,9 +173,6 @@ self.addEventListener("fetch", (event) => {
       }
     }
 
-    // Keep HTML and JS from the same cache generation. Serving a fresh HTML
-    // document together with old cached scripts can break the app between
-    // deployments. New generations are installed automatically by the worker.
     if (event.request.mode === "navigate") {
       const shell = (await caches.match(event.request)) || (await caches.match("./index.html")) || (await caches.match("./"));
       if (shell) return shell;
@@ -197,9 +187,6 @@ self.addEventListener("fetch", (event) => {
       }
     }
 
-    // Static game assets are immutable for the lifetime of a SW cache version.
-    // Cache-first avoids dozens of network/cache stream operations on every
-    // launch, which is notably more stable in iOS standalone mode.
     const cached = await caches.match(event.request);
     if (cached) return cached;
     try {

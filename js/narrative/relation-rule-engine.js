@@ -89,15 +89,26 @@
 
   function installStoryPresentation() {
     if (typeof document === "undefined") return;
+    if (!Object.prototype.hasOwnProperty.call(globalThis, "state")) {
+      try {
+        Object.defineProperty(globalThis, "state", {
+          configurable: true,
+          enumerable: false,
+          get() { try { return state; } catch { return undefined; } },
+          set(value) { try { state = value; } catch {} },
+        });
+      } catch {}
+    }
     const modules = [
       ["story-presentation", "./js/narrative/story-presentation.js"],
       ["story-level1", "./js/narrative/story-level1.js"],
+      ["story-level2", "./js/narrative/story-level2.js"],
     ];
     for (const [key, src] of modules) {
       if (document.querySelector(`script[data-solivoc-story-module="${key}"]`)) continue;
       const script = document.createElement("script");
       script.src = src;
-      script.async = true;
+      script.async = false;
       script.dataset.solivocStoryModule = key;
       document.head.appendChild(script);
     }

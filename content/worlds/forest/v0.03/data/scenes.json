@@ -26,12 +26,30 @@
       "areaId": "AREA_FOREST_CLEARING",
       "status": "BOUND",
       "meaning": "Уже увиденное",
+      "worldFacts": [
+        {
+          "id": "WF_F03",
+          "exposureMode": "background_visible",
+          "visibilityStrength": "subtle",
+          "requiredForCoreProgression": false
+        }
+      ],
       "presentation": {
         "worldLabel": "Мир Леса",
         "areaLabel": "Поляна",
         "gameplaySummary": "Знакомый мотив из уровня 1 появляется в новом контексте.",
         "characters": ["cat"],
-        "encounterId": "ENC_FOREST_01_CAT_OWL"
+        "encounterId": "ENC_FOREST_01_CAT_OWL",
+        "tutorial": {
+          "sceneId": "SCN_FOREST_L002_CAT_PERSPECTIVE_TUTORIAL",
+          "status": "BOUND_CONCEPT_EFFECT_TBD",
+          "perspectiveId": "cat_memory_echo",
+          "label": "Эхо памяти",
+          "characterId": "cat",
+          "threadId": "THREAD_FOREST_CAT",
+          "forced": true,
+          "effectStatus": "TBD_AUTHORED"
+        }
       }
     }
   ]

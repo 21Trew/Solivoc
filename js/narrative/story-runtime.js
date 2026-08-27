@@ -30,6 +30,18 @@
         const encounterId = scene?.presentation?.encounterId;
         if (encounterId != null && !ID_PATTERN.test(String(encounterId))) errors.push("invalid_scene_encounter");
         if (scene?.presentation?.startsEncounter === true && !encounterId) errors.push("missing_scene_encounter");
+        for (const fact of Array.isArray(scene?.worldFacts) ? scene.worldFacts : []) {
+          if (!ID_PATTERN.test(String(fact?.id || ""))) errors.push("invalid_world_fact_id");
+          if (!String(fact?.exposureMode || "").trim()) errors.push("invalid_world_fact_exposure");
+        }
+        const tutorial = scene?.presentation?.tutorial;
+        if (tutorial) {
+          if (!ID_PATTERN.test(String(tutorial.sceneId || ""))) errors.push("invalid_tutorial_scene");
+          if (!ID_PATTERN.test(String(tutorial.perspectiveId || ""))) errors.push("invalid_tutorial_perspective");
+          if (!ID_PATTERN.test(String(tutorial.characterId || ""))) errors.push("invalid_tutorial_character");
+          if (!ID_PATTERN.test(String(tutorial.threadId || ""))) errors.push("invalid_tutorial_thread");
+          if (tutorial.forced !== true) errors.push("tutorial_not_forced");
+        }
       }
       for (const scene of value.scenes) {
         if (scene?.nextSceneId != null && (!ID_PATTERN.test(String(scene.nextSceneId)) || !ids.has(String(scene.nextSceneId))))
@@ -67,8 +79,9 @@
       levelId: scene.level,
       encounterId: scene?.presentation?.encounterId || previous?.encounterId || null,
       nextSceneId: scene.nextSceneId || null,
+      forcedTutorials: previous?.sceneId === scene.id ? { ...(previous?.forcedTutorials || {}) } : {},
       status,
-      startedAt: previous?.startedAt || now,
+      startedAt: previous?.sceneId === scene.id ? (previous?.startedAt || now) : now,
       completedAt: status === "completed" ? now : null,
     });
   }
@@ -141,9 +154,63 @@
     if (scene?.presentation?.startsEncounter === true && encounterId) {
       events.push(semanticEvent(scene, "FOREST_ENCOUNTER_STARTED", `${encounterId}:started:first-pass`, { encounterId }, ["encounter"]));
     }
+    for (const fact of Array.isArray(scene.worldFacts) ? scene.worldFacts : []) {
+      events.push(semanticEvent(scene, "FOREST_WORLD_FACT_EXPOSED", `${fact.id}:exposed:${scene.id}:first-pass`, {
+        world_fact_id: fact.id,
+        exposure_mode: fact.exposureMode,
+        visibility_strength: fact.visibilityStrength || "subtle",
+        required_for_core_progression: fact.requiredForCoreProgression === true,
+      }, ["world-fact", "exposure"]));
+    }
     await store.commit(commandFor(scene, "started", events), ACTIVE_META_KEY, state);
     sync().catch(() => {});
     return Object.freeze({ state, replayed: false });
+  }
+
+  async function useForcedPerspective(sceneId, perspectiveId) {
+    const store = globalThis.SolivocNarrativeStore;
+    if (!store?.commit) throw new Error("narrative_store_unavailable");
+    const { document } = await load();
+    const scene = sceneById(document, String(sceneId || ""));
+    if (!scene) throw new Error("unknown_story_scene");
+    const tutorial = scene?.presentation?.tutorial;
+    if (!tutorial || tutorial.forced !== true || tutorial.perspectiveId !== String(perspectiveId || ""))
+      throw new Error("unknown_forced_perspective");
+    const current = await restore();
+    if (!current || current.sceneId !== scene.id || current.status !== "active") throw new Error("story_scene_not_active");
+    if (current.forcedTutorials?.[tutorial.perspectiveId]?.used === true) {
+      sync().catch(() => {});
+      return Object.freeze({ state: current, replayed: true });
+    }
+    const nextState = Object.freeze({
+      ...current,
+      forcedTutorials: {
+        ...(current.forcedTutorials || {}),
+        [tutorial.perspectiveId]: {
+          used: true,
+          tutorialSceneId: tutorial.sceneId,
+          characterId: tutorial.characterId,
+          profileEligible: false,
+          preferenceEligible: false,
+          reason: "forced_tutorial",
+          usedAt: new Date().toISOString(),
+        },
+      },
+    });
+    const event = semanticEvent(scene, "FOREST_THREAD_STATE_CHANGED", `${tutorial.sceneId}:${tutorial.perspectiveId}:forced-tutorial:first-pass`, {
+      threadId: tutorial.threadId,
+      characterId: tutorial.characterId,
+      perspectiveId: tutorial.perspectiveId,
+      borrowedPerspective: { seen: true, forcedTutorialUsed: true },
+      familiarityEligible: true,
+      profileEligible: false,
+      preferenceEligible: false,
+      reason: "forced_tutorial",
+      effectStatus: tutorial.effectStatus || "TBD_AUTHORED",
+    }, ["forced-tutorial", "perspective", tutorial.characterId]);
+    await store.commit(commandFor(scene, `forced-perspective:${tutorial.perspectiveId}`, [event]), ACTIVE_META_KEY, nextState);
+    sync().catch(() => {});
+    return Object.freeze({ state: nextState, replayed: false });
   }
 
   async function completeScene(sceneId = DEFAULT_SCENE_ID) {
@@ -158,6 +225,9 @@
       sync().catch(() => {});
       return Object.freeze({ state: current, replayed: true });
     }
+    const tutorial = scene?.presentation?.tutorial;
+    if (tutorial?.forced === true && current.forcedTutorials?.[tutorial.perspectiveId]?.used !== true)
+      throw new Error("story_forced_tutorial_incomplete");
     const state = stateFor(scene, "completed", current);
     const event = semanticEvent(scene, "FOREST_LEVEL_COMPLETED", `${scene.id}:completed:first-pass`);
     await store.commit(commandFor(scene, "completed", [event]), ACTIVE_META_KEY, state);
@@ -168,6 +238,7 @@
   globalThis.SolivocForestStory = Object.freeze({
     bootstrap,
     beginScene,
+    useForcedPerspective,
     completeScene,
     restore,
     sync,
