@@ -78,6 +78,7 @@
       ["story-encounter-routing", "./js/narrative/story-encounter-routing.js"],
       ["story-routing-projection", "./js/narrative/story-routing-projection.js"],
       ["story-encounter-lifecycle", "./js/narrative/story-encounter-lifecycle.js"],
+      ["story-encounter-presentation", "./js/narrative/story-encounter-presentation.js"],
       ["story-presentation", "./js/narrative/story-presentation.js"],
     ];
     for (const [key, src] of modules) {
