@@ -78,17 +78,33 @@ function requestFromEvent(event) {
   return new Request(url, init);
 }
 
+function betaRuntime() {
+  return ["1", "true", "yes"].includes(String(process.env.SOLIVOC_BETA || "").trim().toLowerCase());
+}
+
+function configuredOrigins() {
+  return String(process.env.APP_ORIGINS || "").split(",").map((x) => x.trim().replace(/\/$/, "")).filter(Boolean);
+}
+
 function allowedOrigins() {
+  const configured = configuredOrigins();
+  if (betaRuntime()) return new Set(configured);
   const defaults = ["https://solivoc.ru", "https://www.solivoc.ru", "https://admin.solivoc.ru"];
-  const configured = String(process.env.APP_ORIGINS || "").split(",").map((x) => x.trim().replace(/\/$/, "")).filter(Boolean);
   return new Set([...defaults, ...configured]);
 }
 
 function corsOrigin(request) {
   const origin = String(request.headers.get("origin") || "").replace(/\/$/, "");
   if (!origin) return "";
-  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return origin;
+  if (!betaRuntime() && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return origin;
   return allowedOrigins().has(origin) ? origin : "";
+}
+
+function betaOriginViolation(request) {
+  if (!betaRuntime()) return false;
+  const origin = String(request.headers.get("origin") || "").replace(/\/$/, "");
+  if (!origin) return false;
+  return !allowedOrigins().has(origin);
 }
 
 function preflight(request) {
@@ -99,6 +115,7 @@ function preflight(request) {
 async function routeRequest(request) {
   const url = new URL(request.url);
   if (request.method === "OPTIONS") return preflight(request);
+  if (betaOriginViolation(request)) return Response.json({ error: "origin_not_allowed" }, { status: 403 });
 
   if (url.pathname.startsWith("/d/")) {
     const code = url.pathname.slice(3).split("/")[0];
