@@ -1,0 +1,42 @@
+name: Debug beta OIDC
+
+on:
+  push:
+    branches:
+      - forest-world-campaign-beta-check
+    paths:
+      - ".github/workflows/debug-beta-oidc.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    environment: Beta
+    steps:
+      - name: Inspect safe OIDC claims
+        shell: bash
+        env:
+          YC_SA_ID: ${{ vars.YC_SA_ID }}
+        run: |
+          set -euo pipefail
+          oidc_response="$(curl --fail --silent --show-error -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}")"
+          token="$(printf '%s' "$oidc_response" | jq -r '.value')"
+          TOKEN="$token" python - <<'PY'
+          import os, json, base64
+          part = os.environ['TOKEN'].split('.')[1]
+          part += '=' * (-len(part) % 4)
+          claims = json.loads(base64.urlsafe_b64decode(part))
+          print(json.dumps({k: claims.get(k) for k in ('iss','aud','sub')}, ensure_ascii=False))
+          PY
+
+          http_code="$(curl --silent --show-error --output "$RUNNER_TEMP/exchange.json" --write-out '%{http_code}' --request POST 'https://auth.yandex.cloud/oauth/token' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'grant_type=urn:ietf:params:oauth:grant-type:token-exchange' --data-urlencode 'requested_token_type=urn:ietf:params:oauth:token-type:access_token' --data-urlencode "audience=${YC_SA_ID}" --data-urlencode "subject_token=${token}" --data-urlencode 'subject_token_type=urn:ietf:params:oauth:token-type:id_token')"
+          echo "Yandex exchange HTTP: ${http_code}"
+          if [ "$http_code" != "200" ]; then
+            jq '{error,error_description}' "$RUNNER_TEMP/exchange.json" 2>/dev/null || cat "$RUNNER_TEMP/exchange.json"
+            exit 1
+          fi
+          echo "OIDC exchange succeeded"
