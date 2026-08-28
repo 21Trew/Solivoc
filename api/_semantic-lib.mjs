@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { redis } from "./_push-lib.mjs";
+import { redis, redisKey } from "./_push-lib.mjs";
 
 const PREFIX = "worditaire:narrative:v1";
 const COMMAND_TTL_SECONDS = 60 * 60 * 24 * 30;
@@ -150,9 +150,11 @@ export async function appendSemanticCommand(command) {
   }
   const recordedAt = new Date().toISOString();
   // EVAL keeps sequence assignment, semantic deduplication, append and command idempotency atomic.
+  // The Lua script also constructs event guard keys internally, so pass a
+  // fully namespaced guard prefix rather than relying only on KEYS[] rewriting.
   const raw = await redis([
     "EVAL", APPEND_SCRIPT, "3", keys.sequence, keys.events, commandKey,
-    recordedAt, keys.eventGuardPrefix, ...command.events.map((event) => JSON.stringify(event)),
+    recordedAt, redisKey(keys.eventGuardPrefix), ...command.events.map((event) => JSON.stringify(event)),
   ]);
   return JSON.parse(raw);
 }
