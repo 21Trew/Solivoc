@@ -1,5 +1,6 @@
 import webpush from "web-push";
-import { namespaceRedisCommand } from "./_redis-namespace.mjs";
+import { namespaceRedisCommand, redisKey } from "./_redis-namespace.mjs";
+export { redisKey };
 
 const REDIS_TIMEOUT_MS = 4000;
 
