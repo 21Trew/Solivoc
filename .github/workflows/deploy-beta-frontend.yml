@@ -1,0 +1,146 @@
+name: Deploy beta frontend
+
+on:
+  push:
+    branches:
+      - forest-world-campaign-beta-check
+    paths:
+      - "*.html"
+      - "*.xml"
+      - "*.txt"
+      - "sw.js"
+      - "*.webmanifest"
+      - "content/**"
+      - "data/**"
+      - "icons/**"
+      - "js/**"
+      - "styles/**"
+      - "scripts/build-frontend.mjs"
+      - "package.json"
+      - ".github/workflows/deploy-beta-frontend.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: solivoc-beta-frontend
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: Beta
+
+    steps:
+      - name: Checkout beta
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Build frontend
+        run: npm run build:frontend
+
+      - name: Adapt bundle for beta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          const runtimePath = 'dist-frontend/js/runtime-config.js';
+          let runtime = fs.readFileSync(runtimePath, 'utf8');
+          runtime = runtime.replaceAll('https://api.solivoc.ru', 'https://api-beta.solivoc.ru');
+          fs.writeFileSync(runtimePath, runtime);
+
+          const indexPath = 'dist-frontend/index.html';
+          let html = fs.readFileSync(indexPath, 'utf8');
+          html = html
+            .replaceAll('https://solivoc.ru', 'https://beta.solivoc.ru')
+            .replace('content="index,follow,max-image-preview:large"', 'content="noindex,nofollow,noarchive"');
+          fs.writeFileSync(indexPath, html);
+
+          fs.writeFileSync('dist-frontend/robots.txt', 'User-agent: *\nDisallow: /\n');
+          NODE
+
+      - name: Verify beta bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD_ID="${GITHUB_SHA:0:12}"
+
+          test -f dist-frontend/index.html
+          test -f dist-frontend/admin.html
+          test -f dist-frontend/js/runtime-config.js
+          test -f dist-frontend/sw.js
+
+          grep -q 'https://api-beta.solivoc.ru' dist-frontend/js/runtime-config.js
+          ! grep -q '"https://api.solivoc.ru"' dist-frontend/js/runtime-config.js
+          grep -q 'noindex,nofollow,noarchive' dist-frontend/index.html
+          grep -q 'https://beta.solivoc.ru/' dist-frontend/index.html
+          grep -q '^Disallow: /$' dist-frontend/robots.txt
+          grep -q "worditaire-build-${BUILD_ID}" dist-frontend/sw.js
+
+      - name: Upload beta frontend assets
+        uses: yc-actions/yc-obj-storage-upload@v4
+        with:
+          yc-sa-id: ${{ vars.YC_SA_ID }}
+          bucket: ${{ vars.YC_BUCKET }}
+          root: ./dist-frontend
+          include: '**/*'
+          exclude: 'sw.js'
+          clear: false
+          skip-unchanged: true
+          fail-on-error: true
+          cache-control: |
+            *.html: no-cache
+            js/runtime-config.js: no-cache
+            **/*.js, **/*.css: no-cache
+            **/*.json, **/*.webmanifest: no-cache
+            *.xml, *.txt: no-cache
+            *: public, max-age=3600
+
+      - name: Publish beta service worker last
+        uses: yc-actions/yc-obj-storage-upload@v4
+        with:
+          yc-sa-id: ${{ vars.YC_SA_ID }}
+          bucket: ${{ vars.YC_BUCKET }}
+          root: ./dist-frontend
+          include: 'sw.js'
+          clear: false
+          skip-unchanged: false
+          fail-on-error: true
+          cache-control: |
+            sw.js: no-cache
+            *: no-cache
+
+      - name: Smoke test beta frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD_ID="${GITHUB_SHA:0:12}"
+
+          root_html="$(curl --fail --silent --show-error \
+            --retry 10 --retry-delay 3 --retry-all-errors \
+            -H 'Cache-Control: no-cache' \
+            "https://beta.solivoc.ru/?ci=${GITHUB_SHA}")"
+          printf '%s' "$root_html" | grep -q "${BUILD_ID}"
+          printf '%s' "$root_html" | grep -q 'noindex,nofollow,noarchive'
+
+          runtime_config="$(curl --fail --silent --show-error \
+            --retry 10 --retry-delay 3 --retry-all-errors \
+            -H 'Cache-Control: no-cache' \
+            "https://beta.solivoc.ru/js/runtime-config.js?ci=${GITHUB_SHA}")"
+          printf '%s' "$runtime_config" | grep -q 'https://api-beta.solivoc.ru'
+
+          curl --fail --silent --show-error \
+            --retry 10 --retry-delay 3 --retry-all-errors \
+            "https://beta.solivoc.ru/robots.txt?ci=${GITHUB_SHA}" \
+            | grep -q '^Disallow: /$'
+
+          echo "Beta frontend is current and isolated."
