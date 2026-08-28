@@ -78,6 +78,7 @@ jobs:
           test -f dist-frontend/admin.html
           test -f dist-frontend/js/runtime-config.js
           test -f dist-frontend/sw.js
+          test -f dist-frontend/content/worlds/forest/v0.03/package.manifest.json
 
           grep -q 'https://api-beta.solivoc.ru' dist-frontend/js/runtime-config.js
           ! grep -q '"https://api.solivoc.ru"' dist-frontend/js/runtime-config.js
@@ -142,5 +143,12 @@ jobs:
             --retry 10 --retry-delay 3 --retry-all-errors \
             "https://beta.solivoc.ru/robots.txt?ci=${GITHUB_SHA}" \
             | grep -q '^Disallow: /$'
+
+          curl --fail --silent --show-error \
+            --retry 10 --retry-delay 3 --retry-all-errors \
+            -H 'Cache-Control: no-cache' \
+            "https://beta.solivoc.ru/content/worlds/forest/v0.03/package.manifest.json?ci=${GITHUB_SHA}" \
+            > "$RUNNER_TEMP/forest-package-manifest.json"
+          jq -e 'type == "object"' "$RUNNER_TEMP/forest-package-manifest.json" > /dev/null
 
           echo "Beta frontend is current and isolated."
