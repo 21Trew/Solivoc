@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const out = path.join(root, "dist-frontend");
-const staticDirs = ["data", "icons", "js", "styles"];
+const staticDirs = ["content", "data", "icons", "js", "styles"];
 const rootFiles = ["index.html", "admin.html", "about.html", "robots.txt", "sitemap.xml"];
 const buildId = String(process.env.GITHUB_SHA || process.env.SOLIVOC_BUILD_ID || "dev")
   .trim()
