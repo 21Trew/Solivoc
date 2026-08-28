@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { namespaceRedisCommand, redisKey } from "../api/_push-lib.mjs";
+import { namespaceRedisCommand, redisKey } from "../api/_redis-namespace.mjs";
 import fs from "node:fs";
 
 function withPrefix(prefix, fn) {
