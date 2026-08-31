@@ -26,6 +26,109 @@ for (const entry of await readdir(root)) {
   }
 }
 
+async function rewriteDistFile(relativePath, transform) {
+  const filePath = path.join(out, relativePath);
+  const before = await readFile(filePath, "utf8");
+  const after = transform(before);
+  if (typeof after !== "string" || !after.length) throw new Error(`Invalid hardening output: ${relativePath}`);
+  if (after !== before) await writeFile(filePath, after, "utf8");
+  return after;
+}
+
+function replaceRequired(source, needle, replacement, label) {
+  if (!source.includes(needle)) throw new Error(`Frontend hardening marker missing: ${label}`);
+  return source.replace(needle, replacement);
+}
+
+function replaceBetween(source, startMarker, endMarker, replacement, label) {
+  const start = source.indexOf(startMarker);
+  const end = start >= 0 ? source.indexOf(endMarker, start + startMarker.length) : -1;
+  if (start < 0 || end < 0) throw new Error(`Frontend hardening range missing: ${label}`);
+  return `${source.slice(0, start)}${replacement}${source.slice(end)}`;
+}
+
+// Legacy product patches predate the current lifecycle/persistence layer. Harden
+// the deploy artifact centrally so stale auto-update and watchdog code cannot
+// regress iOS stability while those patches are gradually retired from source.
+await rewriteDistFile("js/host-routing.js", (source) => {
+  source = replaceRequired(
+    source,
+    '  const APP_ORIGIN = "https://solivoc.ru";\n  const API_ORIGIN = "https://api.solivoc.ru";',
+    '  const BETA_HOST = String(window.location.hostname || "").toLowerCase() === "beta.solivoc.ru";\n  const APP_ORIGIN = BETA_HOST ? "https://beta.solivoc.ru" : "https://solivoc.ru";\n  const API_ORIGIN = BETA_HOST ? "https://api-beta.solivoc.ru" : "https://api.solivoc.ru";',
+    "host-specific API origin",
+  );
+  source = replaceRequired(
+    source,
+    '    setInterval(repairTutorial, 450);\n    document.addEventListener("visibilitychange", () => {\n      if (!document.hidden) setTimeout(repairTutorial, 80);\n    });',
+    '    let tutorialRepairTimer = null;\n    const scheduleTutorialRepair = () => {\n      clearTimeout(tutorialRepairTimer);\n      tutorialRepairTimer = null;\n      if (document.hidden) return;\n      try { if (typeof state === "undefined" || state?.mode !== "tutorial") return; } catch { return; }\n      tutorialRepairTimer = setTimeout(() => { repairTutorial(); scheduleTutorialRepair(); }, 900);\n    };\n    repairTutorial();\n    scheduleTutorialRepair();\n    document.addEventListener("visibilitychange", () => {\n      if (document.hidden) { clearTimeout(tutorialRepairTimer); tutorialRepairTimer = null; return; }\n      setTimeout(() => { repairTutorial(); scheduleTutorialRepair(); }, 80);\n    });',
+    "tutorial watchdog",
+  );
+  return source;
+});
+
+await rewriteDistFile("js/runtime-config.js", (source) => replaceRequired(
+  source,
+  '    window.SOLIVOC_API_BASE =\n      !local && /^https?:$/.test(protocol)\n        ? "https://api.solivoc.ru"\n        : "";',
+  '    window.SOLIVOC_API_BASE =\n      !local && /^https?:$/.test(protocol)\n        ? (host === "beta.solivoc.ru" ? "https://api-beta.solivoc.ru" : "https://api.solivoc.ru")\n        : "";',
+  "runtime beta API",
+));
+
+await rewriteDistFile("js/v31-patch.js", (source) => {
+  source = source.replace("      #updateBanner{display:none!important}\n", "");
+  source = replaceBetween(
+    source,
+    "  function installAutoUpdate() {",
+    "\n\n  installStyles();",
+    '  function installAutoUpdate() {\n    // app.js owns update checks and reloads only after explicit user action.\n    // Automatic controllerchange reloads caused beta/PWA tabs to restart while idle.\n    try { sessionStorage.removeItem(AUTO_UPDATE_PENDING_KEY); } catch {}\n  }',
+    "v31 auto update",
+  );
+  return source;
+});
+
+await rewriteDistFile("js/v34-product-update.js", (source) => {
+  source = replaceBetween(
+    source,
+    "  /* On iOS/low-memory devices checkpoint every board mutation and keep fewer undo JSON snapshots. */",
+    '  if (typeof pushHistory === "function") {',
+    '  /* Persistence is already debounced in game/state.js and synchronously flushed\n     on pagehide/freeze/visibility lifecycle events. Do not force localStorage\n     writes after every board mutation on iOS. */\n',
+    "v34 immediate-save override",
+  );
+  source = replaceRequired(
+    source,
+    '  setInterval(() => {\n    if (document.visibilityState !== "visible" || !activeRound()) return;\n    if (typeof stabilityConstrainedMode === "function" && stabilityConstrainedMode()) emergencyRoundCheckpoint();\n  }, 8000);\n',
+    "",
+    "v34 eight-second checkpoint",
+  );
+  return source;
+});
+
+await rewriteDistFile("js/narrative/story-dialogue-layer.js", (source) => {
+  source = replaceBetween(
+    source,
+    "  function stabilizeGameplayGuide() {",
+    "\n\n  function installFocusSafety() {",
+    "",
+    "story render stabilizer",
+  );
+  source = source.replace("    installRenderStabilizer();\n", "");
+  source = source.replace("    stabilizeGameplayGuide();\n", "");
+  return source;
+});
+
+await rewriteDistFile("js/game/feedback.js", (source) => replaceRequired(
+  source,
+  '  if (!AudioCtor) return null;\n  if (!audioCtx) audioCtx = new AudioCtor();',
+  '  if (!AudioCtor) return null;\n  const activation = navigator.userActivation;\n  if (!audioCtx && activation && activation.hasBeenActive === false) return null;\n  if (!audioCtx) audioCtx = new AudioCtor();',
+  "audio user activation",
+));
+
+await rewriteDistFile("js/api-client.js", (source) => replaceRequired(
+  source,
+  '    document.addEventListener("click", () => { fetchAlerts(); setTimeout(showNext, 400); }, { passive: true });\n',
+  "",
+  "per-click developer alert poll",
+));
+
 // Build-time SEO metadata keeps the source game shell uncluttered while the
 // deployed HTML remains fully crawlable without executing JavaScript.
 const indexPath = path.join(out, "index.html");
@@ -119,14 +222,43 @@ await writeFile(adminPath, adminHtml, "utf8");
 
 // A different sw.js body is emitted for every frontend commit, so every
 // deployment creates a distinct PWA cache generation automatically.
-const swSource = await readFile(path.join(root, "sw.js"), "utf8");
+let swSource = await readFile(path.join(root, "sw.js"), "utf8");
 if (!swSource.includes("__SOLIVOC_BUILD__")) {
   throw new Error("sw.js is missing __SOLIVOC_BUILD__ placeholder");
+}
+for (const asset of [
+  "./js/v39-rarity-collectibles.js",
+  "./js/narrative/story-dialogue-layer.js",
+  "./js/narrative/story-ux-polish.js",
+]) {
+  if (swSource.includes(`"${asset}"`)) continue;
+  swSource = replaceRequired(
+    swSource,
+    '  "./js/app.js"\n];',
+    `  "${asset}",\n  "./js/app.js"\n];`,
+    `service worker core ${asset}`,
+  );
 }
 await writeFile(
   path.join(out, "sw.js"),
   swSource.replaceAll("__SOLIVOC_BUILD__", buildId),
   "utf8",
 );
+
+// Fail the build if a known high-risk regression survives hardening.
+const stabilityChecks = [
+  ["js/v31-patch.js", "location.reload()", false],
+  ["js/v31-patch.js", "observer.observe(document.body", false],
+  ["js/v34-product-update.js", "}, 8000);", false],
+  ["js/host-routing.js", "setInterval(repairTutorial, 450)", false],
+  ["js/narrative/story-dialogue-layer.js", "installRenderStabilizer", false],
+  ["js/api-client.js", 'document.addEventListener("click", () => { fetchAlerts()', false],
+  ["js/host-routing.js", "https://api-beta.solivoc.ru", true],
+];
+for (const [relativePath, needle, shouldExist] of stabilityChecks) {
+  const source = await readFile(path.join(out, relativePath), "utf8");
+  const exists = source.includes(needle);
+  if (exists !== shouldExist) throw new Error(`Stability contract failed: ${relativePath} :: ${needle}`);
+}
 
 console.log(`Frontend bundle generated: ${path.relative(root, out)} (${buildId})`);
