@@ -135,19 +135,23 @@
     return layer;
   }
 
+  function setText(node, value) {
+    if (node && node.textContent !== value) node.textContent = value;
+  }
+
   function renderDialogue() {
     if (!activeSession) return;
     const layer = ensureLayer();
     const beat = activeSession.beats[activeSession.index];
     const character = CHARACTERS[beat?.speaker] || CHARACTERS.cat;
     const image = layer.querySelector(".story-dialogue-stage img");
-    image.src = character.art;
-    image.alt = character.name;
-    layer.querySelector(".story-dialogue-speaker").textContent = character.name;
-    layer.querySelector(".story-dialogue-text").textContent = beat?.text || "";
-    layer.querySelector(".story-dialogue-counter").textContent = `${activeSession.index + 1}/${activeSession.beats.length}`;
+    if (image.src !== new URL(character.art, document.baseURI).href) image.src = character.art;
+    if (image.alt !== character.name) image.alt = character.name;
+    setText(layer.querySelector(".story-dialogue-speaker"), character.name);
+    setText(layer.querySelector(".story-dialogue-text"), beat?.text || "");
+    setText(layer.querySelector(".story-dialogue-counter"), `${activeSession.index + 1}/${activeSession.beats.length}`);
     const last = activeSession.index >= activeSession.beats.length - 1;
-    layer.querySelector(".story-dialogue-next").textContent = last ? (activeSession.phase === "after" ? "Продолжить историю →" : "К раскладу →") : "Продолжить →";
+    setText(layer.querySelector(".story-dialogue-next"), last ? (activeSession.phase === "after" ? "Продолжить историю →" : "К раскладу →") : "Продолжить →");
     layer.querySelector(".story-dialogue-brief").hidden = activeSession.beats.length <= 1 || last;
     layer.hidden = false;
   }
@@ -157,6 +161,7 @@
     activeSession = null;
     const layer = ensureLayer();
     layer.hidden = true;
+    layer.setAttribute("aria-hidden", "true");
     if (!session) return;
     markShown(session.scene, session.phase);
     bypassNextStoryAction = true;
@@ -174,6 +179,8 @@
     const beats = DIALOGUES[dialogueKey(scene, phase)];
     if (!Array.isArray(beats) || !beats.length) return false;
     activeSession = { scene, phase, actionButton, beats, index: 0 };
+    const layer = ensureLayer();
+    layer.setAttribute("aria-hidden", "false");
     renderDialogue();
     return true;
   }
@@ -197,28 +204,27 @@
     if (!strip) return;
     const game = gameState();
     if (game?.mode !== "story") return;
-    strip.classList.add("story-guide-neutral");
-    const small = strip.querySelector(".story-guide-copy small");
-    if (small) small.textContent = "ПОДСКАЗКА";
+    if (!strip.classList.contains("story-guide-neutral")) strip.classList.add("story-guide-neutral");
+    setText(strip.querySelector(".story-guide-copy small"), "ПОДСКАЗКА");
     const moved = Math.max(0, Math.trunc(Number(game?.run?.moves) || 0));
     const completed = Math.max(0, Math.trunc(Number(game?.completed) || 0));
     if (moved > 0 || completed > 0) {
-      strip.hidden = true;
+      if (!strip.hidden) strip.hidden = true;
       return;
     }
-    const title = strip.querySelector(".story-guide-copy b");
-    const text = strip.querySelector(".story-guide-copy span");
-    if (title) title.textContent = "Первая связь";
-    if (text) text.textContent = "Перенеси одно связанное слово на другое. Дальше попробуй читать поле самостоятельно.";
+    setText(strip.querySelector(".story-guide-copy b"), "Первая связь");
+    setText(strip.querySelector(".story-guide-copy span"), "Перенеси одно связанное слово на другое. Дальше попробуй читать поле самостоятельно.");
   }
 
   function install() {
     installStyles();
     ensureLayer();
     document.addEventListener("click", interceptStoryAction, true);
-    const observer = new MutationObserver(neutralizeGameplayGuide);
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-    setInterval(neutralizeGameplayGuide, 250);
+
+    // Do not observe and rewrite the same gameplay DOM. That creates a feedback
+    // loop under frequent board renders and can lock the main thread. A small,
+    // idempotent timer is sufficient for this presentation-only decoration.
+    setInterval(neutralizeGameplayGuide, 500);
     neutralizeGameplayGuide();
   }
 
