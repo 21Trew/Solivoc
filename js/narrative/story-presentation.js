@@ -64,7 +64,7 @@
   function installStyles() {
     if (document.getElementById("storyPresentationStyles")) return;
     const style = document.createElement("style"); style.id = "storyPresentationStyles";
-    style.textContent = `.story-gateway{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(118px,.8fr);gap:10px;margin-bottom:1px}.story-gateway-world,.story-layouts-entry{border:1px solid #ffffff18;border-radius:22px;color:#fff}.story-gateway-world{position:relative;min-height:184px;overflow:hidden;padding:17px;background:linear-gradient(145deg,#193b35,#1f2853 62%,#302253)}.story-gateway-copy{max-width:62%;position:relative;z-index:2}.story-gateway-copy small,.story-scene-copy small{color:#aee4bd;font-size:9px;font-weight:950;letter-spacing:.16em}.story-gateway-copy h2{margin:7px 0 5px;font-size:24px}.story-gateway-copy p{margin:0;color:#d2d9e8;font-size:10px}.story-gateway-characters{position:absolute;right:0;bottom:38px;display:flex}.story-gateway-characters img{width:73px;height:73px}.story-gateway-characters img+img{margin-left:-27px}.story-primary{position:absolute;left:17px;bottom:16px;z-index:3;min-height:39px;padding:0 14px;border:0;border-radius:13px;background:#f1f4df;color:#23352e;font-weight:950}.story-layouts-entry{min-height:184px;padding:15px 12px;background:#ffffff08;text-align:left;display:grid;align-content:end;gap:3px}.story-layouts-entry>span{font-size:25px;margin-bottom:auto}.story-layouts-entry small{color:#aaaed0;font-size:8px}.story-scene-modal{position:fixed;inset:0;z-index:14050;display:grid;place-items:center;padding:16px;background:#080b18cc;backdrop-filter:blur(14px)}.story-scene-modal[hidden]{display:none}.story-scene-card{width:min(430px,100%);border:1px solid #ffffff1b;border-radius:28px;background:linear-gradient(165deg,#183a34,#171d42);color:#fff;overflow:hidden}.story-scene-visual{min-height:220px;display:grid;place-items:end center;background:linear-gradient(180deg,#3d6a62,#18332d)}.story-scene-cast{display:flex;align-items:end}.story-scene-cast img{width:135px;height:135px}.story-scene-cast img+img{margin-left:-42px}.story-scene-copy{padding:20px}.story-scene-copy h2{margin:7px 0 5px;font-size:28px}.story-scene-meta,.story-scene-status{color:#cad6d2;font-size:10px}.story-scene-summary{font-size:12px;line-height:1.5}.story-scene-actions{display:grid;grid-template-columns:auto 1fr;gap:8px;margin-top:18px}.story-scene-actions button{min-height:44px;border:0;border-radius:14px;font-weight:950}.story-scene-back{padding:0 14px;background:#ffffff0d;color:#ddd}.story-scene-start{background:#eef3dc;color:#23352e}.story-gameplay-guide{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;margin:0 0 10px;padding:9px 11px;border:1px solid #ffffff15;border-radius:16px;background:#183a30cc}.story-gameplay-guide[hidden]{display:none}.story-guide-cast{display:flex}.story-guide-cast img{width:38px;height:38px}.story-guide-cast img+img{margin-left:-14px}.story-guide-copy small{font-size:7px;color:#9edab0}.story-guide-copy b{display:block;font-size:10px}.story-guide-copy span{font-size:8px;color:#c6d1d1}@media(max-width:390px){.story-gateway{grid-template-columns:1fr}.story-layouts-entry{min-height:76px}}`;
+    style.textContent = `.story-gateway{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(118px,.8fr);gap:10px;margin-bottom:1px}.story-gateway-world,.story-layouts-entry{border:1px solid #ffffff18;border-radius:22px;color:#fff}.story-gateway-world{position:relative;min-height:184px;overflow:hidden;padding:17px;background:linear-gradient(145deg,#193b35,#1f2853 62%,#302253)}.story-gateway-copy{max-width:62%;position:relative;z-index:2}.story-gateway-copy small,.story-scene-copy small{color:#aee4bd;font-size:9px;font-weight:950;letter-spacing:.16em}.story-gateway-copy h2{margin:7px 0 5px;font-size:24px}.story-gateway-copy p{margin:0;color:#d2d9e8;font-size:10px}.story-gateway-characters{position:absolute;right:0;bottom:38px;display:flex}.story-gateway-characters img{width:73px;height:73px}.story-gateway-characters img+img{margin-left:-27px}.story-primary{position:absolute;left:17px;bottom:16px;z-index:3;min-height:39px;padding:0 14px;border:0;border-radius:13px;background:#f1f4df;color:#23352e;font-weight:950}.story-primary:disabled{opacity:.65;cursor:wait}.story-layouts-entry{min-height:184px;padding:15px 12px;background:#ffffff08;text-align:left;display:grid;align-content:end;gap:3px}.story-layouts-entry>span{font-size:25px;margin-bottom:auto}.story-layouts-entry small{color:#aaaed0;font-size:8px}.story-scene-modal{position:fixed;inset:0;z-index:14050;display:grid;place-items:center;padding:16px;background:#080b18cc;backdrop-filter:blur(14px)}.story-scene-modal[hidden]{display:none}.story-scene-card{width:min(430px,100%);border:1px solid #ffffff1b;border-radius:28px;background:linear-gradient(165deg,#183a34,#171d42);color:#fff;overflow:hidden}.story-scene-visual{min-height:220px;display:grid;place-items:end center;background:linear-gradient(180deg,#3d6a62,#18332d)}.story-scene-cast{display:flex;align-items:end}.story-scene-cast img{width:135px;height:135px}.story-scene-cast img+img{margin-left:-42px}.story-scene-copy{padding:20px}.story-scene-copy h2{margin:7px 0 5px;font-size:28px}.story-scene-meta,.story-scene-status{color:#cad6d2;font-size:10px}.story-scene-summary{font-size:12px;line-height:1.5}.story-scene-actions{display:grid;grid-template-columns:auto 1fr;gap:8px;margin-top:18px}.story-scene-actions button{min-height:44px;border:0;border-radius:14px;font-weight:950}.story-scene-back{padding:0 14px;background:#ffffff0d;color:#ddd}.story-scene-start{background:#eef3dc;color:#23352e}.story-gameplay-guide{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;margin:0 0 10px;padding:9px 11px;border:1px solid #ffffff15;border-radius:16px;background:#183a30cc}.story-gameplay-guide[hidden]{display:none}.story-guide-cast{display:flex}.story-guide-cast img{width:38px;height:38px}.story-guide-cast img+img{margin-left:-14px}.story-guide-copy small{font-size:7px;color:#9edab0}.story-guide-copy b{display:block;font-size:10px}.story-guide-copy span{font-size:8px;color:#c6d1d1}@media(max-width:390px){.story-gateway{grid-template-columns:1fr}.story-layouts-entry{min-height:76px}}`;
     document.head.appendChild(style);
   }
 
@@ -114,8 +114,14 @@
     modal.hidden = false;
   }
 
-  function resumable(scene) { const current = gameState(); return !!(current?.mode === "story" && current.sceneId === scene?.id && !current.rewarded && !current.failed); }
-  function resume() { const modal = document.getElementById("storySceneModal"); if (modal) modal.hidden = true; try { closeHub?.(); render?.(); updateCoach?.(); syncGameCompanion?.(); } catch {} }
+  function validPlayableResume(scene) {
+    const current = gameState();
+    if (!(current?.mode === "story" && current.sceneId === scene?.id && !current.rewarded && !current.failed)) return false;
+    if (typeof isPlayableGeneratedState === "function" && !isPlayableGeneratedState(current)) return false;
+    return Number(current.totalCategories) > 0 && current.run && Number.isFinite(Number(current.run.moves));
+  }
+  function resumable(scene) { return validPlayableResume(scene); }
+  function resume() { const modal = document.getElementById("storySceneModal"); if (modal) modal.hidden = true; try { closeHub?.(); render?.(); updateCoach?.(); syncGameCompanion?.(); } catch (error) { handleError(error); } }
   function attach(scene) { const current = gameState(); if (!current) return; Object.assign(current, { worldId: WORLD_ID, sceneId: scene.id, areaId: scene.areaId, encounterId: scene.presentation?.encounterId || null, nextStorySceneId: scene.nextSceneId || null, storyPackageVersion: PACKAGE_VERSION, storyMeaning: scene.meaning || "" }); try { save?.({ immediate: true }); syncGameCompanion?.(); } catch {} }
 
   async function launchGameplay(scene, runtimeState) {
@@ -184,7 +190,24 @@
   }
 
   function handleError(error) { console.error("story presentation", error); try { showToast?.("Историю пока не удалось открыть"); } catch {} }
-  async function openStory() { try { await ensureRuntime(true); const scene = targetScene(); if (!scene) throw new Error("story_scene_missing"); if (resumable(scene)) return resume(); showScene(scene); } catch (error) { handleError(error); } }
+  async function openStory() {
+    const button = document.querySelector("[data-story-entry]");
+    if (button?.disabled) return;
+    if (button) button.disabled = true;
+    try {
+      // The hub already renders from a valid snapshot. Do not block entry on a
+      // forced bootstrap: stale/slow narrative storage must never freeze UI.
+      if (!snapshot) await ensureRuntime(false);
+      const scene = targetScene();
+      if (!scene) throw new Error("story_scene_missing");
+      if (resumable(scene)) return resume();
+      showScene(scene);
+    } catch (error) {
+      handleError(error);
+    } finally {
+      if (button?.isConnected) button.disabled = false;
+    }
+  }
 
   function install() {
     if (installed) return true;
