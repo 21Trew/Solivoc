@@ -32,8 +32,8 @@
 
   function restoreNextButton(button = document.getElementById("storyNext")) {
     if (!button) return;
-    button.id = "next";
-    if (originalNextHandler) button.onclick = originalNextHandler;
+    if (button.id !== "next") button.id = "next";
+    if (originalNextHandler && button.onclick !== originalNextHandler) button.onclick = originalNextHandler;
   }
 
   function openNextStoryStep() {
@@ -54,7 +54,9 @@
       button.id = "storyNext";
     }
 
-    button.textContent = current?.nextStorySceneId ? "Следующий уровень →" : "Вернуться в Историю →";
+    const label = current?.nextStorySceneId ? "Следующий уровень →" : "Вернуться в Историю →";
+    if (button.textContent !== label) button.textContent = label;
+
     button.onclick = () => {
       // Renaming the button prevents the older Story capture handler (#next)
       // from routing the player through the hub. Restore the normal id only
@@ -67,6 +69,10 @@
     };
   }
 
+  function setHidden(node, value) {
+    if (node && node.hidden !== value) node.hidden = value;
+  }
+
   function polishWin() {
     const modal = document.getElementById("modal");
     if (!modal) return;
@@ -74,12 +80,12 @@
     const current = gameState();
     const storyWin = current?.mode === "story" && current.rewarded;
     if (!storyWin) {
-      modal.classList.remove("story-win-polished");
+      if (modal.classList.contains("story-win-polished")) modal.classList.remove("story-win-polished");
       restoreNextButton();
       return;
     }
 
-    modal.classList.add("story-win-polished");
+    if (!modal.classList.contains("story-win-polished")) modal.classList.add("story-win-polished");
 
     const title = document.getElementById("winTitle");
     const xp = document.getElementById("winXp");
@@ -95,37 +101,38 @@
     for (const node of [xp, goals, record, unlock]) {
       if (!node) continue;
       if (node.childNodes.length) node.replaceChildren();
-      node.hidden = true;
+      setHidden(node, true);
     }
 
     activateStoryNext(next, current);
   }
 
-  function installWinObserver() {
+  function installWinHook() {
     let attempts = 0;
     const timer = setInterval(() => {
       attempts += 1;
-      const modal = document.getElementById("modal");
-      if (modal) {
-        const observer = new MutationObserver(polishWin);
-        observer.observe(modal, {
-          subtree: true,
-          childList: true,
-          characterData: true,
-          attributes: true,
-          attributeFilter: ["class", "hidden", "aria-hidden"],
-        });
-        polishWin();
+      const currentShowWin = globalThis.showWin;
+      if (typeof currentShowWin === "function" && !currentShowWin.__storyUxPolishWrapped) {
+        const wrapped = function(...args) {
+          const result = currentShowWin.apply(this, args);
+          // StoryPresentation may decorate the same modal immediately after
+          // this call returns. Polish on the next frame, once all synchronous
+          // decorators have finished. No persistent DOM observer is needed.
+          requestAnimationFrame(() => polishWin());
+          return result;
+        };
+        Object.defineProperty(wrapped, "__storyUxPolishWrapped", { value: true });
+        globalThis.showWin = wrapped;
         clearInterval(timer);
-      } else if (attempts >= 160) {
-        clearInterval(timer);
+        return;
       }
+      if (attempts >= 120) clearInterval(timer);
     }, 100);
   }
 
   function install() {
     installStyles();
-    installWinObserver();
+    installWinHook();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install, { once: true });
