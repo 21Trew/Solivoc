@@ -91,6 +91,7 @@ const patchScripts = [
   "./js/v34-product-update.js",
   "./js/v39-rarity-collectibles.js",
   "./js/narrative/story-dialogue-layer.js",
+  "./js/narrative/story-ux-polish.js",
 ];
 const missingPatchTags = patchScripts
   .filter((src) => !indexHtml.includes(`src="${src}"`))
