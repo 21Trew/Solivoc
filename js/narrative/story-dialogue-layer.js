@@ -3,6 +3,10 @@
   if (typeof document === "undefined" || globalThis.__solivocStoryDialogueLayer) return;
   globalThis.__solivocStoryDialogueLayer = true;
 
+  if (location.hostname === "beta.solivoc.ru") {
+    globalThis.SOLIVOC_API_BASE = "https://api-beta.solivoc.ru";
+  }
+
   const CHARACTERS = Object.freeze({
     cat: { name: "Кот", art: "./icons/mascots/cat/cat-1.webp" },
     owl: { name: "Сова", art: "./icons/mascots/owl/owl-1.webp" },
@@ -105,6 +109,7 @@
       .story-gameplay-guide.story-guide-neutral .story-guide-cast{display:none}
       .story-gameplay-guide.story-guide-neutral{grid-template-columns:1fr}
       .story-gameplay-guide.story-guide-neutral .story-guide-copy small{color:#9edab0}
+      .story-gameplay-guide.story-guide-dismissed{display:none!important}
     `;
     document.head.appendChild(style);
   }
@@ -116,6 +121,7 @@
     layer.id = "storyDialogueLayer";
     layer.className = "story-dialogue-layer";
     layer.hidden = true;
+    layer.setAttribute("aria-hidden", "true");
     layer.innerHTML = `
       <div class="story-dialogue-card" role="dialog" aria-modal="true" aria-label="Сюжетная сцена">
         <div class="story-dialogue-stage"><img alt=""></div>
@@ -154,12 +160,19 @@
     setText(layer.querySelector(".story-dialogue-next"), last ? (activeSession.phase === "after" ? "Продолжить историю →" : "К раскладу →") : "Продолжить →");
     layer.querySelector(".story-dialogue-brief").hidden = activeSession.beats.length <= 1 || last;
     layer.hidden = false;
+    layer.setAttribute("aria-hidden", "false");
+  }
+
+  function blurInside(container) {
+    const active = document.activeElement;
+    if (active && container?.contains(active) && typeof active.blur === "function") active.blur();
   }
 
   function finishDialogue() {
     const session = activeSession;
     activeSession = null;
     const layer = ensureLayer();
+    blurInside(layer);
     layer.hidden = true;
     layer.setAttribute("aria-hidden", "true");
     if (!session) return;
@@ -179,8 +192,6 @@
     const beats = DIALOGUES[dialogueKey(scene, phase)];
     if (!Array.isArray(beats) || !beats.length) return false;
     activeSession = { scene, phase, actionButton, beats, index: 0 };
-    const layer = ensureLayer();
-    layer.setAttribute("aria-hidden", "false");
     renderDialogue();
     return true;
   }
@@ -199,33 +210,66 @@
     startDialogue(scene, phase, button);
   }
 
-  function neutralizeGameplayGuide() {
+  function stabilizeGameplayGuide() {
     const strip = document.getElementById("storyGameplayGuide");
     if (!strip) return;
     const game = gameState();
     if (game?.mode !== "story") return;
-    if (!strip.classList.contains("story-guide-neutral")) strip.classList.add("story-guide-neutral");
+
+    strip.classList.add("story-guide-neutral");
     setText(strip.querySelector(".story-guide-copy small"), "ПОДСКАЗКА");
+
     const moved = Math.max(0, Math.trunc(Number(game?.run?.moves) || 0));
     const completed = Math.max(0, Math.trunc(Number(game?.completed) || 0));
-    if (moved > 0 || completed > 0) {
-      if (!strip.hidden) strip.hidden = true;
+    const shouldDismiss = moved > 0 || completed > 0 || game.rewarded || game.failed;
+
+    if (shouldDismiss) {
+      strip.classList.add("story-guide-dismissed");
+      strip.hidden = true;
       return;
     }
+
+    strip.classList.remove("story-guide-dismissed");
+    strip.hidden = false;
     setText(strip.querySelector(".story-guide-copy b"), "Первая связь");
     setText(strip.querySelector(".story-guide-copy span"), "Перенеси одно связанное слово на другое. Дальше попробуй читать поле самостоятельно.");
+  }
+
+  function installRenderStabilizer() {
+    let attempts = 0;
+    const timer = setInterval(() => {
+      attempts += 1;
+      const currentRender = globalThis.render;
+      if (typeof currentRender === "function" && !currentRender.__storyGuideStable) {
+        const wrapped = function(...args) {
+          const result = currentRender.apply(this, args);
+          stabilizeGameplayGuide();
+          return result;
+        };
+        Object.defineProperty(wrapped, "__storyGuideStable", { value: true });
+        globalThis.render = wrapped;
+      }
+      if (attempts >= 160) clearInterval(timer);
+    }, 100);
+  }
+
+  function installFocusSafety() {
+    document.addEventListener("click", (event) => {
+      const control = event.target?.closest?.(
+        ".story-dialogue-next,.story-dialogue-brief,.story-perspective-use,.story-perspective-back,.story-scene-start,.story-scene-back,#next,#onboardingNext",
+      );
+      if (!control) return;
+      if (document.activeElement === control && typeof control.blur === "function") control.blur();
+    }, true);
   }
 
   function install() {
     installStyles();
     ensureLayer();
     document.addEventListener("click", interceptStoryAction, true);
-
-    // Do not observe and rewrite the same gameplay DOM. That creates a feedback
-    // loop under frequent board renders and can lock the main thread. A small,
-    // idempotent timer is sufficient for this presentation-only decoration.
-    setInterval(neutralizeGameplayGuide, 500);
-    neutralizeGameplayGuide();
+    installFocusSafety();
+    installRenderStabilizer();
+    stabilizeGameplayGuide();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install, { once: true });
