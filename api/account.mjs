@@ -31,6 +31,18 @@ function gameDayId(now = Date.now()) {
   return new Date(now).toISOString().slice(0, 10);
 }
 
+function reconcileCompletionLedger(current, incoming, profile) {
+  const ledgers = [current?.completionLedgerBase, incoming?.completionLedgerBase]
+    .map(Number).filter((value) => Number.isFinite(value) && value >= 0);
+  if (ledgers.length) profile.completionLedgerBase = Math.min(...ledgers);
+  const transactions = profile?.completionTransactions && typeof profile.completionTransactions === "object"
+    ? profile.completionTransactions : {};
+  let ledgerXp = Number(profile.completionLedgerBase) || 0;
+  for (const tx of Object.values(transactions)) ledgerXp += Math.max(0, Number(tx?.xpDelta) || 0);
+  profile.xp = Math.max(0, Number(profile.xp) || 0, ledgerXp);
+  return profile;
+}
+
 export async function GET(request) {
   try {
     if (!(await checkRateLimit(request, "account-read", 300, 900))) return json({ error: "rate_limited" }, 429);
@@ -48,14 +60,7 @@ export async function GET(request) {
       return json({ ok: true, players: Object.fromEntries(requestedPlayers.map((id, index) => [id, { deleted: !rows?.[index] }])) }, 200, headers);
     }
     const [profile, version] = await Promise.all([readCloudProfile(session.userId), cloudProfileVersion(session.userId)]);
-    return json({
-      ok: true,
-      user: { id: session.user.id, email: session.user.email },
-      profile,
-      version,
-      serverNow: Date.now(),
-      gameDayId: gameDayId(),
-    }, 200, headers);
+    return json({ ok: true, user: { id: session.user.id, email: session.user.email }, profile, version, serverNow: Date.now(), gameDayId: gameDayId() }, 200, headers);
   } catch (error) {
     if (error?.message === "REDIS_NOT_CONFIGURED") return json({ error: "redis_not_configured" }, 503);
     console.error("account GET", error);
@@ -77,25 +82,17 @@ export async function POST(request) {
         Object.assign(profile, mergeEntityProgressDomains(current, incoming));
         const mascotDaily = mergeMascotDailySnapshots(current.mascotDaily, incoming.mascotDaily);
         if (mascotDaily?.date) profile.mascotDaily = mascotDaily;
-        return profile;
+        return reconcileCompletionLedger(current, incoming, profile);
       },
     });
     await refreshSession(session);
-
-    return json({
-      ok: true,
-      profile: merged.profile,
-      version: merged.version,
-      previousVersion: merged.previousVersion,
-      staleClient: merged.staleClient,
-      syncedAt: Date.now(),
-      serverNow: Date.now(),
-      gameDayId: gameDayId(),
-    }, 200, accountHeaders(session));
+    return json({ ok: true, profile: merged.profile, version: merged.version, previousVersion: merged.previousVersion, staleClient: merged.staleClient, syncedAt: Date.now(), serverNow: Date.now(), gameDayId: gameDayId() }, 200, accountHeaders(session));
   } catch (error) {
     if (error?.message === "REDIS_NOT_CONFIGURED") return json({ error: "redis_not_configured" }, 503);
     if (error?.message === "profile_too_large") return json({ error: "profile_too_large" }, 413);
-    if (error?.message === "profile_busy" || error?.code === "profile_busy") return json({ error: "profile_busy", retryable: true }, 409);
+    if (["profile_busy", "profile_lock_lost"].includes(error?.message) || ["profile_busy", "profile_lock_lost"].includes(error?.code)) {
+      return json({ error: error?.code || error?.message, retryable: true }, 409);
+    }
     console.error("account POST", error);
     return json({ error: "server_error" }, 500);
   }
