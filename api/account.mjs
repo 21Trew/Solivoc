@@ -38,7 +38,10 @@ function reconcileCompletionLedger(current, incoming, profile) {
   const transactions = profile?.completionTransactions && typeof profile.completionTransactions === "object"
     ? profile.completionTransactions : {};
   let ledgerXp = Number(profile.completionLedgerBase) || 0;
-  for (const tx of Object.values(transactions)) ledgerXp += Math.max(0, Number(tx?.xpDelta) || 0);
+  for (const tx of Object.values(transactions)) {
+    const delta = typeof tx === "number" ? tx : tx?.xpDelta;
+    ledgerXp += Math.max(0, Number(delta) || 0);
+  }
   profile.xp = Math.max(0, Number(profile.xp) || 0, ledgerXp);
   return profile;
 }
