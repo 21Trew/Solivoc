@@ -1,13 +1,43 @@
-import { checkRateLimit, cloudProfileVersion, currentSession, json, mergeCloudProfile, profileKey, readCloudProfile, sameOrigin, userKey, writeJsonKey } from "./_auth-lib.mjs";
+import { checkRateLimit, cloudProfileVersion, currentSession, json, readCloudProfile, sameOrigin, sessionCookie, sessionKey, userKey } from "./_auth-lib.mjs";
 import { redis } from "./_push-lib.mjs";
 import { mergeEntityProgressDomains } from "./_progression-merge-lib.mjs";
 import { mergeMascotDailySnapshots } from "./_v34-profile-merge-lib.mjs";
+import { mergeCloudProfileAtomic } from "./_profile-sync-lib.mjs";
+
+const SESSION_REFRESH_TTL = 60 * 60 * 24 * 30;
+
+function accountHeaders(session) {
+  if (!session?.token) return {};
+  return { "Set-Cookie": sessionCookie(session.token, SESSION_REFRESH_TTL) };
+}
+
+async function refreshSession(session) {
+  if (!session?.token) return;
+  await redis(["EXPIRE", sessionKey(session.token), SESSION_REFRESH_TTL]).catch(() => {});
+}
+
+function gameDayId(now = Date.now()) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Warsaw",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date(now));
+    const get = (type) => parts.find((part) => part.type === type)?.value || "";
+    const y = get("year"), m = get("month"), d = get("day");
+    if (y && m && d) return `${y}-${m}-${d}`;
+  } catch {}
+  return new Date(now).toISOString().slice(0, 10);
+}
 
 export async function GET(request) {
   try {
     if (!(await checkRateLimit(request, "account-read", 300, 900))) return json({ error: "rate_limited" }, 429);
     const session = await currentSession(request);
     if (!session) return json({ error: "unauthorized" }, 401);
+    await refreshSession(session);
+    const headers = accountHeaders(session);
     const url = new URL(request.url);
     const requestedPlayers = [...new Set(String(url.searchParams.get("players") || "").split(",")
       .map((id) => String(id || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64))
@@ -15,10 +45,17 @@ export async function GET(request) {
       .slice(0, 100);
     if (requestedPlayers.length) {
       const rows = await redis(["MGET", ...requestedPlayers.map((id) => userKey(id))]);
-      return json({ ok: true, players: Object.fromEntries(requestedPlayers.map((id, index) => [id, { deleted: !rows?.[index] }])) });
+      return json({ ok: true, players: Object.fromEntries(requestedPlayers.map((id, index) => [id, { deleted: !rows?.[index] }])) }, 200, headers);
     }
     const [profile, version] = await Promise.all([readCloudProfile(session.userId), cloudProfileVersion(session.userId)]);
-    return json({ ok: true, user: { id: session.user.id, email: session.user.email }, profile, version });
+    return json({
+      ok: true,
+      user: { id: session.user.id, email: session.user.email },
+      profile,
+      version,
+      serverNow: Date.now(),
+      gameDayId: gameDayId(),
+    }, 200, headers);
   } catch (error) {
     if (error?.message === "REDIS_NOT_CONFIGURED") return json({ error: "redis_not_configured" }, 503);
     console.error("account GET", error);
@@ -34,22 +71,33 @@ export async function POST(request) {
     if (!session) return json({ error: "unauthorized" }, 401);
     const body = await request.json().catch(() => ({}));
     const incomingProfile = body.profile && typeof body.profile === "object" ? body.profile : {};
-    const cloudBeforeMerge = await readCloudProfile(session.userId);
-    const entityDomains = mergeEntityProgressDomains(cloudBeforeMerge, incomingProfile);
-    const mascotDaily = mergeMascotDailySnapshots(cloudBeforeMerge.mascotDaily, incomingProfile.mascotDaily);
-    const merged = await mergeCloudProfile(session.userId, incomingProfile, { clientVersion: Number(body.version) || 0 });
+    const merged = await mergeCloudProfileAtomic(session.userId, incomingProfile, {
+      clientVersion: Number(body.version) || 0,
+      finalize: ({ current, incoming, merged: profile }) => {
+        // Bounded entity choices cannot use generic array union semantics. Calculate them
+        // against the exact cloud snapshot protected by the same per-user lock, then persist once.
+        Object.assign(profile, mergeEntityProgressDomains(current, incoming));
+        const mascotDaily = mergeMascotDailySnapshots(current.mascotDaily, incoming.mascotDaily);
+        if (mascotDaily?.date) profile.mascotDaily = mascotDaily;
+        return profile;
+      },
+    });
+    await refreshSession(session);
 
-    // The generic account merge intentionally unions most arrays. Mascot traits,
-    // ability loadouts and divine graces are bounded choices, so overwrite only
-    // these domains with their conflict-aware merge before persisting the result.
-    Object.assign(merged.profile, entityDomains);
-    if (mascotDaily?.date) merged.profile.mascotDaily = mascotDaily;
-    await writeJsonKey(profileKey(session.userId), merged.profile);
-
-    return json({ ok: true, profile: merged.profile, version: merged.version, syncedAt: Date.now() });
+    return json({
+      ok: true,
+      profile: merged.profile,
+      version: merged.version,
+      previousVersion: merged.previousVersion,
+      staleClient: merged.staleClient,
+      syncedAt: Date.now(),
+      serverNow: Date.now(),
+      gameDayId: gameDayId(),
+    }, 200, accountHeaders(session));
   } catch (error) {
     if (error?.message === "REDIS_NOT_CONFIGURED") return json({ error: "redis_not_configured" }, 503);
     if (error?.message === "profile_too_large") return json({ error: "profile_too_large" }, 413);
+    if (error?.message === "profile_busy" || error?.code === "profile_busy") return json({ error: "profile_busy", retryable: true }, 409);
     console.error("account POST", error);
     return json({ error: "server_error" }, 500);
   }
