@@ -4,71 +4,95 @@
   --admin-tiny:12px;
 }
 
-body{font-size:var(--admin-font);line-height:1.5}
+body{font-size:var(--admin-font);line-height:1.48}
 .auth-card label,.field{font-size:14px}
-.auth-card input,.field input,.field select,.field textarea,.control{min-height:46px;padding:11px 13px;font-size:15px}
-.primary-button,.secondary-button,.danger-button,.warning-button,.ghost-button{min-height:42px;padding:10px 14px;font-size:14px}
-.main-nav button{min-height:46px;padding:11px 12px}
-.main-nav button b{font-size:15px}.main-nav button span{font-size:18px}.main-nav button em{font-size:11px}
+.auth-card input,.field input,.field select,.field textarea,.control{min-height:44px;padding:10px 12px;font-size:15px}
+.primary-button,.secondary-button,.danger-button,.warning-button,.ghost-button{min-height:40px;padding:9px 13px;font-size:14px}
+.main-nav button{min-height:44px;padding:10px 11px}.main-nav button b{font-size:15px}.main-nav button span{font-size:18px}.main-nav button em{font-size:11px}
 .sidebar-foot a,.session-indicator{font-size:13px}
-.topbar{min-height:92px}.topbar-title small{font-size:11px}.topbar-title h2{font-size:26px}.topbar-title p{font-size:14px}
-.view{padding-top:26px}.section-label{font-size:11px}.panel-header h3{font-size:19px}.panel-header p{font-size:14px;line-height:1.5}
-.kpi-card small{font-size:12px}.kpi-card strong{font-size:30px}.kpi-card p{font-size:13px}
+.topbar{min-height:78px;padding:10px 14px}.topbar-title small{font-size:11px}.topbar-title h2{font-size:25px}.topbar-title p{font-size:14px}
+.view{padding:10px 12px 26px!important;max-width:none!important}.page-grid{gap:10px}.two-col,.tool-grid,.players-layout{gap:10px}.panel,.tool-card{padding:13px}
+.section-label{font-size:11px}.panel-header{margin-bottom:11px}.panel-header h3{font-size:19px}.panel-header p{font-size:14px;line-height:1.45}
+.kpi-grid{gap:9px}.kpi-card{padding:13px}.kpi-card small{font-size:12px}.kpi-card strong{font-size:29px}.kpi-card p{font-size:13px}
 .attention-row h4,.audit-row h4{font-size:14px}.attention-row p,.audit-row p,.checkpoint-row p{font-size:13px}
 .status-pill,.chip{font-size:12px;padding:5px 9px}.chip code{font-size:12px}
-.metric-line{padding:11px 0}.metric-line span{font-size:13px}.metric-line b{font-size:14px}
-.players-layout{grid-template-columns:360px minmax(0,1fr)}
-.players-filter input,.players-filter select{min-height:44px;font-size:14px;padding:10px 12px}
-.player-list button{padding:11px}.player-list b{font-size:14px}.player-list small{font-size:12px}.player-list em{font-size:11px}.mini-avatar{width:40px;height:40px}
+.metric-line{padding:10px 0}.metric-line span{font-size:13px}.metric-line b{font-size:14px}
+.players-layout{grid-template-columns:340px minmax(0,1fr);align-items:start}
+.players-filter input,.players-filter select{min-height:42px;font-size:14px;padding:9px 11px}
+.player-list button{padding:10px}.player-list b{font-size:14px}.player-list small{font-size:12px}.player-list em{font-size:11px}.mini-avatar{width:40px;height:40px}
 .player-title h3{font-size:23px}.player-title p,.player-title small{font-size:13px}.player-kpis small{font-size:11px}.player-kpis b{font-size:14px}
-.player-tabs{gap:6px;padding:14px 0 12px}.player-tabs button{min-height:40px;padding:9px 12px;font-size:13px}
-.context-bar label,.form-grid label{font-size:12px}.context-bar input,.inline-form input,.inline-form select,.form-grid input,.form-grid select,.form-grid textarea{min-height:42px;font-size:14px;padding:9px 11px}
-.tool-head h4{font-size:17px}.tool-head p{font-size:13px;line-height:1.5}.tool-head strong{font-size:14px}.help{font-size:12px;line-height:1.55}
+.player-tabs{gap:5px;padding:10px 0 9px}.player-tabs button{min-height:38px;padding:8px 11px;font-size:13px}
+.context-bar{padding:9px}.context-bar label,.form-grid label{font-size:12px}.context-bar input,.inline-form input,.inline-form select,.form-grid input,.form-grid select,.form-grid textarea{min-height:40px;font-size:14px;padding:8px 10px}
+.tool-head h4{font-size:17px}.tool-head p{font-size:13px;line-height:1.45}.tool-head strong{font-size:14px}.help{font-size:12px;line-height:1.5}
 .health-item code{font-size:12px}.health-item span{font-size:13px}.source-box small{font-size:11px}.source-box strong{font-size:18px}
-.data-table th,.data-table td{font-size:13px;padding:10px 11px}
+.data-table th,.data-table td{font-size:13px;padding:9px 10px}
 
-/* Status messages must never change document geometry. */
+/* Operational messages are overlays and never alter page geometry. */
 .global-status{
-  position:fixed;z-index:1600;right:24px;top:104px;width:min(520px,calc(100vw - 48px));
+  position:fixed!important;z-index:1600;right:18px;top:88px;width:min(520px,calc(100vw - 36px));
   min-height:0!important;margin:0!important;padding:0!important;pointer-events:none;
   border:0;border-radius:12px;background:transparent;box-shadow:none;
   font-size:14px;font-weight:750;line-height:1.45;opacity:0;transform:translateY(-8px);
   transition:opacity .18s ease,transform .18s ease;
 }
-.global-status:not(:empty){
+.global-status:not(.ux-status-visible){padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;opacity:0!important}
+.global-status.ux-status-visible:not(:empty){
   padding:12px 14px!important;border:1px solid #25566a;background:#102431;color:#9cecf4;
-  box-shadow:0 16px 50px rgba(0,0,0,.34);opacity:1;transform:none;
+  box-shadow:0 16px 50px rgba(0,0,0,.34);opacity:1!important;transform:none;
 }
-.global-status.danger:not(:empty){border-color:#6b3345;background:#2a151d;color:#ff9aaa}
+.global-status.danger.ux-status-visible:not(:empty){border-color:#6b3345;background:#2a151d;color:#ff9aaa}
 
-/* Quick player switching lives with the entity being managed. */
-.admin-player-quick-switch{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0 2px;padding:10px;border:1px solid var(--line);border-radius:12px;background:#0d1726}
+/* Players list follows the page scroll; no nested scroll container. */
+.players-sidebar{position:static!important;top:auto!important;max-height:none!important;overflow:visible!important}
+.player-list{overflow:visible!important;max-height:none!important}
+
+/* Quick player switching lives with the player card. */
+.admin-player-quick-switch{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:8px 0 0;padding:8px 9px;border:1px solid var(--line);border-radius:11px;background:#0d1726}
 .admin-player-quick-switch label{color:var(--muted);font-size:12px;font-weight:800}
-.admin-player-quick-switch select{min-width:220px;max-width:420px;min-height:40px;flex:1;border:1px solid var(--line);border-radius:9px;background:#0a1422;color:var(--text);padding:8px 10px;font-size:14px}
-.admin-player-quick-switch button{min-width:42px}
+.admin-player-quick-switch select{min-width:220px;max-width:520px;min-height:38px;flex:1;border:1px solid var(--line);border-radius:9px;background:#0a1422;color:var(--text);padding:7px 9px;font-size:14px}
+.admin-player-quick-switch button{min-width:40px}
 
-/* Human-readable structured data. Raw JSON is relegated to technical disclosure. */
-.admin-friendly-data{display:grid;gap:10px}
-.admin-data-group{border:1px solid #223149;border-radius:11px;background:#0d1726;padding:12px}
-.admin-data-group>h5{margin:0 0 9px;font-size:14px;color:#e9f1fb}
-.admin-data-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 12px}
-.admin-data-row{display:grid;grid-template-columns:minmax(120px,.8fr) minmax(0,1.2fr);gap:10px;align-items:start;padding:7px 0;border-bottom:1px solid #1c2a3d}
-.admin-data-row:last-child{border-bottom:0}.admin-data-key{color:#9fb0c4;font-size:12px}.admin-data-value{color:#edf3fb;font-size:13px;font-weight:650;overflow-wrap:anywhere}
-.admin-data-list{display:flex;flex-wrap:wrap;gap:6px}.admin-data-empty{color:var(--muted);font-size:13px}
-.admin-data-nested{margin-top:8px;padding-left:10px;border-left:2px solid #28405b}
-.technical-json{margin-top:10px;border:1px solid var(--line);border-radius:10px;background:#0b1421}
-.technical-json>summary{cursor:pointer;padding:10px 12px;color:#91a5bc;font-size:12px;font-weight:800;user-select:none}
+/* Leaderboards use tabs rather than an operator-facing select. */
+.board-toolbar{align-items:center;gap:8px}.ux-native-board-select{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.leaderboard-tabs{display:flex;gap:5px;flex:1;overflow-x:auto;padding:2px 0 5px;scrollbar-width:thin}
+.leaderboard-tabs button{white-space:nowrap;border:1px solid var(--line);border-radius:9px;background:#101a2a;color:#a9b8ca;min-height:36px;padding:7px 11px;font:800 13px/1.2 inherit}
+.leaderboard-tabs button:hover{background:#152238;color:#fff}.leaderboard-tabs button.active{background:#1d3150;border-color:#3c5e88;color:#fff;box-shadow:inset 0 -2px 0 var(--accent)}
+
+/* Human-readable structured data. Raw data is an optional technical disclosure. */
+.admin-friendly-data{display:grid;gap:9px;min-width:0}
+.admin-data-group{border:1px solid #223149;border-radius:10px;background:#0d1726;padding:10px}
+.admin-data-group>h5{margin:0 0 7px;font-size:14px;color:#e9f1fb}
+.admin-data-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 12px;min-width:0}
+.admin-data-row{display:grid;grid-template-columns:minmax(125px,.9fr) minmax(0,1.1fr);gap:9px;align-items:start;padding:6px 0;border-bottom:1px solid #1c2a3d;min-width:0}
+.admin-data-row:last-child{border-bottom:0}.admin-data-key{color:#a8bad0;font-size:13px}.admin-data-value{color:#edf3fb;font-size:14px;font-weight:700;overflow-wrap:anywhere;min-width:0}
+.admin-data-list{display:flex;flex-wrap:wrap;gap:5px;min-width:0}.admin-data-empty{color:var(--muted);font-size:13px}
+.admin-data-nested{margin-top:7px;padding-left:10px;border-left:2px solid #315477;min-width:0}.admin-data-nested>.admin-data-key{display:block;margin-bottom:6px;font-weight:800;color:#b8c9dc}
+.admin-record-list{grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.technical-json{margin-top:9px;border:1px solid var(--line);border-radius:10px;background:#0b1421}
+.technical-json>summary{cursor:pointer;padding:9px 11px;color:#91a5bc;font-size:12px;font-weight:800;user-select:none}
 .technical-json .json-box{border:0;border-top:1px solid var(--line);border-radius:0;max-height:260px;font-size:12px}
 .admin-mode-data{display:grid;gap:5px}.admin-mode-data .admin-data-row{padding:4px 0}
 
-/* Recovery JSON is an expert escape hatch, not the primary UI. */
-.admin-technical-recovery{border:1px solid #3b4658;border-radius:11px;background:#101722;margin-top:12px}
-.admin-technical-recovery>summary{padding:12px 14px;cursor:pointer;font-weight:850;font-size:13px;color:#c7d4e5}
-.admin-technical-recovery .field{padding:0 14px 14px}.admin-technical-recovery textarea{font-size:13px!important;line-height:1.55!important}
+/* Full-snapshot editing stays available only as an expert escape hatch. */
+.admin-technical-recovery{border:1px solid #3b4658;border-radius:11px;background:#101722;margin-top:10px}
+.admin-technical-recovery>summary{padding:11px 13px;cursor:pointer;font-weight:850;font-size:13px;color:#c7d4e5}
+.admin-technical-recovery .field{padding:0 13px 13px}.admin-technical-recovery textarea{font-size:13px!important;line-height:1.5!important}
 
-@media(max-width:1100px){.players-layout{grid-template-columns:310px minmax(0,1fr)}.admin-data-grid{grid-template-columns:1fr}}
+/* Desktop navigation can collapse to an icon rail. */
+.sidebar-collapse-toggle{margin-left:auto;flex:0 0 auto}
+.sidebar-collapsed .app-shell{grid-template-columns:68px minmax(0,1fr)}
+.sidebar-collapsed .sidebar{padding-left:8px;padding-right:8px}
+.sidebar-collapsed .sidebar-brand{justify-content:center;gap:4px;padding-left:0;padding-right:0}
+.sidebar-collapsed .sidebar-brand>div:nth-child(2),.sidebar-collapsed .main-nav button b,.sidebar-collapsed .main-nav button em,.sidebar-collapsed .sidebar-foot{display:none!important}
+.sidebar-collapsed .sidebar-brand .brand-mark{display:none}
+.sidebar-collapsed .sidebar-collapse-toggle{margin:0 auto}
+.sidebar-collapsed .main-nav button{display:flex;justify-content:center;padding:9px;min-height:44px}
+.sidebar-collapsed .main-nav button span{font-size:20px;margin:0}
+
+@media(max-width:1100px){.players-layout{grid-template-columns:300px minmax(0,1fr)}.admin-data-grid{grid-template-columns:1fr}.admin-record-list{grid-template-columns:1fr}}
 @media(max-width:860px){
-  body{font-size:15px}.topbar-title h2{font-size:23px}.topbar-title p{font-size:13px}
-  .global-status{right:12px;top:84px;width:calc(100vw - 24px)}
+  body{font-size:15px}.topbar-title h2{font-size:23px}.topbar-title p{font-size:13px}.view{padding:8px 8px 22px!important}
+  .global-status{right:10px;top:80px;width:calc(100vw - 20px)}
   .admin-player-quick-switch select{min-width:0;width:100%;order:3;flex-basis:100%}
+  .sidebar-collapse-toggle{display:none!important}.sidebar-collapsed .app-shell{grid-template-columns:1fr}.sidebar-collapsed .sidebar-brand>div:nth-child(2),.sidebar-collapsed .main-nav button b,.sidebar-collapsed .main-nav button em,.sidebar-collapsed .sidebar-foot{display:initial!important}.sidebar-collapsed .sidebar-brand .brand-mark{display:grid}.sidebar-collapsed .main-nav button{display:grid;justify-content:initial}
 }
