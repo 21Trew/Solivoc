@@ -54,7 +54,9 @@ jobs:
           test -f dist-frontend/js/runtime-config.js
           test -f dist-frontend/sw.js
 
-          grep -q 'adminBackup' dist-frontend/js/admin.js
+          grep -q 'SECTION_META' dist-frontend/js/admin.js
+          grep -q 'data-section="players"' dist-frontend/admin.html
+          grep -q 'adminConfirmDialog' dist-frontend/admin.html
           grep -q 'rel="canonical" href="https://solivoc.ru/"' dist-frontend/index.html
           grep -q 'application/ld+json' dist-frontend/index.html
           grep -q 'Sitemap: https://solivoc.ru/sitemap.xml' dist-frontend/robots.txt
@@ -113,12 +115,14 @@ jobs:
             -H 'Cache-Control: no-cache' \
             "https://solivoc.ru/admin.html?ci=${GITHUB_SHA}")"
           printf '%s' "$admin_html" | grep -q "js/admin.js?v=${BUILD_ID}"
+          printf '%s' "$admin_html" | grep -q 'data-section="players"'
+          printf '%s' "$admin_html" | grep -q 'adminConfirmDialog'
 
           admin_js="$(curl --fail --silent --show-error \
             --retry 10 --retry-delay 3 --retry-all-errors \
             -H 'Cache-Control: no-cache' \
             "https://solivoc.ru/js/admin.js?ci=${GITHUB_SHA}")"
-          printf '%s' "$admin_js" | grep -q 'adminBackup'
+          printf '%s' "$admin_js" | grep -q 'SECTION_META'
 
           runtime_config="$(curl --fail --silent --show-error \
             --retry 10 --retry-delay 3 --retry-all-errors \
