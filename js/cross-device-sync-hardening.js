@@ -19,8 +19,9 @@
         signal: controller.signal,
       });
       const data = await response.json().catch(() => ({}));
-      if (response.status === 401 || !data?.authenticated) return null;
+      if (response.status === 401) return null;
       if (!response.ok) throw new Error(data?.error || `http_${response.status}`);
+      if (!data?.authenticated) return null;
       return data;
     } finally {
       clearTimeout(timer);
@@ -57,19 +58,19 @@
         && normalizeEmail(accountState?.email) === normalizedEmail;
       const localBeforeLogin = knownSameAccount ? clone(profile) : null;
 
-      // Existing-account login must not write this device's local profile into the
-      // cloud before the server profile is downloaded. This is essential for a
-      // fresh second phone/browser.
-      const data = await accountRequest("/api/auth", {
+      // На новом втором устройстве вход сначала только читает облачный профиль и
+      // не имеет права записывать локальный гостевой профиль в аккаунт.
+      const data = await accountRequest("/api/account-login", {
         method: "POST",
-        body: JSON.stringify({ action: "login", email, password, profile: {} }),
+        body: JSON.stringify({ email, password }),
       });
 
       saveAccountIdentity(data.user, "signed_in", data.version);
       if (knownSameAccount && localBeforeLogin) {
         const reconciled = mergeAccountProfiles(localBeforeLogin, data.profile || {});
         applyAccountCloudProfile(reconciled, { version: data.version });
-        // This device may contain legitimate offline progress for the same account.
+        // Если это прежнее устройство того же аккаунта, его настоящий офлайн-
+        // прогресс после загрузки облака можно безопасно отправить обычной синхронизацией.
         scheduleAccountSync?.(250);
       } else {
         applyAccountCloudProfile(data.profile, { version: data.version });
@@ -109,8 +110,9 @@
         scheduleAccountSync?.(1500);
         return true;
       } catch (error) {
-        // A slow or temporarily unavailable mobile network must not silently turn
-        // into a permanent stale session. Keep the local session state and retry.
+        // Медленная или временно недоступная мобильная сеть не должна оставлять
+        // устройство навсегда на устаревшей локальной копии. Сессию не сбрасываем,
+        // а повторяем загрузку облака позднее.
         setTimeout(() => refreshAccountFromCloud({ force: true }), 5000);
         return false;
       }
