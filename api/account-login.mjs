@@ -1,11 +1,9 @@
 import {
   checkRateLimit,
   cleanEmail,
-  cloudProfileVersion,
   createSession,
   emailKey,
   json,
-  readCloudProfile,
   readJsonKey,
   sameOrigin,
   sessionCookie,
@@ -14,9 +12,12 @@ import {
   validPassword,
   verifySecret,
 } from "./_auth-lib.mjs";
+import { mutateCloudProfileAtomic } from "./_profile-sync-lib.mjs";
+import { applyCampaignFloor, leaderboardCampaignFloor, profileBehindCampaignFloor } from "./_campaign-floor-lib.mjs";
 import { redis } from "./_push-lib.mjs";
 
 const DUMMY_PASSWORD_HASH = "s2:5elS335qSlz8bHnQ8mH52A:LG4krNk_ezI-y9ZCSPG5fqC8HU-Y9Sn48nrdSDWm0D_NtWHr2bRktSw3Rak_n4Eth9HE_JUrE3wi3joSatEm-A";
+const leaderboardPlayerKey = (userId) => `worditaire:leaderboard:player:${String(userId || "").slice(0, 64)}`;
 
 function requestSessionCookie(request, token, maxAge) {
   const base = sessionCookie(token, maxAge).replace(/;\s*Secure/gi, "");
@@ -51,6 +52,20 @@ function gameDayId(now = Date.now()) {
   return new Date(now).toISOString().slice(0, 10);
 }
 
+async function readLoginProfile(userId) {
+  const raw = await redis(["GET", leaderboardPlayerKey(userId)]).catch(() => null);
+  let floor = { levels: 0, stars: 0 };
+  try {
+    const record = raw ? JSON.parse(raw) : null;
+    if (record?.account) floor = leaderboardCampaignFloor(record);
+  } catch {}
+  const result = await mutateCloudProfileAtomic(userId, ({ current }) => {
+    if (!profileBehindCampaignFloor(current, floor)) return current;
+    return applyCampaignFloor(current, floor);
+  });
+  return result;
+}
+
 export async function POST(request) {
   try {
     if (!sameOrigin(request)) return json({ error: "bad_origin" }, 403);
@@ -70,25 +85,25 @@ export async function POST(request) {
       && await verifySecret(body.password, user?.passwordHash || DUMMY_PASSWORD_HASH);
     if (!user || !passwordMatches) return json({ error: "invalid_credentials" }, 401);
 
-    // Вход на втором устройстве не должен менять облачный профиль. Сначала
-    // читаем актуальное состояние аккаунта, а запись выполняется позже обычной
-    // синхронизацией уже после объединения данных на клиенте.
-    const [profile, version] = await Promise.all([
-      readCloudProfile(existingId),
-      cloudProfileVersion(existingId),
-    ]);
+    // Вход на втором устройстве не принимает профиль клиента. Перед выдачей
+    // профиля дополнительно поднимаем кампанию до уже подтверждённого сервером
+    // результата лидерборда, если облачная копия почему-то отстала.
+    const resolved = await readLoginProfile(existingId);
     const token = await createSession(existingId, user.sessionVersion);
     const now = Date.now();
     return json({
       ok: true,
       user: publicUser(user),
-      profile,
-      version,
+      profile: resolved.profile,
+      version: resolved.version,
       serverNow: now,
       gameDayId: gameDayId(now),
     }, 200, { "Set-Cookie": requestSessionCookie(request, token) });
   } catch (error) {
     if (error?.message === "REDIS_NOT_CONFIGURED") return json({ error: "redis_not_configured" }, 503);
+    if (["profile_busy", "profile_lock_lost"].includes(error?.message) || ["profile_busy", "profile_lock_lost"].includes(error?.code)) {
+      return json({ error: error?.code || error?.message, retryable: true }, 409);
+    }
     console.error("account login", error);
     return json({ error: "server_error" }, 500);
   }
