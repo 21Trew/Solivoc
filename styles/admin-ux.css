@@ -1,0 +1,74 @@
+:root{
+  --admin-font:16px;
+  --admin-small:13px;
+  --admin-tiny:12px;
+}
+
+body{font-size:var(--admin-font);line-height:1.5}
+.auth-card label,.field{font-size:14px}
+.auth-card input,.field input,.field select,.field textarea,.control{min-height:46px;padding:11px 13px;font-size:15px}
+.primary-button,.secondary-button,.danger-button,.warning-button,.ghost-button{min-height:42px;padding:10px 14px;font-size:14px}
+.main-nav button{min-height:46px;padding:11px 12px}
+.main-nav button b{font-size:15px}.main-nav button span{font-size:18px}.main-nav button em{font-size:11px}
+.sidebar-foot a,.session-indicator{font-size:13px}
+.topbar{min-height:92px}.topbar-title small{font-size:11px}.topbar-title h2{font-size:26px}.topbar-title p{font-size:14px}
+.view{padding-top:26px}.section-label{font-size:11px}.panel-header h3{font-size:19px}.panel-header p{font-size:14px;line-height:1.5}
+.kpi-card small{font-size:12px}.kpi-card strong{font-size:30px}.kpi-card p{font-size:13px}
+.attention-row h4,.audit-row h4{font-size:14px}.attention-row p,.audit-row p,.checkpoint-row p{font-size:13px}
+.status-pill,.chip{font-size:12px;padding:5px 9px}.chip code{font-size:12px}
+.metric-line{padding:11px 0}.metric-line span{font-size:13px}.metric-line b{font-size:14px}
+.players-layout{grid-template-columns:360px minmax(0,1fr)}
+.players-filter input,.players-filter select{min-height:44px;font-size:14px;padding:10px 12px}
+.player-list button{padding:11px}.player-list b{font-size:14px}.player-list small{font-size:12px}.player-list em{font-size:11px}.mini-avatar{width:40px;height:40px}
+.player-title h3{font-size:23px}.player-title p,.player-title small{font-size:13px}.player-kpis small{font-size:11px}.player-kpis b{font-size:14px}
+.player-tabs{gap:6px;padding:14px 0 12px}.player-tabs button{min-height:40px;padding:9px 12px;font-size:13px}
+.context-bar label,.form-grid label{font-size:12px}.context-bar input,.inline-form input,.inline-form select,.form-grid input,.form-grid select,.form-grid textarea{min-height:42px;font-size:14px;padding:9px 11px}
+.tool-head h4{font-size:17px}.tool-head p{font-size:13px;line-height:1.5}.tool-head strong{font-size:14px}.help{font-size:12px;line-height:1.55}
+.health-item code{font-size:12px}.health-item span{font-size:13px}.source-box small{font-size:11px}.source-box strong{font-size:18px}
+.data-table th,.data-table td{font-size:13px;padding:10px 11px}
+
+/* Status messages must never change document geometry. */
+.global-status{
+  position:fixed;z-index:1600;right:24px;top:104px;width:min(520px,calc(100vw - 48px));
+  min-height:0!important;margin:0!important;padding:0!important;pointer-events:none;
+  border:0;border-radius:12px;background:transparent;box-shadow:none;
+  font-size:14px;font-weight:750;line-height:1.45;opacity:0;transform:translateY(-8px);
+  transition:opacity .18s ease,transform .18s ease;
+}
+.global-status:not(:empty){
+  padding:12px 14px!important;border:1px solid #25566a;background:#102431;color:#9cecf4;
+  box-shadow:0 16px 50px rgba(0,0,0,.34);opacity:1;transform:none;
+}
+.global-status.danger:not(:empty){border-color:#6b3345;background:#2a151d;color:#ff9aaa}
+
+/* Quick player switching lives with the entity being managed. */
+.admin-player-quick-switch{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0 2px;padding:10px;border:1px solid var(--line);border-radius:12px;background:#0d1726}
+.admin-player-quick-switch label{color:var(--muted);font-size:12px;font-weight:800}
+.admin-player-quick-switch select{min-width:220px;max-width:420px;min-height:40px;flex:1;border:1px solid var(--line);border-radius:9px;background:#0a1422;color:var(--text);padding:8px 10px;font-size:14px}
+.admin-player-quick-switch button{min-width:42px}
+
+/* Human-readable structured data. Raw JSON is relegated to technical disclosure. */
+.admin-friendly-data{display:grid;gap:10px}
+.admin-data-group{border:1px solid #223149;border-radius:11px;background:#0d1726;padding:12px}
+.admin-data-group>h5{margin:0 0 9px;font-size:14px;color:#e9f1fb}
+.admin-data-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 12px}
+.admin-data-row{display:grid;grid-template-columns:minmax(120px,.8fr) minmax(0,1.2fr);gap:10px;align-items:start;padding:7px 0;border-bottom:1px solid #1c2a3d}
+.admin-data-row:last-child{border-bottom:0}.admin-data-key{color:#9fb0c4;font-size:12px}.admin-data-value{color:#edf3fb;font-size:13px;font-weight:650;overflow-wrap:anywhere}
+.admin-data-list{display:flex;flex-wrap:wrap;gap:6px}.admin-data-empty{color:var(--muted);font-size:13px}
+.admin-data-nested{margin-top:8px;padding-left:10px;border-left:2px solid #28405b}
+.technical-json{margin-top:10px;border:1px solid var(--line);border-radius:10px;background:#0b1421}
+.technical-json>summary{cursor:pointer;padding:10px 12px;color:#91a5bc;font-size:12px;font-weight:800;user-select:none}
+.technical-json .json-box{border:0;border-top:1px solid var(--line);border-radius:0;max-height:260px;font-size:12px}
+.admin-mode-data{display:grid;gap:5px}.admin-mode-data .admin-data-row{padding:4px 0}
+
+/* Recovery JSON is an expert escape hatch, not the primary UI. */
+.admin-technical-recovery{border:1px solid #3b4658;border-radius:11px;background:#101722;margin-top:12px}
+.admin-technical-recovery>summary{padding:12px 14px;cursor:pointer;font-weight:850;font-size:13px;color:#c7d4e5}
+.admin-technical-recovery .field{padding:0 14px 14px}.admin-technical-recovery textarea{font-size:13px!important;line-height:1.55!important}
+
+@media(max-width:1100px){.players-layout{grid-template-columns:310px minmax(0,1fr)}.admin-data-grid{grid-template-columns:1fr}}
+@media(max-width:860px){
+  body{font-size:15px}.topbar-title h2{font-size:23px}.topbar-title p{font-size:13px}
+  .global-status{right:12px;top:84px;width:calc(100vw - 24px)}
+  .admin-player-quick-switch select{min-width:0;width:100%;order:3;flex-basis:100%}
+}
