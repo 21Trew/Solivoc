@@ -14,17 +14,9 @@ const buildId = String(process.env.GITHUB_SHA || process.env.SOLIVOC_BUILD_ID ||
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 
-for (const dir of staticDirs) {
-  await cp(path.join(root, dir), path.join(out, dir), { recursive: true });
-}
-for (const file of rootFiles) {
-  await cp(path.join(root, file), path.join(out, file));
-}
-for (const entry of await readdir(root)) {
-  if (entry.endsWith(".webmanifest")) {
-    await cp(path.join(root, entry), path.join(out, entry));
-  }
-}
+for (const dir of staticDirs) await cp(path.join(root, dir), path.join(out, dir), { recursive: true });
+for (const file of rootFiles) await cp(path.join(root, file), path.join(out, file));
+for (const entry of await readdir(root)) if (entry.endsWith(".webmanifest")) await cp(path.join(root, entry), path.join(out, entry));
 
 const indexPath = path.join(out, "index.html");
 let indexHtml = await readFile(indexPath, "utf8");
@@ -84,7 +76,7 @@ await writeFile(indexPath, indexHtml, "utf8");
 
 const adminPath = path.join(out, "admin.html");
 let adminHtml = await readFile(adminPath, "utf8");
-for (const src of ["./js/admin.js", "./js/admin-mail.js", "./styles/admin-mail.css"]) {
+for (const src of ["./js/admin.js", "./js/admin-mail.js", "./js/admin-recovery.js", "./styles/admin-mail.css", "./styles/admin-recovery.css"]) {
   const escaped = src.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   adminHtml = adminHtml.replace(new RegExp(`(${escaped})(?:\\?v=[^\"]*)?`), `$1?v=${buildId}`);
 }

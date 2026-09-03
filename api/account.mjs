@@ -3,6 +3,7 @@ import { redis } from "./_push-lib.mjs";
 import { mergeEntityProgressDomains } from "./_progression-merge-lib.mjs";
 import { mergeMascotDailySnapshots } from "./_v34-profile-merge-lib.mjs";
 import { mergeCloudProfileAtomic } from "./_profile-sync-lib.mjs";
+import { reconcileAdminRecoveryDomains } from "./_admin-recovery-lib.mjs";
 
 const SESSION_REFRESH_TTL = 60 * 60 * 24 * 30;
 
@@ -85,7 +86,8 @@ export async function POST(request) {
         Object.assign(profile, mergeEntityProgressDomains(current, incoming));
         const mascotDaily = mergeMascotDailySnapshots(current.mascotDaily, incoming.mascotDaily);
         if (mascotDaily?.date) profile.mascotDaily = mascotDaily;
-        return reconcileCompletionLedger(current, incoming, profile);
+        reconcileCompletionLedger(current, incoming, profile);
+        return reconcileAdminRecoveryDomains(current, incoming, profile);
       },
     });
     await refreshSession(session);

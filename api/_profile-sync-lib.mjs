@@ -60,6 +60,24 @@ async function persistProfileAndVersion(userId, profile, lock) {
   return result || 1;
 }
 
+export async function mutateCloudProfileAtomic(userId, mutator) {
+  if (typeof mutator !== "function") throw new TypeError("mutator_required");
+  const lock = await acquireProfileLock(userId);
+  try {
+    const [current, currentVersion] = await Promise.all([
+      readCloudProfile(userId),
+      cloudProfileVersion(userId),
+    ]);
+    let next = await mutator({ current, currentVersion });
+    if (!next || typeof next !== "object" || Array.isArray(next)) next = current || {};
+    next = sanitizeProfile(next, userId);
+    const version = await persistProfileAndVersion(userId, next, lock);
+    return { profile: next, version, previousVersion: currentVersion };
+  } finally {
+    await releaseProfileLock(lock);
+  }
+}
+
 export async function mergeCloudProfileAtomic(
   userId,
   incoming,

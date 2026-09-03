@@ -9,6 +9,7 @@
   <title>Словасьянс · Админка</title>
   <link rel="stylesheet" href="./styles/admin.css">
   <link rel="stylesheet" href="./styles/admin-mail.css">
+  <link rel="stylesheet" href="./styles/admin-recovery.css">
 </head>
 <body>
   <main class="admin-shell">
@@ -52,6 +53,56 @@
       </div>
       <div id="adminStatus" class="admin-status" role="status" aria-live="polite"></div>
       <div id="adminSummary" class="admin-summary"></div>
+
+      <section id="adminRecovery" class="admin-recovery" hidden>
+        <div class="admin-recovery-head">
+          <div>
+            <h2>Восстановление прогресса</h2>
+            <p id="adminRecoveryPlayer"></p>
+          </div>
+          <div class="admin-recovery-actions">
+            <button id="adminRecoveryReload" type="button">Обновить профиль</button>
+            <button id="adminRecoveryClose" type="button">Закрыть</button>
+          </div>
+        </div>
+        <div id="adminRecoveryStats" class="admin-recovery-grid"></div>
+        <div id="adminRecoveryStatus" class="admin-recovery-status" role="status" aria-live="polite"></div>
+
+        <label>Причина восстановления
+          <input id="adminRecoveryReason" maxlength="240" placeholder="Например: потеря прогресса после синхронизации" required>
+        </label>
+
+        <h3>Ежедневный и периодический прогресс</h3>
+        <form id="adminRecoveryDailyForm" class="admin-recovery-form">
+          <div class="admin-recovery-fields">
+            <label>Дней подряд<input id="recoveryCurrentStreak" type="number" min="0" max="100000"></label>
+            <label>Лучшая серия<input id="recoveryBestStreak" type="number" min="0" max="100000"></label>
+            <label>Последний день<input id="recoveryLastDate" type="date"></label>
+            <label>Ежедневных пройдено<input id="recoveryDailyCompleted" type="number" min="0" max="100000"></label>
+          </div>
+          <label>Даты завершённых ежедневных раскладов<textarea id="recoveryCompletedDates" spellcheck="false"></textarea></label>
+          <label>Звёзды ежедневных раскладов<textarea id="recoveryDailyStars" spellcheck="false"></textarea></label>
+          <label>Ежедневные задания<textarea id="recoveryDailyQuests" spellcheck="false"></textarea></label>
+          <label>Ежедневные задания маскота<textarea id="recoveryMascotDaily" spellcheck="false"></textarea></label>
+          <div class="admin-recovery-fields">
+            <label>Недельное задание<textarea id="recoveryWeekly" spellcheck="false"></textarea></label>
+            <label>Месячное задание<textarea id="recoveryMonthly" spellcheck="false"></textarea></label>
+          </div>
+          <button type="submit">Восстановить ежедневный прогресс</button>
+        </form>
+
+        <h3>Полное восстановление игрового прогресса</h3>
+        <p class="admin-recovery-note">Здесь можно вернуть уровни, звёзды, опыт, достижения, коллекции, маскотов, ежедневные и периодические задания и другие игровые данные. Настройки устройства, пароль и данные авторизации сюда не входят.</p>
+        <form id="adminRecoverySnapshotForm" class="admin-recovery-form">
+          <textarea id="recoveryFullSnapshot" spellcheck="false"></textarea>
+          <button type="submit">Применить снимок прогресса</button>
+        </form>
+
+        <h3>Контрольные точки</h3>
+        <p class="admin-recovery-note">Перед каждым восстановлением сервер автоматически сохраняет предыдущее состояние. Его можно вернуть отсюда.</p>
+        <div id="adminRecoveryCheckpoints" class="admin-recovery-checkpoints"></div>
+      </section>
+
       <div class="admin-table-wrap">
         <table>
           <thead><tr><th>Игрок</th><th>Почта</th><th>ID</th><th>Уровни</th><th>Звёзды</th><th>Дуэли</th><th></th></tr></thead>
@@ -65,5 +116,6 @@
   <script src="./js/api-client.js"></script>
   <script src="./js/admin.js"></script>
   <script src="./js/admin-mail.js"></script>
+  <script src="./js/admin-recovery.js"></script>
 </body>
 </html>
