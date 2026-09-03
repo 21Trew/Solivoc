@@ -76,7 +76,7 @@ await writeFile(indexPath, indexHtml, "utf8");
 
 const adminPath = path.join(out, "admin.html");
 let adminHtml = await readFile(adminPath, "utf8");
-for (const src of ["./js/admin.js", "./js/admin-mail.js", "./js/admin-recovery.js", "./styles/admin-mail.css", "./styles/admin-recovery.css"]) {
+for (const src of ["./js/admin.js", "./styles/admin.css", "./js/admin-mail.js", "./js/admin-recovery.js", "./styles/admin-mail.css", "./styles/admin-recovery.css"]) {
   const escaped = src.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   adminHtml = adminHtml.replace(new RegExp(`(${escaped})(?:\\?v=[^\"]*)?`), `$1?v=${buildId}`);
 }
