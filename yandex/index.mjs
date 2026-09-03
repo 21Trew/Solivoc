@@ -86,11 +86,22 @@ async function routeRequest(request) {
     shareUrl.pathname = "/api/duel-share"; shareUrl.search = `?c=${encodeURIComponent(code)}`;
     return duelShare.GET(new Request(shareUrl, { method: "GET", headers: request.headers }));
   }
+
+  // Recovery deliberately stays on /api/admin so the existing credentialed
+  // CORS rule and the admin cookie scoped to /api/admin are both reused.
+  if (url.pathname === "/api/admin" && url.searchParams.get("recovery") === "1") {
+    const methodHandler = adminRecovery[request.method];
+    return typeof methodHandler === "function" ? methodHandler(request) : Response.json({ error: "method_not_allowed" }, { status: 405 });
+  }
+
   if (request.method === "GET" && url.pathname === "/api/admin" && url.searchParams.get("backup") === "1") return backup.GET(request);
   if (url.pathname === "/api/admin/mail") {
     const methodHandler = developerMail[request.method];
     return typeof methodHandler === "function" ? methodHandler(request) : Response.json({ error: "method_not_allowed" }, { status: 405 });
   }
+
+  // Kept for direct-function/backward compatibility. Browser admin traffic uses
+  // /api/admin?recovery=1 because the public gateway exposes one-segment API paths.
   if (url.pathname === "/api/admin/recovery") {
     const methodHandler = adminRecovery[request.method];
     return typeof methodHandler === "function" ? methodHandler(request) : Response.json({ error: "method_not_allowed" }, { status: 405 });
