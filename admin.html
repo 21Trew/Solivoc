@@ -6,116 +6,75 @@
   <meta name="robots" content="noindex,nofollow,noarchive">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.solivoc.ru; object-src 'none'; base-uri 'self'; form-action 'self'">
-  <title>Словасьянс · Админка</title>
+  <title>Словасьянс · Управление</title>
   <link rel="stylesheet" href="./styles/admin.css">
-  <link rel="stylesheet" href="./styles/admin-mail.css">
-  <link rel="stylesheet" href="./styles/admin-recovery.css">
 </head>
 <body>
-  <main class="admin-shell">
-    <header>
+  <section id="adminAuth" class="auth-screen">
+    <form id="adminLoginForm" class="auth-card" autocomplete="on">
+      <div class="brand-mark" aria-hidden="true">С</div>
       <div>
-        <small>СЛОВАСЬЯНС</small>
-        <h1>Админка</h1>
-        <p>Диагностика аккаунтов, прогресса и таблиц лидеров.</p>
+        <small class="eyebrow">СЛОВАСЬЯНС</small>
+        <h1>Управление игрой</h1>
+        <p>Защищённая операторская консоль.</p>
       </div>
-      <a href="/">← В игру</a>
-    </header>
+      <label>Логин<input id="adminLogin" name="username" type="text" autocomplete="username" maxlength="120" required></label>
+      <label>Пароль<span class="password-field"><input id="adminPassword" name="password" type="password" autocomplete="current-password" maxlength="256" required><button id="adminPasswordToggle" type="button" class="text-button">Показать</button></span></label>
+      <button id="adminConnect" class="primary-button" type="submit">Войти</button>
+      <div id="adminLoginStatus" class="inline-status" role="status" aria-live="polite"></div>
+      <a class="back-link" href="/">← Вернуться в игру</a>
+    </form>
+  </section>
 
-    <section id="adminAuth" class="admin-auth">
-      <form id="adminLoginForm" class="admin-login-form" autocomplete="on">
-        <label>
-          Логин
-          <input id="adminLogin" name="username" type="text" autocomplete="username" maxlength="120" required>
-        </label>
-        <label>
-          Пароль
-          <span class="admin-password-field">
-            <input id="adminPassword" name="password" type="password" autocomplete="current-password" maxlength="256" required>
-            <button id="adminPasswordToggle" class="admin-password-toggle" type="button" aria-label="Показать пароль" aria-pressed="false">Показать</button>
-          </span>
-        </label>
-        <button id="adminConnect" type="submit">Войти</button>
-      </form>
-      <div id="adminLoginStatus" class="admin-login-status" role="status" aria-live="polite"></div>
-    </section>
-
-    <section id="adminPanel" hidden>
-      <div class="admin-session-bar">
-        <span>Защищённая админ-сессия активна</span>
-        <button id="adminLogout" type="button">Выйти</button>
+  <div id="adminApp" class="app-shell" hidden>
+    <aside id="adminSidebar" class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-mark small" aria-hidden="true">С</div>
+        <div><small>СЛОВАСЬЯНС</small><strong>Админка</strong></div>
+        <button id="sidebarClose" class="icon-button sidebar-close" type="button" aria-label="Закрыть меню">×</button>
       </div>
-      <div class="admin-actions">
-        <button id="adminBackup" type="button">Скачать резервную копию Redis</button>
-        <button id="adminRepair" type="button">Пересчитать прогресс всех игроков</button>
-        <button id="adminDedupe" type="button">Убрать безопасные дубли лидерборда</button>
-        <button id="adminRefresh" type="button">Обновить данные</button>
+      <nav class="main-nav" aria-label="Разделы админки">
+        <button type="button" data-section="overview"><span>⌂</span><b>Обзор</b></button>
+        <button type="button" data-section="players"><span>♟</span><b>Игроки</b><em id="navPlayerCount"></em></button>
+        <button type="button" data-section="messages"><span>✉</span><b>Сообщения</b></button>
+        <button type="button" data-section="leaderboards"><span>≡</span><b>Лидерборды</b></button>
+        <button type="button" data-section="audit"><span>◷</span><b>Журнал</b></button>
+        <button type="button" data-section="system"><span>⚙</span><b>Система</b></button>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="session-indicator"><i></i><span>Админ-сессия активна</span></div>
+        <a href="/">Открыть игру ↗</a>
+        <button id="adminLogout" type="button" class="secondary-button full">Выйти</button>
       </div>
-      <div id="adminStatus" class="admin-status" role="status" aria-live="polite"></div>
-      <div id="adminSummary" class="admin-summary"></div>
+    </aside>
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
 
-      <section id="adminRecovery" class="admin-recovery" hidden>
-        <div class="admin-recovery-head">
-          <div>
-            <h2>Восстановление прогресса</h2>
-            <p id="adminRecoveryPlayer"></p>
-          </div>
-          <div class="admin-recovery-actions">
-            <button id="adminRecoveryReload" type="button">Обновить профиль</button>
-            <button id="adminRecoveryClose" type="button">Закрыть</button>
-          </div>
+    <main class="workspace">
+      <header class="topbar">
+        <button id="sidebarOpen" class="icon-button menu-button" type="button" aria-label="Открыть меню">☰</button>
+        <div class="topbar-title"><small id="pageEyebrow">УПРАВЛЕНИЕ</small><h2 id="pageTitle">Обзор</h2><p id="pageSubtitle">Состояние игры и быстрые действия.</p></div>
+        <div class="topbar-actions">
+          <button id="globalRefresh" type="button" class="secondary-button">Обновить</button>
         </div>
-        <div id="adminRecoveryStats" class="admin-recovery-grid"></div>
-        <div id="adminRecoveryStatus" class="admin-recovery-status" role="status" aria-live="polite"></div>
+      </header>
+      <div id="adminStatus" class="global-status" role="status" aria-live="polite"></div>
+      <div id="adminView" class="view"></div>
+    </main>
+  </div>
 
-        <label>Причина восстановления
-          <input id="adminRecoveryReason" maxlength="240" placeholder="Например: потеря прогресса после синхронизации" required>
-        </label>
+  <dialog id="adminConfirmDialog" class="confirm-dialog">
+    <form method="dialog" id="adminConfirmForm">
+      <div class="dialog-icon" id="confirmIcon">!</div>
+      <h3 id="confirmTitle">Подтверждение</h3>
+      <p id="confirmText"></p>
+      <label id="confirmPhraseWrap" hidden>Для подтверждения введи <code id="confirmPhraseLabel"></code><input id="confirmPhraseInput" autocomplete="off"></label>
+      <div class="dialog-actions"><button value="cancel" class="secondary-button">Отмена</button><button id="confirmAccept" value="default" class="primary-button">Продолжить</button></div>
+    </form>
+  </dialog>
 
-        <h3>Ежедневный и периодический прогресс</h3>
-        <form id="adminRecoveryDailyForm" class="admin-recovery-form">
-          <div class="admin-recovery-fields">
-            <label>Дней подряд<input id="recoveryCurrentStreak" type="number" min="0" max="100000"></label>
-            <label>Лучшая серия<input id="recoveryBestStreak" type="number" min="0" max="100000"></label>
-            <label>Последний день<input id="recoveryLastDate" type="date"></label>
-            <label>Ежедневных пройдено<input id="recoveryDailyCompleted" type="number" min="0" max="100000"></label>
-          </div>
-          <label>Даты завершённых ежедневных раскладов<textarea id="recoveryCompletedDates" spellcheck="false"></textarea></label>
-          <label>Звёзды ежедневных раскладов<textarea id="recoveryDailyStars" spellcheck="false"></textarea></label>
-          <label>Ежедневные задания<textarea id="recoveryDailyQuests" spellcheck="false"></textarea></label>
-          <label>Ежедневные задания маскота<textarea id="recoveryMascotDaily" spellcheck="false"></textarea></label>
-          <div class="admin-recovery-fields">
-            <label>Недельное задание<textarea id="recoveryWeekly" spellcheck="false"></textarea></label>
-            <label>Месячное задание<textarea id="recoveryMonthly" spellcheck="false"></textarea></label>
-          </div>
-          <button type="submit">Восстановить ежедневный прогресс</button>
-        </form>
-
-        <h3>Полное восстановление игрового прогресса</h3>
-        <p class="admin-recovery-note">Здесь можно вернуть уровни, звёзды, опыт, достижения, коллекции, маскотов, ежедневные и периодические задания и другие игровые данные. Настройки устройства, пароль и данные авторизации сюда не входят.</p>
-        <form id="adminRecoverySnapshotForm" class="admin-recovery-form">
-          <textarea id="recoveryFullSnapshot" spellcheck="false"></textarea>
-          <button type="submit">Применить снимок прогресса</button>
-        </form>
-
-        <h3>Контрольные точки</h3>
-        <p class="admin-recovery-note">Перед каждым восстановлением сервер автоматически сохраняет предыдущее состояние. Его можно вернуть отсюда.</p>
-        <div id="adminRecoveryCheckpoints" class="admin-recovery-checkpoints"></div>
-      </section>
-
-      <div class="admin-table-wrap">
-        <table>
-          <thead><tr><th>Игрок</th><th>Почта</th><th>ID</th><th>Уровни</th><th>Звёзды</th><th>Дуэли</th><th></th></tr></thead>
-          <tbody id="adminPlayers"></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
   <script src="./js/host-routing.js"></script>
   <script src="./js/runtime-config.js"></script>
   <script src="./js/api-client.js"></script>
   <script src="./js/admin.js"></script>
-  <script src="./js/admin-mail.js"></script>
-  <script src="./js/admin-recovery.js"></script>
 </body>
 </html>
