@@ -59,8 +59,9 @@ test("unified admin console exposes simple and advanced recovery", () => {
   assert.match(client, /progress_restore_daily/);
   assert.match(client, /progress_restore_snapshot/);
   assert.match(client, /progress_restore_checkpoint/);
-  assert.match(client, /Контрольные точки/);
+  assert.match(client, /КОНТРОЛЬНЫЕ ТОЧКИ/);
   assert.match(client, /Снимок игрового прогресса/);
+  assert.match(client, /data-checkpoint=/);
   assert.match(html, /data-section="players"/);
   assert.match(adminCss, /\.checkpoint-list/);
   assert.match(build, /\.\/styles\/admin\.css/);
