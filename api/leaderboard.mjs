@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
-import { checkRateLimit, currentSession, sameOrigin } from "./_auth-lib.mjs";
+import { checkRateLimit, currentSession, readCloudProfile, sameOrigin } from "./_auth-lib.mjs";
+import { applyCampaignFloor, profileBehindCampaignFloor } from "./_campaign-floor-lib.mjs";
+import { mutateCloudProfileAtomic } from "./_profile-sync-lib.mjs";
 import { redis, redisPipeline } from "./_push-lib.mjs";
 
 const BOARD_LIST = Object.freeze(["stars","levels","daily","marathon","zen","combo","duel","pictures","time","moves","noMistakes","onePass","hardcore"]);
@@ -21,6 +23,18 @@ function scoreFor(board,value){if(board==="time")return value>0?1_000_000_000-va
 function accountKeyFor(session){const email=String(session?.user?.email||"").trim().toLowerCase();return email?createHash("sha256").update(`solivoc-leaderboard:${email}`).digest("hex").slice(0,32):"";}
 function fingerprint(rec={}){return `${cleanName(rec.name).toLowerCase()}|${cleanAvatar(rec.avatar)}`;}
 function cleanDuelStats(v={}){return{matches:Math.floor(num(v.matches,1e7)),wins:Math.floor(num(v.wins,1e7)),losses:Math.floor(num(v.losses,1e7)),draws:Math.floor(num(v.draws,1e7)),gold:Math.floor(num(v.gold,1e7)),silver:Math.floor(num(v.silver,1e7)),bronze:Math.floor(num(v.bronze,1e7)),xp:Math.floor(num(v.xp,1e8)),rating:Math.floor(num(v.rating,1e8))};}
+
+async function syncCampaignFloor(userId, values) {
+  const floor = { levels: Number(values?.levels) || 0, stars: Number(values?.stars) || 0 };
+  if (!floor.levels && !floor.stars) return false;
+  const existing = await readCloudProfile(userId).catch(() => null);
+  if (!existing || !profileBehindCampaignFloor(existing, floor)) return false;
+  await mutateCloudProfileAtomic(userId, ({ current }) => {
+    if (!current || !profileBehindCampaignFloor(current, floor)) return current;
+    return applyCampaignFloor({ ...current }, floor);
+  });
+  return true;
+}
 
 async function readBoard(board){
   const key=boardKey(board),raw=await redis(["ZREVRANGE",key,0,149]),ids=Array.isArray(raw)?raw:[];
@@ -51,6 +65,7 @@ export async function POST(request){
     const session=await currentSession(request);if(!session)return json({error:"unauthorized",message:"Для попадания в лидеры нужен аккаунт"},401);
     const body=await request.json().catch(()=>({})),playerId=cleanId(session.userId);if(!playerId)return json({error:"invalid_player"},400);
     const values=cleanValues(body.values),duelStats=cleanDuelStats(body.duelStats),record={playerId,name:cleanName(body.name),avatar:cleanAvatar(body.avatar),values,duelStats,account:true,accountKey:accountKeyFor(session),updatedAt:Date.now()};
+    await syncCampaignFloor(playerId, values);
     const commands=[["SET",playerKey(playerId),JSON.stringify(record),"EX",90*24*60*60]];
     for(const board of BOARD_LIST){
       const value=values[board];if(value<=0)continue;const key=boardKey(board);
