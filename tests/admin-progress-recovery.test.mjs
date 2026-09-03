@@ -8,6 +8,7 @@ const account = await readFile(new URL("../api/account.mjs", import.meta.url), "
 const gateway = await readFile(new URL("../yandex/index.mjs", import.meta.url), "utf8");
 const html = await readFile(new URL("../admin.html", import.meta.url), "utf8");
 const client = await readFile(new URL("../js/admin-recovery.js", import.meta.url), "utf8");
+const recoveryCss = await readFile(new URL("../styles/admin-recovery.css", import.meta.url), "utf8");
 const build = await readFile(new URL("../scripts/build-frontend.mjs", import.meta.url), "utf8");
 
 test("admin recovery covers daily streaks and daily quests", () => {
@@ -41,21 +42,26 @@ test("old devices cannot overwrite newer admin-restored domains", () => {
   assert.match(account, /reconcileAdminRecoveryDomains\(current, incoming, profile\)/);
 });
 
-test("admin recovery endpoint is protected and routed under admin cookie path", () => {
+test("admin recovery reuses the credentialed one-segment admin route", () => {
   assert.match(endpoint, /currentAdminSession/);
   assert.match(endpoint, /admin-recovery-write/);
-  assert.match(gateway, /\/api\/admin\/recovery/);
+  assert.match(gateway, /url\.pathname === "\/api\/admin" && url\.searchParams\.get\("recovery"\) === "1"/);
   assert.match(gateway, /adminRecovery\[request\.method\]/);
+  assert.match(client, /\/api\/admin\?recovery=1/);
+  assert.doesNotMatch(client, /apiFetch\(`\/api\/admin\/recovery/);
 });
 
-test("admin UI exposes recovery forms and cache-busts their assets", () => {
+test("admin UI exposes recovery in the selected player card", () => {
   assert.match(html, /id="adminRecovery"/);
   assert.match(html, /id="recoveryCurrentStreak"/);
   assert.match(html, /id="recoveryDailyQuests"/);
   assert.match(html, /id="recoveryFullSnapshot"/);
   assert.match(html, /Восстановить ежедневный прогресс/);
+  assert.match(client, /data\.openPlayerRecovery/);
+  assert.match(client, /Восстановить прогресс/);
   assert.match(client, /progress_restore_daily/);
-  assert.match(client, /data-recovery-user/);
+  assert.match(recoveryCss, /position:fixed/);
+  assert.match(recoveryCss, /\.admin-table-wrap\{display:none!important\}/);
   assert.match(build, /admin-recovery\.js/);
   assert.match(build, /admin-recovery\.css/);
 });
