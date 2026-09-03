@@ -2,10 +2,12 @@ import { checkRateLimit, cloudProfileVersion, currentSession, json, readCloudPro
 import { redis } from "./_push-lib.mjs";
 import { mergeEntityProgressDomains } from "./_progression-merge-lib.mjs";
 import { mergeMascotDailySnapshots } from "./_v34-profile-merge-lib.mjs";
-import { mergeCloudProfileAtomic } from "./_profile-sync-lib.mjs";
+import { mergeCloudProfileAtomic, mutateCloudProfileAtomic } from "./_profile-sync-lib.mjs";
 import { reconcileAdminRecoveryDomains } from "./_admin-recovery-lib.mjs";
+import { applyCampaignFloor, leaderboardCampaignFloor, profileBehindCampaignFloor } from "./_campaign-floor-lib.mjs";
 
 const SESSION_REFRESH_TTL = 60 * 60 * 24 * 30;
+const leaderboardPlayerKey = (userId) => `worditaire:leaderboard:player:${String(userId || "").slice(0, 64)}`;
 
 function accountHeaders(session) {
   if (!session?.token) return {};
@@ -47,6 +49,29 @@ function reconcileCompletionLedger(current, incoming, profile) {
   return profile;
 }
 
+async function readCampaignFloor(userId) {
+  const raw = await redis(["GET", leaderboardPlayerKey(userId)]).catch(() => null);
+  if (!raw) return { levels: 0, stars: 0 };
+  try {
+    const record = JSON.parse(raw);
+    if (!record?.account) return { levels: 0, stars: 0 };
+    return leaderboardCampaignFloor(record);
+  } catch {
+    return { levels: 0, stars: 0 };
+  }
+}
+
+async function readProfileWithServerFloor(userId) {
+  const [profile, version, floor] = await Promise.all([
+    readCloudProfile(userId),
+    cloudProfileVersion(userId),
+    readCampaignFloor(userId),
+  ]);
+  if (!profileBehindCampaignFloor(profile, floor)) return { profile, version, repaired: false, floor };
+  const repaired = await mutateCloudProfileAtomic(userId, ({ current }) => applyCampaignFloor(current, floor));
+  return { profile: repaired.profile, version: repaired.version, repaired: true, floor };
+}
+
 export async function GET(request) {
   try {
     if (!(await checkRateLimit(request, "account-read", 300, 900))) return json({ error: "rate_limited" }, 429);
@@ -63,10 +88,21 @@ export async function GET(request) {
       const rows = await redis(["MGET", ...requestedPlayers.map((id) => userKey(id))]);
       return json({ ok: true, players: Object.fromEntries(requestedPlayers.map((id, index) => [id, { deleted: !rows?.[index] }])) }, 200, headers);
     }
-    const [profile, version] = await Promise.all([readCloudProfile(session.userId), cloudProfileVersion(session.userId)]);
-    return json({ ok: true, user: { id: session.user.id, email: session.user.email }, profile, version, serverNow: Date.now(), gameDayId: gameDayId() }, 200, headers);
+    const resolved = await readProfileWithServerFloor(session.userId);
+    return json({
+      ok: true,
+      user: { id: session.user.id, email: session.user.email },
+      profile: resolved.profile,
+      version: resolved.version,
+      serverCampaignRepaired: resolved.repaired,
+      serverNow: Date.now(),
+      gameDayId: gameDayId(),
+    }, 200, headers);
   } catch (error) {
     if (error?.message === "REDIS_NOT_CONFIGURED") return json({ error: "redis_not_configured" }, 503);
+    if (["profile_busy", "profile_lock_lost"].includes(error?.message) || ["profile_busy", "profile_lock_lost"].includes(error?.code)) {
+      return json({ error: error?.code || error?.message, retryable: true }, 409);
+    }
     console.error("account GET", error);
     return json({ error: "server_error" }, 500);
   }
@@ -80,6 +116,7 @@ export async function POST(request) {
     if (!session) return json({ error: "unauthorized" }, 401);
     const body = await request.json().catch(() => ({}));
     const incomingProfile = body.profile && typeof body.profile === "object" ? body.profile : {};
+    const campaignFloor = await readCampaignFloor(session.userId);
     const merged = await mergeCloudProfileAtomic(session.userId, incomingProfile, {
       clientVersion: Number(body.version) || 0,
       finalize: ({ current, incoming, merged: profile }) => {
@@ -87,7 +124,8 @@ export async function POST(request) {
         const mascotDaily = mergeMascotDailySnapshots(current.mascotDaily, incoming.mascotDaily);
         if (mascotDaily?.date) profile.mascotDaily = mascotDaily;
         reconcileCompletionLedger(current, incoming, profile);
-        return reconcileAdminRecoveryDomains(current, incoming, profile);
+        reconcileAdminRecoveryDomains(current, incoming, profile);
+        return applyCampaignFloor(profile, campaignFloor);
       },
     });
     await refreshSession(session);
