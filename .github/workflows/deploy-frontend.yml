@@ -110,38 +110,46 @@ jobs:
           set -euo pipefail
           BUILD_ID="${GITHUB_SHA:0:12}"
 
-          admin_html="$(curl --fail --silent --show-error \
-            --retry 10 --retry-delay 3 --retry-all-errors \
-            -H 'Cache-Control: no-cache' \
-            "https://solivoc.ru/admin.html?ci=${GITHUB_SHA}")"
-          printf '%s' "$admin_html" | grep -q "js/admin.js?v=${BUILD_ID}"
-          printf '%s' "$admin_html" | grep -q 'data-section="players"'
-          printf '%s' "$admin_html" | grep -q 'adminConfirmDialog'
+          fetch() {
+            curl --fail --silent --show-error \
+              --retry 10 --retry-delay 3 --retry-all-errors \
+              -H 'Cache-Control: no-cache' "$1"
+          }
+          require_contains() {
+            local content="$1"
+            local expected="$2"
+            local label="$3"
+            if [[ "$content" != *"$expected"* ]]; then
+              echo "Smoke test failed: ${label} is missing expected marker: ${expected}" >&2
+              exit 1
+            fi
+          }
 
-          admin_js="$(curl --fail --silent --show-error \
-            --retry 10 --retry-delay 3 --retry-all-errors \
-            -H 'Cache-Control: no-cache' \
-            "https://solivoc.ru/js/admin.js?ci=${GITHUB_SHA}")"
-          printf '%s' "$admin_js" | grep -q 'SECTION_META'
+          admin_html="$(fetch "https://solivoc.ru/admin.html?ci=${GITHUB_SHA}")"
+          require_contains "$admin_html" "js/admin.js?v=${BUILD_ID}" "admin.html build id"
+          require_contains "$admin_html" 'data-section="players"' "admin.html navigation"
+          require_contains "$admin_html" 'adminConfirmDialog' "admin.html confirm dialog"
 
-          runtime_config="$(curl --fail --silent --show-error \
-            --retry 10 --retry-delay 3 --retry-all-errors \
-            -H 'Cache-Control: no-cache' \
-            "https://solivoc.ru/js/runtime-config.js?ci=${GITHUB_SHA}")"
-          printf '%s' "$runtime_config" | grep -q 'solivoc-pwa-update-requested-v2'
+          admin_js="$(fetch "https://solivoc.ru/js/admin.js?ci=${GITHUB_SHA}")"
+          require_contains "$admin_js" 'SECTION_META' "admin.js"
 
-          service_worker="$(curl --fail --silent --show-error \
-            --retry 10 --retry-delay 3 --retry-all-errors \
-            -H 'Cache-Control: no-cache' \
-            "https://solivoc.ru/sw.js?ci=${GITHUB_SHA}")"
-          printf '%s' "$service_worker" | grep -q "worditaire-build-${BUILD_ID}"
+          runtime_config="$(fetch "https://solivoc.ru/js/runtime-config.js?ci=${GITHUB_SHA}")"
+          require_contains "$runtime_config" 'solivoc-pwa-update-requested-v2' "runtime-config.js"
 
-          root_html="$(curl --fail --silent --show-error --retry 10 --retry-delay 3 --retry-all-errors -H 'Cache-Control: no-cache' "https://solivoc.ru/?ci=${GITHUB_SHA}")"
-          printf '%s' "$root_html" | grep -q 'rel="canonical" href="https://solivoc.ru/"'
-          printf '%s' "$root_html" | grep -q 'application/ld+json'
+          service_worker="$(fetch "https://solivoc.ru/sw.js?ci=${GITHUB_SHA}")"
+          require_contains "$service_worker" "worditaire-build-${BUILD_ID}" "service worker build id"
 
-          curl --fail --silent --show-error --retry 10 --retry-delay 3 --retry-all-errors "https://solivoc.ru/robots.txt?ci=${GITHUB_SHA}" | grep -q 'Sitemap: https://solivoc.ru/sitemap.xml'
-          curl --fail --silent --show-error --retry 10 --retry-delay 3 --retry-all-errors "https://solivoc.ru/sitemap.xml?ci=${GITHUB_SHA}" | grep -q '<loc>https://solivoc.ru/about.html</loc>'
-          curl --fail --silent --show-error --retry 10 --retry-delay 3 --retry-all-errors "https://solivoc.ru/about.html?ci=${GITHUB_SHA}" | grep -q 'Словасьянс — игра в ассоциации'
+          root_html="$(fetch "https://solivoc.ru/?ci=${GITHUB_SHA}")"
+          require_contains "$root_html" 'rel="canonical" href="https://solivoc.ru/"' "index canonical"
+          require_contains "$root_html" 'application/ld+json' "index structured data"
+
+          robots="$(fetch "https://solivoc.ru/robots.txt?ci=${GITHUB_SHA}")"
+          require_contains "$robots" 'Sitemap: https://solivoc.ru/sitemap.xml' "robots.txt"
+
+          sitemap="$(fetch "https://solivoc.ru/sitemap.xml?ci=${GITHUB_SHA}")"
+          require_contains "$sitemap" '<loc>https://solivoc.ru/about.html</loc>' "sitemap.xml"
+
+          about="$(fetch "https://solivoc.ru/about.html?ci=${GITHUB_SHA}")"
+          require_contains "$about" 'Словасьянс — игра в ассоциации' "about.html"
 
           echo "Production frontend, PWA and SEO files are current."
