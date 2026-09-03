@@ -53,7 +53,8 @@ test("admin UI exposes recovery forms and cache-busts their assets", () => {
   assert.match(html, /id="recoveryCurrentStreak"/);
   assert.match(html, /id="recoveryDailyQuests"/);
   assert.match(html, /id="recoveryFullSnapshot"/);
-  assert.match(client, /Восстановить ежедневный прогресс/);
+  assert.match(html, /Восстановить ежедневный прогресс/);
+  assert.match(client, /progress_restore_daily/);
   assert.match(client, /data-recovery-user/);
   assert.match(build, /admin-recovery\.js/);
   assert.match(build, /admin-recovery\.css/);
