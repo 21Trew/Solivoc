@@ -15,7 +15,8 @@
   const commandId = () => `recovery-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
 
   async function recoveryRequest(query = "", options = {}) {
-    const response = await apiFetch(`/api/admin/recovery${query}`, {
+    const suffix = query ? `&${String(query).replace(/^\?/, "")}` : "";
+    const response = await apiFetch(`/api/admin?recovery=1${suffix}`, {
       ...options,
       cache: "no-store",
       headers: { "Content-Type": "application/json", ...(options.headers || {}) },
@@ -28,6 +29,12 @@
       throw error;
     }
     return data;
+  }
+
+  function setPanelOpen(open) {
+    panel.hidden = !open;
+    document.documentElement.classList.toggle("admin-recovery-open", !!open);
+    panel.setAttribute("aria-hidden", String(!open));
   }
 
   function fillDaily(detail) {
@@ -58,7 +65,7 @@
   function renderDetail(detail) {
     currentDetail = detail;
     selectedUserId = detail.userId;
-    panel.hidden = false;
+    setPanelOpen(true);
     $r("#adminRecoveryPlayer").textContent = `${detail.email || detail.userId} · ${detail.userId}`;
     const s = detail.summary || {};
     $r("#adminRecoveryStats").innerHTML = [
@@ -68,14 +75,17 @@
     fillDaily(detail);
     renderCheckpoints(detail);
     status(`Загружена серверная версия профиля №${detail.version}`);
-    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    $r("#recoveryCurrentStreak")?.focus({ preventScroll: true });
   }
 
   async function openRecovery(userId) {
-    if (!userId) return;
-    status("Загружаю профиль…");
+    userId = String(userId || "").trim();
+    if (!/^u_/.test(userId)) return;
+    selectedUserId = userId;
+    setPanelOpen(true);
+    status("Загружаю серверный профиль…");
     try {
-      const data = await recoveryRequest(`?userId=${encodeURIComponent(userId)}`);
+      const data = await recoveryRequest(`userId=${encodeURIComponent(userId)}`);
       renderDetail(data.detail);
     } catch (error) {
       status(error.message || "Не удалось загрузить профиль.", true);
@@ -103,13 +113,22 @@
       renderDetail(data.detail);
       status(`Готово. Предыдущее состояние сохранено: ${data.checkpoint?.id || "контрольная точка"}`);
       if (typeof refresh === "function") refresh();
+      window.dispatchEvent(new CustomEvent("solivoc-admin-recovery-complete", { detail: { userId: selectedUserId } }));
     } catch (error) {
       status(error.message || "Не удалось восстановить прогресс.", true);
     }
   }
 
-  $r("#adminRecoveryClose")?.addEventListener("click", () => { panel.hidden = true; selectedUserId = ""; currentDetail = null; });
+  function closeRecovery() {
+    setPanelOpen(false);
+    selectedUserId = "";
+    currentDetail = null;
+    status("");
+  }
+
+  $r("#adminRecoveryClose")?.addEventListener("click", closeRecovery);
   $r("#adminRecoveryReload")?.addEventListener("click", () => openRecovery(selectedUserId));
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !panel.hidden) closeRecovery(); });
 
   $r("#adminRecoveryDailyForm")?.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -148,27 +167,41 @@
     runRecovery({ action: "progress_restore_checkpoint", checkpointId: button.dataset.restoreCheckpoint }, "Откатить игровой прогресс к этой контрольной точке? Текущее состояние тоже будет сохранено перед откатом.");
   });
 
-  $r("#adminPlayers")?.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-recovery-user]");
-    if (button) openRecovery(button.dataset.recoveryUser);
+  function detailUserId() {
+    const id = document.querySelector("#adminPlayerDetail .admin-player-title small")?.textContent?.trim() || "";
+    return /^u_/.test(id) ? id : "";
+  }
+
+  function injectRecoveryAction() {
+    const hero = document.querySelector("#adminPlayerDetail .admin-player-hero");
+    if (!hero || hero.querySelector("[data-open-player-recovery]")) return;
+    const userId = detailUserId();
+    if (!userId) return;
+    const title = hero.querySelector(".admin-player-title");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "admin-player-recovery-primary";
+    button.dataset.openPlayerRecovery = userId;
+    button.innerHTML = "<span>↺</span> Восстановить прогресс";
+    title?.appendChild(button);
+  }
+
+  document.addEventListener("click", (event) => {
+    const primary = event.target.closest("[data-open-player-recovery]");
+    if (primary) {
+      event.preventDefault();
+      return openRecovery(primary.dataset.openPlayerRecovery);
+    }
+    const legacy = event.target.closest("[data-recovery-user]");
+    if (legacy) {
+      event.preventDefault();
+      return openRecovery(legacy.dataset.recoveryUser);
+    }
   });
 
-  function injectButtons() {
-    document.querySelectorAll("#adminPlayers tr").forEach((row) => {
-      const code = row.querySelector("code")?.textContent?.trim();
-      const cell = row.lastElementChild;
-      if (!code || !cell || cell.querySelector("[data-recovery-user]")) return;
-      if (cell.textContent?.includes("legacy")) return;
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "admin-player-recover";
-      button.dataset.recoveryUser = code;
-      button.textContent = "Восстановить";
-      cell.prepend(button);
-    });
-  }
-  const observer = new MutationObserver(injectButtons);
-  const players = $r("#adminPlayers");
-  if (players) observer.observe(players, { childList: true });
-  injectButtons();
+  const detail = document.querySelector("#adminPlayerDetail") || document.querySelector("#adminPanel");
+  if (detail) new MutationObserver(() => injectRecoveryAction()).observe(detail, { childList: true, subtree: true });
+  injectRecoveryAction();
+
+  window.openAdminProgressRecovery = openRecovery;
 })();
