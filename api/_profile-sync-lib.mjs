@@ -9,7 +9,7 @@ import {
 } from "./_auth-lib.mjs";
 import { redis } from "./_push-lib.mjs";
 
-const PROFILE_LOCK_TTL_MS = 8000;
+const PROFILE_LOCK_TTL_MS = 15000;
 const PROFILE_LOCK_ATTEMPTS = 18;
 
 function lockKey(userId) {
@@ -39,18 +39,25 @@ async function releaseProfileLock(lock) {
   await redis(["EVAL", script, "1", lock.key, lock.token]).catch(() => {});
 }
 
-async function persistProfileAndVersion(userId, profile) {
+async function persistProfileAndVersion(userId, profile, lock) {
   const payload = JSON.stringify(profile);
-  const script = "redis.call('SET', KEYS[1], ARGV[1]); return redis.call('INCR', KEYS[2])";
-  const version = Number(await redis([
+  const script = "if redis.call('GET', KEYS[1]) ~= ARGV[1] then return -1 end; redis.call('SET', KEYS[2], ARGV[2]); return redis.call('INCR', KEYS[3])";
+  const result = Number(await redis([
     "EVAL",
     script,
-    "2",
+    "3",
+    lock.key,
     profileKey(userId),
     profileVersionKey(userId),
+    lock.token,
     payload,
-  ])) || 1;
-  return version;
+  ]));
+  if (result === -1) {
+    const error = new Error("profile_lock_lost");
+    error.code = "profile_lock_lost";
+    throw error;
+  }
+  return result || 1;
 }
 
 export async function mergeCloudProfileAtomic(
@@ -83,7 +90,7 @@ export async function mergeCloudProfileAtomic(
     }
 
     merged = sanitizeProfile(merged, userId);
-    const version = await persistProfileAndVersion(userId, merged);
+    const version = await persistProfileAndVersion(userId, merged, lock);
     return {
       profile: merged,
       version,
