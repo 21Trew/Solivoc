@@ -14,15 +14,18 @@
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
     try {
-      const response = await apiFetch("/api/auth", {
+      // Читаем через /api/account, а не /api/auth: account endpoint обновляет
+      // сессию, отдаёт серверное время и поднимает кампанию до уже подтверждённого
+      // сервером результата лидерборда, если облачная копия почему-то отстала.
+      const response = await apiFetch("/api/account", {
         cache: "no-store",
         signal: controller.signal,
       });
       const data = await response.json().catch(() => ({}));
       if (response.status === 401) return null;
       if (!response.ok) throw new Error(data?.error || `http_${response.status}`);
-      if (!data?.authenticated) return null;
-      return data;
+      if (!data?.ok || !data?.user) return null;
+      return { ...data, authenticated: true };
     } finally {
       clearTimeout(timer);
     }
@@ -58,8 +61,6 @@
         && normalizeEmail(accountState?.email) === normalizedEmail;
       const localBeforeLogin = knownSameAccount ? clone(profile) : null;
 
-      // На новом втором устройстве вход сначала только читает облачный профиль и
-      // не имеет права записывать локальный гостевой профиль в аккаунт.
       const data = await accountRequest("/api/account-login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
@@ -69,8 +70,6 @@
       if (knownSameAccount && localBeforeLogin) {
         const reconciled = mergeAccountProfiles(localBeforeLogin, data.profile || {});
         applyAccountCloudProfile(reconciled, { version: data.version });
-        // Если это прежнее устройство того же аккаунта, его настоящий офлайн-
-        // прогресс после загрузки облака можно безопасно отправить обычной синхронизацией.
         scheduleAccountSync?.(250);
       } else {
         applyAccountCloudProfile(data.profile, { version: data.version });
@@ -110,9 +109,6 @@
         scheduleAccountSync?.(1500);
         return true;
       } catch (error) {
-        // Медленная или временно недоступная мобильная сеть не должна оставлять
-        // устройство навсегда на устаревшей локальной копии. Сессию не сбрасываем,
-        // а повторяем загрузку облака позднее.
         setTimeout(() => refreshAccountFromCloud({ force: true }), 5000);
         return false;
       }
