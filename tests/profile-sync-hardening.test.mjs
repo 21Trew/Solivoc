@@ -72,9 +72,13 @@ test("disjoint device progress survives repeated merge order", () => {
 
 test("account sync is serialized and persisted once", () => {
   assert.match(syncSource, /SET[^\n]*NX[^\n]*PX/);
+  assert.match(syncSource, /PROFILE_LOCK_TTL_MS = 15000/);
   assert.match(syncSource, /profile-lock/);
   assert.match(syncSource, /EVAL/);
-  assert.match(syncSource, /redis\.call\('SET', KEYS\[1\], ARGV\[1\]\); return redis\.call\('INCR', KEYS\[2\]\)/);
+  assert.match(syncSource, /redis\.call\('GET', KEYS\[1\]\) ~= ARGV\[1\]/);
+  assert.match(syncSource, /redis\.call\('SET', KEYS\[2\], ARGV\[2\]\)/);
+  assert.match(syncSource, /redis\.call\('INCR', KEYS\[3\]\)/);
+  assert.match(syncSource, /profile_lock_lost/);
   assert.match(accountSource, /mergeCloudProfileAtomic/);
   assert.doesNotMatch(accountSource, /writeJsonKey\(profileKey/);
   assert.doesNotMatch(accountSource, /cloudBeforeMerge/);
@@ -83,6 +87,7 @@ test("account sync is serialized and persisted once", () => {
 test("stale clients and lock contention are explicit protocol states", () => {
   assert.match(accountSource, /staleClient: merged\.staleClient/);
   assert.match(accountSource, /profile_busy/);
+  assert.match(accountSource, /profile_lock_lost/);
   assert.match(accountSource, /retryable: true/);
 });
 
