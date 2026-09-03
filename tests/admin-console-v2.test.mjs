@@ -18,9 +18,15 @@ test("player 360 covers operational domains", () => {
   for (const tab of ["summary", "progress", "daily", "rewards", "characters", "modes", "recovery", "history", "danger"]) {
     assert.match(client, new RegExp(`\\["${tab}"`));
   }
-  for (const command of ["xp_adjust", "xp_set", "level_stars_set", "campaign_complete_through", "achievement_", "collectible_", "companion_force_", "adaptive_reset", "repair_player"]) {
+  for (const command of ["xp_adjust", "xp_set", "level_stars_set", "campaign_complete_through", "adaptive_reset", "repair_player"]) {
     assert.match(client, new RegExp(command));
   }
+  assert.match(client, /data-form="achievement"/);
+  assert.match(client, /data-form="collectible"/);
+  assert.match(client, /data-form="companion"/);
+  assert.match(client, /kind === "achievement" \|\| kind === "collectible" \|\| kind === "companion"/);
+  assert.match(client, /`companion_force_\$\{operation\}`/);
+  assert.match(client, /`\$\{kind\}_\$\{operation\}`/);
 });
 
 test("console surfaces cloud versus leaderboard consistency", () => {
