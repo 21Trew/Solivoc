@@ -7,8 +7,8 @@ const endpoint = await readFile(new URL("../api/admin-recovery.mjs", import.meta
 const account = await readFile(new URL("../api/account.mjs", import.meta.url), "utf8");
 const gateway = await readFile(new URL("../yandex/index.mjs", import.meta.url), "utf8");
 const html = await readFile(new URL("../admin.html", import.meta.url), "utf8");
-const client = await readFile(new URL("../js/admin-recovery.js", import.meta.url), "utf8");
-const recoveryCss = await readFile(new URL("../styles/admin-recovery.css", import.meta.url), "utf8");
+const client = await readFile(new URL("../js/admin.js", import.meta.url), "utf8");
+const adminCss = await readFile(new URL("../styles/admin.css", import.meta.url), "utf8");
 const build = await readFile(new URL("../scripts/build-frontend.mjs", import.meta.url), "utf8");
 
 test("admin recovery covers daily streaks and daily quests", () => {
@@ -51,17 +51,17 @@ test("admin recovery reuses the credentialed one-segment admin route", () => {
   assert.doesNotMatch(client, /apiFetch\(`\/api\/admin\/recovery/);
 });
 
-test("admin UI exposes recovery in the selected player card", () => {
-  assert.match(html, /id="adminRecovery"/);
-  assert.match(html, /id="recoveryCurrentStreak"/);
-  assert.match(html, /id="recoveryDailyQuests"/);
-  assert.match(html, /id="recoveryFullSnapshot"/);
-  assert.match(html, /Восстановить ежедневный прогресс/);
-  assert.match(client, /dataset\.openPlayerRecovery/);
-  assert.match(client, /Восстановить прогресс/);
+test("unified admin console exposes simple and advanced recovery", () => {
+  assert.match(client, /Дней подряд/);
+  assert.match(client, /Лучшая серия/);
+  assert.match(client, /Недельных завершено/);
+  assert.match(client, /Месячных завершено/);
   assert.match(client, /progress_restore_daily/);
-  assert.match(recoveryCss, /position:fixed/);
-  assert.match(recoveryCss, /\.admin-table-wrap\{display:none!important\}/);
-  assert.match(build, /admin-recovery\.js/);
-  assert.match(build, /admin-recovery\.css/);
+  assert.match(client, /progress_restore_snapshot/);
+  assert.match(client, /progress_restore_checkpoint/);
+  assert.match(client, /Контрольные точки/);
+  assert.match(client, /Снимок игрового прогресса/);
+  assert.match(html, /data-section="players"/);
+  assert.match(adminCss, /\.checkpoint-list/);
+  assert.match(build, /\.\/styles\/admin\.css/);
 });
