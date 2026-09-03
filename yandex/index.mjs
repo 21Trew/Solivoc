@@ -1,4 +1,5 @@
 import * as account from "../api/account.mjs";
+import * as accountLogin from "../api/account-login.mjs";
 import * as admin from "../api/admin.mjs";
 import * as analytics from "../api/analytics.mjs";
 import * as auth from "../api/auth.mjs";
@@ -16,6 +17,7 @@ import * as version from "../api/version.mjs";
 
 const ROUTES = new Map([
   ["account", account],
+  ["account-login", accountLogin],
   ["admin", admin],
   ["analytics", analytics],
   ["auth", auth],

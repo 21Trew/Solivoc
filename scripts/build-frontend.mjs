@@ -69,6 +69,7 @@ const patchScripts = [
   "./js/v39-rarity-collectibles.js",
   "./js/client-stability-hardening.js",
   "./js/mobile-consistency-hardening.js",
+  "./js/cross-device-sync-hardening.js",
 ];
 const missingPatchTags = patchScripts
   .filter((src) => !indexHtml.includes(`src="${src}"`))
