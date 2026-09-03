@@ -57,7 +57,7 @@ test("admin UI exposes recovery in the selected player card", () => {
   assert.match(html, /id="recoveryDailyQuests"/);
   assert.match(html, /id="recoveryFullSnapshot"/);
   assert.match(html, /Восстановить ежедневный прогресс/);
-  assert.match(client, /data\.openPlayerRecovery/);
+  assert.match(client, /dataset\.openPlayerRecovery/);
   assert.match(client, /Восстановить прогресс/);
   assert.match(client, /progress_restore_daily/);
   assert.match(recoveryCss, /position:fixed/);
