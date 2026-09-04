@@ -16,9 +16,16 @@ function memoryStorage(initial = {}) {
 }
 
 function loadQueue(localStorage, mirror = new Map()) {
+  let randomCounter = 0;
   const window = {
     localStorage,
-    crypto: { getRandomValues(values) { for (let i = 0; i < values.length; i++) values[i] = 100 + i; return values; } },
+    crypto: {
+      getRandomValues(values) {
+        randomCounter++;
+        for (let i = 0; i < values.length; i++) values[i] = 100 + randomCounter * 10 + i;
+        return values;
+      },
+    },
     dispatchEvent() {},
     document: { querySelector() { return { content: "test-build" }; } },
     SolivocPersistence: {
@@ -39,11 +46,11 @@ function loadQueue(localStorage, mirror = new Map()) {
   return window.SolivocPendingEvents;
 }
 
-function completion(index) {
+function completion(index, owner = "u_player12345") {
   return {
-    owner: "u_player12345",
+    owner,
     eventType: "completion",
-    transactionId: `tx_${index}`,
+    transactionId: `tx_${owner || "guest"}_${index}`,
     occurredAt: 1000 + index,
     payload: { type: "completion", campaign: true, level: index, stars: 1, xpDelta: 3 },
   };
@@ -78,6 +85,17 @@ test("ACK removes only confirmed events after reload", () => {
 
   const reloaded = loadQueue(localStorage);
   assert.equal(reloaded.count("u_player12345"), 2);
-  assert.equal(reloaded.hasTransaction("tx_1"), true);
-  assert.equal(reloaded.hasTransaction("tx_5"), true);
+  assert.equal(reloaded.hasTransaction("tx_u_player12345_1"), true);
+  assert.equal(reloaded.hasTransaction("tx_u_player12345_5"), true);
+});
+
+test("changing event owner rotates stream and resets its sequence", () => {
+  const queue = loadQueue(memoryStorage());
+  const guest = queue.enqueue(completion(1, "")).event;
+  queue.ack([guest.eventId]);
+  const account = queue.enqueue(completion(2, "u_player12345")).event;
+  assert.notEqual(account.streamId, guest.streamId);
+  assert.equal(account.sequenceNo, 1);
+  assert.equal(account.owner, "u_player12345");
+  assert.equal(queue.status().streamOwner, "u_player12345");
 });
