@@ -41,13 +41,11 @@ const redisEnvMarker = /(?:UPSTASH_REDIS_REST_URL|KV_REST_API_URL|UPSTASH_REDIS_
 const redisEnvAllowed = new Set(["api/_push-lib.mjs", "api/backup.mjs", "scripts/check-source.mjs"]);
 const legacyOriginAllowed = new Set(["js/host-routing.js", "scripts/check-source.mjs"]);
 
-// Stage 9 migration guard. These are the only historical runtime layers that
-// may still exist while they are being strangled into normal modules. The
-// allow-list must shrink; adding a new patch/hardening file is a source-quality
-// failure rather than a new architectural escape hatch.
+// Ограничитель миграции этапа 9. Это единственные исторические runtime-слои,
+// которые временно могут существовать до переноса в обычные модули. Список
+// разрешено только сокращать: новый patch/hardening-слой считается ошибкой.
 const legacyRuntimeLayers = new Set([
   "js/v30-patch.js",
-  "js/v32-ui-fixes.js",
   "js/v33-fox-journey.js",
   "js/v34-product-update.js",
   "js/v39-rarity-collectibles.js",
