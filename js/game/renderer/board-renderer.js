@@ -1,7 +1,6 @@
 /* Incremental game renderer. Owns board DOM updates and post-paint lifecycle. */
 (() => {
   "use strict";
-
   const root = typeof window !== "undefined" ? window : globalThis;
   if (root.SolivocGameRenderer) return;
 
@@ -46,8 +45,7 @@
     const i = validIndex(index, state?.slots?.length);
     if (i < 0) return false;
     ensureSlots();
-    const slot = slotsAnchor.children[i];
-    const group = state.slots[i];
+    const slot = slotsAnchor.children[i], group = state.slots[i];
     const locked = !!state.special?.lockedSlot && i === state.slots.length - 1 && state.completed < (state.special.unlockAfter || 1);
     slot.className = "slot " + (group ? "" : "empty") + (locked ? " locked-slot" : "");
     slot.replaceChildren();
@@ -65,9 +63,7 @@
     const i = validIndex(index, state?.columns?.length);
     if (i < 0) return false;
     ensureColumns();
-    const column = tableau.children[i];
-    const groups = state.columns[i];
-    const step = stackStep();
+    const column = tableau.children[i], groups = state.columns[i], step = stackStep();
     column.className = "column " + (groups.length ? "" : "empty");
     column.replaceChildren();
     groups.forEach((group, groupIndex) => {
@@ -93,8 +89,7 @@
         card.dataset.groupIndex = String(groupIndex);
         card.style.setProperty("--y", baseY + cardIndex * step + "px");
         card.style.zIndex = String(10 + groupIndex * 10 + cardIndex);
-        const topmost = groupIndex === groups.length - 1 && cardIndex === stackSize - 1;
-        if (!topmost) card.classList.add("stack-under", "open-under");
+        if (!(groupIndex === groups.length - 1 && cardIndex === stackSize - 1)) card.classList.add("stack-under", "open-under");
         column.appendChild(card);
       });
     });
@@ -139,6 +134,43 @@
     return true;
   }
 
+  function updateSpecialBadge() {
+    const badge = $("#specialBadge");
+    if (!badge) return;
+    if (state.mode === "regular" && state.special) {
+      badge.hidden = false;
+      badge.textContent = state.special.boss ? `${state.special.icon} Финал главы` : `${state.special.icon} ${state.special.title}`;
+      badge.title = state.special.desc;
+    } else if (state.mode === "challenge") {
+      const def = duelModeDef(state.duelMode);
+      badge.hidden = false;
+      badge.textContent = `⚔ ${def.label}`;
+      badge.title = def.description || "Одинаковый расклад можно отправить другу";
+    } else if (state.mode === "marathon") {
+      badge.hidden = false;
+      badge.textContent = `∞ Раунд ${state.marathonRound || 1}`;
+      badge.title = "Марафон продолжается только при ★★★";
+    } else if (state.mode === "collection") {
+      const collection = associationCollectionById(state.collectionId);
+      badge.hidden = false;
+      badge.textContent = `${collection.icon} ${collection.name}`;
+      badge.title = "Картинки: собирай карточки по ассоциациям";
+    } else if (state.mode === "calm") {
+      badge.hidden = false;
+      badge.textContent = "☁ Дзен";
+      badge.title = "Лёгкие расклады без комбо и особых ограничений";
+    } else if (["time", "moves", "combo", "noMistakes", "onePass", "hardcore", "custom"].includes(state.mode)) {
+      const def = GAME_MODE_DEFS.find((mode) => mode.id === state.mode);
+      badge.hidden = false;
+      badge.textContent = state.mode === "hardcore" ? `☠ Хардкор! · ${Math.max(1, +state.level || 1)}` : `${def?.icon || "◆"} ${def?.label || "Испытание"}`;
+      badge.title = def?.desc || "Особый режим";
+    } else {
+      badge.hidden = true;
+      badge.textContent = "";
+      badge.title = "";
+    }
+  }
+
   function updateHud() {
     renderGlobalProfileHeaders?.();
     syncGameCompanion?.();
@@ -148,94 +180,46 @@
     document.body.dataset.chapter = chapter ? String(chapter.number) : "0";
     document.body.dataset.chapterTone = chapter ? String(((chapter.number - 1) % 4) + 1) : "0";
 
-    $("#level").textContent =
-      state.mode === "daily"
-        ? "D"
-        : state.mode === "tutorial"
-          ? `T${state.tutorialStep}`
-          : state.mode === "challenge"
-            ? "C"
-            : state.mode === "marathon"
-              ? `M${state.marathonRound || 1}`
-              : state.mode === "collection"
-                ? "▦"
-                : state.mode === "calm"
-                  ? "☁"
-                  : ["time", "moves", "combo", "noMistakes", "onePass", "hardcore", "custom"].includes(state.mode)
-                    ? (GAME_MODE_DEFS.find((mode) => mode.id === state.mode)?.icon || "◆")
-                    : state.level;
+    $("#level").textContent = state.mode === "daily" ? "D"
+      : state.mode === "tutorial" ? `T${state.tutorialStep}`
+      : state.mode === "challenge" ? "C"
+      : state.mode === "marathon" ? `M${state.marathonRound || 1}`
+      : state.mode === "collection" ? "▦"
+      : state.mode === "calm" ? "☁"
+      : ["time", "moves", "combo", "noMistakes", "onePass", "hardcore", "custom"].includes(state.mode)
+        ? (GAME_MODE_DEFS.find((mode) => mode.id === state.mode)?.icon || "◆")
+        : state.level;
     $("#progressText").textContent = `${state.completed}/${state.totalCategories}`;
     $("#progressBar").style.width = `${state.totalCategories > 0 ? (state.completed / state.totalCategories) * 100 : 0}%`;
     const moveEl = $("#moveCount");
     if (moveEl) moveEl.textContent = state.run?.moves || 0;
-
-    const ruleMetricEl = $("#ruleMetric");
-    if (ruleMetricEl) {
+    const metricEl = $("#ruleMetric");
+    if (metricEl) {
       const metric = typeof ruleMetricText === "function" ? ruleMetricText(state) : "";
-      ruleMetricEl.textContent = metric;
-      ruleMetricEl.hidden = !metric;
+      metricEl.textContent = metric;
+      metricEl.hidden = !metric;
     }
-    const comboXpEl = $("#comboXpStatus");
-    if (comboXpEl) {
-      const text = typeof comboXpHudText === "function" ? comboXpHudText(state) : `Комбо ×${Math.max(0, +(state.run?.comboCurrent || 0))}`;
-      comboXpEl.textContent = text;
-      comboXpEl.hidden = false;
+    const comboEl = $("#comboXpStatus");
+    if (comboEl) {
+      comboEl.textContent = typeof comboXpHudText === "function" ? comboXpHudText(state) : `Комбо ×${Math.max(0, +(state.run?.comboCurrent || 0))}`;
+      comboEl.hidden = false;
     }
     const bonusEl = $("#bonusObjective");
     if (bonusEl) {
       bonusEl.innerHTML = typeof bonusObjectiveMarkup === "function" ? bonusObjectiveMarkup(state) : "";
       bonusEl.hidden = !bonusEl.innerHTML;
     }
-
-    const specialBadge = $("#specialBadge");
-    if (state.mode === "regular" && state.special) {
-      specialBadge.hidden = false;
-      specialBadge.textContent = state.special.boss ? `${state.special.icon} Финал главы` : `${state.special.icon} ${state.special.title}`;
-      specialBadge.title = state.special.desc;
-    } else if (state.mode === "challenge") {
-      const duelDef = duelModeDef(state.duelMode);
-      specialBadge.hidden = false;
-      specialBadge.textContent = `⚔ ${duelDef.label}`;
-      specialBadge.title = duelDef.description || "Одинаковый расклад можно отправить другу";
-    } else if (state.mode === "marathon") {
-      specialBadge.hidden = false;
-      specialBadge.textContent = `∞ Раунд ${state.marathonRound || 1}`;
-      specialBadge.title = "Марафон продолжается только при ★★★";
-    } else if (state.mode === "collection") {
-      const collection = associationCollectionById(state.collectionId);
-      specialBadge.hidden = false;
-      specialBadge.textContent = `${collection.icon} ${collection.name}`;
-      specialBadge.title = "Картинки: собирай карточки по ассоциациям";
-    } else if (state.mode === "calm") {
-      specialBadge.hidden = false;
-      specialBadge.textContent = "☁ Дзен";
-      specialBadge.title = "Лёгкие расклады без комбо и особых ограничений";
-    } else if (["time", "moves", "combo", "noMistakes", "onePass", "hardcore", "custom"].includes(state.mode)) {
-      const modeDef = GAME_MODE_DEFS.find((mode) => mode.id === state.mode);
-      specialBadge.hidden = false;
-      specialBadge.textContent = state.mode === "hardcore" ? `☠ Хардкор! · ${Math.max(1, +state.level || 1)}` : `${modeDef?.icon || "◆"} ${modeDef?.label || "Испытание"}`;
-      specialBadge.title = modeDef?.desc || "Особый режим";
-    } else {
-      specialBadge.hidden = true;
-      specialBadge.textContent = "";
-    }
-
+    updateSpecialBadge();
     const undoLimit = state.special?.maxUndos;
     $("#undo").disabled = !history.length || (Number.isFinite(undoLimit) && state.run.undos >= undoLimit);
     $("#hint").disabled = !!state.special?.noHints || !!state.rules?.noHints;
   }
 
   function cardByUid(uid) {
-    if (!uid) return null;
-    const key = String(uid);
-    for (const column of state?.columns || []) {
-      for (const group of column || []) {
-        for (const card of group?.cards || []) if (String(card?.uid || "") === key) return card;
-      }
-    }
-    for (const group of state?.slots || []) {
-      for (const card of group?.cards || []) if (String(card?.uid || "") === key) return card;
-    }
+    const key = String(uid || "");
+    if (!key) return null;
+    for (const column of state?.columns || []) for (const group of column || []) for (const card of group?.cards || []) if (String(card?.uid || "") === key) return card;
+    for (const group of state?.slots || []) for (const card of group?.cards || []) if (String(card?.uid || "") === key) return card;
     for (const card of state?.waste || []) if (String(card?.uid || "") === key) return card;
     for (const card of state?.stock || []) if (String(card?.uid || "") === key) return card;
     return null;
@@ -243,13 +227,12 @@
 
   function recordEffectKnowledge(result) {
     if (!result?.effects?.length || typeof recordKnowledgeCards !== "function") return;
-    const cards = [];
-    const seen = new Set();
+    const cards = [], seen = new Set();
     for (const effect of result.effects) {
       if (!["CARD_REVEALED", "STOCK_DRAWN"].includes(effect?.type) || !effect.uid) continue;
-      const card = cardByUid(effect.uid);
-      if (!card || seen.has(card.uid)) continue;
-      seen.add(card.uid);
+      const card = cardByUid(effect.uid), key = String(effect.uid);
+      if (!card || seen.has(key)) continue;
+      seen.add(key);
       cards.push(card);
     }
     if (cards.length) recordKnowledgeCards(cards, state);
@@ -266,59 +249,43 @@
 
   function renderBoard() {
     if (!state) return false;
+    const timing = runtimeDiagnostics?.begin?.("fullBoardRender");
     runtimeDiagnostics?.count?.("fullBoardRenders");
-    fitTableauGeometry();
-    ensureSlots();
-    ensureColumns();
-    for (let index = 0; index < state.slots.length; index++) updateSlot(index, { fit: false });
-    updateStock();
-    updateWaste({ fit: false });
-    for (let index = 0; index < state.columns.length; index++) updateColumn(index, { fit: false });
-    fitAllCardText(document);
-    updateHud();
-    finishPostPaint({ full: true });
-    return true;
+    try {
+      fitTableauGeometry();
+      ensureSlots();
+      ensureColumns();
+      for (let index = 0; index < state.slots.length; index++) updateSlot(index, { fit: false });
+      updateStock();
+      updateWaste({ fit: false });
+      for (let index = 0; index < state.columns.length; index++) updateColumn(index, { fit: false });
+      fitAllCardText(document);
+      updateHud();
+      finishPostPaint({ full: true });
+      return true;
+    } finally {
+      runtimeDiagnostics?.end?.(timing);
+    }
   }
 
   function paint(result) {
     if (!state || !result?.accepted) return false;
-    if (result.effects?.some((effect) => effect?.type === "UNDO_APPLIED")) return renderBoard();
-
-    const columns = new Set();
-    const slots = new Set();
-    let stock = false;
-    let waste = false;
-    for (const effect of result.effects || []) {
-      if (["MOVE_APPLIED", "AUTO_MOVE_APPLIED"].includes(effect?.type)) {
-        if (effect.source?.source === "column") columns.add(effect.source.ci);
-        else if (effect.source?.source === "slot") slots.add(effect.source.si);
-        else if (effect.source?.source === "waste") waste = true;
-        if (effect.target?.zone === "column") columns.add(effect.target.index);
-        else if (effect.target?.zone === "slot") slots.add(effect.target.index);
-      } else if (effect?.type === "CARD_REVEALED") columns.add(effect.columnIndex);
-      else if (effect?.type === "STOCK_DRAWN" || effect?.type === "STOCK_RECYCLED") {
-        stock = true;
-        waste = true;
-      } else if (effect?.type === "CATEGORY_COMPLETED") slots.add(effect.slotIndex);
-    }
-
+    const dirty = SolivocDirtyZones.plan(result.effects || []);
+    if (dirty.full) return renderBoard();
+    const timing = runtimeDiagnostics?.begin?.("incrementalBoardPaint");
     runtimeDiagnostics?.count?.("incrementalBoardPaints");
-    columns.forEach((index) => updateColumn(index));
-    slots.forEach((index) => updateSlot(index));
-    if (stock) updateStock();
-    if (waste) updateWaste();
-    updateHud();
-    finishPostPaint({ result });
-    return true;
+    try {
+      dirty.columns.forEach((index) => updateColumn(index));
+      dirty.slots.forEach((index) => updateSlot(index));
+      if (dirty.stock) updateStock();
+      if (dirty.waste) updateWaste();
+      updateHud();
+      finishPostPaint({ result });
+      return true;
+    } finally {
+      runtimeDiagnostics?.end?.(timing);
+    }
   }
 
-  root.SolivocGameRenderer = Object.freeze({
-    renderBoard,
-    paint,
-    updateColumn,
-    updateSlot,
-    updateStock,
-    updateWaste,
-    updateHud,
-  });
+  root.SolivocGameRenderer = Object.freeze({ renderBoard, paint, updateColumn, updateSlot, updateStock, updateWaste, updateHud });
 })();
