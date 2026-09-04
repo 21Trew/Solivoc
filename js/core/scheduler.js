@@ -4,11 +4,22 @@
 
   const tasks = new Map();
   const owners = new Map();
+  const aliases = new Map();
 
   function normalizeKey(key) {
     const value = String(key || "").trim();
     if (!value) throw new Error("scheduler_key_required");
     return value;
+  }
+
+  function canonicalKey(key) {
+    let current = normalizeKey(key);
+    const seen = new Set();
+    while (aliases.has(current) && !seen.has(current)) {
+      seen.add(current);
+      current = aliases.get(current);
+    }
+    return current;
   }
 
   function reportError(key, error) {
@@ -36,14 +47,21 @@
   }
 
   function claim(key, callback) {
-    const normalized = normalizeKey(key);
+    const normalized = canonicalKey(key);
     if (typeof callback !== "function") throw new TypeError("scheduler_owner_callback_required");
     owners.set(normalized, callback);
     return normalized;
   }
 
+  function alias(key, target) {
+    const from = normalizeKey(key), to = normalizeKey(target);
+    if (from === to) return to;
+    aliases.set(from, to);
+    return canonicalKey(from);
+  }
+
   function release(key, callback = null) {
-    const normalized = String(key || "").trim();
+    const normalized = canonicalKey(key);
     if (!owners.has(normalized)) return false;
     if (callback && owners.get(normalized) !== callback) return false;
     owners.delete(normalized);
@@ -51,7 +69,7 @@
   }
 
   function cancel(key) {
-    const normalized = String(key || "").trim();
+    const normalized = canonicalKey(key);
     const task = tasks.get(normalized);
     if (!task) return false;
     if (task.kind === "interval") clearInterval(task.id);
@@ -61,7 +79,7 @@
   }
 
   function timeout(key, fn, delay = 0, { replace = true } = {}) {
-    const normalized = normalizeKey(key);
+    const normalized = canonicalKey(key);
     if (typeof fn !== "function") throw new TypeError("scheduler_callback_required");
     if (tasks.has(normalized)) {
       if (!replace) return normalized;
@@ -77,7 +95,7 @@
   }
 
   function interval(key, fn, delay, { replace = true, immediate = false, visibleOnly = false } = {}) {
-    const normalized = normalizeKey(key);
+    const normalized = canonicalKey(key);
     if (typeof fn !== "function") throw new TypeError("scheduler_callback_required");
     if (tasks.has(normalized)) {
       if (!replace) return normalized;
@@ -104,7 +122,7 @@
     return count;
   }
 
-  function has(key) { return tasks.has(String(key || "").trim()); }
+  function has(key) { return tasks.has(canonicalKey(key)); }
   function activeCount() { return tasks.size; }
   function snapshot() {
     return [...tasks.entries()].map(([key, task]) => ({
@@ -123,6 +141,7 @@
     cancel,
     cancelPrefix,
     claim,
+    alias,
     release,
     has,
     activeCount,
