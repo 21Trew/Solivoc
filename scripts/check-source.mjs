@@ -74,6 +74,7 @@ const criticalOverrideNames = [
   "syncLeaderboardNonBlocking",
 ];
 const criticalOverridePattern = new RegExp(`\\b(?:${criticalOverrideNames.join("|")})\\s*=\\s*(?:async\\s+)?function\\b`);
+const normalRuntimeModule = (name) => ["js/core/", "js/game/", "js/features/"].some((prefix) => name.startsWith(prefix));
 
 for (const file of files) {
   const ext = path.extname(file).toLowerCase();
@@ -90,12 +91,13 @@ for (const file of files) {
     failures.push(`${name}: unexpected legacy Vercel origin reference`);
   }
 
-  // Architecture restrictions apply to browser runtime sources. Tests and
-  // build scripts may intentionally contain override-shaped fixture strings.
   if (name.startsWith("js/") && runtimeLayerName.test(name) && !legacyRuntimeLayers.has(name)) {
     failures.push(`${name}: new runtime patch/hardening layers are forbidden; use a normal module`);
   }
-  if (name.startsWith("js/") && criticalOverridePattern.test(text) && !legacyRuntimeLayers.has(name)) {
+  // Root-level legacy code is intentionally migrated incrementally. New normal
+  // runtime owners live in core/game/features and may not reassign critical
+  // globals; they must expose explicit services/hooks instead.
+  if (normalRuntimeModule(name) && criticalOverridePattern.test(text)) {
     failures.push(`${name}: critical runtime function override is forbidden; add an explicit module hook instead`);
   }
 }
