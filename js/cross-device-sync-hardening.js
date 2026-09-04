@@ -1,4 +1,4 @@
-/* Cross-device account sync: cloud-first login + resilient cloud refresh. */
+/* Cross-device account sync: cloud-first login + resilient cloud refresh operation. */
 (() => {
   const REFRESH_GUARD_MS = 15000;
   let lastRefreshAt = 0;
@@ -111,14 +111,6 @@
       }
     };
   }
-
-  const queueRefresh = (delay = 250) => {
-    SolivocScheduler.timeout("sync.cloud-refresh", () => refreshAccountFromCloud(), delay);
-  };
-
-  SolivocLifecycle.on("online", "sync.cloud-refresh", () => queueRefresh(100));
-  SolivocLifecycle.on("focus", "sync.cloud-refresh", () => queueRefresh(250));
-  SolivocLifecycle.on("visible", "sync.cloud-refresh", () => queueRefresh(250));
 
   window.refreshAccountFromCloud = refreshAccountFromCloud;
 })();
