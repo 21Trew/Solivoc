@@ -21,11 +21,12 @@
   const BASE_BACKOFF_MS = 1200;
   const MAX_BACKOFF_MS = 60000;
 
-  const legacyProfileFlush = typeof root.flushAccountSync === "function" ? root.flushAccountSync : null;
   const legacyCloudRefresh = typeof root.refreshAccountFromCloud === "function" ? root.refreshAccountFromCloud : null;
 
   let inFlight = null;
+  let activeController = null;
   let epoch = 0;
+  let sessionOwner = String(root.accountState?.userId || "");
   let failureCount = 0;
   let lastSuccessAt = 0;
   let lastFailureAt = 0;
@@ -42,16 +43,26 @@
     return Math.min(MAX_BACKOFF_MS, BASE_BACKOFF_MS * 2 ** Math.max(0, failureCount - 1));
   }
 
-  function resetSession(reason = "session_changed") {
+  function resetSession(reason = "session_changed", nextOwner = ownerId()) {
     epoch += 1;
+    sessionOwner = String(nextOwner || "");
     failureCount = 0;
     queuedRefresh = false;
     lastReason = reason;
     scheduler.cancel(TIMER_KEY);
+    try { activeController?.abort?.(); } catch {}
+    activeController = null;
     return epoch;
   }
 
+  function ensureSession() {
+    const current = ownerId();
+    if (current !== sessionOwner) resetSession("owner_changed", current);
+    return current;
+  }
+
   function schedule(delay = 0, reason = "scheduled", { refresh = false } = {}) {
+    ensureSession();
     lastReason = String(reason || "scheduled");
     if (refresh) queuedRefresh = true;
     if (!signedIn() || !online()) return false;
@@ -73,8 +84,46 @@
     return !delivery.hasPendingForAccount();
   }
 
+  async function syncProfile(owner, token, { keepalive = false } = {}) {
+    if (typeof root.accountRequest !== "function" || typeof root.accountProfileSnapshot !== "function") return true;
+    const bodyText = JSON.stringify({ profile: root.accountProfileSnapshot(), version: root.accountState?.version || 0 });
+    const canKeepalive = keepalive && bodyText.length < 60000;
+    const controller = new AbortController();
+    activeController = controller;
+    const timer = setTimeout(() => controller.abort(), canKeepalive ? 4500 : 8000);
+    try {
+      const data = await root.accountRequest("/api/account", {
+        method: "POST",
+        body: bodyText,
+        keepalive: canKeepalive,
+        signal: controller.signal,
+      });
+      if (token !== epoch || owner !== ownerId()) return false;
+      if (root.accountState) {
+        root.accountState.version = Math.max(Number(root.accountState.version) || 0, Number(data?.version) || 0);
+        root.accountState.lastSyncAt = Number(data?.syncedAt) || Date.now();
+        root.persistAccountState?.();
+      }
+      if (data?.profile) root.applyAccountCloudProfile?.(data.profile, { version: data.version });
+      root.updateAccountModalIfOpen?.();
+      return true;
+    } catch (error) {
+      if (controller.signal.aborted || token !== epoch || owner !== ownerId()) return false;
+      if (error?.status === 401 && root.accountState) {
+        root.accountState.status = "signed_out";
+        root.persistAccountState?.();
+        root.updateAccountModalIfOpen?.();
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
+      if (activeController === controller) activeController = null;
+    }
+  }
+
   async function performCycle({ reason = "manual", forceRefresh = false } = {}) {
-    if (!signedIn() || !online()) return false;
+    const owner = ensureSession();
+    if (!signedIn() || !online() || !owner) return false;
     if (!visible() && reason !== "suspend" && reason !== "terminate") return false;
     if (playing() && !["after_round", "manual", "suspend", "terminate"].includes(reason)) {
       schedule(12000, "active_round_defer", { refresh: queuedRefresh || forceRefresh });
@@ -82,16 +131,11 @@
     }
 
     const token = epoch;
-    const owner = ownerId();
-    if (!owner) return false;
-
     if (!(await drainPending(owner, token))) throw new Error("pending_event_sync_failed");
     if (token !== epoch || owner !== ownerId()) return false;
 
-    if (legacyProfileFlush) {
-      const ok = await legacyProfileFlush({ keepalive: reason === "suspend" || reason === "terminate" });
-      if (!ok && signedIn()) throw new Error("profile_sync_failed");
-    }
+    const synced = await syncProfile(owner, token, { keepalive: reason === "suspend" || reason === "terminate" });
+    if (!synced) return false;
     if (token !== epoch || owner !== ownerId()) return false;
 
     const shouldRefresh = forceRefresh || queuedRefresh;
@@ -107,9 +151,11 @@
   }
 
   function flush(options = {}) {
+    ensureSession();
     if (inFlight) return inFlight;
     inFlight = performCycle(options)
       .catch((error) => {
+        if (error?.name === "AbortError") return false;
         failureCount = Math.min(8, failureCount + 1);
         lastFailureAt = Date.now();
         try {
@@ -124,6 +170,11 @@
       })
       .finally(() => { inFlight = null; });
     return inFlight;
+  }
+
+  function localCheckpoint() {
+    try { root.flushProfileSave?.({ skipCloud: false }); }
+    catch { try { root.saveProfile?.(); } catch {} }
   }
 
   function status() {
@@ -144,11 +195,16 @@
   LEGACY_KEYS.forEach((key) => scheduler.alias(key, TIMER_KEY));
   scheduler.claim(TIMER_KEY, () => flush({ reason: lastReason }));
 
+  lifecycle.off("suspend", "durability.profile");
+  lifecycle.off("terminate", "durability.profile");
+  lifecycle.off("resume", "durability.profile-resume");
+  lifecycle.off("online", "durability.profile-online");
+
   lifecycle.on("online", "sync.manager", () => schedule(120, "online", { refresh: true }));
   lifecycle.on("resume", "sync.manager", () => schedule(250, "resume", { refresh: true }));
   lifecycle.on("offline", "sync.manager", () => scheduler.cancel(TIMER_KEY));
-  lifecycle.on("suspend", "sync.manager", () => flush({ reason: "suspend" }));
-  lifecycle.on("terminate", "sync.manager", () => flush({ reason: "terminate" }));
+  lifecycle.on("suspend", "sync.manager", () => { localCheckpoint(); return flush({ reason: "suspend" }); });
+  lifecycle.on("terminate", "sync.manager", () => { localCheckpoint(); return flush({ reason: "terminate" }); });
 
   root.addEventListener?.("solivoc:account-session-changed", () => resetSession("account_session_changed"));
 
