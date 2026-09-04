@@ -26,27 +26,33 @@ test("mobile consistency uses canonical server game day", async () => {
   assert.match(source, /currentDailyWeek = function canonicalDailyWeek/);
 });
 
-test("level completion is committed once with exact offline event data", async () => {
+test("level completion is committed once into durable pending events", async () => {
   const source = await read("js/mobile-consistency-hardening.js");
-  assert.match(source, /completionTransactions/);
-  assert.match(source, /completionLedgerBase/);
   assert.match(source, /transactionalFinishLevel/);
-  assert.match(source, /type: "completion"/);
+  assert.match(source, /SolivocPendingEvents/);
+  assert.match(source, /queue\?\.hasTransaction\?\.\(txId\)/);
+  assert.match(source, /queue\?\.enqueue\?\.\(/);
+  assert.match(source, /eventType: "completion"/);
   assert.match(source, /campaign,/);
   assert.match(source, /level,/);
   assert.match(source, /stars,/);
   assert.match(source, /xpDelta:/);
+  assert.match(source, /moves:/);
+  assert.match(source, /durationMs:/);
   assert.match(source, /gameDayId: canonicalGameDay\(\)/);
   assert.match(source, /saveProfile\(\{ skipCloud: false \}\)/);
   assert.match(source, /save\?\.\(\{ immediate: true \}\)/);
+  assert.doesNotMatch(source, /profile\.completionTransactions\[txId\] =/);
 });
 
-test("frontend build loads canonical sync after durability guards", async () => {
+test("frontend build loads event queue before durability and completion owner", async () => {
   const source = await read("scripts/build-frontend.mjs");
+  const queue = source.indexOf("core/pending-events.js");
+  const eventSync = source.indexOf("core/pending-event-sync.js");
   const durable = source.indexOf("client-stability-hardening.js");
   const consistency = source.indexOf("mobile-consistency-hardening.js");
   const canonical = source.indexOf("canonical-sync-hardening.js");
   const app = source.indexOf('const appScriptTag');
-  assert.ok(durable >= 0 && consistency > durable && canonical > consistency);
+  assert.ok(queue >= 0 && eventSync > queue && durable > eventSync && consistency > durable && canonical > consistency);
   assert.ok(app >= 0);
 });

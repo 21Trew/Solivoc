@@ -100,22 +100,32 @@
     return `c_${(hash >>> 0).toString(36)}_${String(s?.run?.startedAt || 0).slice(-8)}`;
   }
 
-  function completionEvent(s, xpDelta) {
+  function completionPayload(s, xpDelta) {
     const campaign = s?.mode === "regular";
     const level = campaign ? Math.max(0, Math.trunc(Number(s?.level) || 0)) : 0;
-    const recordedStars = campaign ? Number(profile?.starsByLevel?.[level]) || Number(s?.lastStars) || 0 : 0;
-    const stars = campaign ? Math.max(0, Math.min(3, Math.trunc(recordedStars))) : 0;
+    const recordedStars = campaign ? Number(profile?.starsByLevel?.[level]) || Number(s?.lastStars) || 0 : Number(s?.lastStars) || 0;
+    const stars = Math.max(0, Math.min(3, Math.trunc(recordedStars)));
     return {
-      version: 2,
+      version: 3,
       type: "completion",
       mode: String(s?.mode || "unknown").slice(0, 32),
       campaign,
       level,
       stars,
       xpDelta: Math.max(0, Math.trunc(Number(xpDelta) || 0)),
-      at: Date.now(),
+      moves: Math.max(0, Math.trunc(Number(s?.run?.moves) || 0)),
+      hints: Math.max(0, Math.trunc(Number(s?.run?.hints) || 0)),
+      undos: Math.max(0, Math.trunc(Number(s?.run?.undos) || 0)),
+      maxCombo: Math.max(0, Math.trunc(Number(s?.run?.maxCombo) || 0)),
+      durationMs: Math.max(0, Math.trunc(Number(typeof activeRunElapsedMs === "function" ? activeRunElapsedMs(s) : 0) || 0)),
       gameDayId: canonicalGameDay(),
     };
+  }
+
+  function legacyTransactionExists(txId) {
+    return !!(profile?.completionTransactions
+      && typeof profile.completionTransactions === "object"
+      && Object.prototype.hasOwnProperty.call(profile.completionTransactions, txId));
   }
 
   if (typeof saveProfile === "function" && !window.__solivocCompletionSaveBarrier) {
@@ -133,8 +143,8 @@
     finishLevel = function transactionalFinishLevel(...args) {
       if (!state) return false;
       const txId = transactionId(state);
-      profile.completionTransactions ||= {};
-      if (Object.prototype.hasOwnProperty.call(profile.completionTransactions, txId)) {
+      const queue = window.SolivocPendingEvents;
+      if (legacyTransactionExists(txId) || queue?.hasTransaction?.(txId)) {
         state.rewarded = true;
         save?.({ immediate: true });
         return true;
@@ -145,7 +155,6 @@
       const failedBefore = !!state.failed;
       const lastStarsBefore = state.lastStars;
       const xpBefore = Math.max(0, Number(profile.xp) || 0);
-      if (profile.completionLedgerBase == null) profile.completionLedgerBase = xpBefore;
 
       completionDepth++;
       try {
@@ -153,18 +162,33 @@
         const completed = !!state.rewarded && !state.failed;
         if (!completed) return result;
         const xpAfter = Math.max(0, Number(profile.xp) || 0);
-        profile.completionTransactionsVersion = 2;
-        profile.completionTransactions[txId] = completionEvent(state, xpAfter - xpBefore);
+        const payload = completionPayload(state, xpAfter - xpBefore);
+        // A known account keeps ownership even while temporarily signed out/offline.
+        // Pure guests have no server ACK target; their profile is uploaded on account creation,
+        // so their queue record is immediately locally ACKed after the durable profile commit.
+        const owner = String(accountState?.userId || "");
+        const queued = queue?.enqueue?.({
+          owner,
+          eventType: "completion",
+          payload,
+          transactionId: txId,
+          source: "game",
+        });
+        if (!queued?.event) throw new Error("completion_event_queue_failed");
         completionDepth--;
         completionDepth = Math.max(0, completionDepth);
         saveProfile({ skipCloud: false });
         save?.({ immediate: true });
-        scheduleAccountSync?.(100);
+        if (!owner) queue?.ack?.([queued.event.eventId]);
+        else scheduleAccountSync?.(100);
         recordStabilityEvent?.("completion_committed", {
           mode: state.mode,
           level: Number(state.level) || 0,
-          stars: profile.completionTransactions[txId].stars,
+          stars: payload.stars,
           transactionId: txId,
+          eventId: queued.event.eventId,
+          pendingEventPersistedLocal: queued.persistedLocal !== false,
+          pendingServerAck: !!owner,
         });
         return result ?? true;
       } catch (error) {
