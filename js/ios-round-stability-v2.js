@@ -78,13 +78,13 @@
     };
   }
 
-  const emergencyCheckpoint = (kind, detail = "") => {
+  const checkpointRuntimeFault = (kind, detail = "") => {
     if (!constrained()) return;
     try { save?.({ immediate: true }); } catch {}
     try { flushProfileSave?.({ skipCloud: true }); } catch {}
     try { recordStabilityEvent?.("runtime_fault_checkpoint", { kind, detail: String(detail || "").slice(0, 160) }); } catch {}
   };
 
-  window.addEventListener("error", (event) => emergencyCheckpoint("error", event?.message || event?.error?.message), { capture: true });
-  window.addEventListener("unhandledrejection", (event) => emergencyCheckpoint("promise", event?.reason?.message || event?.reason), { capture: true });
+  window.addEventListener("error", (event) => checkpointRuntimeFault("error", event?.message || event?.error?.message), { capture: true });
+  window.addEventListener("unhandledrejection", (event) => checkpointRuntimeFault("promise", event?.reason?.message || event?.reason), { capture: true });
 })();
