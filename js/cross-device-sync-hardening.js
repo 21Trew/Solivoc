@@ -106,31 +106,19 @@
         scheduleAccountSync?.(1500);
         return true;
       } catch (error) {
-        const retry = () => refreshAccountFromCloud({ force: true });
-        if (window.SolivocScheduler) SolivocScheduler.timeout("sync.cloud-restore-retry", retry, 5000);
-        else setTimeout(retry, 5000);
+        SolivocScheduler.timeout("sync.cloud-restore-retry", () => refreshAccountFromCloud({ force: true }), 5000);
         return false;
       }
     };
   }
 
   const queueRefresh = (delay = 250) => {
-    const run = () => refreshAccountFromCloud();
-    if (window.SolivocScheduler) SolivocScheduler.timeout("sync.cloud-refresh", run, delay);
-    else setTimeout(run, delay);
+    SolivocScheduler.timeout("sync.cloud-refresh", () => refreshAccountFromCloud(), delay);
   };
 
-  if (window.SolivocLifecycle) {
-    SolivocLifecycle.on("online", "sync.cloud-refresh", () => queueRefresh(100));
-    SolivocLifecycle.on("focus", "sync.cloud-refresh", () => queueRefresh(250));
-    SolivocLifecycle.on("visible", "sync.cloud-refresh", () => queueRefresh(250));
-  } else {
-    window.addEventListener("online", () => queueRefresh(100));
-    window.addEventListener("focus", () => queueRefresh(250));
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") queueRefresh(250);
-    });
-  }
+  SolivocLifecycle.on("online", "sync.cloud-refresh", () => queueRefresh(100));
+  SolivocLifecycle.on("focus", "sync.cloud-refresh", () => queueRefresh(250));
+  SolivocLifecycle.on("visible", "sync.cloud-refresh", () => queueRefresh(250));
 
   window.refreshAccountFromCloud = refreshAccountFromCloud;
 })();
