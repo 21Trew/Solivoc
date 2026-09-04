@@ -160,7 +160,9 @@
           accountState.status = "signed_in";
           persistAccountState();
           markPending("retry_after_transient_401");
-          setTimeout(() => { try { scheduleAccountSync?.(250); } catch {} }, 0);
+          const retry = () => { try { scheduleAccountSync?.(250); } catch {} };
+          if (window.SolivocScheduler) SolivocScheduler.timeout("sync.retry-after-401", retry, 0);
+          else setTimeout(retry, 0);
           return false;
         }
       }
@@ -177,13 +179,26 @@
     }
   }
 
-  window.addEventListener("pagehide", lifecycleCheckpoint, { capture: true });
-  window.addEventListener("freeze", lifecycleCheckpoint, { capture: true });
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") lifecycleCheckpoint();
-    else if (hasPending()) setTimeout(() => { try { scheduleAccountSync?.(250); } catch {} }, 0);
-  });
-  window.addEventListener("online", () => {
-    if (hasPending()) setTimeout(() => { try { scheduleAccountSync?.(100); } catch {} }, 0);
-  });
+  const schedulePendingSync = (delay) => {
+    if (!hasPending()) return;
+    const run = () => { try { scheduleAccountSync?.(250); } catch {} };
+    if (window.SolivocScheduler) SolivocScheduler.timeout("sync.pending-account", run, delay);
+    else setTimeout(run, delay);
+  };
+
+  if (window.SolivocLifecycle) {
+    SolivocLifecycle.on("pagehide", "durability.profile", lifecycleCheckpoint);
+    SolivocLifecycle.on("freeze", "durability.profile", lifecycleCheckpoint);
+    SolivocLifecycle.on("hidden", "durability.profile", lifecycleCheckpoint);
+    SolivocLifecycle.on("visible", "durability.profile-resume", () => schedulePendingSync(0));
+    SolivocLifecycle.on("online", "durability.profile-online", () => schedulePendingSync(0));
+  } else {
+    window.addEventListener("pagehide", lifecycleCheckpoint, { capture: true });
+    window.addEventListener("freeze", lifecycleCheckpoint, { capture: true });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") lifecycleCheckpoint();
+      else schedulePendingSync(0);
+    });
+    window.addEventListener("online", () => schedulePendingSync(0));
+  }
 })();
