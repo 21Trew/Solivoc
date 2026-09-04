@@ -54,6 +54,7 @@ const appScriptTag = '    <script src="./js/app.js"></script>';
 const patchScripts = [
   "./js/core/scheduler.js",
   "./js/core/lifecycle.js",
+  "./js/core/persistence.js",
   "./js/v30-patch.js",
   "./js/v31-patch.js",
   "./js/v31-first-run-ui.js",
@@ -61,6 +62,7 @@ const patchScripts = [
   "./js/v33-fox-journey.js",
   "./js/v34-product-update.js",
   "./js/v39-rarity-collectibles.js",
+  "./js/persistence-bridge.js",
   "./js/client-stability-hardening.js",
   "./js/mobile-consistency-hardening.js",
   "./js/cross-device-sync-hardening.js",
