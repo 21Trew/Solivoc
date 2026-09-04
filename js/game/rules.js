@@ -56,7 +56,7 @@ async function finalizeCompletedSlot(i) {
   }
   showToast(`✓ Категория «${category.label}» собрана!`);
   categoryAnimating = false;
-  render();
+  SolivocGameRenderer.paint(result);
   save?.({ immediate: true });
   markStateChanged();
 }
@@ -91,7 +91,7 @@ function performDrop(p, target, options = {}) {
   playSfx("drop");
   haptic(9);
   save?.({ immediate: true });
-  render();
+  SolivocGameRenderer.paint(result);
   const completeEffect = SolivocGameController.effect(result, "SLOT_COMPLETED");
   if (completeEffect) {
     categoryAnimating = true;
