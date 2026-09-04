@@ -6,13 +6,12 @@
   let lastError = "";
   let lastAckAt = 0;
 
-  const currentOwner = () => String(root.accountState?.userId || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64);
+  const account = () => root.SolivocAccountSyncBridge;
+  const currentOwner = () => account()?.owner?.() || "";
   const canSync = () => !!(
     root.SolivocPendingEvents
-    && typeof root.accountSignedIn === "function"
-    && root.accountSignedIn()
-    && typeof root.accountCanUseServer === "function"
-    && root.accountCanUseServer()
+    && account()?.signedIn?.()
+    && account()?.canUseServer?.()
   );
 
   async function flush({ limit = 100 } = {}) {
@@ -24,7 +23,7 @@
     if (!events.length) return true;
     busy = true;
     try {
-      const data = await root.accountRequest("/api/events", {
+      const data = await account().request("/api/events", {
         method: "POST",
         body: JSON.stringify({ events }),
         timeout: 9000,
@@ -34,13 +33,8 @@
         queue.ack(acked);
         lastAckAt = Date.now();
       }
-      if (data?.profile && typeof root.applyAccountCloudProfile === "function") {
-        root.applyAccountCloudProfile(data.profile, { version: data.version });
-      } else if (root.accountState && Number(data?.version) > 0) {
-        root.accountState.version = Math.max(Number(root.accountState.version) || 0, Number(data.version) || 0);
-        root.accountState.lastSyncAt = Number(data.syncedAt) || Date.now();
-        root.persistAccountState?.();
-      }
+      if (data?.profile) account().applyProfile(data.profile, { version: data.version });
+      else if (Number(data?.version) > 0) account().updateMeta(data);
       lastError = "";
       return !data?.blocked?.length;
     } catch (error) {
