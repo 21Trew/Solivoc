@@ -41,6 +41,7 @@
     return {
       version: QUEUE_VERSION,
       streamId: randomStreamId(),
+      streamOwner: "",
       nextSequence: 1,
       updatedAt: 0,
       events: [],
@@ -89,12 +90,14 @@
     const streamId = safeToken(raw.streamId, 48) || randomStreamId();
     const events = Array.isArray(raw.events) ? raw.events.map(normalizeEvent).filter(Boolean) : [];
     const recent = Array.isArray(raw.recent) ? raw.recent.map(normalizeRecent).filter(Boolean).slice(-RECENT_LIMIT) : [];
-    const maxCurrentSequence = events
-      .filter((event) => event.streamId === streamId)
-      .reduce((max, event) => Math.max(max, event.sequenceNo), 0);
+    const currentEvents = events.filter((event) => event.streamId === streamId);
+    const inferredOwner = currentEvents.length ? currentEvents[0].owner : "";
+    const streamOwner = safeOwner(raw.streamOwner) || inferredOwner;
+    const maxCurrentSequence = currentEvents.reduce((max, event) => Math.max(max, event.sequenceNo), 0);
     return {
       version: QUEUE_VERSION,
       streamId,
+      streamOwner,
       nextSequence: Math.max(int(raw.nextSequence, 1, 1_000_000_001), maxCurrentSequence + 1, 1),
       updatedAt: int(raw.updatedAt, 0, 9_999_999_999_999),
       events,
@@ -162,7 +165,13 @@
     for (const item of [...parsed.recent, ...state.recent]) recentByTx.set(item.transactionId, item);
     state.events = [...byId.values()];
     state.recent = [...recentByTx.values()].sort((a, b) => a.at - b.at).slice(-RECENT_LIMIT);
-    if (parsed.streamId === state.streamId) state.nextSequence = Math.max(state.nextSequence, parsed.nextSequence);
+    if (parsed.updatedAt > state.updatedAt) {
+      state.streamId = parsed.streamId;
+      state.streamOwner = parsed.streamOwner;
+      state.nextSequence = parsed.nextSequence;
+    } else if (parsed.streamId === state.streamId) {
+      state.nextSequence = Math.max(state.nextSequence, parsed.nextSequence);
+    }
     persist();
     return true;
   }
@@ -194,6 +203,14 @@
     } catch { return ""; }
   }
 
+  function ensureStreamOwner(owner) {
+    const normalizedOwner = safeOwner(owner);
+    if (state.streamOwner === normalizedOwner) return;
+    state.streamId = randomStreamId();
+    state.streamOwner = normalizedOwner;
+    state.nextSequence = 1;
+  }
+
   function enqueue({
     owner = "",
     eventType = "completion",
@@ -208,6 +225,8 @@
       const existing = state.events.find((event) => event.transactionId === tx) || null;
       return { event: clone(existing), duplicate: true, persistedLocal: lastLocalWriteOk };
     }
+    const normalizedOwner = safeOwner(owner);
+    ensureStreamOwner(normalizedOwner);
     const sequenceNo = state.nextSequence++;
     const streamId = state.streamId;
     const eventId = safeToken(`${streamId}:${sequenceNo}`, 120);
@@ -218,7 +237,7 @@
       sequenceNo,
       idempotencyKey: eventId,
       eventType,
-      owner,
+      owner: normalizedOwner,
       occurredAt,
       source,
       buildId: buildId(),
@@ -250,19 +269,6 @@
       ? state.events
       : state.events.filter((event) => event.owner === normalizedOwner);
     return clone(orderedPending(selected).slice(0, Math.max(1, int(limit, 1, 500)))) || [];
-  }
-
-  function claimGuest(owner) {
-    const normalizedOwner = safeOwner(owner);
-    if (!normalizedOwner) return 0;
-    let changed = 0;
-    for (const event of state.events) {
-      if (event.owner) continue;
-      event.owner = normalizedOwner;
-      changed++;
-    }
-    if (changed) persist();
-    return changed;
   }
 
   function ack(eventIds = []) {
@@ -309,6 +315,7 @@
     return {
       version: QUEUE_VERSION,
       streamId: state.streamId,
+      streamOwner: state.streamOwner,
       nextSequence: state.nextSequence,
       pending: state.events.length,
       recent: state.recent.length,
@@ -322,7 +329,6 @@
     enqueue,
     pending,
     ack,
-    claimGuest,
     dropOwner,
     hasTransaction,
     count,
