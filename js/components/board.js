@@ -169,30 +169,33 @@ function render() {
 }
 function drawStock() {
   if (autoMoveBusy || dealAnimating || categoryAnimating) return;
-  if (!state.stock.length && state.waste.length && !canRecycleStock()) {
+  const recycling = !state.stock.length;
+  if (recycling && state.waste.length && !canRecycleStock()) {
     feedbackWrongMove([stockEl], stockEl, "Эту колоду больше нельзя прокрутить");
     scheduleDeadlockCheck(180);
     return;
   }
-  pushHistory();
-  if (state.stock.length) {
+  if (!state.stock.length && !state.waste.length) return;
+
+  if (!recycling) {
     const next = state.stock[state.stock.length - 1],
       from = stockEl.getBoundingClientRect();
     pendingStockDraw = {
       uid: next?.uid || null,
       from: { left: from.left, top: from.top, width: from.width, height: from.height },
     };
-    state.waste.push(state.stock.pop());
-  } else if (state.waste.length) {
-    state.stock = state.waste.reverse();
-    state.waste = [];
-    state.run.recycles = (state.run.recycles || 0) + 1;
-    pendingRecycle = true;
-  } else {
+  }
+
+  pushHistory();
+  const result = SolivocGameController.dispatch({
+    type: recycling ? SolivocGameEngine.COMMAND.RECYCLE_WASTE : SolivocGameEngine.COMMAND.DRAW_STOCK,
+  });
+  if (!result.accepted) {
     history.pop();
+    pendingStockDraw = null;
     return;
   }
-  state.run.moves++;
+  if (SolivocGameController.effect(result, "STOCK_RECYCLED")) pendingRecycle = true;
   if (state.mode === "tutorial") noteTutorialAction?.("stock");
   if (typeof checkActiveRuleFailure === "function" && checkActiveRuleFailure()) return;
   profile.stats.stockDraws++;

@@ -125,10 +125,18 @@ function bindAppEvents() {
       return;
     }
     const previous = history.pop(),
-      undoCount = (state.run?.undos || 0) + 1;
-    state = restoreHistorySnapshot(previous);
-    if (!state) return;
-    state.run.undos = undoCount;
+      undoCount = (state.run?.undos || 0) + 1,
+      snapshot = restoreHistorySnapshot(previous);
+    if (!snapshot) return;
+    const result = SolivocGameController.dispatch({
+      type: SolivocGameEngine.COMMAND.UNDO,
+      snapshot,
+      undoCount,
+    });
+    if (!result.accepted) {
+      history.push(previous);
+      return;
+    }
     profile.stats.undos++;
     track("undo", { mode: state.mode });
     if (state.mode === "tutorial") noteTutorialAction?.("undo");
@@ -137,7 +145,6 @@ function bindAppEvents() {
     render();
     markStateChanged();
   };
-
   $("#restart").onclick = () => {
     if (autoMoveBusy || categoryAnimating) return;
     profile.stats.restarts++;
@@ -154,12 +161,13 @@ function bindAppEvents() {
       feedbackWrongMove([$("#hint")], $("#hint"), "На этом уровне подсказки отключены");
       return;
     }
-    state.run.hints++;
+    const result = SolivocGameController.dispatch({ type: SolivocGameEngine.COMMAND.USE_HINT });
+    if (!result.accepted) return;
     profile.stats.hints++;
     scheduleProfileSave?.();
     track("hint_used", { mode: state.mode });
     resetCombo();
-    const hint = findHintMove();
+    const hint = SolivocGameController.effect(result, "HINT_REQUESTED")?.hint || null;
     if (hint?.payload) {
       const p = hint.payload;
       const { source, target } = hintMoveElements(hint);
