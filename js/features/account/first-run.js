@@ -5,7 +5,6 @@
   if (root.SolivocFirstRunAccount) return;
 
   let accountObserver = null;
-  let onboardingAdapterInstalled = false;
 
   const signedIn = () => typeof accountSignedIn === "function" && accountSignedIn();
   const profileReady = () => typeof profile !== "undefined" && profile && typeof profile === "object";
@@ -116,17 +115,6 @@
     });
   }
 
-  function installOnboardingAdapter() {
-    if (onboardingAdapterInstalled || typeof runFirstRunOnboarding !== "function") return false;
-    onboardingAdapterInstalled = true;
-    const baseOnboarding = runFirstRunOnboarding;
-    runFirstRunOnboarding = async function accountFirstOnboarding(...args) {
-      if (!profile?.onboardingComplete) await runGate();
-      return baseOnboarding.apply(this, args);
-    };
-    return true;
-  }
-
   function ensureSocialButtons() {
     const modal = document.querySelector("#accountModal"), mode = modal?.dataset.mode || "";
     if (!modal || signedIn() || !["register", "login"].includes(mode)) return;
@@ -157,7 +145,6 @@
   function install() {
     ensureStyles();
     handleOauthReturn();
-    installOnboardingAdapter();
     const startObserver = () => {
       const modal = document.querySelector("#accountModal");
       if (!modal || accountObserver) return;
