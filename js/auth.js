@@ -2,8 +2,7 @@
 const ACCOUNT_STATE_KEY = "solivoc-account-v1";
 const ACCOUNT_BACKUP_PREFIX = "solivoc-account-backup:";
 const ACCOUNT_VERIFICATION_KEY = "solivoc-auth-flow-v1";
-let accountSyncTimer = null,
-  accountSyncBusy = false,
+let accountSyncBusy = false,
   accountApplyingCloud = false,
   accountState = loadAccountState();
 let accountVerificationTimer = null;
@@ -411,7 +410,7 @@ async function deleteAccount(password) {
     timeout: 15000,
   });
 
-  clearTimeout(accountSyncTimer);
+  SolivocScheduler.cancel("sync.account");
   accountState = { status: "guest", userId: "", email: "", version: 0, lastSyncAt: 0, pendingLogout: false };
   persistAccountState();
   if (oldId) {
@@ -440,9 +439,8 @@ async function completePendingServerLogout() {
 
 function scheduleAccountSync(delay = 5000) {
   if (accountApplyingCloud || !accountSignedIn() || !accountCanUseServer() || document.visibilityState === "hidden") return;
-  clearTimeout(accountSyncTimer);
   const playing = typeof activelyPlayingRound === "function" && activelyPlayingRound();
-  accountSyncTimer = setTimeout(() => flushAccountSync(), Math.max(delay, playing ? 12000 : 1800));
+  SolivocScheduler.timeout("sync.account", () => flushAccountSync(), Math.max(delay, playing ? 12000 : 1800));
 }
 async function flushAccountSync({ keepalive = false } = {}) {
   if (accountSyncBusy || !accountSignedIn() || !accountCanUseServer() || document.visibilityState === "hidden") return false;
@@ -451,7 +449,7 @@ async function flushAccountSync({ keepalive = false } = {}) {
     return false;
   }
   accountSyncBusy = true;
-  clearTimeout(accountSyncTimer);
+  SolivocScheduler.cancel("sync.account");
   try {
     const bodyText = JSON.stringify({ profile: accountProfileSnapshot(), version: accountState.version || 0 });
     const canKeepalive = keepalive && bodyText.length < 60000;
@@ -765,11 +763,11 @@ function bindAccountUi() {
   document.querySelector("#accountClose")?.addEventListener("click", closeAccountModal);
   modal?.addEventListener("click", (event) => { if (event.target === modal) closeAccountModal(); });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && modal?.classList.contains("show")) closeAccountModal(); });
-  window.addEventListener("online", async () => { if (accountState.pendingLogout) await completePendingServerLogout(); if (accountSignedIn()) scheduleAccountSync(350); updateAccountModalIfOpen(); });
-  window.addEventListener("offline", updateAccountModalIfOpen);
-  document.addEventListener("visibilitychange", () => {
-    // Do not start a cloud request while iOS is suspending the PWA. The local
-    // save is authoritative offline; upload it after the app becomes visible.
-    if (document.visibilityState === "visible") scheduleAccountSync(1800);
+  SolivocLifecycle.on("online", "account.ui", async () => {
+    if (accountState.pendingLogout) await completePendingServerLogout();
+    if (accountSignedIn()) scheduleAccountSync(350);
+    updateAccountModalIfOpen();
   });
+  SolivocLifecycle.on("offline", "account.ui", updateAccountModalIfOpen);
+  SolivocLifecycle.on("visible", "account.ui", () => scheduleAccountSync(1800));
 }
