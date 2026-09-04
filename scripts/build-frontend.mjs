@@ -63,6 +63,7 @@ const patchScripts = [
   "./js/mobile-consistency-hardening.js",
   "./js/cross-device-sync-hardening.js",
   "./js/canonical-sync-hardening.js",
+  "./js/ios-round-stability-v2.js",
 ];
 const missingPatchTags = patchScripts
   .filter((src) => !indexHtml.includes(`src="${src}"`))

@@ -62,8 +62,8 @@ function restartCurrentLevel() {
   return makeLevel(state.level, { mode: state.mode, seed: `${state.seed}:retry:${Date.now()}`, cardSourceMode: state.cardSourceMode, categoryCooldownIds: state.categoryCooldownIds, specialIntro: false, customRules: state.customRules || null, forceSolvable: true });
 }
 const MAX_UNDO_SNAPSHOTS = 10;
-const IOS_UNDO_SNAPSHOTS = 4;
-let stateSaveTimer = null, lastPersistedStateJson = "", lastBackupAt = 0;
+const IOS_UNDO_SNAPSHOTS = 2;
+let stateSaveTimer = null, lastPersistedStateJson = "", lastBackupAt = 0, lastStateWriteAt = 0;
 function snapshot() {
   try { return JSON.stringify(state); } catch { return null; }
 }
@@ -88,21 +88,29 @@ function persistStateNow() {
       const json = JSON.stringify(state);
       if (json !== lastPersistedStateJson) {
         const now = Date.now();
-        if (lastPersistedStateJson && now - lastBackupAt > 15000) {
+        if (lastPersistedStateJson && now - lastBackupAt > 12000) {
           try { localStorage.setItem(SAVE_BACKUP_KEY, lastPersistedStateJson); lastBackupAt = now; } catch {}
         }
-        try { localStorage.setItem(SAVE_KEY, json); }
-        catch (error) {
-          try { localStorage.removeItem(SAVE_BACKUP_KEY); localStorage.setItem(SAVE_KEY, json); }
-          catch { throw error; }
-        }
+        // Never delete the previous recovery point to make room for a new write.
+        // On iOS a transient quota/storage failure must not turn into loss of both
+        // the current round and its backup.
+        localStorage.setItem(SAVE_KEY, json);
         lastPersistedStateJson = json;
+        lastStateWriteAt = now;
         checkpointStabilityRuntime?.();
       }
     }
     return true;
   } catch (err) {
     console.warn("save failed", err);
+    try {
+      recordStabilityEvent?.("round_save_failed", {
+        level: Number(state?.level) || 0,
+        moves: Number(state?.run?.moves) || 0,
+        stateBytes: lastPersistedStateJson?.length || 0,
+        error: String(err?.name || err?.message || err).slice(0, 120),
+      });
+    } catch {}
     return false;
   }
 }
@@ -110,7 +118,11 @@ function save(options = {}) {
   const immediate = options === true || options?.immediate === true;
   if (immediate) return persistStateNow();
   clearTimeout(stateSaveTimer);
-  const delay = typeof stabilityConstrainedMode === "function" && stabilityConstrainedMode() ? 110 : 220;
+  const constrained = typeof stabilityConstrainedMode === "function" && stabilityConstrainedMode();
+  // A successful move already checkpoints synchronously before render. Avoid
+  // serializing the identical state again a few milliseconds later on iPhone.
+  if (constrained && Date.now() - lastStateWriteAt < 420) return true;
+  const delay = constrained ? 180 : 220;
   stateSaveTimer = setTimeout(persistStateNow, delay);
   return true;
 }
@@ -138,6 +150,7 @@ function clearCompletedSavedRound() {
   try { localStorage.removeItem(SAVE_BACKUP_KEY); } catch {}
   lastPersistedStateJson = "";
   lastBackupAt = 0;
+  lastStateWriteAt = 0;
 }
 function load({ render: shouldRender = true } = {}) {
   for (const key of [SAVE_KEY, SAVE_BACKUP_KEY]) {
@@ -152,7 +165,13 @@ function load({ render: shouldRender = true } = {}) {
       }
       if (s?.columns) {
         lastPersistedStateJson = key === SAVE_KEY ? raw : "";
+        lastStateWriteAt = key === SAVE_KEY ? Date.now() : 0;
         const restored = normalizeLoadedLayout(s); state = restored.state;
+        if (key === SAVE_BACKUP_KEY) {
+          try { recordStabilityEvent?.("round_restored_from_backup", { level: Number(state?.level) || 0, moves: Number(state?.run?.moves) || 0 }); } catch {}
+          // Promote a valid backup immediately so a second restart cannot lose it.
+          try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); lastPersistedStateJson = localStorage.getItem(SAVE_KEY) || ""; lastStateWriteAt = Date.now(); } catch {}
+        }
         if (state.mode === "marathon" && state.rewarded && state.marathonSuccess) {
           const nextRound = (state.marathonRound || 1) + 1, runId = state.marathonId || `marathon:${Date.now().toString(36)}`;
           makeLevel(nextRound, { mode:"marathon", seed:`${runId}:${nextRound}`, marathonRound:nextRound, marathonId:runId });
