@@ -89,10 +89,13 @@ for (const file of files) {
   if (text.includes("solivoc.vercel.app") && !legacyOriginAllowed.has(name)) {
     failures.push(`${name}: unexpected legacy Vercel origin reference`);
   }
-  if (runtimeLayerName.test(name) && !legacyRuntimeLayers.has(name)) {
+
+  // Architecture restrictions apply to browser runtime sources. Tests and
+  // build scripts may intentionally contain override-shaped fixture strings.
+  if (name.startsWith("js/") && runtimeLayerName.test(name) && !legacyRuntimeLayers.has(name)) {
     failures.push(`${name}: new runtime patch/hardening layers are forbidden; use a normal module`);
   }
-  if (criticalOverridePattern.test(text) && !legacyRuntimeLayers.has(name) && name !== "scripts/check-source.mjs") {
+  if (name.startsWith("js/") && criticalOverridePattern.test(text) && !legacyRuntimeLayers.has(name)) {
     failures.push(`${name}: critical runtime function override is forbidden; add an explicit module hook instead`);
   }
 }
