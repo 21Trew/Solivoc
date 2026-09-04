@@ -41,6 +41,41 @@ const redisEnvMarker = /(?:UPSTASH_REDIS_REST_URL|KV_REST_API_URL|UPSTASH_REDIS_
 const redisEnvAllowed = new Set(["api/_push-lib.mjs", "api/backup.mjs", "scripts/check-source.mjs"]);
 const legacyOriginAllowed = new Set(["js/host-routing.js", "scripts/check-source.mjs"]);
 
+// Stage 9 migration guard. These are the only historical runtime layers that
+// may still exist while they are being strangled into normal modules. The
+// allow-list must shrink; adding a new patch/hardening file is a source-quality
+// failure rather than a new architectural escape hatch.
+const legacyRuntimeLayers = new Set([
+  "js/v30-patch.js",
+  "js/v31-patch.js",
+  "js/v31-first-run-ui.js",
+  "js/v32-ui-fixes.js",
+  "js/v33-fox-journey.js",
+  "js/v34-product-update.js",
+  "js/v39-rarity-collectibles.js",
+  "js/client-stability-hardening.js",
+  "js/mobile-consistency-hardening.js",
+  "js/cross-device-sync-hardening.js",
+  "js/canonical-sync-hardening.js",
+  "js/ios-round-stability-v2.js",
+]);
+const runtimeLayerName = /(?:^|\/)(?:v\d+(?:-[^/]*)?-(?:patch|fixes?|update|journey|collectibles)|[^/]*-(?:patch|hardening))(?:\.js|\.mjs)$/i;
+const criticalOverrideNames = [
+  "finishLevel",
+  "saveProfile",
+  "flushAccountSync",
+  "loginAccount",
+  "restoreAccountSessionOnBoot",
+  "render",
+  "renderHub",
+  "openHub",
+  "todayKey",
+  "reconcileCampaignProgress",
+  "syncLeaderboardNonBlocking",
+];
+const criticalOverridePattern = new RegExp(`\\b(?:${criticalOverrideNames.join("|")})\\s*=\\s*(?:async\\s+)?function\\b`);
+const normalRuntimeModule = (name) => ["js/core/", "js/game/", "js/features/"].some((prefix) => name.startsWith(prefix));
+
 for (const file of files) {
   const ext = path.extname(file).toLowerCase();
   if (!scanExtensions.has(ext)) continue;
@@ -54,6 +89,16 @@ for (const file of files) {
   }
   if (text.includes("solivoc.vercel.app") && !legacyOriginAllowed.has(name)) {
     failures.push(`${name}: unexpected legacy Vercel origin reference`);
+  }
+
+  if (name.startsWith("js/") && runtimeLayerName.test(name) && !legacyRuntimeLayers.has(name)) {
+    failures.push(`${name}: new runtime patch/hardening layers are forbidden; use a normal module`);
+  }
+  // Root-level legacy code is intentionally migrated incrementally. New normal
+  // runtime owners live in core/game/features and may not reassign critical
+  // globals; they must expose explicit services/hooks instead.
+  if (normalRuntimeModule(name) && criticalOverridePattern.test(text)) {
+    failures.push(`${name}: critical runtime function override is forbidden; add an explicit module hook instead`);
   }
 }
 
