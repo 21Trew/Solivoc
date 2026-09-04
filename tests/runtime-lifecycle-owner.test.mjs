@@ -11,6 +11,7 @@ const ios = await readFile(new URL("../js/ios-round-stability-v2.js", import.met
 const apiClient = await readFile(new URL("../js/api-client.js", import.meta.url), "utf8");
 const app = await readFile(new URL("../js/app.js", import.meta.url), "utf8");
 const auth = await readFile(new URL("../js/auth.js", import.meta.url), "utf8");
+const v34 = await readFile(new URL("../js/v34-product-update.js", import.meta.url), "utf8");
 
 const directLifecycleListener = /(?:window|document)\.addEventListener\("(?:visibilitychange|pagehide|pageshow|online|offline|freeze|beforeunload|error|unhandledrejection)"/;
 
@@ -86,4 +87,12 @@ test("app lifecycle and recurring runtime work use shared owners", () => {
   assert.match(app, /SolivocScheduler\.interval\("pwa\.update-check"/);
   assert.doesNotMatch(app, directLifecycleListener);
   assert.doesNotMatch(app, /(?:challengeSyncTimer|resumeSyncTimer|ruleMetricTimer)/);
+});
+
+test("v34 developer mail uses shared lifecycle and scheduler", () => {
+  assert.match(v34, /SolivocScheduler\.timeout\("developer-mail\.initial"/);
+  assert.match(v34, /SolivocScheduler\.interval\("developer-mail\.poll"/);
+  assert.match(v34, /SolivocLifecycle\.on\("online","developer-mail"/);
+  assert.match(v34, /SolivocLifecycle\.on\("visible","developer-mail"/);
+  assert.doesNotMatch(v34, directLifecycleListener);
 });
