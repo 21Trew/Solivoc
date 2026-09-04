@@ -163,9 +163,10 @@
         if (!completed) return result;
         const xpAfter = Math.max(0, Number(profile.xp) || 0);
         const payload = completionPayload(state, xpAfter - xpBefore);
-        const owner = typeof accountSignedIn === "function" && accountSignedIn()
-          ? String(accountState?.userId || profile?.playerId || "")
-          : "";
+        // A known account keeps ownership even while temporarily signed out/offline.
+        // Pure guests have no server ACK target; their profile is uploaded on account creation,
+        // so their queue record is immediately locally ACKed after the durable profile commit.
+        const owner = String(accountState?.userId || "");
         const queued = queue?.enqueue?.({
           owner,
           eventType: "completion",
@@ -178,7 +179,8 @@
         completionDepth = Math.max(0, completionDepth);
         saveProfile({ skipCloud: false });
         save?.({ immediate: true });
-        scheduleAccountSync?.(100);
+        if (!owner) queue?.ack?.([queued.event.eventId]);
+        else scheduleAccountSync?.(100);
         recordStabilityEvent?.("completion_committed", {
           mode: state.mode,
           level: Number(state.level) || 0,
@@ -186,6 +188,7 @@
           transactionId: txId,
           eventId: queued.event.eventId,
           pendingEventPersistedLocal: queued.persistedLocal !== false,
+          pendingServerAck: !!owner,
         });
         return result ?? true;
       } catch (error) {
