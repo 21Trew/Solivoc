@@ -129,7 +129,7 @@
       if (lifecycle && document.visibilityState === "hidden") {
         if (accountSyncBusy || !accountSignedIn?.() || !accountCanUseServer?.()) return false;
         accountSyncBusy = true;
-        clearTimeout(accountSyncTimer);
+        SolivocScheduler.cancel("sync.account");
         try {
           const bodyText = JSON.stringify({ profile: accountProfileSnapshot(), version: accountState.version || 0 });
           if (bodyText.length >= 60000) { markPending("lifecycle_payload_large"); return false; }
@@ -160,7 +160,7 @@
           accountState.status = "signed_in";
           persistAccountState();
           markPending("retry_after_transient_401");
-          setTimeout(() => { try { scheduleAccountSync?.(250); } catch {} }, 0);
+          SolivocScheduler.timeout("sync.retry-after-401", () => { try { scheduleAccountSync?.(250); } catch {} }, 0);
           return false;
         }
       }
@@ -177,13 +177,13 @@
     }
   }
 
-  window.addEventListener("pagehide", lifecycleCheckpoint, { capture: true });
-  window.addEventListener("freeze", lifecycleCheckpoint, { capture: true });
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") lifecycleCheckpoint();
-    else if (hasPending()) setTimeout(() => { try { scheduleAccountSync?.(250); } catch {} }, 0);
-  });
-  window.addEventListener("online", () => {
-    if (hasPending()) setTimeout(() => { try { scheduleAccountSync?.(100); } catch {} }, 0);
-  });
+  const schedulePendingSync = (delay) => {
+    if (!hasPending()) return;
+    SolivocScheduler.timeout("sync.pending-account", () => { try { scheduleAccountSync?.(250); } catch {} }, delay);
+  };
+
+  SolivocLifecycle.on("suspend", "durability.profile", lifecycleCheckpoint);
+  SolivocLifecycle.on("terminate", "durability.profile", lifecycleCheckpoint);
+  SolivocLifecycle.on("resume", "durability.profile-resume", () => schedulePendingSync(0));
+  SolivocLifecycle.on("online", "durability.profile-online", () => schedulePendingSync(0));
 })();

@@ -179,11 +179,14 @@ function apiFetch(path, options = {}) {
   }
   function start() {
     if (!gamePage()) return;
-    setTimeout(() => fetchAlerts({ force: true }), 2200);
-    setInterval(() => { if (document.visibilityState === "visible") { fetchAlerts(); showNext(); } }, 60000);
-    window.addEventListener("online", () => fetchAlerts({ force: true }), { passive: true });
-    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { fetchAlerts(); showNext(); } }, { passive: true });
-    document.addEventListener("click", () => { fetchAlerts(); setTimeout(showNext, 400); }, { passive: true });
+    SolivocScheduler.timeout("developer-alerts.initial", () => fetchAlerts({ force: true }), 2200);
+    SolivocScheduler.interval("developer-alerts.poll", () => { fetchAlerts(); showNext(); }, 60000, { visibleOnly: true });
+    SolivocLifecycle.on("online", "developer-alerts", () => fetchAlerts({ force: true }));
+    SolivocLifecycle.on("visible", "developer-alerts", () => { fetchAlerts(); showNext(); });
+    document.addEventListener("click", () => {
+      fetchAlerts();
+      SolivocScheduler.timeout("developer-alerts.show-next", showNext, 400);
+    }, { passive: true });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });
   else start();
