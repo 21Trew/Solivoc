@@ -39,6 +39,16 @@ test("stock UI delegates stock and recycle mutation to engine", async () => {
   assert.doesNotMatch(source, /state\.run\.moves\+\+/);
 });
 
+test("undo and hint state transitions are owned by engine", async () => {
+  const source = await read("js/app.js");
+  assert.match(source, /COMMAND\.UNDO/);
+  assert.match(source, /COMMAND\.USE_HINT/);
+  assert.match(source, /HINT_REQUESTED/);
+  assert.doesNotMatch(source, /state\.run\.hints\+\+/);
+  assert.doesNotMatch(source, /state = restoreHistorySnapshot\(previous\)/);
+  assert.doesNotMatch(source, /state\.run\.undos = undoCount/);
+});
+
 test("controller only bridges command results into global state", async () => {
   const source = await read("js/game/engine/controller.js");
   assert.match(source, /engine\.reduce\(currentState, command\)/);
