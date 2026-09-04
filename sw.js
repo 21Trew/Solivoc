@@ -1,11 +1,6 @@
 const CACHE = "worditaire-build-__SOLIVOC_BUILD__";
 const CORE = __SOLIVOC_CORE__;
 
-const NETWORK_FIRST = new Set([
-  "/js/host-routing.js",
-  "/js/runtime-config.js",
-]);
-
 async function currentCache() {
   return caches.open(CACHE);
 }
@@ -66,18 +61,6 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith((async () => {
     const cache = await currentCache();
-
-    if (NETWORK_FIRST.has(url.pathname)) {
-      try {
-        const response = await fetch(event.request, { cache: "no-store" });
-        if (shouldCache(event.request, url, response)) {
-          try { await cache.put(event.request, response.clone()); } catch {}
-        }
-        return response;
-      } catch {
-        return (await cache.match(event.request)) || Response.error();
-      }
-    }
 
     if (event.request.mode === "navigate") {
       // Navigation and scripts are always served from this worker's own cache
