@@ -47,8 +47,6 @@ const legacyOriginAllowed = new Set(["js/host-routing.js", "scripts/check-source
 // failure rather than a new architectural escape hatch.
 const legacyRuntimeLayers = new Set([
   "js/v30-patch.js",
-  "js/v31-patch.js",
-  "js/v31-first-run-ui.js",
   "js/v32-ui-fixes.js",
   "js/v33-fox-journey.js",
   "js/v34-product-update.js",
@@ -94,9 +92,6 @@ for (const file of files) {
   if (name.startsWith("js/") && runtimeLayerName.test(name) && !legacyRuntimeLayers.has(name)) {
     failures.push(`${name}: new runtime patch/hardening layers are forbidden; use a normal module`);
   }
-  // Root-level legacy code is intentionally migrated incrementally. New normal
-  // runtime owners live in core/game/features and may not reassign critical
-  // globals; they must expose explicit services/hooks instead.
   if (normalRuntimeModule(name) && criticalOverridePattern.test(text)) {
     failures.push(`${name}: critical runtime function override is forbidden; add an explicit module hook instead`);
   }
