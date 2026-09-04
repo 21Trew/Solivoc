@@ -40,16 +40,21 @@ async function finalizeCompletedSlot(i) {
   await animateCategoryCompletion(i, cc.label);
   const current = state.slots[i], currentCc = current && categoryCard(current);
   if (!currentCc || currentCc.cat !== cc.cat || !slotIsComplete(i)) { categoryAnimating = false; return; }
-  state.slots[i] = null;
-  state.completed++;
+  const result = SolivocGameController.dispatch({
+    type: SolivocGameEngine.COMMAND.COMPLETE_CATEGORY,
+    slotIndex: i,
+  });
+  const effect = SolivocGameController.effect(result, "CATEGORY_COMPLETED");
+  if (!result.accepted || !effect) { categoryAnimating = false; return; }
+  const category = effect.category || { cat: cc.cat, label: cc.label };
   if (state.mode !== "tutorial") {
     profile.stats.categoriesCompleted++;
-    if (typeof recordCategoryCompletion === "function") recordCategoryCompletion(cc.cat);
-    if (!String(cc.cat).startsWith("visual:") && !profile.discovered.includes(cc.cat)) profile.discovered.push(cc.cat);
-    track("category_completed", { category: cc.cat, mode: state.mode, collectionId: state.collectionId || null });
+    if (typeof recordCategoryCompletion === "function") recordCategoryCompletion(category.cat);
+    if (!String(category.cat).startsWith("visual:") && !profile.discovered.includes(category.cat)) profile.discovered.push(category.cat);
+    track("category_completed", { category: category.cat, mode: state.mode, collectionId: state.collectionId || null });
     checkAchievements();
   }
-  showToast(`✓ Категория «${cc.label}» собрана!`);
+  showToast(`✓ Категория «${category.label}» собрана!`);
   categoryAnimating = false;
   render();
   save?.({ immediate: true });
@@ -61,7 +66,7 @@ function performDrop(p, target, options = {}) {
   if (!canDropTo(p, zone, idx)) return false;
   pushHistory();
   const result = SolivocGameController.dispatch({
-    type: SolivocGameEngine.COMMAND.MOVE_CARD,
+    type: (options.comboSource || "manual") === "auto" ? SolivocGameEngine.COMMAND.AUTO_MOVE : SolivocGameEngine.COMMAND.MOVE_CARD,
     source: p.source === "column"
       ? { zone: "column", index: p.ci, start: p.start }
       : p.source === "slot"
@@ -73,7 +78,7 @@ function performDrop(p, target, options = {}) {
     history.pop();
     return false;
   }
-  const moveEffect = SolivocGameController.effect(result, "MOVE_APPLIED");
+  const moveEffect = SolivocGameController.effect(result, "MOVE_APPLIED") || SolivocGameController.effect(result, "AUTO_MOVE_APPLIED");
   const revealEffect = SolivocGameController.effect(result, "CARD_REVEALED");
   if (revealEffect?.uid) pendingRevealUid = revealEffect.uid;
   if (state.mode === "tutorial") {
