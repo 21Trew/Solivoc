@@ -56,3 +56,10 @@ test("events for another account are ignored", () => {
   assert.equal(result.profile.xp, 7);
   assert.deepEqual(result.ackedEventIds, []);
 });
+
+test("unowned events are never applied to an authenticated account", () => {
+  const unowned = { ...event(1), owner: "" };
+  const result = applyPendingEvents({ xp: 7, starsByLevel: {}, stats: {} }, [unowned], { userId: "u_player12345" });
+  assert.equal(result.profile.xp, 7);
+  assert.deepEqual(result.ackedEventIds, []);
+});
