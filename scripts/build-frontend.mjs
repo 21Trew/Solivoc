@@ -123,15 +123,21 @@ async function collectCriticalShell(html) {
     let source = "";
     try { source = await readFile(sourcePath, "utf8"); }
     catch { throw new Error(`critical asset missing from dist: ${asset}`); }
-    for (const match of source.matchAll(/(?:fetch|import)\(\s*["'](\.\/[^"]+?)["']/g)) {
-      const dependency = cleanLocalAsset(match[1]);
-      if (!dependency) continue;
-      const dependencyPath = path.join(out, dependency.replace(/^\.\//, ""));
-      try { await readFile(dependencyPath); }
-      catch { continue; }
-      if (!assets.has(dependency)) {
-        assets.add(dependency);
-        if (dependency.endsWith(".js")) queue.push(dependency);
+    const dependencyPatterns = [
+      /(?:fetch|import)\(\s*["'](\.\/[^"']+?)["']/g,
+      /(?:\.href|href)\s*=\s*["'](\.\/[^"']+?)["']/g,
+    ];
+    for (const pattern of dependencyPatterns) {
+      for (const match of source.matchAll(pattern)) {
+        const dependency = cleanLocalAsset(match[1]);
+        if (!dependency) continue;
+        const dependencyPath = path.join(out, dependency.replace(/^\.\//, ""));
+        try { await readFile(dependencyPath); }
+        catch { continue; }
+        if (!assets.has(dependency)) {
+          assets.add(dependency);
+          if (dependency.endsWith(".js")) queue.push(dependency);
+        }
       }
     }
   }
