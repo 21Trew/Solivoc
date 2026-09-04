@@ -27,11 +27,11 @@ test("state owns constrained undo history", () => {
   assert.match(stateSource, /history\.length > limit/);
 });
 
-test("iOS guard is the single temporary fault checkpoint owner", () => {
+test("iOS guard delegates runtime faults to lifecycle owner", () => {
   assert.match(iosSource, /checkpointRuntimeFault/);
   assert.match(iosSource, /save\?\.\(\{ immediate: true \}\)/);
-  assert.match(iosSource, /window\.addEventListener\("error"/);
-  assert.match(iosSource, /window\.addEventListener\("unhandledrejection"/);
+  assert.match(iosSource, /SolivocLifecycle\.on\("error"/);
+  assert.match(iosSource, /SolivocLifecycle\.on\("unhandledrejection"/);
   assert.doesNotMatch(iosSource, /setInterval\([\s\S]*8000/);
 });
 
