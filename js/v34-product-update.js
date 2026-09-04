@@ -48,16 +48,13 @@
   function isActiveRoundSnapshot(s) {
     return !!(s?.run && !s.rewarded && !s.failed && Number(s.totalCategories) > 0);
   }
-  function shouldForceImmediateSave(constrained, active, immediateRequested = false) {
-    return !immediateRequested && !!constrained && !!active;
-  }
   function worldForChapter(chapter) { return Math.floor((Math.max(1, Number(chapter) || 1) - 1) / 10) + 1; }
   function chapterInWorld(chapter) { return ((Math.max(1, Number(chapter) || 1) - 1) % 10) + 1; }
   function worldName(world) { return WORLD_NAMES[world - 1] || `Мир ${world}`; }
   function localChapterName(chapter) { return WORLD_CHAPTER_NAMES[chapterInWorld(chapter) - 1] || `Глава ${chapterInWorld(chapter)}`; }
 
   root.__solivocV34Test = Object.freeze({
-    chooseRotatingDefinition, isActiveRoundSnapshot, shouldForceImmediateSave, worldForChapter, chapterInWorld,
+    chooseRotatingDefinition, isActiveRoundSnapshot, worldForChapter, chapterInWorld,
     weeklyExtra: WEEKLY_EXTRA, monthlyExtra: MONTHLY_EXTRA,
   });
   if (typeof document === "undefined") return;
@@ -169,35 +166,6 @@
       }
     }
   }
-
-  /* On iOS/low-memory devices checkpoint every board mutation and keep fewer undo JSON snapshots. */
-  if (typeof save === "function") {
-    const baseSave = save;
-    save = function v34SafeSave(options = {}) {
-      const immediateRequested = options === true || options?.immediate === true;
-      const constrained = typeof stabilityConstrainedMode === "function" && stabilityConstrainedMode();
-      if (shouldForceImmediateSave(constrained, activeRound(), immediateRequested)) return baseSave({ immediate: true });
-      return baseSave(options);
-    };
-  }
-  if (typeof pushHistory === "function") {
-    const basePushHistory = pushHistory;
-    pushHistory = function v34LeanHistory(...args) {
-      const result = basePushHistory.apply(this, args);
-      if (typeof stabilityConstrainedMode === "function" && stabilityConstrainedMode() && Array.isArray(history) && history.length > 2) history.splice(0, history.length - 2);
-      return result;
-    };
-  }
-  function emergencyRoundCheckpoint() {
-    try { if (activeRound() && typeof save === "function") save({ immediate: true }); } catch {}
-    try { if (typeof flushProfileSave === "function") flushProfileSave({ skipCloud: true }); } catch {}
-  }
-  window.addEventListener("error", emergencyRoundCheckpoint, { capture: true });
-  window.addEventListener("unhandledrejection", emergencyRoundCheckpoint, { capture: true });
-  setInterval(() => {
-    if (document.visibilityState !== "visible" || !activeRound()) return;
-    if (typeof stabilityConstrainedMode === "function" && stabilityConstrainedMode()) emergencyRoundCheckpoint();
-  }, 8000);
 
   if (typeof render === "function") {
     const baseRender = render;
