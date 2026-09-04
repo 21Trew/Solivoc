@@ -100,11 +100,6 @@ function performDrop(p, target, options = {}) {
   return true;
 }
 
-function maxStockRecycles() {
-  const specialLimit = state?.special?.maxRecycles, ruleLimit = state?.rules?.maxRecycles;
-  const limits = [specialLimit, ruleLimit].filter(Number.isFinite);
-  return limits.length ? Math.min(...limits) : Infinity;
-}
 function canRecycleStock() {
   return SolivocGameEngine.canRecycleStock(state);
 }
