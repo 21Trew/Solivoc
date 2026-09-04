@@ -90,18 +90,6 @@ if (missingPatchTags.length) {
 indexHtml = indexHtml.replace(/(<meta name="slovasyans-build" content=")[^"]*(" \/>)/, `$1${buildId}$2`);
 await writeFile(indexPath, indexHtml, "utf8");
 
-// Production app bootstrap must have a single service-worker update owner.
-// Keep the legacy source function as a rollback reference until Stage 9 migrates
-// the app bootstrap itself; the copied production bundle is a thin facade.
-const appPath = path.join(out, "js", "app.js");
-let appSource = await readFile(appPath, "utf8");
-const pwaStart = appSource.indexOf("function registerPwa() {");
-const pwaEnd = appSource.indexOf("\n\nlet challengeSyncBusy", pwaStart);
-if (pwaStart < 0 || pwaEnd < 0) throw new Error("app.js PWA owner markers not found");
-const pwaFacade = `function registerPwa() {\n  return window.SolivocUpdateManager?.start?.();\n}`;
-appSource = `${appSource.slice(0, pwaStart)}${pwaFacade}${appSource.slice(pwaEnd)}`;
-await writeFile(appPath, appSource, "utf8");
-
 const adminPath = path.join(out, "admin.html");
 let adminHtml = await readFile(adminPath, "utf8");
 for (const src of ["./js/admin.js", "./styles/admin.css", "./js/admin-mail.js", "./js/admin-recovery.js", "./styles/admin-mail.css", "./styles/admin-recovery.css"]) {
