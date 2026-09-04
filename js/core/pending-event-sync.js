@@ -1,4 +1,4 @@
-/* Delivery owner for durable pending player events. */
+/* Delivery operation for durable pending player events. Scheduling belongs to SyncManager. */
 (() => {
   const root = typeof window !== "undefined" ? window : globalThis;
   if (root.SolivocPendingEventSync) return;
@@ -42,10 +42,6 @@
         root.persistAccountState?.();
       }
       lastError = "";
-      const remaining = queue.count(owner);
-      if (remaining > 0 && root.SolivocScheduler) {
-        root.SolivocScheduler.timeout("sync.pending-events", () => flush(), 180);
-      }
       return !data?.blocked?.length;
     } catch (error) {
       lastError = String(error?.code || error?.message || error || "pending_event_sync_failed").slice(0, 120);
@@ -62,7 +58,9 @@
   }
 
   function schedule(delay = 0) {
-    if (!hasPendingForAccount() || !root.SolivocScheduler) return false;
+    if (!hasPendingForAccount()) return false;
+    if (root.SolivocSyncManager?.schedule) return root.SolivocSyncManager.schedule(delay, "pending_events");
+    if (!root.SolivocScheduler) return false;
     root.SolivocScheduler.timeout("sync.pending-events", () => flush(), Math.max(0, Number(delay) || 0));
     return true;
   }
@@ -73,7 +71,4 @@
 
   root.SolivocPendingEventSync = Object.freeze({ flush, schedule, hasPendingForAccount, status });
   root.flushPendingEvents = flush;
-
-  root.SolivocLifecycle?.on?.("online", "sync.pending-events", () => schedule(0));
-  root.SolivocLifecycle?.on?.("resume", "sync.pending-events", () => schedule(120));
 })();
