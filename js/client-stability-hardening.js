@@ -129,7 +129,7 @@
       if (lifecycle && document.visibilityState === "hidden") {
         if (accountSyncBusy || !accountSignedIn?.() || !accountCanUseServer?.()) return false;
         accountSyncBusy = true;
-        clearTimeout(accountSyncTimer);
+        SolivocScheduler.cancel("sync.account");
         try {
           const bodyText = JSON.stringify({ profile: accountProfileSnapshot(), version: accountState.version || 0 });
           if (bodyText.length >= 60000) { markPending("lifecycle_payload_large"); return false; }
@@ -182,10 +182,8 @@
     SolivocScheduler.timeout("sync.pending-account", () => { try { scheduleAccountSync?.(250); } catch {} }, delay);
   };
 
-  SolivocLifecycle.on("pagehide", "durability.profile", lifecycleCheckpoint);
-  SolivocLifecycle.on("freeze", "durability.profile", lifecycleCheckpoint);
-  SolivocLifecycle.on("hidden", "durability.profile", lifecycleCheckpoint);
-  SolivocLifecycle.on("beforeunload", "durability.profile", lifecycleCheckpoint);
-  SolivocLifecycle.on("visible", "durability.profile-resume", () => schedulePendingSync(0));
+  SolivocLifecycle.on("suspend", "durability.profile", lifecycleCheckpoint);
+  SolivocLifecycle.on("terminate", "durability.profile", lifecycleCheckpoint);
+  SolivocLifecycle.on("resume", "durability.profile-resume", () => schedulePendingSync(0));
   SolivocLifecycle.on("online", "durability.profile-online", () => schedulePendingSync(0));
 })();
