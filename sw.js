@@ -16,8 +16,7 @@ async function cacheCriticalShell() {
 }
 
 self.addEventListener("install", (event) => {
-  // Updates stay in the waiting phase until the page reaches a safe point.
-  // There is intentionally no unconditional skipWaiting here.
+  // Updates stay waiting until the page reaches an explicit safe point.
   event.waitUntil(cacheCriticalShell());
 });
 
