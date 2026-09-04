@@ -52,6 +52,8 @@ if (!indexHtml.includes(seoMarker)) {
 
 const appScriptTag = '    <script src="./js/app.js"></script>';
 const patchScripts = [
+  "./js/core/scheduler.js",
+  "./js/core/lifecycle.js",
   "./js/v30-patch.js",
   "./js/v31-patch.js",
   "./js/v31-first-run-ui.js",
