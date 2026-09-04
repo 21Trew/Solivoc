@@ -37,6 +37,21 @@ test("completed levels never manufacture stars", () => {
   assert.equal(canonical.starsByLevel[5], undefined);
 });
 
+test("685 completed levels can have far fewer than 2055 stars", () => {
+  const stars = Object.fromEntries(Array.from({ length: 685 }, (_, index) => {
+    const level = index + 1;
+    const earned = level % 5 === 0 ? 3 : level % 2 === 0 ? 2 : 1;
+    return [level, earned];
+  }));
+  const expected = Object.values(stars).reduce((sum, value) => sum + value, 0);
+  const canonical = normalizeCanonicalProfile(profile({ completed: 685, stars }));
+  const leaderboard = leaderboardValuesFromProfile(canonical);
+  assert.equal(canonical.stats.levelsCompleted, 685);
+  assert.equal(canonical.totalStars, expected);
+  assert.equal(leaderboard.stars, expected);
+  assert.ok(expected < 685 * 3);
+});
+
 test("two offline devices merge stars per exact level", () => {
   const server = profile({ completed: 2, stars: { 1: 3, 2: 1 } });
   const offline = profile({ completed: 3, stars: { 2: 2, 3: 1 } });
