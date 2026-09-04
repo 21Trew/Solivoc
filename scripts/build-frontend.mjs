@@ -58,6 +58,8 @@ const patchScripts = [
   "./js/core/pending-events.js",
   "./js/game/engine/core.js",
   "./js/game/engine/controller.js",
+  "./js/game/renderer/knowledge-events.js",
+  "./js/game/renderer/board-renderer.js",
   "./js/v30-patch.js",
   "./js/v31-patch.js",
   "./js/v31-first-run-ui.js",
