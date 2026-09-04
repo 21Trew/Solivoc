@@ -79,6 +79,23 @@ function corsOrigin(request) {
 }
 function preflight(request) { return corsOrigin(request) ? new Response(null, { status: 204 }) : Response.json({ error: "origin_not_allowed" }, { status: 403 }); }
 
+async function routeLegacyAdminRepair(request, url) {
+  if (request.method !== "POST" || url.pathname !== "/api/admin" || url.search) return null;
+  let body = null;
+  try { body = await request.clone().json(); } catch { return null; }
+  const isPlayerRepair = body?.action === "command" && body?.command === "repair_player";
+  const isRepairAll = body?.action === "repair_all";
+  if (!isPlayerRepair && !isRepairAll) return null;
+  const canonicalUrl = new URL(request.url);
+  canonicalUrl.searchParams.set("canonical", "1");
+  const canonicalBody = isPlayerRepair ? { scope: "player", userId: body.userId } : { scope: "all" };
+  return adminCanonical.POST(new Request(canonicalUrl, {
+    method: "POST",
+    headers: request.headers,
+    body: JSON.stringify(canonicalBody),
+  }));
+}
+
 async function routeRequest(request) {
   const url = new URL(request.url);
   if (request.method === "OPTIONS") return preflight(request);
@@ -87,6 +104,9 @@ async function routeRequest(request) {
     shareUrl.pathname = "/api/duel-share"; shareUrl.search = `?c=${encodeURIComponent(code)}`;
     return duelShare.GET(new Request(shareUrl, { method: "GET", headers: request.headers }));
   }
+
+  const canonicalLegacyRepair = await routeLegacyAdminRepair(request, url);
+  if (canonicalLegacyRepair) return canonicalLegacyRepair;
 
   // Credentialed admin sub-services deliberately stay on /api/admin so the
   // existing CORS rule and admin cookie scoped to /api/admin are reused.
