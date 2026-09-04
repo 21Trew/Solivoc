@@ -23,9 +23,8 @@ test("pending cloud sync survives failed or interrupted requests", () => {
   assert.match(source, /sync_failed/);
 });
 test("mobile lifecycle forces local checkpoint and keepalive sync", () => {
-  assert.match(source, /pagehide/);
-  assert.match(source, /visibilitychange/);
-  assert.match(source, /freeze/);
+  assert.match(source, /SolivocLifecycle\.on\("suspend"/);
+  assert.match(source, /SolivocLifecycle\.on\("terminate"/);
   assert.match(source, /keepalive: true/);
   assert.match(source, /flushProfileSave/);
 });
