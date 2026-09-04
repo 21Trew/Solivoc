@@ -15,7 +15,7 @@ async function ensureBuild() {
   if (built) return;
   await execFileAsync(process.execPath, ["scripts/build-frontend.mjs"], {
     cwd: root,
-    env: { ...process.env, SOLIVOC_BUILD_ID: "stage8test" },
+    env: { ...process.env, GITHUB_SHA: "", SOLIVOC_BUILD_ID: "stage8test" },
   });
   built = true;
 }
