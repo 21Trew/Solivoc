@@ -7,10 +7,15 @@
 
   const COMMAND = Object.freeze({
     MOVE_CARD: "MOVE_CARD",
+    AUTO_MOVE: "AUTO_MOVE",
     DRAW_STOCK: "DRAW_STOCK",
     RECYCLE_WASTE: "RECYCLE_WASTE",
     USE_HINT: "USE_HINT",
     UNDO: "UNDO",
+    RESTART: "RESTART",
+    START_LEVEL: "START_LEVEL",
+    COMPLETE_CATEGORY: "COMPLETE_CATEGORY",
+    FINISH_LEVEL: "FINISH_LEVEL",
   });
 
   const clone = (value) => {
@@ -22,6 +27,10 @@
   const int = (value, min = 0, max = Number.MAX_SAFE_INTEGER) => {
     const n = Math.trunc(Number(value));
     return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : min;
+  };
+  const validIndex = (value, length) => {
+    const n = Number(value);
+    return Number.isInteger(n) && n >= 0 && n < Math.max(0, Number(length) || 0) ? n : -1;
   };
   const groupCards = (group) => Array.isArray(group?.cards) ? group.cards : [];
   const categoryCard = (group) => groupCards(group).find((card) => card?.type === "category") || null;
@@ -53,12 +62,13 @@
     if (!state || !source) return null;
     const zone = String(source.zone || source.source || "");
     if (zone === "column") {
-      const index = int(source.index ?? source.ci, 0, Math.max(0, (state.columns?.length || 1) - 1));
-      const column = state.columns?.[index];
+      const index = validIndex(source.index ?? source.ci, state.columns?.length);
+      if (index < 0) return null;
+      const column = state.columns[index];
       if (!Array.isArray(column)) return null;
       const start = firstOpenIndex(column);
       if (start >= column.length) return null;
-      if (source.start != null && int(source.start) !== start) return null;
+      if (source.start != null && Number(source.start) !== start) return null;
       return { source: "column", ci: index, start, groups: column.slice(start) };
     }
     if (zone === "waste") {
@@ -66,8 +76,9 @@
       return card ? { source: "waste", groups: [{ cards: [card], faceUp: true }] } : null;
     }
     if (zone === "slot") {
-      const index = int(source.index ?? source.si, 0, Math.max(0, (state.slots?.length || 1) - 1));
-      const group = state.slots?.[index];
+      const index = validIndex(source.index ?? source.si, state.slots?.length);
+      if (index < 0) return null;
+      const group = state.slots[index];
       return group ? { source: "slot", si: index, groups: [group] } : null;
     }
     return null;
@@ -75,19 +86,19 @@
 
   function canDropTo(state, payload, zone, index) {
     if (!state || !payload) return false;
-    const idx = int(index, 0);
     const moving = payloadGroup(payload);
     const cc = categoryCard(moving);
     if (zone === "slot") {
-      if (!Array.isArray(state.slots) || idx >= state.slots.length) return false;
+      const idx = validIndex(index, state.slots?.length);
+      if (idx < 0) return false;
       if (state.special?.lockedSlot && idx === state.slots.length - 1 && int(state.completed) < int(state.special.unlockAfter, 1)) return false;
       const dest = state.slots[idx];
       if (!dest) return !!cc;
       return canMerge(dest, moving) && !!categoryCard(dest);
     }
     if (zone === "column") {
-      if (cc) return false;
-      if (!Array.isArray(state.columns) || idx >= state.columns.length) return false;
+      const idx = validIndex(index, state.columns?.length);
+      if (idx < 0 || cc) return false;
       const column = state.columns[idx];
       if (payload.source === "column" && payload.ci === idx) return false;
       if (!column.length) return true;
@@ -98,17 +109,20 @@
   }
 
   function isProductiveDrop(state, payload, zone, index) {
-    if (zone === "slot") return true;
+    if (zone === "slot") return validIndex(index, state?.slots?.length) >= 0;
     if (zone !== "column") return false;
-    const column = state?.columns?.[int(index, 0)];
-    if (!Array.isArray(column)) return false;
+    const idx = validIndex(index, state?.columns?.length);
+    if (idx < 0) return false;
+    const column = state.columns[idx];
     if (column.length) return canMerge(column[column.length - 1], payloadGroup(payload));
     if (payload?.source !== "column") return false;
     return int(payload.start) > 0;
   }
 
   function slotIsComplete(state, index) {
-    const group = state?.slots?.[int(index, 0)];
+    const idx = validIndex(index, state?.slots?.length);
+    if (idx < 0) return false;
+    const group = state.slots[idx];
     const cc = group && categoryCard(group);
     return !!(cc && wordCount(group) === int(cc.total));
   }
@@ -138,14 +152,15 @@
     return [];
   }
 
-  function reduceMove(inputState, command) {
+  function reduceMove(inputState, command, auto = false) {
     const state = clone(inputState);
     if (!state) return rejected(inputState, command, "invalid_state");
     const payload = payloadForSource(state, command.source);
     const zone = String(command.target?.zone || "");
-    const index = int(command.target?.index, 0);
+    const targetLength = zone === "slot" ? state.slots?.length : zone === "column" ? state.columns?.length : 0;
+    const index = validIndex(command.target?.index, targetLength);
     if (!payload) return rejected(inputState, command, "invalid_source");
-    if (!canDropTo(state, payload, zone, index)) return rejected(inputState, command, "invalid_target");
+    if (index < 0 || !canDropTo(state, payload, zone, index)) return rejected(inputState, command, "invalid_target");
 
     const effects = [];
     const productive = isProductiveDrop(state, payload, zone, index);
@@ -165,7 +180,7 @@
     state.run.moves = int(state.run.moves) + 1;
 
     effects.push({
-      type: "MOVE_APPLIED",
+      type: auto ? "AUTO_MOVE_APPLIED" : "MOVE_APPLIED",
       source: { source: payload.source, ci: payload.ci, si: payload.si, start: payload.start },
       target: { zone, index },
       productive,
@@ -279,10 +294,44 @@
 
   function reduceUndo(inputState, command) {
     const previous = clone(command?.snapshot);
-    if (!previous || typeof previous !== "object") return rejected(inputState, command, "invalid_snapshot");
+    if (!previous || typeof previous !== "object" || Array.isArray(previous)) return rejected(inputState, command, "invalid_snapshot");
     previous.run ||= {};
     previous.run.undos = int(command?.undoCount ?? previous.run.undos);
     return accepted(previous, command, [{ type: "UNDO_APPLIED", undoCount: previous.run.undos }]);
+  }
+
+  function reduceReplaceState(inputState, command, effectType) {
+    const next = clone(command?.nextState);
+    if (!next || typeof next !== "object" || Array.isArray(next)) return rejected(inputState, command, "invalid_next_state");
+    return accepted(next, command, [{ type: effectType }]);
+  }
+
+  function reduceCompleteCategory(inputState, command) {
+    const state = clone(inputState);
+    if (!state) return rejected(inputState, command, "invalid_state");
+    const index = validIndex(command?.slotIndex, state.slots?.length);
+    if (index < 0 || !slotIsComplete(state, index)) return rejected(inputState, command, "slot_not_complete");
+    const group = state.slots[index];
+    const cc = categoryCard(group);
+    state.slots[index] = null;
+    state.completed = int(state.completed) + 1;
+    return accepted(state, command, [{
+      type: "CATEGORY_COMPLETED",
+      slotIndex: index,
+      category: cc ? { cat: String(cc.cat || ""), label: String(cc.label || ""), total: int(cc.total) } : null,
+      completed: state.completed,
+    }]);
+  }
+
+  function reduceFinishLevel(inputState, command) {
+    const state = clone(inputState);
+    if (!state) return rejected(inputState, command, "invalid_state");
+    const valid = int(state.totalCategories) > 0
+      && int(state.completed) === int(state.totalCategories)
+      && int(state.run?.moves) > 0;
+    if (!valid || state.failed) return rejected(inputState, command, "level_not_complete");
+    state.rewarded = true;
+    return accepted(state, command, [{ type: "LEVEL_FINISHED", mode: String(state.mode || "unknown"), level: int(state.level) }]);
   }
 
   function accepted(state, command, effects = []) {
@@ -294,11 +343,16 @@
 
   function reduce(state, command = {}) {
     switch (command.type) {
-      case COMMAND.MOVE_CARD: return reduceMove(state, command);
+      case COMMAND.MOVE_CARD: return reduceMove(state, command, false);
+      case COMMAND.AUTO_MOVE: return reduceMove(state, command, true);
       case COMMAND.DRAW_STOCK: return reduceDrawStock(state, command, false);
       case COMMAND.RECYCLE_WASTE: return reduceDrawStock(state, command, true);
       case COMMAND.USE_HINT: return reduceHint(state, command);
       case COMMAND.UNDO: return reduceUndo(state, command);
+      case COMMAND.START_LEVEL: return reduceReplaceState(state, command, "LEVEL_STARTED");
+      case COMMAND.RESTART: return reduceReplaceState(state, command, "ROUND_RESTARTED");
+      case COMMAND.COMPLETE_CATEGORY: return reduceCompleteCategory(state, command);
+      case COMMAND.FINISH_LEVEL: return reduceFinishLevel(state, command);
       default: return rejected(state, command, "unknown_command");
     }
   }
