@@ -25,12 +25,13 @@ test("ACK removes pending events and retains bounded local transaction guard", a
   assert.match(source, /hasTransaction/);
 });
 
-test("event sync sends ACK batches and applies canonical snapshot", async () => {
+test("event sync sends ACK batches through account bridge", async () => {
   const source = await read("js/core/pending-event-sync.js");
-  assert.match(source, /accountRequest\("\/api\/events"/);
+  assert.match(source, /SolivocAccountSyncBridge/);
+  assert.match(source, /account\(\)\.request\("\/api\/events"/);
   assert.match(source, /ackedEventIds/);
   assert.match(source, /queue\.ack\(acked\)/);
-  assert.match(source, /applyAccountCloudProfile/);
+  assert.match(source, /account\(\)\.applyProfile/);
   assert.match(source, /sync\.pending-events/);
 });
 
