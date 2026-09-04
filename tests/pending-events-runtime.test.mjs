@@ -65,7 +65,7 @@ test("100 unacked events survive queue runtime reload", async () => {
   assert.equal(reloaded.count("u_player12345"), 100);
   const pending = reloaded.pending({ owner: "u_player12345", limit: 100 });
   assert.equal(pending.length, 100);
-  assert.deepEqual(pending.map((event) => event.sequenceNo), Array.from({ length: 100 }, (_, index) => index + 1));
+  assert.deepEqual(Array.from(pending, (event) => event.sequenceNo), Array.from({ length: 100 }, (_, index) => index + 1));
 });
 
 test("ACK removes only confirmed events after reload", () => {
