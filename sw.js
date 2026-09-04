@@ -1,130 +1,36 @@
 const CACHE = "worditaire-build-__SOLIVOC_BUILD__";
-const CORE = [
-  "./",
-  "./index.html",
-  "./manifest.webmanifest",
-  "./manifest-owl.webmanifest",
-  "./manifest-cat.webmanifest",
-  "./icons/icon.svg",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./icons/icon-owl.svg",
-  "./icons/icon-owl-192.png",
-  "./icons/icon-owl-512.png",
-  "./icons/icon-cat.svg",
-  "./icons/icon-cat-192.png",
-  "./icons/icon-cat-512.png",
-  "./icons/mascot-owl.svg",
-  "./icons/mascot-cat.svg",
-  "./icons/mascot-fox.svg",
-  "./icons/mascots/fox/fox-1.webp",
-  "./icons/mascots/fox/fox-2.webp",
-  "./icons/mascots/fox/fox-3.webp",
-  "./icons/mascots/fox/fox-4.webp",
-  "./icons/mascots/fox/fox-5.webp",
-  "./icons/mascot-bear.svg",
-  "./icons/mascot-raven.svg",
-  "./icons/mascot-wolf.svg",
-  "./icons/mascot-tiger.svg",
-  "./icons/mascot-panda.svg",
-  "./icons/mascot-frog.svg",
-  "./icons/mascot-octopus.svg",
-  "./icons/mascot-gandalf.svg",
-  "./icons/mascot-clip.svg",
-  "./icons/mascot-birthday.svg",
-  "./icons/share-duel.svg",
-  "./icons/share-duel.png",
-  "./manifest-classic-bronze.webmanifest",
-  "./icons/icon-classic-bronze-192.png",
-  "./icons/icon-classic-bronze-512.png",
-  "./manifest-classic-gold.webmanifest",
-  "./icons/icon-classic-gold-192.png",
-  "./icons/icon-classic-gold-512.png",
-  "./manifest-classic-prism.webmanifest",
-  "./icons/icon-classic-prism-192.png",
-  "./icons/icon-classic-prism-512.png",
-  "./manifest-owl-bronze.webmanifest",
-  "./icons/icon-owl-bronze-192.png",
-  "./icons/icon-owl-bronze-512.png",
-  "./manifest-owl-gold.webmanifest",
-  "./icons/icon-owl-gold-192.png",
-  "./icons/icon-owl-gold-512.png",
-  "./manifest-owl-prism.webmanifest",
-  "./icons/icon-owl-prism-192.png",
-  "./icons/icon-owl-prism-512.png",
-  "./manifest-cat-bronze.webmanifest",
-  "./icons/icon-cat-bronze-192.png",
-  "./icons/icon-cat-bronze-512.png",
-  "./manifest-cat-gold.webmanifest",
-  "./icons/icon-cat-gold-192.png",
-  "./icons/icon-cat-gold-512.png",
-  "./manifest-cat-prism.webmanifest",
-  "./icons/icon-cat-prism-192.png",
-  "./icons/icon-cat-prism-512.png",
-  "./styles/base.css",
-  "./styles/meta.css",
-  "./styles/responsive.css",
-  "./styles/mascot-fox.css",
-  "./styles/v34-product.css",
-  "./data/categories.js",
-  "./data/categories.json",
-  "./js/host-routing.js",
-  "./js/runtime-config.js",
-  "./js/api-client.js",
-  "./js/config.js",
-  "./js/profile.js",
-  "./js/auth.js",
-  "./js/data.js",
-  "./js/runtime.js",
-  "./js/stability.js",
-  "./js/ui/constants.js",
-  "./js/components/ui.js",
-  "./js/generator.js",
-  "./js/meta/systems.js",
-  "./js/retention.js",
-  "./js/engagement.js",
-  "./js/animations.js",
-  "./js/game/feedback.js",
-  "./js/game/state.js",
-  "./js/components/cards.js",
-  "./js/components/board.js",
-  "./js/game/rules.js",
-  "./js/game/drag.js",
-  "./js/progression.js",
-  "./js/components/hub.js",
-  "./js/tutorial-engine.mjs",
-  "./js/v30-patch.js",
-  "./js/v31-patch.js",
-  "./js/v31-first-run-ui.js",
-  "./js/v32-ui-fixes.js",
-  "./js/v33-fox-journey.js",
-  "./js/v34-product-update.js",
-  "./js/app.js"
-];
+const CORE = __SOLIVOC_CORE__;
 
 const NETWORK_FIRST = new Set([
   "/js/host-routing.js",
   "/js/runtime-config.js",
 ]);
 
+async function currentCache() {
+  return caches.open(CACHE);
+}
+
+async function cacheCriticalShell() {
+  const cache = await currentCache();
+  for (const url of CORE) {
+    const request = new Request(url, { cache: "reload" });
+    const response = await fetch(request);
+    if (!response?.ok) throw new Error(`critical_asset_failed:${url}:${response?.status || 0}`);
+    await cache.put(request, response.clone());
+  }
+}
+
 self.addEventListener("install", (event) => {
-  // Each deployed build owns a distinct cache. Install the complete new
-  // generation and activate it immediately: there is no manual "Обновить"
-  // step anymore. The page layer decides when a reload is safe for an active
-  // game and otherwise picks the new worker up on the next launch/navigation.
-  event.waitUntil((async () => {
-    const cache = await caches.open(CACHE);
-    const requests = CORE.map((url) => new Request(url, { cache: "reload" }));
-    await cache.addAll(requests);
-    await self.skipWaiting();
-  })());
+  // Updates stay in the waiting phase until the page reaches a safe point.
+  // There is intentionally no unconditional skipWaiting here.
+  event.waitUntil(cacheCriticalShell());
 });
 
 self.addEventListener("message", (event) => {
-  // Kept for compatibility with already-open older clients. New clients no
-  // longer need to send SKIP_WAITING because install activates automatically.
   if (event.data?.type === "SKIP_WAITING") {
-    self.skipWaiting();
+    // The page-side UpdateManager sends this only after checkpointing and at an
+    // explicit/safe activation point.
+    event.waitUntil(self.skipWaiting());
     return;
   }
   if (event.data?.type === "CLEAR_APP_CACHE") {
@@ -138,8 +44,10 @@ self.addEventListener("message", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)));
+    await Promise.all(keys.filter((key) => key.startsWith("worditaire-build-") && key !== CACHE).map((key) => caches.delete(key)));
     await self.clients.claim();
+    const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    clients.forEach((client) => client.postMessage({ type: "SOLIVOC_SW_ACTIVATED", build: "__SOLIVOC_BUILD__" }));
   })());
 });
 
@@ -154,33 +62,33 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
-  // The game service worker owns the root scope. Admin pages must always go to
-  // the network instead of falling back to the cached game shell.
   if (["/admin", "/admin.html", "/js/admin.js", "/styles/admin.css"].includes(url.pathname)) return;
 
   event.respondWith((async () => {
+    const cache = await currentCache();
+
     if (NETWORK_FIRST.has(url.pathname)) {
       try {
         const response = await fetch(event.request, { cache: "no-store" });
         if (shouldCache(event.request, url, response)) {
-          try { await caches.open(CACHE).then((cache) => cache.put(event.request, response.clone())); } catch {}
+          try { await cache.put(event.request, response.clone()); } catch {}
         }
         return response;
       } catch {
-        return (await caches.match(event.request)) || Response.error();
+        return (await cache.match(event.request)) || Response.error();
       }
     }
 
-    // Keep HTML and JS from the same cache generation. Serving a fresh HTML
-    // document together with old cached scripts can break the app between
-    // deployments. New generations are installed automatically by the worker.
     if (event.request.mode === "navigate") {
-      const shell = (await caches.match(event.request)) || (await caches.match("./index.html")) || (await caches.match("./"));
+      // Navigation and scripts are always served from this worker's own cache
+      // generation. A waiting worker can therefore never leak new assets into
+      // an older controlled page.
+      const shell = (await cache.match(event.request)) || (await cache.match("./index.html")) || (await cache.match("./"));
       if (shell) return shell;
       try {
         const response = await fetch(event.request);
         if (response?.ok) {
-          try { await caches.open(CACHE).then((cache) => cache.put("./index.html", response.clone())); } catch {}
+          try { await cache.put("./index.html", response.clone()); } catch {}
         }
         return response;
       } catch {
@@ -188,15 +96,14 @@ self.addEventListener("fetch", (event) => {
       }
     }
 
-    // Static game assets are immutable for the lifetime of a SW cache version.
-    // Cache-first avoids dozens of network/cache stream operations on every
-    // launch, which is notably more stable in iOS standalone mode.
-    const cached = await caches.match(event.request);
+    const cached = await cache.match(event.request);
     if (cached) return cached;
     try {
       const response = await fetch(event.request);
       if (shouldCache(event.request, url, response)) {
-        try { await caches.open(CACHE).then((cache) => cache.put(event.request, response.clone())); } catch {}
+        // Non-critical assets are cached lazily. Missing mascot/cosmetic assets
+        // cannot fail installation of the critical shell.
+        try { await cache.put(event.request, response.clone()); } catch {}
       }
       return response;
     } catch {
