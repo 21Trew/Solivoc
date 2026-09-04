@@ -76,6 +76,7 @@ const patchScripts = [
   "./js/cross-device-sync-hardening.js",
   "./js/canonical-sync-hardening.js",
   "./js/core/sync-manager.js",
+  "./js/core/update-manager.js",
   "./js/ios-round-stability-v2.js",
   "./js/core/runtime-diagnostics.js",
 ];
@@ -90,6 +91,18 @@ if (missingPatchTags.length) {
 indexHtml = indexHtml.replace(/(<meta name="slovasyans-build" content=")[^"]*(" \/>)/, `$1${buildId}$2`);
 await writeFile(indexPath, indexHtml, "utf8");
 
+// Production app bootstrap must have a single service-worker update owner.
+// Keep the legacy source function as a rollback reference, but replace only the
+// copied production bundle with a thin facade to SolivocUpdateManager.
+const appPath = path.join(out, "js", "app.js");
+let appSource = await readFile(appPath, "utf8");
+const pwaStart = appSource.indexOf("function registerPwa() {");
+const pwaEnd = appSource.indexOf("\n\nlet challengeSyncBusy", pwaStart);
+if (pwaStart < 0 || pwaEnd < 0) throw new Error("app.js PWA owner markers not found");
+const pwaFacade = `function registerPwa() {\n  return window.SolivocUpdateManager?.start?.();\n}`;
+appSource = `${appSource.slice(0, pwaStart)}${pwaFacade}${appSource.slice(pwaEnd)}`;
+await writeFile(appPath, appSource, "utf8");
+
 const adminPath = path.join(out, "admin.html");
 let adminHtml = await readFile(adminPath, "utf8");
 for (const src of ["./js/admin.js", "./styles/admin.css", "./js/admin-mail.js", "./js/admin-recovery.js", "./styles/admin-mail.css", "./styles/admin-recovery.css"]) {
@@ -98,7 +111,56 @@ for (const src of ["./js/admin.js", "./styles/admin.css", "./js/admin-mail.js", 
 }
 await writeFile(adminPath, adminHtml, "utf8");
 
+function cleanLocalAsset(value) {
+  const raw = String(value || "").trim();
+  if (!raw.startsWith("./")) return "";
+  return raw.split(/[?#]/, 1)[0];
+}
+
+async function collectCriticalShell(html) {
+  const assets = new Set(["./", "./index.html"]);
+  for (const match of html.matchAll(/(?:src|href)="(\.\/[^"]+)"/g)) {
+    const asset = cleanLocalAsset(match[1]);
+    if (!asset || !/\.(?:js|css)$/i.test(asset)) continue;
+    assets.add(asset);
+  }
+
+  // Discover boot-time local fetch/import dependencies from the actual JS that
+  // the final HTML loads. This keeps data/categories.json in sync without a
+  // hand-maintained SW asset list.
+  const queue = [...assets].filter((asset) => asset.endsWith(".js"));
+  const scanned = new Set();
+  while (queue.length) {
+    const asset = queue.shift();
+    if (!asset || scanned.has(asset)) continue;
+    scanned.add(asset);
+    const sourcePath = path.join(out, asset.replace(/^\.\//, ""));
+    let source = "";
+    try { source = await readFile(sourcePath, "utf8"); }
+    catch { throw new Error(`critical asset missing from dist: ${asset}`); }
+    for (const match of source.matchAll(/(?:fetch|import)\(\s*["'](\.\/[^"]+?)["']/g)) {
+      const dependency = cleanLocalAsset(match[1]);
+      if (!dependency) continue;
+      const dependencyPath = path.join(out, dependency.replace(/^\.\//, ""));
+      try { await readFile(dependencyPath); }
+      catch { continue; }
+      if (!assets.has(dependency)) {
+        assets.add(dependency);
+        if (dependency.endsWith(".js")) queue.push(dependency);
+      }
+    }
+  }
+
+  return [...assets].sort();
+}
+
+const criticalShell = await collectCriticalShell(indexHtml);
 const swSource = await readFile(path.join(root, "sw.js"), "utf8");
 if (!swSource.includes("__SOLIVOC_BUILD__")) throw new Error("sw.js is missing __SOLIVOC_BUILD__ placeholder");
-await writeFile(path.join(out, "sw.js"), swSource.replaceAll("__SOLIVOC_BUILD__", buildId), "utf8");
-console.log(`Frontend bundle generated: ${path.relative(root, out)} (${buildId})`);
+if (!swSource.includes("__SOLIVOC_CORE__")) throw new Error("sw.js is missing __SOLIVOC_CORE__ placeholder");
+const builtSw = swSource
+  .replaceAll("__SOLIVOC_BUILD__", buildId)
+  .replace("__SOLIVOC_CORE__", JSON.stringify(criticalShell, null, 2));
+await writeFile(path.join(out, "sw.js"), builtSw, "utf8");
+await writeFile(path.join(out, "critical-shell.json"), JSON.stringify({ build: buildId, assets: criticalShell }, null, 2), "utf8");
+console.log(`Frontend bundle generated: ${path.relative(root, out)} (${buildId}; ${criticalShell.length} critical assets)`);
