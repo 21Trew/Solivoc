@@ -4,10 +4,10 @@ import { mergeEntityProgressDomains } from "./_progression-merge-lib.mjs";
 import { mergeMascotDailySnapshots } from "./_v34-profile-merge-lib.mjs";
 import { mergeCloudProfileAtomic, mutateCloudProfileAtomic } from "./_profile-sync-lib.mjs";
 import { reconcileAdminRecoveryDomains } from "./_admin-recovery-lib.mjs";
-import { applyCampaignFloor, leaderboardCampaignFloor, profileBehindCampaignFloor } from "./_campaign-floor-lib.mjs";
+import { canonicalProfileNeedsNormalization, mergeCanonicalProfile, normalizeCanonicalProfile } from "./_canonical-profile-lib.mjs";
+import { syncLeaderboardProjection } from "./_leaderboard-projection-lib.mjs";
 
 const SESSION_REFRESH_TTL = 60 * 60 * 24 * 30;
-const leaderboardPlayerKey = (userId) => `worditaire:leaderboard:player:${String(userId || "").slice(0, 64)}`;
 
 function accountHeaders(session) {
   if (!session?.token) return {};
@@ -34,42 +34,14 @@ function gameDayId(now = Date.now()) {
   return new Date(now).toISOString().slice(0, 10);
 }
 
-function reconcileCompletionLedger(current, incoming, profile) {
-  const ledgers = [current?.completionLedgerBase, incoming?.completionLedgerBase]
-    .map(Number).filter((value) => Number.isFinite(value) && value >= 0);
-  if (ledgers.length) profile.completionLedgerBase = Math.min(...ledgers);
-  const transactions = profile?.completionTransactions && typeof profile.completionTransactions === "object"
-    ? profile.completionTransactions : {};
-  let ledgerXp = Number(profile.completionLedgerBase) || 0;
-  for (const tx of Object.values(transactions)) {
-    const delta = typeof tx === "number" ? tx : tx?.xpDelta;
-    ledgerXp += Math.max(0, Number(delta) || 0);
-  }
-  profile.xp = Math.max(0, Number(profile.xp) || 0, ledgerXp);
-  return profile;
-}
-
-async function readCampaignFloor(userId) {
-  const raw = await redis(["GET", leaderboardPlayerKey(userId)]).catch(() => null);
-  if (!raw) return { levels: 0, stars: 0 };
-  try {
-    const record = JSON.parse(raw);
-    if (!record?.account) return { levels: 0, stars: 0 };
-    return leaderboardCampaignFloor(record);
-  } catch {
-    return { levels: 0, stars: 0 };
-  }
-}
-
-async function readProfileWithServerFloor(userId) {
-  const [profile, version, floor] = await Promise.all([
+async function readCanonicalProfile(userId) {
+  const [profile, version] = await Promise.all([
     readCloudProfile(userId),
     cloudProfileVersion(userId),
-    readCampaignFloor(userId),
   ]);
-  if (!profileBehindCampaignFloor(profile, floor)) return { profile, version, repaired: false, floor };
-  const repaired = await mutateCloudProfileAtomic(userId, ({ current }) => applyCampaignFloor(current, floor));
-  return { profile: repaired.profile, version: repaired.version, repaired: true, floor };
+  if (!canonicalProfileNeedsNormalization(profile)) return { profile, version, normalized: false };
+  const result = await mutateCloudProfileAtomic(userId, ({ current }) => normalizeCanonicalProfile(current));
+  return { profile: result.profile, version: result.version, normalized: true };
 }
 
 export async function GET(request) {
@@ -88,13 +60,15 @@ export async function GET(request) {
       const rows = await redis(["MGET", ...requestedPlayers.map((id) => userKey(id))]);
       return json({ ok: true, players: Object.fromEntries(requestedPlayers.map((id, index) => [id, { deleted: !rows?.[index] }])) }, 200, headers);
     }
-    const resolved = await readProfileWithServerFloor(session.userId);
+
+    const resolved = await readCanonicalProfile(session.userId);
+    await syncLeaderboardProjection(session.userId, resolved.profile, session.user).catch(() => {});
     return json({
       ok: true,
       user: { id: session.user.id, email: session.user.email },
       profile: resolved.profile,
       version: resolved.version,
-      serverCampaignRepaired: resolved.repaired,
+      canonicalProfileNormalized: resolved.normalized,
       serverNow: Date.now(),
       gameDayId: gameDayId(),
     }, 200, headers);
@@ -116,20 +90,32 @@ export async function POST(request) {
     if (!session) return json({ error: "unauthorized" }, 401);
     const body = await request.json().catch(() => ({}));
     const incomingProfile = body.profile && typeof body.profile === "object" ? body.profile : {};
-    const campaignFloor = await readCampaignFloor(session.userId);
+
     const merged = await mergeCloudProfileAtomic(session.userId, incomingProfile, {
       clientVersion: Number(body.version) || 0,
       finalize: ({ current, incoming, merged: profile }) => {
         Object.assign(profile, mergeEntityProgressDomains(current, incoming));
         const mascotDaily = mergeMascotDailySnapshots(current.mascotDaily, incoming.mascotDaily);
         if (mascotDaily?.date) profile.mascotDaily = mascotDaily;
-        reconcileCompletionLedger(current, incoming, profile);
         reconcileAdminRecoveryDomains(current, incoming, profile);
-        return applyCampaignFloor(profile, campaignFloor);
+        return mergeCanonicalProfile(current, incoming, profile);
       },
     });
-    await refreshSession(session);
-    return json({ ok: true, profile: merged.profile, version: merged.version, previousVersion: merged.previousVersion, staleClient: merged.staleClient, syncedAt: Date.now(), serverNow: Date.now(), gameDayId: gameDayId() }, 200, accountHeaders(session));
+
+    await Promise.all([
+      refreshSession(session),
+      syncLeaderboardProjection(session.userId, merged.profile, session.user),
+    ]);
+    return json({
+      ok: true,
+      profile: merged.profile,
+      version: merged.version,
+      previousVersion: merged.previousVersion,
+      staleClient: merged.staleClient,
+      syncedAt: Date.now(),
+      serverNow: Date.now(),
+      gameDayId: gameDayId(),
+    }, 200, accountHeaders(session));
   } catch (error) {
     if (error?.message === "REDIS_NOT_CONFIGURED") return json({ error: "redis_not_configured" }, 503);
     if (error?.message === "profile_too_large") return json({ error: "profile_too_large" }, 413);

@@ -1,6 +1,7 @@
 import { createHash, randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { redis } from "./_push-lib.mjs";
+import { mergeCanonicalProfile } from "./_canonical-profile-lib.mjs";
 
 const scrypt = promisify(scryptCb);
 const SESSION_TTL = 60 * 60 * 24 * 30;
@@ -62,7 +63,6 @@ export async function verifySecret(secret, encoded) {
 export function newUserId() {
   return `u_${randomBytes(12).toString("hex")}`;
 }
-
 
 export function emailKey(email) { return `worditaire:auth:email:${sha256(cleanEmail(email))}`; }
 export function userKey(userId) { return `worditaire:auth:user:${String(userId || "").slice(0, 64)}`; }
@@ -167,7 +167,6 @@ export function sanitizeProfile(input, userId) {
   const text = JSON.stringify(profile);
   if (Buffer.byteLength(text, "utf8") > MAX_PROFILE_BYTES) throw new Error("profile_too_large");
 
-  // Device-scoped state must never jump to another phone/browser.
   delete profile.analyticsClientId;
   delete profile.pushClientId;
   delete profile.retention;
@@ -253,9 +252,6 @@ function normalizeCampaignProfile(profile) {
     stars[level] = Math.max(1, Math.min(3, value));
   }
 
-  // Old clients could migrate a corrupted currentLevel by manufacturing one-star
-  // clears for every preceding level. This destructive repair is now legacy-only:
-  // modern campaign profiles are append-only and may never be reduced by sync.
   const rawCurrent = Math.max(1, Math.trunc(Number(profile?.currentLevel) || 1));
   const storedCompleted = Math.max(0, Math.trunc(Number(profile?.stats?.levelsCompleted) || 0));
   const storedFinals = Math.max(0, Math.trunc(Number(profile?.stats?.chapterFinalsCompleted) || 0));
@@ -303,8 +299,6 @@ function normalizeCampaignProfile(profile) {
   const dailyStars = Object.values(profile?.dailyStars || {}).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
   profile.starsByLevel = stars;
   profile.currentLevel = completedThrough + 1;
-  // totalStars is the campaign counter shown in profile/leaderboards. Daily stars
-  // stay separate so a three-star-level count can never disagree with the total.
   profile.totalStars = campaignStars;
   profile.dailyStarTotal = dailyStars;
   profile.cosmeticStarsPeak = Math.max(0, Number(profile.cosmeticStarsPeak) || 0, previousTotal, campaignStars + dailyStars);
@@ -340,7 +334,8 @@ export function mergeProfiles(current, incoming, userId, { preferIncomingPrefere
     }
   }
   merged.playerId = userId;
-  return normalizeCampaignProfile(merged);
+  const legacyCompatible = normalizeCampaignProfile(merged);
+  return mergeCanonicalProfile(a, b, legacyCompatible);
 }
 
 export async function readCloudProfile(userId) {

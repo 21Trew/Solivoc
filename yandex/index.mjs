@@ -1,6 +1,7 @@
 import * as account from "../api/account.mjs";
 import * as accountLogin from "../api/account-login.mjs";
 import * as admin from "../api/admin.mjs";
+import * as adminCanonical from "../api/admin-canonical.mjs";
 import * as adminRecovery from "../api/admin-recovery.mjs";
 import * as analytics from "../api/analytics.mjs";
 import * as auth from "../api/auth.mjs";
@@ -78,6 +79,23 @@ function corsOrigin(request) {
 }
 function preflight(request) { return corsOrigin(request) ? new Response(null, { status: 204 }) : Response.json({ error: "origin_not_allowed" }, { status: 403 }); }
 
+async function routeLegacyAdminRepair(request, url) {
+  if (request.method !== "POST" || url.pathname !== "/api/admin" || url.search) return null;
+  let body = null;
+  try { body = await request.clone().json(); } catch { return null; }
+  const isPlayerRepair = body?.action === "command" && body?.command === "repair_player";
+  const isRepairAll = body?.action === "repair_all";
+  if (!isPlayerRepair && !isRepairAll) return null;
+  const canonicalUrl = new URL(request.url);
+  canonicalUrl.searchParams.set("canonical", "1");
+  const canonicalBody = isPlayerRepair ? { scope: "player", userId: body.userId } : { scope: "all" };
+  return adminCanonical.POST(new Request(canonicalUrl, {
+    method: "POST",
+    headers: request.headers,
+    body: JSON.stringify(canonicalBody),
+  }));
+}
+
 async function routeRequest(request) {
   const url = new URL(request.url);
   if (request.method === "OPTIONS") return preflight(request);
@@ -87,10 +105,17 @@ async function routeRequest(request) {
     return duelShare.GET(new Request(shareUrl, { method: "GET", headers: request.headers }));
   }
 
-  // Recovery deliberately stays on /api/admin so the existing credentialed
-  // CORS rule and the admin cookie scoped to /api/admin are both reused.
+  const canonicalLegacyRepair = await routeLegacyAdminRepair(request, url);
+  if (canonicalLegacyRepair) return canonicalLegacyRepair;
+
+  // Credentialed admin sub-services deliberately stay on /api/admin so the
+  // existing CORS rule and admin cookie scoped to /api/admin are reused.
   if (url.pathname === "/api/admin" && url.searchParams.get("recovery") === "1") {
     const methodHandler = adminRecovery[request.method];
+    return typeof methodHandler === "function" ? methodHandler(request) : Response.json({ error: "method_not_allowed" }, { status: 405 });
+  }
+  if (url.pathname === "/api/admin" && url.searchParams.get("canonical") === "1") {
+    const methodHandler = adminCanonical[request.method];
     return typeof methodHandler === "function" ? methodHandler(request) : Response.json({ error: "method_not_allowed" }, { status: 405 });
   }
 
@@ -100,8 +125,6 @@ async function routeRequest(request) {
     return typeof methodHandler === "function" ? methodHandler(request) : Response.json({ error: "method_not_allowed" }, { status: 405 });
   }
 
-  // Kept for direct-function/backward compatibility. Browser admin traffic uses
-  // /api/admin?recovery=1 because the public gateway exposes one-segment API paths.
   if (url.pathname === "/api/admin/recovery") {
     const methodHandler = adminRecovery[request.method];
     return typeof methodHandler === "function" ? methodHandler(request) : Response.json({ error: "method_not_allowed" }, { status: 405 });

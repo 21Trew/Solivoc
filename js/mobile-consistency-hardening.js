@@ -100,6 +100,24 @@
     return `c_${(hash >>> 0).toString(36)}_${String(s?.run?.startedAt || 0).slice(-8)}`;
   }
 
+  function completionEvent(s, xpDelta) {
+    const campaign = s?.mode === "regular";
+    const level = campaign ? Math.max(0, Math.trunc(Number(s?.level) || 0)) : 0;
+    const recordedStars = campaign ? Number(profile?.starsByLevel?.[level]) || Number(s?.lastStars) || 0 : 0;
+    const stars = campaign ? Math.max(0, Math.min(3, Math.trunc(recordedStars))) : 0;
+    return {
+      version: 2,
+      type: "completion",
+      mode: String(s?.mode || "unknown").slice(0, 32),
+      campaign,
+      level,
+      stars,
+      xpDelta: Math.max(0, Math.trunc(Number(xpDelta) || 0)),
+      at: Date.now(),
+      gameDayId: canonicalGameDay(),
+    };
+  }
+
   if (typeof saveProfile === "function" && !window.__solivocCompletionSaveBarrier) {
     window.__solivocCompletionSaveBarrier = true;
     const baseSaveProfile = saveProfile;
@@ -135,13 +153,19 @@
         const completed = !!state.rewarded && !state.failed;
         if (!completed) return result;
         const xpAfter = Math.max(0, Number(profile.xp) || 0);
-        profile.completionTransactions[txId] = Math.max(0, xpAfter - xpBefore);
+        profile.completionTransactionsVersion = 2;
+        profile.completionTransactions[txId] = completionEvent(state, xpAfter - xpBefore);
         completionDepth--;
         completionDepth = Math.max(0, completionDepth);
         saveProfile({ skipCloud: false });
         save?.({ immediate: true });
         scheduleAccountSync?.(100);
-        recordStabilityEvent?.("completion_committed", { mode: state.mode, level: Number(state.level) || 0 });
+        recordStabilityEvent?.("completion_committed", {
+          mode: state.mode,
+          level: Number(state.level) || 0,
+          stars: profile.completionTransactions[txId].stars,
+          transactionId: txId,
+        });
         return result ?? true;
       } catch (error) {
         if (profileBefore) profile = profileBefore;
