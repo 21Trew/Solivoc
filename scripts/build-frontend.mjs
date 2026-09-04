@@ -56,6 +56,8 @@ const patchScripts = [
   "./js/core/lifecycle.js",
   "./js/core/persistence.js",
   "./js/core/pending-events.js",
+  "./js/game/engine/core.js",
+  "./js/game/engine/controller.js",
   "./js/v30-patch.js",
   "./js/v31-patch.js",
   "./js/v31-first-run-ui.js",
