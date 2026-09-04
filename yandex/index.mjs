@@ -1,6 +1,7 @@
 import * as account from "../api/account.mjs";
 import * as accountLogin from "../api/account-login.mjs";
 import * as admin from "../api/admin.mjs";
+import * as adminCanonical from "../api/admin-canonical.mjs";
 import * as adminRecovery from "../api/admin-recovery.mjs";
 import * as analytics from "../api/analytics.mjs";
 import * as auth from "../api/auth.mjs";
@@ -87,10 +88,14 @@ async function routeRequest(request) {
     return duelShare.GET(new Request(shareUrl, { method: "GET", headers: request.headers }));
   }
 
-  // Recovery deliberately stays on /api/admin so the existing credentialed
-  // CORS rule and the admin cookie scoped to /api/admin are both reused.
+  // Credentialed admin sub-services deliberately stay on /api/admin so the
+  // existing CORS rule and admin cookie scoped to /api/admin are reused.
   if (url.pathname === "/api/admin" && url.searchParams.get("recovery") === "1") {
     const methodHandler = adminRecovery[request.method];
+    return typeof methodHandler === "function" ? methodHandler(request) : Response.json({ error: "method_not_allowed" }, { status: 405 });
+  }
+  if (url.pathname === "/api/admin" && url.searchParams.get("canonical") === "1") {
+    const methodHandler = adminCanonical[request.method];
     return typeof methodHandler === "function" ? methodHandler(request) : Response.json({ error: "method_not_allowed" }, { status: 405 });
   }
 
@@ -100,8 +105,6 @@ async function routeRequest(request) {
     return typeof methodHandler === "function" ? methodHandler(request) : Response.json({ error: "method_not_allowed" }, { status: 405 });
   }
 
-  // Kept for direct-function/backward compatibility. Browser admin traffic uses
-  // /api/admin?recovery=1 because the public gateway exposes one-segment API paths.
   if (url.pathname === "/api/admin/recovery") {
     const methodHandler = adminRecovery[request.method];
     return typeof methodHandler === "function" ? methodHandler(request) : Response.json({ error: "method_not_allowed" }, { status: 405 });
