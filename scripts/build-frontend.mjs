@@ -59,6 +59,7 @@ const patchScripts = [
   "./js/game/engine/core.js",
   "./js/game/engine/controller.js",
   "./js/game/renderer/knowledge-events.js",
+  "./js/game/renderer/dirty-zones.js",
   "./js/game/renderer/board-renderer.js",
   "./js/v30-patch.js",
   "./js/v31-patch.js",
