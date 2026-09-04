@@ -115,7 +115,7 @@ export function applyPendingEvents(profileInput = {}, eventsInput = [], { userId
     .slice(0, MAX_EVENT_BATCH)
     .map(normalizePendingEvent)
     .filter(Boolean)
-    .filter((event) => !event.owner || !expectedOwner || event.owner === expectedOwner);
+    .filter((event) => !!expectedOwner && event.owner === expectedOwner);
   const acks = normalizeAckMap(profile.pendingEventAcks);
   const ackedEventIds = [];
   const blocked = [];
