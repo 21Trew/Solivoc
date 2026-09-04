@@ -453,10 +453,10 @@
       root.SERVER_BOOTSTRAP.developerMessages=[...byId.values()];updateProfileMailBadge?.();return incoming.length>0;
     }catch{return false;}finally{developerMailBusy=false;}
   }
-  setTimeout(()=>fetchDeveloperMail({force:true}),1400);
-  window.addEventListener("online",()=>fetchDeveloperMail({force:true}),{passive:true});
-  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")fetchDeveloperMail();},{passive:true});
-  setInterval(()=>{if(document.visibilityState==="visible")fetchDeveloperMail();},90000);
+  SolivocScheduler.timeout("developer-mail.initial",()=>fetchDeveloperMail({force:true}),1400);
+  SolivocLifecycle.on("online","developer-mail",()=>fetchDeveloperMail({force:true}));
+  SolivocLifecycle.on("visible","developer-mail",()=>fetchDeveloperMail());
+  SolivocScheduler.interval("developer-mail.poll",()=>fetchDeveloperMail(),90000,{visibleOnly:true});
   if(typeof openDeveloperMailModal==="function"){
     const baseOpenDeveloperMailModal=openDeveloperMailModal;
     openDeveloperMailModal=function v34DeveloperMailModal(...args){const result=baseOpenDeveloperMailModal.apply(this,args);fetchDeveloperMail({force:true}).then((changed)=>{if(changed&&document.querySelector("#developerMailModal")?.classList.contains("show"))baseOpenDeveloperMailModal({markRead:false});});return result;};
