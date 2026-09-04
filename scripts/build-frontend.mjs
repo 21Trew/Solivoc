@@ -62,8 +62,7 @@ const patchScripts = [
   "./js/game/renderer/dirty-zones.js",
   "./js/game/renderer/board-renderer.js",
   "./js/v30-patch.js",
-  "./js/v31-patch.js",
-  "./js/v31-first-run-ui.js",
+  "./js/features/account/first-run.js",
   "./js/v32-ui-fixes.js",
   "./js/v33-fox-journey.js",
   "./js/v34-product-update.js",
@@ -92,8 +91,8 @@ indexHtml = indexHtml.replace(/(<meta name="slovasyans-build" content=")[^"]*(" 
 await writeFile(indexPath, indexHtml, "utf8");
 
 // Production app bootstrap must have a single service-worker update owner.
-// Keep the legacy source function as a rollback reference, but replace only the
-// copied production bundle with a thin facade to SolivocUpdateManager.
+// Keep the legacy source function as a rollback reference until Stage 9 migrates
+// the app bootstrap itself; the copied production bundle is a thin facade.
 const appPath = path.join(out, "js", "app.js");
 let appSource = await readFile(appPath, "utf8");
 const pwaStart = appSource.indexOf("function registerPwa() {");
@@ -125,9 +124,6 @@ async function collectCriticalShell(html) {
     assets.add(asset);
   }
 
-  // Discover boot-time local fetch/import dependencies from the actual JS that
-  // the final HTML loads. This keeps data/categories.json in sync without a
-  // hand-maintained SW asset list.
   const queue = [...assets].filter((asset) => asset.endsWith(".js"));
   const scanned = new Set();
   while (queue.length) {
