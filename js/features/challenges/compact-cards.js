@@ -13,14 +13,14 @@
       .weekly-card.challenge-card-compact{position:relative}
       .challenge-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
       .weekly-card.challenge-card-compact .challenge-card-top>small{min-width:0;margin:0}
-      .challenge-reward{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;min-height:30px;padding:6px 10px;border-radius:999px;background:rgba(255,216,106,.16);border:1px solid rgba(255,216,106,.30);color:#ffe08a;font-size:12px;font-weight:950;line-height:1;white-space:nowrap}
+      .challenge-reward{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;min-height:0;padding:0;border:0;border-radius:0;outline:0;background:transparent;box-shadow:none;color:rgba(242,239,255,.78);font-size:12px;font-weight:950;line-height:1;white-space:nowrap}
       .challenge-progress-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;margin-top:10px}
       .weekly-card.challenge-card-compact .challenge-progress-row .weekly-progress{min-width:0;margin:0}
       .challenge-progress-meta{margin:0!important;color:inherit;font-style:normal;font-size:12px;font-weight:900;line-height:1.1;white-space:nowrap;opacity:.88}
       .challenge-progress-meta.done{color:#ffe08a}
       @media(max-width:520px){
         .challenge-progress-row{gap:9px}
-        .challenge-reward{padding:6px 9px;font-size:11px}
+        .challenge-reward{font-size:11px}
         .challenge-progress-meta{font-size:11px}
       }
     `;
