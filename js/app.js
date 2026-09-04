@@ -409,14 +409,9 @@ function registerPwa() {
         location.reload();
       });
 
-      // iOS can keep a PWA alive in the background for a long time. Recheck
-      // whenever the player returns, not only on a cold launch.
-      const visibleCheck = () => { if (document.visibilityState === "visible") checkForUpdate({ force: true }); };
-      document.addEventListener("visibilitychange", visibleCheck, { passive: true });
-      window.addEventListener("pageshow", () => checkForUpdate({ force: true }), { passive: true });
-      window.addEventListener("focus", () => checkForUpdate(), { passive: true });
-      window.addEventListener("online", () => checkForUpdate({ force: true }), { passive: true });
-      setInterval(() => checkForUpdate(), 120000);
+      SolivocLifecycle.on("resume", "pwa.update", () => checkForUpdate({ force: true }));
+      SolivocLifecycle.on("online", "pwa.update", () => checkForUpdate({ force: true }));
+      SolivocScheduler.interval("pwa.update-check", () => checkForUpdate(), 120000, { visibleOnly: true });
       checkForUpdate({ force: true });
     } catch (err) {
       console.warn("Service worker:", err);
@@ -424,7 +419,7 @@ function registerPwa() {
   });
 }
 
-let challengeSyncTimer = null, resumeSyncTimer = null, ruleMetricTimer = null, challengeSyncBusy = false, lifecycleHandlersBound = false;
+let challengeSyncBusy = false, lifecycleHandlersBound = false;
 function activelyPlayingRound() {
   return !!(state && !state.rewarded && !hub?.classList.contains("show"));
 }
@@ -450,61 +445,44 @@ function syncChallengesNonBlocking({ force = false } = {}) {
   return new Promise((resolve) => {
     const invoke = () => run().then(resolve, () => resolve(false));
     if ("requestIdleCallback" in window) requestIdleCallback(invoke, { timeout: 1400 });
-    else setTimeout(invoke, 100);
+    else SolivocScheduler.timeout("sync.challenge-idle", invoke, 100);
   });
 }
 function startChallengeSyncLoop() {
-  clearInterval(challengeSyncTimer);
-  clearInterval(ruleMetricTimer);
-  challengeSyncTimer = setInterval(() => syncChallengesNonBlocking(), 60000);
-  ruleMetricTimer = setInterval(() => {
-    if (document.visibilityState !== "visible" || !state) return;
+  SolivocScheduler.interval("sync.challenges", () => syncChallengesNonBlocking(), 60000, { visibleOnly: true });
+  SolivocScheduler.interval("ui.rule-metric", () => {
+    if (!state) return;
     const el = $("#ruleMetric");
     if (!el || el.hidden || typeof ruleMetricText !== "function") return;
     el.textContent = ruleMetricText(state);
     if (typeof checkActiveRuleFailure === "function") checkActiveRuleFailure();
-  }, 500);
-  // startChallengeSyncLoop can be called again after a soft re-initialization.
-  // Timers are replaceable; lifecycle listeners are not, so bind them once.
+  }, 500, { visibleOnly: true });
   if (!lifecycleHandlersBound) {
     lifecycleHandlersBound = true;
-    document.addEventListener("visibilitychange", () => {
-      clearTimeout(resumeSyncTimer);
-      if (document.visibilityState === "hidden") {
-        markStabilityStage?.("hidden");
-        cancelActiveDragForLifecycle?.();
-        cancelAutoMoveForLifecycle?.();
-        pauseActiveRun?.();
-        compactTransientRuntimeForBackground?.();
-        save?.({ immediate: true });
-        flushProfileSave?.({ skipCloud: true });
-        return;
-      }
-      markStabilityStage?.("active");
+    SolivocLifecycle.on("suspend", "game.round", ({ reason }) => {
+      markStabilityStage?.("hidden", reason ? { reason } : undefined);
+      cancelActiveDragForLifecycle?.();
+      cancelAutoMoveForLifecycle?.();
+      pauseActiveRun?.();
+      compactTransientRuntimeForBackground?.();
+      save?.({ immediate: true });
+      SolivocScheduler.cancel("sync.challenge-resume");
+    });
+    SolivocLifecycle.on("resume", "game.round", ({ persisted = false } = {}) => {
+      markStabilityStage?.("active", persisted ? { persisted: true } : undefined);
       resumeActiveRun?.();
       resumeAudioForLifecycle?.();
       scheduleAccountSync?.(1800);
-      // Let WebKit paint the restored board before any optional network work.
-      if (navigator.onLine !== false) resumeSyncTimer = setTimeout(() => syncChallengesNonBlocking(), 1200);
+      if (navigator.onLine !== false) {
+        SolivocScheduler.timeout("sync.challenge-resume", () => syncChallengesNonBlocking(), 1200);
+      }
     });
-    window.addEventListener("pagehide", () => {
-      const priorStage = readStabilityState?.()?.current?.stage;
-      if (priorStage !== "closed") markStabilityStage?.("hidden", { pagehide: true });
-      cancelActiveDragForLifecycle?.(); cancelAutoMoveForLifecycle?.(); pauseActiveRun?.(); compactTransientRuntimeForBackground?.();
-      save?.({ immediate: true }); flushProfileSave?.({ skipCloud: true });
+    SolivocLifecycle.on("terminate", "game.round", () => {
+      markStabilityStage?.("closed", { beforeunload: true });
+      save?.({ immediate: true });
     });
-    window.addEventListener("pageshow", (event) => {
-      markStabilityStage?.("active", { persisted: !!event.persisted });
-      resumeActiveRun?.(); resumeAudioForLifecycle?.(); scheduleAccountSync?.(1800);
-    });
-    window.addEventListener("freeze", () => {
-      markStabilityStage?.("hidden", { freeze: true });
-      cancelActiveDragForLifecycle?.(); cancelAutoMoveForLifecycle?.(); pauseActiveRun?.(); compactTransientRuntimeForBackground?.();
-      save?.({ immediate: true }); flushProfileSave?.({ skipCloud: true });
-    });
-    window.addEventListener("beforeunload", () => { markStabilityStage?.("closed", { beforeunload: true }); save?.({ immediate: true }); flushProfileSave?.({ skipCloud: true }); });
-    window.addEventListener("error", (event) => markStabilityFault?.("error", event?.message || event?.error?.message));
-    window.addEventListener("unhandledrejection", (event) => markStabilityFault?.("promise", event?.reason?.message || event?.reason));
+    SolivocLifecycle.on("error", "stability.fault", ({ message }) => markStabilityFault?.("error", message));
+    SolivocLifecycle.on("unhandledrejection", "stability.fault", ({ reason }) => markStabilityFault?.("promise", reason?.message || reason));
   }
 }
 
