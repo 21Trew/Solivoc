@@ -29,10 +29,10 @@ test("same-account offline progress is preserved after cloud-first login", () =>
 test("session restore reads through account endpoint and retries cloud refresh", () => {
   assert.match(client, /apiFetch\("\/api\/account"/);
   assert.match(client, /timeout: 8000/);
-  assert.match(client, /setTimeout\(\(\) => refreshAccountFromCloud\(\{ force: true \}\), 5000\)/);
-  assert.match(client, /addEventListener\("online"/);
-  assert.match(client, /addEventListener\("focus"/);
-  assert.match(client, /visibilitychange/);
+  assert.match(client, /SolivocScheduler\.timeout\("sync\.cloud-restore-retry"/);
+  assert.match(client, /SolivocLifecycle\.on\("online", "sync\.cloud-refresh"/);
+  assert.match(client, /SolivocLifecycle\.on\("focus", "sync\.cloud-refresh"/);
+  assert.match(client, /SolivocLifecycle\.on\("visible", "sync\.cloud-refresh"/);
 });
 
 test("account sync merges canonical profile then derives leaderboard", () => {
