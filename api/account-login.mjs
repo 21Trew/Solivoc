@@ -13,11 +13,11 @@ import {
   verifySecret,
 } from "./_auth-lib.mjs";
 import { mutateCloudProfileAtomic } from "./_profile-sync-lib.mjs";
-import { applyCampaignFloor, leaderboardCampaignFloor, profileBehindCampaignFloor } from "./_campaign-floor-lib.mjs";
+import { canonicalProfileNeedsNormalization, normalizeCanonicalProfile } from "./_canonical-profile-lib.mjs";
+import { syncLeaderboardProjection } from "./_leaderboard-projection-lib.mjs";
 import { redis } from "./_push-lib.mjs";
 
 const DUMMY_PASSWORD_HASH = "s2:5elS335qSlz8bHnQ8mH52A:LG4krNk_ezI-y9ZCSPG5fqC8HU-Y9Sn48nrdSDWm0D_NtWHr2bRktSw3Rak_n4Eth9HE_JUrE3wi3joSatEm-A";
-const leaderboardPlayerKey = (userId) => `worditaire:leaderboard:player:${String(userId || "").slice(0, 64)}`;
 
 function requestSessionCookie(request, token, maxAge) {
   const base = sessionCookie(token, maxAge).replace(/;\s*Secure/gi, "");
@@ -53,17 +53,9 @@ function gameDayId(now = Date.now()) {
 }
 
 async function readLoginProfile(userId) {
-  const raw = await redis(["GET", leaderboardPlayerKey(userId)]).catch(() => null);
-  let floor = { levels: 0, stars: 0 };
-  try {
-    const record = raw ? JSON.parse(raw) : null;
-    if (record?.account) floor = leaderboardCampaignFloor(record);
-  } catch {}
-  const result = await mutateCloudProfileAtomic(userId, ({ current }) => {
-    if (!profileBehindCampaignFloor(current, floor)) return current;
-    return applyCampaignFloor(current, floor);
-  });
-  return result;
+  return mutateCloudProfileAtomic(userId, ({ current }) => (
+    canonicalProfileNeedsNormalization(current) ? normalizeCanonicalProfile(current) : current
+  ));
 }
 
 export async function POST(request) {
@@ -85,10 +77,10 @@ export async function POST(request) {
       && await verifySecret(body.password, user?.passwordHash || DUMMY_PASSWORD_HASH);
     if (!user || !passwordMatches) return json({ error: "invalid_credentials" }, 401);
 
-    // Вход на втором устройстве не принимает профиль клиента. Перед выдачей
-    // профиля дополнительно поднимаем кампанию до уже подтверждённого сервером
-    // результата лидерборда, если облачная копия почему-то отстала.
+    // Вход на новом устройстве читает только канонический серверный профиль.
+    // Лидерборд никогда не используется как источник прогресса.
     const resolved = await readLoginProfile(existingId);
+    await syncLeaderboardProjection(existingId, resolved.profile, user).catch(() => {});
     const token = await createSession(existingId, user.sessionVersion);
     const now = Date.now();
     return json({
