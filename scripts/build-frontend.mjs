@@ -69,11 +69,13 @@ const patchScripts = [
   "./js/v34-product-update.js",
   "./js/v39-rarity-collectibles.js",
   "./js/persistence-bridge.js",
+  "./js/core/account-sync-bridge.js",
   "./js/core/pending-event-sync.js",
   "./js/client-stability-hardening.js",
   "./js/mobile-consistency-hardening.js",
   "./js/cross-device-sync-hardening.js",
   "./js/canonical-sync-hardening.js",
+  "./js/core/sync-manager.js",
   "./js/ios-round-stability-v2.js",
   "./js/core/runtime-diagnostics.js",
 ];

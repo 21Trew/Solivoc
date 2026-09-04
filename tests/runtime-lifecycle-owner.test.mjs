@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const lifecycle = await readFile(new URL("../js/core/lifecycle.js", import.meta.url), "utf8");
 const scheduler = await readFile(new URL("../js/core/scheduler.js", import.meta.url), "utf8");
+const syncManager = await readFile(new URL("../js/core/sync-manager.js", import.meta.url), "utf8");
 const build = await readFile(new URL("../scripts/build-frontend.mjs", import.meta.url), "utf8");
 const durability = await readFile(new URL("../js/client-stability-hardening.js", import.meta.url), "utf8");
 const cloud = await readFile(new URL("../js/cross-device-sync-hardening.js", import.meta.url), "utf8");
@@ -26,9 +27,11 @@ test("lifecycle core owns browser lifecycle listeners", () => {
 
 test("scheduler owns keyed replaceable timers", () => {
   assert.match(scheduler, /const tasks = new Map\(\)/);
+  assert.match(scheduler, /const aliases = new Map\(\)/);
   assert.match(scheduler, /function timeout/);
   assert.match(scheduler, /function interval/);
   assert.match(scheduler, /function cancelPrefix/);
+  assert.match(scheduler, /function alias/);
   assert.match(scheduler, /activeCount/);
 });
 
@@ -39,21 +42,24 @@ test("lifecycle core loads before hardening and app bootstrap", () => {
   assert.ok(schedulerIndex >= 0 && lifecycleIndex > schedulerIndex && hardeningIndex > lifecycleIndex);
 });
 
-test("durability uses semantic lifecycle phases", () => {
+test("durability keeps semantic lifecycle checkpoints", () => {
   assert.match(durability, /SolivocLifecycle\.on\("suspend", "durability\.profile"/);
   assert.match(durability, /SolivocLifecycle\.on\("terminate", "durability\.profile"/);
   assert.match(durability, /SolivocLifecycle\.on\("resume", "durability\.profile-resume"/);
   assert.match(durability, /SolivocScheduler\.timeout\("sync\.pending-account"/);
   assert.match(durability, /SolivocScheduler\.cancel\("sync\.account"/);
   assert.doesNotMatch(durability, directLifecycleListener);
+  assert.match(syncManager, /lifecycle\.off\("suspend", "durability\.profile"/);
+  assert.match(syncManager, /localCheckpoint\(\)/);
 });
 
-test("cloud refresh callbacks use shared lifecycle and scheduler", () => {
-  assert.match(cloud, /SolivocLifecycle\.on\("online", "sync\.cloud-refresh"/);
-  assert.match(cloud, /SolivocLifecycle\.on\("focus", "sync\.cloud-refresh"/);
-  assert.match(cloud, /SolivocLifecycle\.on\("visible", "sync\.cloud-refresh"/);
-  assert.match(cloud, /SolivocScheduler\.timeout\("sync\.cloud-refresh"/);
+test("cloud refresh scheduling belongs to sync manager", () => {
+  assert.doesNotMatch(cloud, /SolivocLifecycle\.on\("(?:online|focus|visible)", "sync\.cloud-refresh"/);
   assert.doesNotMatch(cloud, directLifecycleListener);
+  assert.match(syncManager, /lifecycle\.on\("online", "sync\.manager"/);
+  assert.match(syncManager, /lifecycle\.on\("resume", "sync\.manager"/);
+  assert.match(syncManager, /"sync\.cloud-refresh"/);
+  assert.match(syncManager, /scheduler\.claim\(TIMER_KEY/);
 });
 
 test("iOS fault guard uses lifecycle manager only", () => {
@@ -69,11 +75,12 @@ test("developer alerts use shared lifecycle and scheduler", () => {
   assert.doesNotMatch(apiClient, directLifecycleListener);
 });
 
-test("account lifecycle and sync timers use shared owners", () => {
+test("account UI uses shared lifecycle and legacy sync alias", () => {
   assert.match(auth, /SolivocLifecycle\.on\("online", "account\.ui"/);
   assert.match(auth, /SolivocLifecycle\.on\("offline", "account\.ui"/);
   assert.match(auth, /SolivocLifecycle\.on\("visible", "account\.ui"/);
   assert.match(auth, /SolivocScheduler\.timeout\("sync\.account"/);
+  assert.match(syncManager, /"sync\.account"/);
   assert.doesNotMatch(auth, directLifecycleListener);
   assert.doesNotMatch(auth, /accountSyncTimer/);
 });
