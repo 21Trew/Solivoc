@@ -3,6 +3,7 @@
   if (typeof window === "undefined" || window.SolivocScheduler) return;
 
   const tasks = new Map();
+  const owners = new Map();
 
   function normalizeKey(key) {
     const value = String(key || "").trim();
@@ -30,6 +31,25 @@
     }
   }
 
+  function callbackFor(key, fallback) {
+    return owners.get(key) || fallback;
+  }
+
+  function claim(key, callback) {
+    const normalized = normalizeKey(key);
+    if (typeof callback !== "function") throw new TypeError("scheduler_owner_callback_required");
+    owners.set(normalized, callback);
+    return normalized;
+  }
+
+  function release(key, callback = null) {
+    const normalized = String(key || "").trim();
+    if (!owners.has(normalized)) return false;
+    if (callback && owners.get(normalized) !== callback) return false;
+    owners.delete(normalized);
+    return true;
+  }
+
   function cancel(key) {
     const normalized = String(key || "").trim();
     const task = tasks.get(normalized);
@@ -50,7 +70,7 @@
     const wait = Math.max(0, Number(delay) || 0);
     const id = setTimeout(() => {
       tasks.delete(normalized);
-      invoke(normalized, fn);
+      invoke(normalized, callbackFor(normalized, fn));
     }, wait);
     tasks.set(normalized, { kind: "timeout", id, delay: wait, createdAt: Date.now() });
     return normalized;
@@ -66,7 +86,7 @@
     const wait = Math.max(50, Number(delay) || 0);
     const runner = () => {
       if (visibleOnly && typeof document !== "undefined" && document.visibilityState !== "visible") return;
-      invoke(normalized, fn);
+      invoke(normalized, callbackFor(normalized, fn));
     };
     const id = setInterval(runner, wait);
     tasks.set(normalized, { kind: "interval", id, delay: wait, createdAt: Date.now(), visibleOnly: !!visibleOnly });
@@ -93,6 +113,7 @@
       delay: task.delay,
       createdAt: task.createdAt,
       visibleOnly: !!task.visibleOnly,
+      claimed: owners.has(key),
     }));
   }
 
@@ -101,6 +122,8 @@
     interval,
     cancel,
     cancelPrefix,
+    claim,
+    release,
     has,
     activeCount,
     snapshot,
