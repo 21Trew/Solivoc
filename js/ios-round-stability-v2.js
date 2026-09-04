@@ -83,11 +83,6 @@
     try { recordStabilityEvent?.("runtime_fault_checkpoint", { kind, detail: String(detail || "").slice(0, 160) }); } catch {}
   };
 
-  if (window.SolivocLifecycle) {
-    SolivocLifecycle.on("error", "ios.runtime-fault", ({ message }) => checkpointRuntimeFault("error", message));
-    SolivocLifecycle.on("unhandledrejection", "ios.runtime-fault", ({ reason }) => checkpointRuntimeFault("promise", reason?.message || reason));
-  } else {
-    window.addEventListener("error", (event) => checkpointRuntimeFault("error", event?.message || event?.error?.message), { capture: true });
-    window.addEventListener("unhandledrejection", (event) => checkpointRuntimeFault("promise", event?.reason?.message || event?.reason), { capture: true });
-  }
+  SolivocLifecycle.on("error", "ios.runtime-fault", ({ message }) => checkpointRuntimeFault("error", message));
+  SolivocLifecycle.on("unhandledrejection", "ios.runtime-fault", ({ reason }) => checkpointRuntimeFault("promise", reason?.message || reason));
 })();
