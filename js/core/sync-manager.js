@@ -7,7 +7,8 @@
 
   const scheduler = root.SolivocScheduler;
   const lifecycle = root.SolivocLifecycle;
-  if (!scheduler || !lifecycle) return;
+  const account = root.SolivocAccountSyncBridge;
+  if (!scheduler || !lifecycle || !account) return;
 
   const TIMER_KEY = "sync.manager";
   const LEGACY_KEYS = [
@@ -26,16 +27,16 @@
   let inFlight = null;
   let activeController = null;
   let epoch = 0;
-  let sessionOwner = String(root.accountState?.userId || "");
+  let sessionOwner = account.owner();
   let failureCount = 0;
   let lastSuccessAt = 0;
   let lastFailureAt = 0;
   let lastReason = "boot";
   let queuedRefresh = false;
 
-  const ownerId = () => String(root.accountState?.userId || "");
-  const signedIn = () => typeof root.accountSignedIn === "function" && root.accountSignedIn();
-  const online = () => typeof root.accountCanUseServer !== "function" || root.accountCanUseServer();
+  const ownerId = () => account.owner();
+  const signedIn = () => account.signedIn();
+  const online = () => account.canUseServer();
   const visible = () => typeof document === "undefined" || document.visibilityState !== "hidden";
   const playing = () => typeof root.activelyPlayingRound === "function" && root.activelyPlayingRound();
 
@@ -85,35 +86,26 @@
   }
 
   async function syncProfile(owner, token, { keepalive = false } = {}) {
-    if (typeof root.accountRequest !== "function" || typeof root.accountProfileSnapshot !== "function") return true;
-    const bodyText = JSON.stringify({ profile: root.accountProfileSnapshot(), version: root.accountState?.version || 0 });
+    const bodyText = JSON.stringify({ profile: account.snapshot(), version: account.version() });
     const canKeepalive = keepalive && bodyText.length < 60000;
     const controller = new AbortController();
     activeController = controller;
     const timer = setTimeout(() => controller.abort(), canKeepalive ? 4500 : 8000);
     try {
-      const data = await root.accountRequest("/api/account", {
+      const data = await account.request("/api/account", {
         method: "POST",
         body: bodyText,
         keepalive: canKeepalive,
         signal: controller.signal,
       });
       if (token !== epoch || owner !== ownerId()) return false;
-      if (root.accountState) {
-        root.accountState.version = Math.max(Number(root.accountState.version) || 0, Number(data?.version) || 0);
-        root.accountState.lastSyncAt = Number(data?.syncedAt) || Date.now();
-        root.persistAccountState?.();
-      }
-      if (data?.profile) root.applyAccountCloudProfile?.(data.profile, { version: data.version });
-      root.updateAccountModalIfOpen?.();
+      account.updateMeta(data);
+      if (data?.profile) account.applyProfile(data.profile, { version: data.version });
+      account.updateUi();
       return true;
     } catch (error) {
       if (controller.signal.aborted || token !== epoch || owner !== ownerId()) return false;
-      if (error?.status === 401 && root.accountState) {
-        root.accountState.status = "signed_out";
-        root.persistAccountState?.();
-        root.updateAccountModalIfOpen?.();
-      }
+      if (error?.status === 401) account.markSignedOut();
       throw error;
     } finally {
       clearTimeout(timer);
