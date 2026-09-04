@@ -14,9 +14,6 @@
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
     try {
-      // Читаем через /api/account, а не /api/auth: account endpoint обновляет
-      // сессию, отдаёт серверное время и поднимает кампанию до уже подтверждённого
-      // сервером результата лидерборда, если облачная копия почему-то отстала.
       const response = await apiFetch("/api/account", {
         cache: "no-store",
         signal: controller.signal,
@@ -109,21 +106,31 @@
         scheduleAccountSync?.(1500);
         return true;
       } catch (error) {
-        setTimeout(() => refreshAccountFromCloud({ force: true }), 5000);
+        const retry = () => refreshAccountFromCloud({ force: true });
+        if (window.SolivocScheduler) SolivocScheduler.timeout("sync.cloud-restore-retry", retry, 5000);
+        else setTimeout(retry, 5000);
         return false;
       }
     };
   }
 
   const queueRefresh = (delay = 250) => {
-    setTimeout(() => refreshAccountFromCloud(), delay);
+    const run = () => refreshAccountFromCloud();
+    if (window.SolivocScheduler) SolivocScheduler.timeout("sync.cloud-refresh", run, delay);
+    else setTimeout(run, delay);
   };
 
-  window.addEventListener("online", () => queueRefresh(100));
-  window.addEventListener("focus", () => queueRefresh(250));
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") queueRefresh(250);
-  });
+  if (window.SolivocLifecycle) {
+    SolivocLifecycle.on("online", "sync.cloud-refresh", () => queueRefresh(100));
+    SolivocLifecycle.on("focus", "sync.cloud-refresh", () => queueRefresh(250));
+    SolivocLifecycle.on("visible", "sync.cloud-refresh", () => queueRefresh(250));
+  } else {
+    window.addEventListener("online", () => queueRefresh(100));
+    window.addEventListener("focus", () => queueRefresh(250));
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") queueRefresh(250);
+    });
+  }
 
   window.refreshAccountFromCloud = refreshAccountFromCloud;
 })();
