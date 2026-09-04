@@ -61,5 +61,5 @@ test("engine command surface contains staged gameplay commands", async () => {
     "START_LEVEL",
     "COMPLETE_CATEGORY",
     "FINISH_LEVEL",
-  ]) assert.match(source, new RegExp(`${command}: \\"${command}\\"`));
+  ]) assert.ok(source.includes(`${command}: "${command}"`), `missing ${command}`);
 });
