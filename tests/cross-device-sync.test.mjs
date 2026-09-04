@@ -13,8 +13,10 @@ test("second-device login never uploads the local profile before cloud read", ()
   assert.doesNotMatch(client, /account-login[^\n]+profile:/);
   assert.doesNotMatch(login, /mergeCloudProfile/);
   assert.doesNotMatch(login, /writeJsonKey\(profileKey/);
-  assert.match(login, /leaderboardCampaignFloor/);
-  assert.match(login, /profileBehindCampaignFloor/);
+  assert.match(login, /normalizeCanonicalProfile/);
+  assert.match(login, /syncLeaderboardProjection/);
+  assert.doesNotMatch(login, /leaderboardCampaignFloor/);
+  assert.doesNotMatch(login, /profileBehindCampaignFloor/);
 });
 
 test("same-account offline progress is preserved after cloud-first login", () => {
@@ -33,18 +35,21 @@ test("session restore reads through account endpoint and retries cloud refresh",
   assert.match(client, /visibilitychange/);
 });
 
-test("account sync applies the server-confirmed campaign floor", () => {
-  assert.match(account, /readCampaignFloor/);
-  assert.match(account, /profileBehindCampaignFloor/);
-  assert.match(account, /applyCampaignFloor\(profile, campaignFloor\)/);
-  assert.match(account, /readProfileWithServerFloor/);
+test("account sync merges canonical profile then derives leaderboard", () => {
+  assert.match(account, /mergeCanonicalProfile\(current, incoming, profile\)/);
+  assert.match(account, /syncLeaderboardProjection\(session\.userId, merged\.profile, session\.user\)/);
+  assert.match(account, /readCanonicalProfile/);
+  assert.doesNotMatch(account, /readCampaignFloor/);
+  assert.doesNotMatch(account, /applyCampaignFloor/);
 });
 
-test("new login endpoint is routed and frontend guard is built", () => {
+test("new login endpoint is routed and frontend guards are built in order", () => {
   assert.match(router, /account-login/);
   assert.match(build, /cross-device-sync-hardening\.js/);
+  assert.match(build, /canonical-sync-hardening\.js/);
   const durability = build.indexOf("client-stability-hardening.js");
   const consistency = build.indexOf("mobile-consistency-hardening.js");
   const crossDevice = build.indexOf("cross-device-sync-hardening.js");
-  assert.ok(durability >= 0 && consistency > durability && crossDevice > consistency);
+  const canonical = build.indexOf("canonical-sync-hardening.js");
+  assert.ok(durability >= 0 && consistency > durability && crossDevice > consistency && canonical > crossDevice);
 });
