@@ -53,6 +53,14 @@
   function hasPending() {
     try { return !!localStorage.getItem(SYNC_PENDING_KEY); } catch { return false; }
   }
+  function hasPendingEvents() {
+    try { return !!window.SolivocPendingEventSync?.hasPendingForAccount?.(); } catch { return false; }
+  }
+  async function flushEventsBeforeProfile() {
+    if (!hasPendingEvents()) return true;
+    try { return await window.SolivocPendingEventSync.flush(); }
+    catch { return false; }
+  }
 
   try {
     const primary = parse(localStorage.getItem(PROFILE_PRIMARY));
@@ -126,6 +134,10 @@
 
     flushAccountSync = async function durableFlushAccountSync(options = {}) {
       const lifecycle = !!options.keepalive;
+      if (!(await flushEventsBeforeProfile())) {
+        markPending("pending_events_before_profile");
+        return false;
+      }
       if (lifecycle && document.visibilityState === "hidden") {
         if (accountSyncBusy || !accountSignedIn?.() || !accountCanUseServer?.()) return false;
         accountSyncBusy = true;
@@ -172,13 +184,13 @@
   function lifecycleCheckpoint() {
     try { flushProfileSave?.({ skipCloud: false }); }
     catch { try { saveProfile?.(); } catch {} }
-    if (hasPending() || (typeof accountSignedIn === "function" && accountSignedIn())) {
+    if (hasPending() || hasPendingEvents() || (typeof accountSignedIn === "function" && accountSignedIn())) {
       try { flushAccountSync?.({ keepalive: true }); } catch {}
     }
   }
 
   const schedulePendingSync = (delay) => {
-    if (!hasPending()) return;
+    if (!hasPending() && !hasPendingEvents()) return;
     SolivocScheduler.timeout("sync.pending-account", () => { try { scheduleAccountSync?.(250); } catch {} }, delay);
   };
 
