@@ -160,9 +160,7 @@
           accountState.status = "signed_in";
           persistAccountState();
           markPending("retry_after_transient_401");
-          const retry = () => { try { scheduleAccountSync?.(250); } catch {} };
-          if (window.SolivocScheduler) SolivocScheduler.timeout("sync.retry-after-401", retry, 0);
-          else setTimeout(retry, 0);
+          SolivocScheduler.timeout("sync.retry-after-401", () => { try { scheduleAccountSync?.(250); } catch {} }, 0);
           return false;
         }
       }
@@ -181,24 +179,13 @@
 
   const schedulePendingSync = (delay) => {
     if (!hasPending()) return;
-    const run = () => { try { scheduleAccountSync?.(250); } catch {} };
-    if (window.SolivocScheduler) SolivocScheduler.timeout("sync.pending-account", run, delay);
-    else setTimeout(run, delay);
+    SolivocScheduler.timeout("sync.pending-account", () => { try { scheduleAccountSync?.(250); } catch {} }, delay);
   };
 
-  if (window.SolivocLifecycle) {
-    SolivocLifecycle.on("pagehide", "durability.profile", lifecycleCheckpoint);
-    SolivocLifecycle.on("freeze", "durability.profile", lifecycleCheckpoint);
-    SolivocLifecycle.on("hidden", "durability.profile", lifecycleCheckpoint);
-    SolivocLifecycle.on("visible", "durability.profile-resume", () => schedulePendingSync(0));
-    SolivocLifecycle.on("online", "durability.profile-online", () => schedulePendingSync(0));
-  } else {
-    window.addEventListener("pagehide", lifecycleCheckpoint, { capture: true });
-    window.addEventListener("freeze", lifecycleCheckpoint, { capture: true });
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden") lifecycleCheckpoint();
-      else schedulePendingSync(0);
-    });
-    window.addEventListener("online", () => schedulePendingSync(0));
-  }
+  SolivocLifecycle.on("pagehide", "durability.profile", lifecycleCheckpoint);
+  SolivocLifecycle.on("freeze", "durability.profile", lifecycleCheckpoint);
+  SolivocLifecycle.on("hidden", "durability.profile", lifecycleCheckpoint);
+  SolivocLifecycle.on("beforeunload", "durability.profile", lifecycleCheckpoint);
+  SolivocLifecycle.on("visible", "durability.profile-resume", () => schedulePendingSync(0));
+  SolivocLifecycle.on("online", "durability.profile-online", () => schedulePendingSync(0));
 })();
