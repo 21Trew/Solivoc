@@ -14,18 +14,16 @@ test("active-round predicate excludes completed and failed rounds", async () => 
   assert.equal(api.isActiveRoundSnapshot({ run:{}, totalCategories:6, failed:true }), false);
 });
 
-test("v34 does not own round checkpoint scheduling", () => {
-  assert.doesNotMatch(source, /v34SafeSave/);
-  assert.doesNotMatch(source, /emergencyRoundCheckpoint/);
-  assert.doesNotMatch(source, /setInterval\([\s\S]*8000/);
-  assert.match(source, /history\.length > 2/);
+test("fault checkpoint has one current owner", () => {
+  assert.match(source, /window\.addEventListener\("error", emergencyRoundCheckpoint/);
+  assert.match(source, /window\.addEventListener\("unhandledrejection", emergencyRoundCheckpoint/);
+  assert.doesNotMatch(iosSource, /runtime_fault_checkpoint/);
+  assert.doesNotMatch(iosSource, /window\.addEventListener\("error"/);
+  assert.doesNotMatch(iosSource, /window\.addEventListener\("unhandledrejection"/);
 });
 
-test("iOS stability retains event-driven fault checkpoint", () => {
-  assert.match(iosSource, /save\?\.\(\{ immediate: true \}\)/);
-  assert.match(iosSource, /window\.addEventListener\("error"/);
-  assert.match(iosSource, /window\.addEventListener\("unhandledrejection"/);
-  assert.doesNotMatch(iosSource, /setInterval\([\s\S]*8000/);
+test("constrained undo history remains bounded", () => {
+  assert.match(source, /history\.length > 2/);
 });
 
 test("mascot switching is blocked during an active round", () => {
